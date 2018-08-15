@@ -3,6 +3,15 @@ use super::Error;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Seek, SeekFrom};
 
+// Here we build a flat memory based Memory object as a starting point for fast
+// iteration. Later we might want to re-evaluate this to see if we need a real
+// MMU system.
+// Current system is lacking the following features needed in a real production
+// system:
+//
+// * mmap should work on pages, not arbitrary memory segments
+// * disallow unaligned address on page boundary
+// * read/write/execute permission checking
 pub trait Memory {
     fn mmap(
         &mut self,
@@ -17,15 +26,6 @@ pub trait Memory {
     fn load32(&self, addr: usize) -> Result<u32, Error>;
 }
 
-// Here we build a flat memory based Memory object as a starting point for fast
-// iteration. Later we might want to re-evaluate this to see if we need a real
-// MMU system.
-// Current system is lacking the following features needed in a real production
-// system:
-//
-// * mmap should work on pages, not arbitrary memory segments
-// * disallow unaligned address on page boundary
-// * read/write/execute permission checking
 impl Memory for Vec<u8> {
     fn mmap(
         &mut self,
@@ -44,7 +44,7 @@ impl Memory for Vec<u8> {
     }
 
     fn load16(&self, addr: usize) -> Result<u16, Error> {
-        if addr + 4 > self.len() {
+        if addr + 2 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self);
