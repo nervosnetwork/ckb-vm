@@ -1,6 +1,7 @@
 use super::decoder::{build_rv32imac_decoder, Decoder};
 use super::memory::Memory;
-use super::{Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY};
+use super::{Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP, REGISTER_ABI_NAMES};
+use std::fmt::{self, Display};
 use goblin::elf::program_header::PT_LOAD;
 use goblin::elf::Elf;
 
@@ -14,6 +15,24 @@ pub struct Machine<M: Memory> {
     decoder: Decoder,
     running: bool,
     exit_code: u8,
+}
+
+impl<M> Display for Machine<M>
+where
+    M: Memory,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "pc  : 0x{:08X}\n", self.pc)?;
+        for i in 0..RISCV_GENERAL_REGISTER_NUMBER {
+            write!(f, "{:4}: 0x{:08X}", REGISTER_ABI_NAMES[i], self.registers[i])?;
+            if (i + 1) % 4 == 0 {
+                write!(f, "\n")?;
+            } else {
+                write!(f, " ")?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<M> Machine<M>
@@ -39,6 +58,9 @@ where
 
     pub fn run(&mut self, _args: &[String]) -> Result<u8, Error> {
         self.running = true;
+        // TODO: when MMU is ready, we need to distinguish between heap, stack
+        // and mmap pages and enforce size limit on each of them.
+        self.registers[SP] = RISCV_MAX_MEMORY as u32;
         while self.running {
             let instruction = self.decoder.decode(self)?;
             instruction.execute(self)?;
