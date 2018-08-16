@@ -27,4 +27,4 @@ impl Display for Instruction {
     }
 }
 
-pub type InstructionFactory = fn(instruction: u32) -> Option<Instruction>;
+pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;

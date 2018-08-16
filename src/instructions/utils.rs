@@ -18,6 +18,13 @@ pub fn extract_utype_immediate(instruction: u32) -> u32 {
 
 pub fn update_register(machine: &mut Machine, register_index: usize, value: u32) {
     let register_index = register_index % RISCV_GENERAL_REGISTER_NUMBER;
+    // In RISC-V, x0 is a special zero register with the following properties:
+    //
+    // * All writes to this register are silently ignored
+    // * All reads from this register will respond with 0
+    //
+    // The goal here is to maintain a place where we can read zeros to allow for
+    // compact encoding. Hence we are ignoring all writes to x0 register here.
     if register_index > 0 {
         machine.registers[register_index] = value;
     }
