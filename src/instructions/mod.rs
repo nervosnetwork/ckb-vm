@@ -3,6 +3,7 @@ mod utils;
 pub mod rv32i;
 
 use super::machine::Machine;
+use super::memory::Memory;
 use super::Error;
 use std::fmt::{self, Display};
 
@@ -12,7 +13,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn execute(&self, machine: &mut Machine) -> Result<(), Error> {
+    pub fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<(), Error> {
         match self {
             Instruction::RV32I(instruction) => instruction.execute(machine),
         }
