@@ -63,7 +63,9 @@ where
         self.registers[SP] = RISCV_MAX_MEMORY as u32;
         while self.running {
             let instruction = self.decoder.decode(self)?;
+            println!("{:}", instruction);
             instruction.execute(self)?;
+            println!("{:}", self);
         }
         Ok(self.exit_code)
     }
