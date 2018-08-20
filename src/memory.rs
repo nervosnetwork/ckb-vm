@@ -1,6 +1,6 @@
 use super::Error;
 
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::borrow::BorrowMut;
 use std::io::{Cursor, Seek, SeekFrom};
 
@@ -25,6 +25,9 @@ pub trait Memory {
     // TODO: maybe parameterize those?
     fn load16(&self, addr: usize) -> Result<u16, Error>;
     fn load32(&self, addr: usize) -> Result<u32, Error>;
+
+    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error>;
+    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
 }
 
 impl<T> Memory for T
@@ -72,5 +75,21 @@ where
             .map_err(Error::IO)?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
         reader.read_u32::<LittleEndian>().map_err(Error::IO)
+    }
+
+    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
+        let mut memory = self.borrow_mut();
+        if addr + 1 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        memory.write_u8(value).map_err(Error::IO)
+    }
+
+    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
+        let mut memory = self.borrow_mut();
+        if addr + 4 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        memory.write_u32::<LittleEndian>(value).map_err(Error::IO)
     }
 }

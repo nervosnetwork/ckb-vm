@@ -52,6 +52,12 @@ pub fn itype_immediate(instruction_bits: u32) -> i32 {
 }
 
 #[inline(always)]
+pub fn stype_immediate(instruction_bits: u32) -> i32 {
+    (x(instruction_bits, 7, 5, 0)
+     | x(instruction_bits, 25, 7, 5)) as i32
+}
+
+#[inline(always)]
 pub fn utype_immediate(instruction_bits: u32) -> i32 {
     xs(instruction_bits, 12, 20, 12) as i32
 }
