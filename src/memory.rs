@@ -28,6 +28,7 @@ pub trait Memory {
 
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error>;
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
+    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
 }
 
 impl<T> Memory for T
@@ -99,5 +100,14 @@ where
             .seek(SeekFrom::Start(addr as u64))
             .map_err(Error::IO)?;
         writer.write_u32::<LittleEndian>(value).map_err(Error::IO)
+    }
+
+    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
+        // TODO: for now, we can implement this as a shortcut to mmap, but when
+        // we moved to an architecture where we have real MMU, mmap might just
+        // be a simply data structure link rather than a memcpy, at that stage,
+        // we should rewrite this.
+        self.mmap(addr, value.len(), value, 0)?;
+        Ok(())
     }
 }

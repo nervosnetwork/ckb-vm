@@ -56,11 +56,9 @@ where
         Ok(())
     }
 
-    pub fn run(&mut self, _args: &[String]) -> Result<u8, Error> {
+    pub fn run(&mut self, args: &[String]) -> Result<u8, Error> {
         self.running = true;
-        // TODO: when MMU is ready, we need to distinguish between heap, stack
-        // and mmap pages and enforce size limit on each of them.
-        self.registers[SP] = RISCV_MAX_MEMORY as u32;
+        self.initialize_stack(args);
         while self.running {
             let instruction = self.decoder.decode(self)?;
             println!("{:}", instruction);
@@ -68,6 +66,35 @@ where
             println!("{:}", self);
         }
         Ok(self.exit_code)
+    }
+
+    fn initialize_stack(&mut self, args: &[String]) -> Result<(), Error> {
+        // TODO: when MMU is ready, we need to distinguish between heap, stack
+        // and mmap pages and enforce size limit on each of them.
+        self.registers[SP] = RISCV_MAX_MEMORY as u32;
+        // First value in this array is argc, then it contains the address(pointer)
+        // of each argv object.
+        let mut values = vec![args.len() as u32];
+        for arg in args {
+            let bytes = arg.as_bytes();
+            let len = bytes.len() as u32 + 1;
+            let address = self.registers[SP] - len;
+
+            self.memory.store_bytes(address as usize, bytes)?;
+            self.memory.store8(address as usize + bytes.len(), 0)?;
+
+            values.push(address);
+            self.registers[SP] = address;
+        }
+
+        // Since we are dealing with a stack, we need to push items in reversed
+        // order
+        for value in values.iter().rev() {
+            let address = self.registers[SP] - 4;
+            self.memory.store32(address as usize, *value)?;
+            self.registers[SP] = address;
+        }
+        Ok(())
     }
 }
 
