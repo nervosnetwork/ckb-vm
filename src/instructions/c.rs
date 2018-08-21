@@ -164,7 +164,6 @@ impl Instruction {
             Instruction::LWSP { rd, uimm } => {
                 let (address, _) = machine.registers[SP].overflowing_add(*uimm);
                 let value = machine.memory.load32(address as usize)?;
-                println!("Loaded: 0x{:08X} from 0x{:08X}", value, address);
                 update_register(machine, *rd, value);
             },
             Instruction::MV { rd, rs2 } => {
@@ -187,7 +186,6 @@ impl Instruction {
             Instruction::SWSP { rs2, uimm } => {
                 let (address, _) = machine.registers[SP].overflowing_add(*uimm);
                 let value = machine.registers[*rs2] as u32;
-                println!("Storing: 0x{:08X} at 0x{:08X}", value, address);
                 machine.memory.store32(address as usize, value)?;
             },
         }
