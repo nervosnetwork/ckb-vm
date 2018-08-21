@@ -23,6 +23,7 @@ pub trait Memory {
     ) -> Result<usize, Error>;
 
     // TODO: maybe parameterize those?
+    fn load8(&self, addr: usize) -> Result<u8, Error>;
     fn load16(&self, addr: usize) -> Result<u16, Error>;
     fn load32(&self, addr: usize) -> Result<u32, Error>;
 
@@ -50,6 +51,18 @@ where
         let (slice, _) = right.split_at_mut(size);
         slice.copy_from_slice(&source[offset..offset + size]);
         Ok(addr)
+    }
+
+    fn load8(&self, addr: usize) -> Result<u8, Error> {
+        let memory = self.borrow();
+        if addr + 1 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut reader = Cursor::new(memory);
+        reader
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        reader.read_u8().map_err(Error::IO)
     }
 
     fn load16(&self, addr: usize) -> Result<u16, Error> {

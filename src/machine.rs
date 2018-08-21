@@ -1,6 +1,6 @@
 use super::decoder::{build_rv32imac_decoder, Decoder};
 use super::memory::Memory;
-use super::{Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP, REGISTER_ABI_NAMES};
+use super::{Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP, REGISTER_ABI_NAMES, A0, A7};
 use std::fmt::{self, Display};
 use goblin::elf::program_header::PT_LOAD;
 use goblin::elf::Elf;
@@ -15,6 +15,23 @@ pub struct Machine<M: Memory> {
     decoder: Decoder,
     running: bool,
     exit_code: u8,
+}
+
+impl<M> Machine<M>
+where
+    M: Memory,
+{
+    pub fn ecall(&mut self) -> Result<(), Error> {
+        match self.registers[A7] {
+            93 => {
+                // exit
+                self.exit_code = self.registers[A0] as u8;
+                self.running = false;
+                Ok(())
+            },
+            _ => Err(Error::InvalidEcall(self.registers[A7])),
+        }
+    }
 }
 
 impl<M> Display for Machine<M>
@@ -58,12 +75,10 @@ where
 
     pub fn run(&mut self, args: &[String]) -> Result<u8, Error> {
         self.running = true;
-        self.initialize_stack(args);
+        self.initialize_stack(args)?;
         while self.running {
             let instruction = self.decoder.decode(self)?;
-            println!("{:}", instruction);
             instruction.execute(self)?;
-            println!("{:}", self);
         }
         Ok(self.exit_code)
     }

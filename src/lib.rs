@@ -66,6 +66,7 @@ pub enum Error {
     Alignment,
     OutOfBound,
     InvalidInstruction(u32),
+    InvalidEcall(u32),
     IO(IOError),
     Unimplemented,
 }

@@ -78,6 +78,9 @@ fn b_immediate(instruction_bits: u32) -> i32 {
 pub enum Instruction {
     ADD { rd: usize, rs2: usize },
     ADDI { rd: usize, imm: i32 },
+    ADDI4SPN { rd: usize, uimm: u32 },
+    ADDI16SP { imm: i32 },
+    AND { rd: usize, rs2: usize },
     ANDI { rd: usize, imm: i32 },
     BEQZ { rs1: usize, imm: i32 },
     BNEZ { rs1: usize, imm: i32 },
@@ -90,6 +93,7 @@ pub enum Instruction {
     LW { rd: usize, rs1: usize, uimm: u32 },
     LWSP { rd: usize, uimm: u32 },
     MV { rd: usize, rs2: usize },
+    SLLI { rd: usize, uimm: u32 },
     SRAI { rd: usize, uimm: u32 },
     SUB { rd: usize, rs2: usize },
     SW { rs1: usize, rs2: usize, uimm: u32 },
@@ -107,11 +111,25 @@ impl Instruction {
             Instruction::ADDI { rd, imm } => {
                 let (value, _) = machine.registers[*rd].overflowing_add(*imm as u32);
                 update_register(machine, *rd, value);
-            }
+            },
+            Instruction::ADDI4SPN { rd, uimm } => {
+                let (value, _) = machine.registers[SP].overflowing_add(*uimm);
+                update_register(machine, *rd, value);
+            },
+            Instruction::ADDI16SP { imm } => {
+                let (value, _) = machine.registers[SP].overflowing_add(*imm as u32);
+                update_register(machine, SP, value);
+            },
+            Instruction::AND { rd, rs2 } => {
+                let rs1_value = machine.registers[*rd];
+                let rs2_value = machine.registers[*rs2];
+                let value = rs1_value & rs2_value;
+                update_register(machine, *rd, value);
+            },
             Instruction::ANDI { rd, imm } => {
                 let value = machine.registers[*rd] & (*imm as u32);
                 update_register(machine, *rd, value);
-            }
+            },
             Instruction::BEQZ { rs1, imm } => {
                 if machine.registers[*rs1] == 0 {
                     let (value, _) = machine.pc.overflowing_add(*imm as u32);
@@ -170,6 +188,10 @@ impl Instruction {
                 let value = machine.registers[*rs2];
                 update_register(machine, *rd, value);
             },
+            Instruction::SLLI { rd, uimm } => {
+                let value = machine.registers[*rd] << uimm;
+                update_register(machine, *rd, value);
+            },
             Instruction::SRAI { rd, uimm } => {
                 let value = (machine.registers[*rd] as i32) >> uimm;
                 update_register(machine, *rd, value as u32);
@@ -196,6 +218,21 @@ impl Instruction {
 
 pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
     match opcode(instruction_bits) {
+        0x0 => {
+            let nzuimm = x(instruction_bits, 6, 1, 2)
+                | x(instruction_bits, 5, 1, 3)
+                | x(instruction_bits, 11, 2, 4)
+                | x(instruction_bits, 7, 4, 6);
+            if nzuimm != 0 {
+                Some(C(Instruction::ADDI4SPN {
+                    rd: compact_register_number(instruction_bits, 2),
+                    uimm: nzuimm,
+                }))
+            } else {
+                // Illegal instruction
+                None
+            }
+        },
         0x1 => {
             let rd = rd(instruction_bits);
             let nzimm = immediate(instruction_bits);
@@ -206,6 +243,18 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 }))
             } else {
                 // TODO: C.NOP
+                None
+            }
+        },
+        0x2 => {
+            let rd = rd(instruction_bits);
+            let nzuimm = uimmediate(instruction_bits);
+            if rd != 0 && nzuimm != 0 && (nzuimm & 0x20 == 0) {
+                Some(C(Instruction::SLLI {
+                    rd,
+                    uimm: nzuimm,
+                }))
+            } else {
                 None
             }
         },
@@ -246,14 +295,26 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
         0xd => {
             let rd = rd(instruction_bits);
             let imm = immediate(instruction_bits) << 12;
-            if rd != 0 && rd != 2 && imm != 0 {
+            if rd != 0 && rd != SP && imm != 0 {
                 Some(C(Instruction::LUI { rd, imm }))
+            } else if rd == SP && imm != 0 {
+                Some(C(Instruction::ADDI16SP {
+                    imm: (x(instruction_bits, 6, 1, 4)
+                          | x(instruction_bits, 2, 1, 5)
+                          | x(instruction_bits, 5, 1, 6)
+                          | x(instruction_bits, 3, 2, 7)
+                          | xs(instruction_bits, 12, 1, 9)) as i32,
+                }))
             } else {
                 None
             }
         },
         0x11 => match alu_opcode(instruction_bits) {
             0xc => Some(C(Instruction::SUB {
+                rd: compact_register_number(instruction_bits, 7),
+                rs2: compact_register_number(instruction_bits, 2),
+            })),
+            0xf => Some(C(Instruction::AND {
                 rd: compact_register_number(instruction_bits, 7),
                 rs2: compact_register_number(instruction_bits, 2),
             })),

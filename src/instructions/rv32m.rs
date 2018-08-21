@@ -6,8 +6,9 @@ use super::{Instruction as GenericInstruction, Instruction::RV32M};
 
 #[derive(Debug)]
 pub enum Instruction {
-    // R-type
+    // All RV32M extensions are R-type
     DIV { rd: usize, rs1: usize, rs2: usize },
+    MUL { rd: usize, rs1: usize, rs2: usize },
 }
 
 impl Instruction {
@@ -26,7 +27,13 @@ impl Instruction {
                     result
                 };
                 update_register(machine, *rd, value as u32);
-            }
+            },
+            Instruction::MUL { rd, rs1, rs2 } => {
+                let rs1_value = machine.registers[*rs1];
+                let rs2_value = machine.registers[*rs2];
+                let (value, _) = rs1_value.overflowing_mul(rs2_value);
+                update_register(machine, *rd, value);
+            },
         }
         machine.pc += 4;
         Ok(())
@@ -38,6 +45,11 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
         return None;
     }
     match funct3(instruction_bits) {
+        0x0 => Some(RV32M(Instruction::MUL {
+            rd: rd(instruction_bits),
+            rs1: rs1(instruction_bits),
+            rs2: rs2(instruction_bits),
+        })),
         0x4 => Some(RV32M(Instruction::DIV {
             rd: rd(instruction_bits),
             rs1: rs1(instruction_bits),
