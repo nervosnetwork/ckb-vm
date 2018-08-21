@@ -78,18 +78,26 @@ where
     }
 
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
-        let mut memory = self.borrow_mut();
+        let memory = self.borrow_mut();
         if addr + 1 > memory.len() {
             return Err(Error::OutOfBound);
         }
-        memory.write_u8(value).map_err(Error::IO)
+        let mut writer = Cursor::new(memory);
+        writer
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        writer.write_u8(value).map_err(Error::IO)
     }
 
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
-        let mut memory = self.borrow_mut();
+        let memory = self.borrow_mut();
         if addr + 4 > memory.len() {
             return Err(Error::OutOfBound);
         }
-        memory.write_u32::<LittleEndian>(value).map_err(Error::IO)
+        let mut writer = Cursor::new(memory);
+        writer
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        writer.write_u32::<LittleEndian>(value).map_err(Error::IO)
     }
 }

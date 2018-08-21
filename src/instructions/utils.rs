@@ -24,6 +24,11 @@ pub fn funct3(instruction_bits: u32) -> u32 {
 }
 
 #[inline(always)]
+pub fn funct7(instruction_bits: u32) -> u32 {
+    x(instruction_bits, 25, 7, 0)
+}
+
+#[inline(always)]
 pub fn rd(instruction_bits: u32) -> usize {
     x(instruction_bits, 7, 5, 0) as usize
 }

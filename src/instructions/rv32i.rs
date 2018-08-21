@@ -9,6 +9,9 @@ use super::{Instruction as GenericInstruction, Instruction::RV32I};
 #[derive(Debug)]
 pub enum Instruction {
     // B-type
+    BEQ { rs1: usize, rs2: usize, imm: i32 },
+    BNE { rs1: usize, rs2: usize, imm: i32 },
+    BLT { rs1: usize, rs2: usize, imm: i32 },
     BLTU { rs1: usize, rs2: usize, imm: i32 },
     BGEU { rs1: usize, rs2: usize, imm: i32 },
     // I-type
@@ -22,6 +25,7 @@ pub enum Instruction {
     SW { rs1: usize, rs2: usize, imm: i32 },
     // U-type
     AUIPC { rd: usize, imm: i32 },
+    LUI { rd: usize, imm: i32 },
 }
 
 impl Instruction {
@@ -39,10 +43,19 @@ impl Instruction {
                 let (value, _) = machine.pc.overflowing_add(*imm as u32);
                 update_register(machine, *rd, value);
             },
-            Instruction::BLTU { rs1, rs2, imm } => {
+            Instruction::BEQ { rs1, rs2, imm } => {
                 let rs1_value: u32 = machine.registers[*rs1];
                 let rs2_value: u32 = machine.registers[*rs2];
-                if rs1_value < rs2_value {
+                if rs1_value == rs2_value {
+                    let (value, _) = machine.pc.overflowing_add(*imm as u32);
+                    machine.pc = value;
+                    return Ok(());
+                }
+            },
+            Instruction::BNE { rs1, rs2, imm } => {
+                let rs1_value: u32 = machine.registers[*rs1];
+                let rs2_value: u32 = machine.registers[*rs2];
+                if rs1_value != rs2_value {
                     let (value, _) = machine.pc.overflowing_add(*imm as u32);
                     machine.pc = value;
                     return Ok(());
@@ -57,6 +70,24 @@ impl Instruction {
                     return Ok(());
                 }
             },
+            Instruction::BLT { rs1, rs2, imm } => {
+                let rs1_value: i32 = machine.registers[*rs1] as i32;
+                let rs2_value: i32 = machine.registers[*rs2] as i32;
+                if rs1_value < rs2_value {
+                    let (value, _) = machine.pc.overflowing_add(*imm as u32);
+                    machine.pc = value;
+                    return Ok(());
+                }
+            },
+            Instruction::BLTU { rs1, rs2, imm } => {
+                let rs1_value: u32 = machine.registers[*rs1];
+                let rs2_value: u32 = machine.registers[*rs2];
+                if rs1_value < rs2_value {
+                    let (value, _) = machine.pc.overflowing_add(*imm as u32);
+                    machine.pc = value;
+                    return Ok(());
+                }
+            },
             Instruction::JALR { rd, rs1, imm } => {
                 let link = machine.pc + 4;
                 let (mut value, _) = machine.registers[*rs1].overflowing_add(*imm as u32);
@@ -64,6 +95,9 @@ impl Instruction {
                 machine.pc = value;
                 update_register(machine, *rd, link);
                 return Ok(());
+            },
+            Instruction::LUI { rd, imm } => {
+                update_register(machine, *rd, *imm as u32);
             },
             Instruction::LW { rd, rs1, imm } => {
                 let (address, _) =  machine.registers[*rs1].overflowing_add(*imm as u32);
@@ -136,7 +170,26 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             })),
             _ => None,
         },
+        0x37 => Some(RV32I(Instruction::LUI {
+            rd: rd(instruction_bits),
+            imm: utype_immediate(instruction_bits),
+        })),
         0x63 => match funct3(instruction_bits) {
+            0x0 => Some(RV32I(Instruction::BEQ {
+                rs1: rs1(instruction_bits),
+                rs2: rs2(instruction_bits),
+                imm: btype_immediate(instruction_bits),
+            })),
+            0x1 => Some(RV32I(Instruction::BNE {
+                rs1: rs1(instruction_bits),
+                rs2: rs2(instruction_bits),
+                imm: btype_immediate(instruction_bits),
+            })),
+            0x4 => Some(RV32I(Instruction::BLT {
+                rs1: rs1(instruction_bits),
+                rs2: rs2(instruction_bits),
+                imm: btype_immediate(instruction_bits),
+            })),
             0x6 => Some(RV32I(Instruction::BLTU {
                 rs1: rs1(instruction_bits),
                 rs2: rs2(instruction_bits),
