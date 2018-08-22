@@ -91,7 +91,6 @@ impl Execute for Itype {
                 let link = machine.pc + 4;
                 let (mut next_pc, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
                 next_pc &= !(1 as u32);
-                machine.pc = next_pc;
                 update_register(machine, self.rd, link);
                 return Ok(Some(next_pc));
             }
@@ -208,57 +207,18 @@ pub struct Btype {
 
 impl Execute for Btype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
-        match &self.inst {
-            BtypeInstruction::BEQ => {
-                let rs1_value: u32 = machine.registers[self.rs1];
-                let rs2_value: u32 = machine.registers[self.rs2];
-                if rs1_value == rs2_value {
-                    let (next_pc, _) = machine.pc.overflowing_add(self.imm as u32);
-                    return Ok(Some(next_pc));
-                }
-            }
-            BtypeInstruction::BNE => {
-                let rs1_value: u32 = machine.registers[self.rs1];
-                let rs2_value: u32 = machine.registers[self.rs2];
-                if rs1_value != rs2_value {
-                    let (next_pc, _) = machine.pc.overflowing_add(self.imm as u32);
-                    return Ok(Some(next_pc));
-                }
-            }
-            BtypeInstruction::BLT => {
-                let rs1_value: i32 = machine.registers[self.rs1] as i32;
-                let rs2_value: i32 = machine.registers[self.rs2] as i32;
-                if rs1_value < rs2_value {
-                    let (next_pc, _) = machine.pc.overflowing_add(self.imm as u32);
-                    return Ok(Some(next_pc));
-                }
-            }
-            BtypeInstruction::BGE => {
-                let rs1_value: i32 = machine.registers[self.rs1] as i32;
-                let rs2_value: i32 = machine.registers[self.rs2] as i32;
-                if rs1_value >= rs2_value {
-                    let (next_pc, _) = machine.pc.overflowing_add(self.imm as u32);
-                    return Ok(Some(next_pc));
-                }
-            }
-            BtypeInstruction::BLTU => {
-                let rs1_value: u32 = machine.registers[self.rs1];
-                let rs2_value: u32 = machine.registers[self.rs2];
-                if rs1_value < rs2_value {
-                    let (next_pc, _) = machine.pc.overflowing_add(self.imm as u32);
-                    return Ok(Some(next_pc));
-                }
-            }
-            BtypeInstruction::BGEU => {
-                let rs1_value: u32 = machine.registers[self.rs1];
-                let rs2_value: u32 = machine.registers[self.rs2];
-                if rs1_value >= rs2_value {
-                    let (next_pc, _) = machine.pc.overflowing_add(self.imm as u32);
-                    return Ok(Some(next_pc));
-                }
-            }
+        let satisfied = match &self.inst {
+            BtypeInstruction::BEQ => machine.registers[self.rs1] == machine.registers[self.rs2],
+            BtypeInstruction::BNE => machine.registers[self.rs1] != machine.registers[self.rs2],
+            BtypeInstruction::BLT => (machine.registers[self.rs1] as i32) < (machine.registers[self.rs2] as i32),
+            BtypeInstruction::BGE => (machine.registers[self.rs1] as i32) > (machine.registers[self.rs2] as i32),
+            BtypeInstruction::BLTU => machine.registers[self.rs1] < machine.registers[self.rs2],
+            BtypeInstruction::BGEU => machine.registers[self.rs1] >=  machine.registers[self.rs2],
+        };
+        match satisfied {
+            true => Ok(Some(machine.pc.overflowing_add(self.imm as u32).0)),
+            false => Ok(None)
         }
-        Ok(None)
     }
 }
 
