@@ -406,39 +406,13 @@ impl Instruction {
     }
 }
 
-mod code {
-    // Instructions: LUI
-    pub const U_TYPE_LUI: u32 = 0b_0110111;
-    // Instructions: AUIPC
-    pub const U_TYPE_AUIPC: u32 = 0b_0010111;
-    // Instructions: JAL
-    pub const J_TYPE: u32 = 0b_1101111;
-    // Instructions: JALR
-    pub const I_TYPE_JUMP: u32 = 0b_1100111;
-    // Instructions: LB LH LW LBU LHU
-    pub const I_TYPE_LOAD: u32 = 0b_0000011;
-    // Instructions: ADDI SLTI SLTIU XORI ORI ANDI SLLI SRLI SRAI
-    pub const I_TYPE_ALU: u32 = 0b_0010011;
-    // Instructions: BEQ BNE BLT BGE BLTU BGEU
-    pub const B_TYPE: u32 = 0b_1100011;
-    // Instructions: SB SH SW
-    pub const S_TYPE: u32 = 0b_0100011;
-    // Instructions: ADD SUB SLL SLT SLTU XOR SRL SRA OR AND
-    pub const R_TYPE: u32 = 0b_0110011;
-    // Instructions: FENCE FENCE.I
-    pub const MISC_MEM: u32 = 0b_0001111;
-    // Instructions: ECALL EBREAK CSRRW CSRRS CSRRC CSRRWI CSRRSI CSRRCI
-    //   (Execution and CSR instructions.)
-    pub const SYSTEM: u32 = 0b_1110011;
-}
-
 pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
     let current_code = opcode(instruction_bits);
     let instruction_opt = match current_code {
-        code::U_TYPE_LUI | code::U_TYPE_AUIPC => {
+        0b_0110111 | 0b_0010111 => {
             let inst = match current_code {
-                code::U_TYPE_LUI => UtypeInstruction::LUI,
-                code::U_TYPE_AUIPC => UtypeInstruction::AUIPC,
+                0b_0110111 => UtypeInstruction::LUI,
+                0b_0010111 => UtypeInstruction::AUIPC,
                 _ => unreachable!(),
             };
             Some(Instruction::U(Utype {
@@ -447,29 +421,30 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 inst,
             }))
         }
-        code::J_TYPE => Some(Instruction::J(Jtype {
+        0b_1101111 => Some(Instruction::J(Jtype {
             rd: rd(instruction_bits),
             imm: jtype_immediate(instruction_bits),
         })),
-        code::I_TYPE_JUMP | code::I_TYPE_LOAD | code::I_TYPE_ALU => {
+        0b_1100111 | 0b_0000011 | 0b_0010011 => {
             let funct3_value = funct3(instruction_bits);
             let inst_opt = match (current_code, funct3_value) {
-                (code::I_TYPE_JUMP, 0b_000) => Some(ItypeInstruction::JALR),
-
-                (code::I_TYPE_LOAD, 0b_000) => Some(ItypeInstruction::LB),
-                (code::I_TYPE_LOAD, 0b_001) => Some(ItypeInstruction::LH),
-                (code::I_TYPE_LOAD, 0b_010) => Some(ItypeInstruction::LW),
-                (code::I_TYPE_LOAD, 0b_100) => Some(ItypeInstruction::LBU),
-                (code::I_TYPE_LOAD, 0b_101) => Some(ItypeInstruction::LHU),
-
-                (code::I_TYPE_ALU, 0b_000) => Some(ItypeInstruction::ADDI),
-                (code::I_TYPE_ALU, 0b_010) => Some(ItypeInstruction::SLTI),
-                (code::I_TYPE_ALU, 0b_011) => Some(ItypeInstruction::SLTIU),
-                (code::I_TYPE_ALU, 0b_100) => Some(ItypeInstruction::XORI),
-                (code::I_TYPE_ALU, 0b_110) => Some(ItypeInstruction::ORI),
-                (code::I_TYPE_ALU, 0b_111) => Some(ItypeInstruction::ANDI),
-
-                (code::I_TYPE_ALU, 0b_001) | (code::I_TYPE_ALU, 0b_101) => {
+                // Jump instructions
+                (0b_1100111, 0b_000) => Some(ItypeInstruction::JALR),
+                // Load instructions
+                (0b_0000011, 0b_000) => Some(ItypeInstruction::LB),
+                (0b_0000011, 0b_001) => Some(ItypeInstruction::LH),
+                (0b_0000011, 0b_010) => Some(ItypeInstruction::LW),
+                (0b_0000011, 0b_100) => Some(ItypeInstruction::LBU),
+                (0b_0000011, 0b_101) => Some(ItypeInstruction::LHU),
+                // ALU instructions
+                (0b_0010011, 0b_000) => Some(ItypeInstruction::ADDI),
+                (0b_0010011, 0b_010) => Some(ItypeInstruction::SLTI),
+                (0b_0010011, 0b_011) => Some(ItypeInstruction::SLTIU),
+                (0b_0010011, 0b_100) => Some(ItypeInstruction::XORI),
+                (0b_0010011, 0b_110) => Some(ItypeInstruction::ORI),
+                (0b_0010011, 0b_111) => Some(ItypeInstruction::ANDI),
+                // Special ALU instructions
+                (0b_0010011, 0b_001) | (0b_0010011, 0b_101) => {
                     let funct7_value = funct7(instruction_bits);
                     let inst_opt = match (funct3_value, funct7_value) {
                         (0b_001, 0b_0000000) => Some(ItypeShiftInstruction::SLLI),
@@ -498,7 +473,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 })
             })
         }
-        code::B_TYPE => {
+        0b_1100011 => {
             let inst_opt = match funct3(instruction_bits) {
                 0b_000 => Some(BtypeInstruction::BEQ),
                 0b_001 => Some(BtypeInstruction::BNE),
@@ -517,7 +492,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 })
             })
         }
-        code::S_TYPE => {
+        0b_0100011 => {
             let inst_opt = match funct3(instruction_bits) {
                 0b_000 => Some(StypeInstruction::SB),
                 0b_001 => Some(StypeInstruction::SH),
@@ -533,7 +508,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 })
             })
         }
-        code::R_TYPE => {
+        0b_0110011 => {
             let inst_opt = match funct3(instruction_bits) {
                 0b_000 => match funct7(instruction_bits) {
                     0b_0000000 => Some(RtypeInstruction::ADD),
@@ -562,7 +537,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 })
             })
         }
-        code::MISC_MEM => {
+        0b_0001111 => {
             const FENCE_MASK: u32 = 0b_00000_000_00000_0001111;
             const FENCE_I: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
             if instruction_bits == FENCE_I {
@@ -577,7 +552,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 None
             }
         }
-        code::SYSTEM => match instruction_bits {
+        0b_1110011 => match instruction_bits {
             0b_000000000000_00000_000_00000_1110011 => {
                 Some(Instruction::Env(EnvInstruction::ECALL))
             }
