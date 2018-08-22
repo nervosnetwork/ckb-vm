@@ -211,7 +211,7 @@ impl Execute for Btype {
             BtypeInstruction::BEQ => machine.registers[self.rs1] == machine.registers[self.rs2],
             BtypeInstruction::BNE => machine.registers[self.rs1] != machine.registers[self.rs2],
             BtypeInstruction::BLT => (machine.registers[self.rs1] as i32) < (machine.registers[self.rs2] as i32),
-            BtypeInstruction::BGE => (machine.registers[self.rs1] as i32) > (machine.registers[self.rs2] as i32),
+            BtypeInstruction::BGE => (machine.registers[self.rs1] as i32) >= (machine.registers[self.rs2] as i32),
             BtypeInstruction::BLTU => machine.registers[self.rs1] < machine.registers[self.rs2],
             BtypeInstruction::BGEU => machine.registers[self.rs1] >=  machine.registers[self.rs2],
         };
