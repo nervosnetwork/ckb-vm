@@ -2,8 +2,8 @@ use super::super::machine::Machine;
 use super::super::memory::Memory;
 use super::super::Error;
 use super::utils::{
-    btype_immediate, funct3, funct7, itype_immediate, opcode, rd, rs1, rs2, stype_immediate,
-    update_register, utype_immediate,
+    btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
+    stype_immediate, update_register, utype_immediate,
 };
 use super::{Instruction as GenericInstruction, Instruction::RV32I};
 
@@ -135,7 +135,6 @@ pub enum ItypeShiftInstruction {
 pub struct ItypeShift {
     rs1: Register,
     rd: Register,
-    // FIXME: utils.rs, Type
     shamt: Immediate,
     inst: ItypeShiftInstruction,
 }
@@ -487,13 +486,10 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 inst,
             }))
         }
-        code::J_TYPE => {
-            Some(Instruction::J(Jtype {
-                rd: rd(instruction_bits),
-                // FIXME: jtype_immediate
-                imm: utype_immediate(instruction_bits),
-            }))
-        }
+        code::J_TYPE => Some(Instruction::J(Jtype {
+            rd: rd(instruction_bits),
+            imm: jtype_immediate(instruction_bits),
+        })),
         code::I_TYPE_JUMP | code::I_TYPE_LOAD | code::I_TYPE_ALU => {
             let funct3_value = funct3(instruction_bits);
             let inst_opt = match (current_code, funct3_value) {
@@ -606,14 +602,15 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             })
         }
         code::MISC_MEM => {
-            const FENCE_MASK: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
-            if instruction_bits == FENCE_MASK {
+            const FENCE_MASK: u32 = 0b_00000_000_00000_0001111;
+            const FENCE_I: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
+            if instruction_bits == FENCE_I {
                 Some(Instruction::FenceI)
             } else if instruction_bits & 0x000_FFFFF == FENCE_MASK {
                 Some(Instruction::Fence(FenceType {
-                    fm: (instruction_bits & 0xF00_00000) >> 8,
-                    pred: (instruction_bits & 0x0F0_00000) >> 4,
-                    succ: instruction_bits & 0x00F_00000,
+                    fm: (instruction_bits & 0xF00_00000) >> 28,
+                    pred: (instruction_bits & 0x0F0_00000) >> 24,
+                    succ: instruction_bits & 0x00F_00000 >> 20,
                 }))
             } else {
                 None
@@ -673,5 +670,5 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
         },
         _ => None,
     };
-    instruction_opt.map(|instruction| RV32I(instruction))
+    instruction_opt.map(RV32I)
 }

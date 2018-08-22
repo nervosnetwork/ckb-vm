@@ -46,9 +46,17 @@ pub fn rs2(instruction_bits: u32) -> usize {
 #[inline(always)]
 pub fn btype_immediate(instruction_bits: u32) -> i32 {
     (x(instruction_bits, 8, 4, 1)
-     | x(instruction_bits, 25, 6, 5)
-     | x(instruction_bits, 7, 1, 11)
-     | xs(instruction_bits, 31, 1, 12)) as i32
+        | x(instruction_bits, 25, 6, 5)
+        | x(instruction_bits, 7, 1, 11)
+        | xs(instruction_bits, 31, 1, 12)) as i32
+}
+
+#[inline(always)]
+pub fn jtype_immediate(instruction_bits: u32) -> i32 {
+    (x(instruction_bits, 21, 10, 1)
+        | x(instruction_bits, 20, 1, 11)
+        | x(instruction_bits, 12, 8, 12)
+        | xs(instruction_bits, 31, 1, 20)) as i32
 }
 
 #[inline(always)]
@@ -58,8 +66,7 @@ pub fn itype_immediate(instruction_bits: u32) -> i32 {
 
 #[inline(always)]
 pub fn stype_immediate(instruction_bits: u32) -> i32 {
-    (x(instruction_bits, 7, 5, 0)
-     | xs(instruction_bits, 25, 7, 5)) as i32
+    (x(instruction_bits, 7, 5, 0) | xs(instruction_bits, 25, 7, 5)) as i32
 }
 
 #[inline(always)]
