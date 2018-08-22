@@ -7,12 +7,13 @@ use super::utils::{
 };
 use super::{Instruction as GenericInstruction, Instruction::RV32I};
 
-type Register = usize;
+type RegisterIndex = usize;
 type Immediate = i32;
 type UImmediate = u32;
+type NextPC = u32;
 
-pub trait Executable {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error>;
+pub trait Execute {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error>;
 }
 
 #[derive(Debug)]
@@ -31,14 +32,14 @@ pub enum RtypeInstruction {
 
 #[derive(Debug)]
 pub struct Rtype {
-    rs2: Register,
-    rs1: Register,
-    rd: Register,
+    rs2: RegisterIndex,
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
     inst: RtypeInstruction,
 }
 
-impl Executable for Rtype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for Rtype {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             RtypeInstruction::ADD => {}
             RtypeInstruction::SUB => {}
@@ -77,14 +78,14 @@ pub enum ItypeInstruction {
 
 #[derive(Debug)]
 pub struct Itype {
-    rs1: Register,
-    rd: Register,
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
     imm: Immediate,
     inst: ItypeInstruction,
 }
 
-impl Executable for Itype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for Itype {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             ItypeInstruction::JALR => {
                 let link = machine.pc + 4;
@@ -133,14 +134,14 @@ pub enum ItypeShiftInstruction {
 
 #[derive(Debug)]
 pub struct ItypeShift {
-    rs1: Register,
-    rd: Register,
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
     shamt: Immediate,
     inst: ItypeShiftInstruction,
 }
 
-impl Executable for ItypeShift {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for ItypeShift {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             ItypeShiftInstruction::SLLI => {
                 let value = machine.registers[self.rs1] << self.shamt;
@@ -162,14 +163,14 @@ pub enum StypeInstruction {
 
 #[derive(Debug)]
 pub struct Stype {
-    rs2: Register,
-    rs1: Register,
+    rs2: RegisterIndex,
+    rs1: RegisterIndex,
     imm: Immediate,
     inst: StypeInstruction,
 }
 
-impl Executable for Stype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for Stype {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             StypeInstruction::SB => {
                 let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
@@ -199,14 +200,14 @@ pub enum BtypeInstruction {
 
 #[derive(Debug)]
 pub struct Btype {
-    rs2: Register,
-    rs1: Register,
+    rs2: RegisterIndex,
+    rs1: RegisterIndex,
     imm: Immediate,
     inst: BtypeInstruction,
 }
 
-impl Executable for Btype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for Btype {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             BtypeInstruction::BEQ => {
                 let rs1_value: u32 = machine.registers[self.rs1];
@@ -269,13 +270,13 @@ pub enum UtypeInstruction {
 
 #[derive(Debug)]
 pub struct Utype {
-    rd: Register,
+    rd: RegisterIndex,
     imm: Immediate,
     inst: UtypeInstruction,
 }
 
-impl Executable for Utype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for Utype {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             UtypeInstruction::LUI => {
                 update_register(machine, self.rd, self.imm as u32);
@@ -295,8 +296,8 @@ pub struct Jtype {
     imm: i32,
 }
 
-impl Executable for Jtype {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for Jtype {
+    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         Ok(None)
     }
 }
@@ -312,8 +313,8 @@ pub struct FenceType {
     succ: u32,
 }
 
-impl Executable for FenceType {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for FenceType {
+    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         Ok(None)
     }
 }
@@ -324,8 +325,8 @@ pub enum EnvInstruction {
     EBREAK,
 }
 
-impl Executable for EnvInstruction {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for EnvInstruction {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match self {
             EnvInstruction::ECALL => {
                 // The semantic of ECALL is determined by the hardware, which
@@ -350,13 +351,13 @@ pub enum CsrInstruction {
 #[derive(Debug)]
 pub struct CsrType {
     csr: UImmediate,
-    rs1: Register,
-    rd: Register,
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
     inst: CsrInstruction,
 }
 
-impl Executable for CsrType {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for CsrType {
+    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             CsrInstruction::CSRRW => {}
             CsrInstruction::CSRRS => {}
@@ -377,12 +378,12 @@ pub enum CsrIInstruction {
 pub struct CsrIType {
     csr: UImmediate,
     zimm: UImmediate,
-    rd: Register,
+    rd: RegisterIndex,
     inst: CsrIInstruction,
 }
 
-impl Executable for CsrIType {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<u32>, Error> {
+impl Execute for CsrIType {
+    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             CsrIInstruction::CSRRWI => {}
             CsrIInstruction::CSRRSI => {}
