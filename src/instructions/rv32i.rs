@@ -5,16 +5,15 @@ use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
     stype_immediate, update_register, utype_immediate,
 };
-use super::{Instruction as GenericInstruction, Instruction::RV32I};
+use super::{
+    Instruction as GenericInstruction,
+    Instruction::RV32I,
+    RegisterIndex,
+    UImmediate,
+    NextPC,
+    Execute,
+};
 
-type RegisterIndex = usize;
-type Immediate = i32;
-type UImmediate = u32;
-type NextPC = u32;
-
-pub trait Execute {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error>;
-}
 
 #[derive(Debug)]
 pub enum RtypeInstruction {
@@ -31,12 +30,58 @@ pub enum RtypeInstruction {
 }
 
 #[derive(Debug)]
-pub struct Rtype {
-    rs2: RegisterIndex,
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    inst: RtypeInstruction,
+pub enum ItypeInstruction {
+    JALR,
+    LB,
+    LH,
+    LW,
+    LBU,
+    LHU,
+    ADDI,
+    SLTI,
+    SLTIU,
+    XORI,
+    ORI,
+    ANDI,
 }
+
+#[derive(Debug)]
+pub enum ItypeShiftInstruction {
+    SLLI,
+    SRLI,
+    SRAI,
+}
+
+#[derive(Debug)]
+pub enum StypeInstruction {
+    SB,
+    SH,
+    SW,
+}
+
+#[derive(Debug)]
+pub enum BtypeInstruction {
+    BEQ,
+    BNE,
+    BLT,
+    BGE,
+    BLTU,
+    BGEU,
+}
+
+#[derive(Debug)]
+pub enum UtypeInstruction {
+    LUI,
+    AUIPC,
+}
+
+type Rtype = super::Rtype<RtypeInstruction>;
+type Itype = super::Itype<ItypeInstruction>;
+type Stype = super::Stype<StypeInstruction>;
+type Btype = super::Btype<BtypeInstruction>;
+type Utype = super::Utype<UtypeInstruction>;
+type Jtype = super::Jtype<()>;
+type ItypeShift = super::ItypeShift<ItypeShiftInstruction>;
 
 impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
@@ -58,30 +103,6 @@ impl Execute for Rtype {
         }
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum ItypeInstruction {
-    JALR,
-    LB,
-    LH,
-    LW,
-    LBU,
-    LHU,
-    ADDI,
-    SLTI,
-    SLTIU,
-    XORI,
-    ORI,
-    ANDI,
-}
-
-#[derive(Debug)]
-pub struct Itype {
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    imm: Immediate,
-    inst: ItypeInstruction,
 }
 
 impl Execute for Itype {
@@ -124,21 +145,6 @@ impl Execute for Itype {
     }
 }
 
-#[derive(Debug)]
-pub enum ItypeShiftInstruction {
-    SLLI,
-    SRLI,
-    SRAI,
-}
-
-#[derive(Debug)]
-pub struct ItypeShift {
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    shamt: Immediate,
-    inst: ItypeShiftInstruction,
-}
-
 impl Execute for ItypeShift {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
@@ -151,21 +157,6 @@ impl Execute for ItypeShift {
         }
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum StypeInstruction {
-    SB,
-    SH,
-    SW,
-}
-
-#[derive(Debug)]
-pub struct Stype {
-    rs2: RegisterIndex,
-    rs1: RegisterIndex,
-    imm: Immediate,
-    inst: StypeInstruction,
 }
 
 impl Execute for Stype {
@@ -187,24 +178,6 @@ impl Execute for Stype {
     }
 }
 
-#[derive(Debug)]
-pub enum BtypeInstruction {
-    BEQ,
-    BNE,
-    BLT,
-    BGE,
-    BLTU,
-    BGEU,
-}
-
-#[derive(Debug)]
-pub struct Btype {
-    rs2: RegisterIndex,
-    rs1: RegisterIndex,
-    imm: Immediate,
-    inst: BtypeInstruction,
-}
-
 impl Execute for Btype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         let satisfied = match &self.inst {
@@ -222,19 +195,6 @@ impl Execute for Btype {
     }
 }
 
-#[derive(Debug)]
-pub enum UtypeInstruction {
-    LUI,
-    AUIPC,
-}
-
-#[derive(Debug)]
-pub struct Utype {
-    rd: RegisterIndex,
-    imm: Immediate,
-    inst: UtypeInstruction,
-}
-
 impl Execute for Utype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
@@ -248,12 +208,6 @@ impl Execute for Utype {
         }
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub struct Jtype {
-    rd: usize,
-    imm: i32,
 }
 
 impl Execute for Jtype {
@@ -353,22 +307,6 @@ impl Execute for CsrIType {
     }
 }
 
-//
-//  31       27 26 25 24     20 19    15 14    12 11          7 6      0
-// ======================================================================
-// | funct7          |   rs2   |   rs1  | funct3 |  rd         | opcode | R-type
-// +--------------------------------------------------------------------+
-// |          imm[11:0]        |   rs1  | funct3 |  rd         | opcode | I-type
-// +--------------------------------------------------------------------+
-// |   imm[11:5]     |   rs2   |   rs1  | funct3 | imm[4:0]    | opcode | S-type
-// +--------------------------------------------------------------------+
-// |   imm[12|10:5]  |   rs2   |   rs1  | funct3 | imm[4:1|11] | opcode | B-type
-// +--------------------------------------------------------------------+
-// |             imm[31:12]                      |  rd         | opcode | U-type
-// +--------------------------------------------------------------------+
-// |             imm[20|10:1|11|19:12]           |  rd         | opcode | J-type
-// ======================================================================
-//
 #[derive(Debug)]
 pub enum Instruction {
     R(Rtype),
@@ -421,6 +359,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
         0b_1101111 => Some(Instruction::J(Jtype {
             rd: rd(instruction_bits),
             imm: jtype_immediate(instruction_bits),
+            inst: (),
         })),
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits){

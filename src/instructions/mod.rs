@@ -35,3 +35,85 @@ impl Display for Instruction {
 }
 
 pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
+
+// Instruction execution trait
+pub trait Execute {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error>;
+}
+
+type RegisterIndex = usize;
+type Immediate = i32;
+type UImmediate = u32;
+type NextPC = u32;
+
+//
+//  31       27 26 25 24     20 19    15 14    12 11          7 6      0
+// ======================================================================
+// | funct7          |   rs2   |   rs1  | funct3 |  rd         | opcode | R-type
+// +--------------------------------------------------------------------+
+// |          imm[11:0]        |   rs1  | funct3 |  rd         | opcode | I-type
+// +--------------------------------------------------------------------+
+// |   imm[11:5]     |   rs2   |   rs1  | funct3 | imm[4:0]    | opcode | S-type
+// +--------------------------------------------------------------------+
+// |   imm[12|10:5]  |   rs2   |   rs1  | funct3 | imm[4:1|11] | opcode | B-type
+// +--------------------------------------------------------------------+
+// |             imm[31:12]                      |  rd         | opcode | U-type
+// +--------------------------------------------------------------------+
+// |             imm[20|10:1|11|19:12]           |  rd         | opcode | J-type
+// ======================================================================
+//
+
+#[derive(Debug)]
+pub struct Rtype<I> {
+    rs2: RegisterIndex,
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
+    inst: I,
+}
+
+#[derive(Debug)]
+pub struct Itype<I> {
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
+    imm: Immediate,
+    inst: I,
+}
+
+#[derive(Debug)]
+pub struct ItypeShift<I> {
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
+    shamt: Immediate,
+    inst: I,
+}
+
+#[derive(Debug)]
+pub struct Stype<I> {
+    rs2: RegisterIndex,
+    rs1: RegisterIndex,
+    imm: Immediate,
+    inst: I,
+}
+
+#[derive(Debug)]
+pub struct Btype<I> {
+    rs2: RegisterIndex,
+    rs1: RegisterIndex,
+    imm: Immediate,
+    inst: I,
+}
+
+#[derive(Debug)]
+pub struct Utype<I> {
+    rd: RegisterIndex,
+    imm: Immediate,
+    inst: I,
+}
+
+#[derive(Debug)]
+pub struct Jtype<I> {
+    rd: usize,
+    imm: i32,
+    inst: I,
+}
+
