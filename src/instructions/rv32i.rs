@@ -75,6 +75,26 @@ pub enum UtypeInstruction {
     AUIPC,
 }
 
+#[derive(Debug)]
+pub enum EnvInstruction {
+    ECALL,
+    EBREAK,
+}
+
+#[derive(Debug)]
+pub enum CsrInstruction {
+    CSRRW,
+    CSRRS,
+    CSRRC,
+}
+
+#[derive(Debug)]
+pub enum CsrIInstruction {
+    CSRRWI,
+    CSRRSI,
+    CSRRCI,
+}
+
 type Rtype = super::Rtype<RtypeInstruction>;
 type Itype = super::Itype<ItypeInstruction>;
 type Stype = super::Stype<StypeInstruction>;
@@ -82,6 +102,33 @@ type Btype = super::Btype<BtypeInstruction>;
 type Utype = super::Utype<UtypeInstruction>;
 type Jtype = super::Jtype<()>;
 type ItypeShift = super::ItypeShift<ItypeShiftInstruction>;
+
+// The FENCE instruction is used to order device I/O and memory accesses
+// as viewed by other RISC- V harts and external devices or coprocessors.
+#[derive(Debug)]
+pub struct FenceType {
+    fm: u32,
+    // predecessor
+    pred: u32,
+    // successor
+    succ: u32,
+}
+
+#[derive(Debug)]
+pub struct CsrType {
+    csr: UImmediate,
+    rs1: RegisterIndex,
+    rd: RegisterIndex,
+    inst: CsrInstruction,
+}
+
+#[derive(Debug)]
+pub struct CsrIType {
+    csr: UImmediate,
+    zimm: UImmediate,
+    rd: RegisterIndex,
+    inst: CsrIInstruction,
+}
 
 impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
@@ -216,27 +263,10 @@ impl Execute for Jtype {
     }
 }
 
-// The FENCE instruction is used to order device I/O and memory accesses
-// as viewed by other RISC- V harts and external devices or coprocessors.
-#[derive(Debug)]
-pub struct FenceType {
-    fm: u32,
-    // predecessor
-    pred: u32,
-    // successor
-    succ: u32,
-}
-
 impl Execute for FenceType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum EnvInstruction {
-    ECALL,
-    EBREAK,
 }
 
 impl Execute for EnvInstruction {
@@ -255,21 +285,6 @@ impl Execute for EnvInstruction {
     }
 }
 
-#[derive(Debug)]
-pub enum CsrInstruction {
-    CSRRW,
-    CSRRS,
-    CSRRC,
-}
-
-#[derive(Debug)]
-pub struct CsrType {
-    csr: UImmediate,
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    inst: CsrInstruction,
-}
-
 impl Execute for CsrType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
@@ -279,21 +294,6 @@ impl Execute for CsrType {
         }
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum CsrIInstruction {
-    CSRRWI,
-    CSRRSI,
-    CSRRCI,
-}
-
-#[derive(Debug)]
-pub struct CsrIType {
-    csr: UImmediate,
-    zimm: UImmediate,
-    rd: RegisterIndex,
-    inst: CsrIInstruction,
 }
 
 impl Execute for CsrIType {
