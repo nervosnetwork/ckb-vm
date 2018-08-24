@@ -6,7 +6,7 @@ use super::utils::{
     stype_immediate, update_register, utype_immediate,
 };
 use super::{
-    rvc,
+    common,
     Instruction as GenericInstruction,
     Instruction::RV32I,
     RegisterIndex,
@@ -136,7 +136,7 @@ impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             RtypeInstruction::ADD => {
-                rvc::common::add(machine, self.rd, self.rs1, self.rs2);
+                common::add(machine, self.rd, self.rs1, self.rs2);
             }
             RtypeInstruction::SUB => {}
             RtypeInstruction::SLL => {

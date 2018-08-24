@@ -3,6 +3,7 @@ use super::super::memory::Memory;
 use super::super::{Error, SP};
 use super::utils::{rd, update_register, x, xs};
 use super::{
+    common,
     Instruction as GenericInstruction,
     Instruction::RVC,
     RegisterIndex,
@@ -118,24 +119,6 @@ fn b_immediate(instruction_bits: u32) -> i32 {
      | x(instruction_bits, 2, 1, 5)
      | x(instruction_bits, 5, 2, 6)
      | xs(instruction_bits, 12, 1, 8)) as i32
-}
-
-// Other instruction set functions common with RVC
-pub mod common {
-    use super::{Memory, Machine, RegisterIndex};
-    use super::super::utils::{update_register};
-
-    pub fn add<M: Memory>(
-        machine: &mut Machine<M>,
-        rd: RegisterIndex,
-        rs1: RegisterIndex,
-        rs2: RegisterIndex,
-    ) {
-        let rs1_value = machine.registers[rs1];
-        let rs2_value = machine.registers[rs2];
-        let (value, _) = rs1_value.overflowing_add(rs2_value);
-        update_register(machine, rd, value);
-    }
 }
 
 #[derive(Debug)]

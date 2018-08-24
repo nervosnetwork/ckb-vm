@@ -1,4 +1,5 @@
 mod utils;
+mod common;
 
 pub mod rvc;
 pub mod rv32i;
