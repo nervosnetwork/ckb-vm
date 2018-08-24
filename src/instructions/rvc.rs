@@ -194,17 +194,17 @@ pub enum CSSformatInstruction {
 //  -------+-----------------      +----------+-------------------------------------+----+
 
 // CR format
-pub type Rtype = super::Rtype<RtypeInstruction>;
+type Rtype = super::Rtype<RtypeInstruction>;
 // CI/CL format
-pub type Itype = super::Itype<Immediate, ItypeInstruction>;
+type Itype = super::Itype<Immediate, ItypeInstruction>;
 // CI/CL format
-pub type ItypeU = super::Itype<UImmediate, ItypeUInstruction>;
+type ItypeU = super::Itype<UImmediate, ItypeUInstruction>;
 // CS format
-pub type StypeU = super::Stype<UImmediate, StypeUInstruction>;
+type StypeU = super::Stype<UImmediate, StypeUInstruction>;
 // CIW format
-pub type Utype = super::Utype<Immediate, UtypeInstruction>;
+type Utype = super::Utype<Immediate, UtypeInstruction>;
 // CIW format
-pub type UtypeU = super::Utype<UImmediate, UtypeUInstruction>;
+type UtypeU = super::Utype<UImmediate, UtypeUInstruction>;
 
 #[derive(Debug)]
 pub struct CSSformat {

@@ -97,13 +97,13 @@ pub enum CsrIInstruction {
     CSRRCI,
 }
 
-pub type Rtype = super::Rtype<RtypeInstruction>;
-pub type Itype = super::Itype<Immediate, ItypeInstruction>;
-pub type Stype = super::Stype<Immediate, StypeInstruction>;
-pub type Btype = super::Btype<Immediate, BtypeInstruction>;
-pub type Utype = super::Utype<Immediate, UtypeInstruction>;
-pub type Jtype = super::Jtype<Immediate, ()>;
-pub type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
+type Rtype = super::Rtype<RtypeInstruction>;
+type Itype = super::Itype<Immediate, ItypeInstruction>;
+type Stype = super::Stype<Immediate, StypeInstruction>;
+type Btype = super::Btype<Immediate, BtypeInstruction>;
+type Utype = super::Utype<Immediate, UtypeInstruction>;
+type Jtype = super::Jtype<Immediate, ()>;
+type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.

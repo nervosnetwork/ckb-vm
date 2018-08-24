@@ -21,7 +21,7 @@ pub enum RtypeInstruction {
     REMU,
 }
 
-pub type Rtype = super::Rtype<RtypeInstruction>;
+type Rtype = super::Rtype<RtypeInstruction>;
 
 #[derive(Debug)]
 pub struct Instruction(Rtype);
