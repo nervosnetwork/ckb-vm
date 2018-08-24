@@ -19,20 +19,6 @@ fn c_rs2(instruction_bits: u32) -> usize {
     x(instruction_bits, 2, 5, 0) as usize
 }
 
-// // This function extract bits [15:13] and bits [1:0], then concat them
-// // into a 5 bit opcode to decode RVC instructions
-// #[inline(always)]
-// fn opcode(instruction_bits: u32) -> u32 {
-//     x(instruction_bits, 0, 2, 0) | x(instruction_bits, 13, 3, 2)
-// }
-
-// // This function extract bits [12:10] and bits [6:5], then concat them
-// // into a 5 bit opcode to decode RVC ALU instructions
-// #[inline(always)]
-// fn alu_opcode(instruction_bits: u32) -> u32 {
-//     x(instruction_bits, 5, 2, 0 ) | x(instruction_bits, 10, 3, 2)
-// }
-
 // This function extract 3 bits from least_bit to form a register number,
 // here since we are only using 3 bits, we can only reference the most popular
 // used registers x8 - x15. In other words, a number of 0 extracted here means
