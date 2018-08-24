@@ -1,6 +1,6 @@
 mod utils;
 
-pub mod c;
+pub mod rvc;
 pub mod rv32i;
 pub mod rv32m;
 
@@ -11,9 +11,9 @@ use std::fmt::{self, Display};
 
 #[derive(Debug)]
 pub enum Instruction {
+    RVC(rvc::Instruction),
     RV32I(rv32i::Instruction),
     RV32M(rv32m::Instruction),
-    C(c::Instruction),
 }
 
 impl Instruction {
@@ -21,7 +21,7 @@ impl Instruction {
         match self {
             Instruction::RV32I(instruction) => instruction.execute(machine),
             Instruction::RV32M(instruction) => instruction.execute(machine),
-            Instruction::C(instruction) => instruction.execute(machine),
+            Instruction::RVC(instruction) => instruction.execute(machine),
         }
     }
 }
@@ -72,48 +72,48 @@ pub struct Rtype<I> {
 }
 
 #[derive(Debug)]
-pub struct Itype<I> {
+pub struct Itype<M, I> {
     rs1: RegisterIndex,
     rd: RegisterIndex,
-    imm: Immediate,
+    imm: M,
     inst: I,
 }
 
 #[derive(Debug)]
-pub struct ItypeShift<I> {
+pub struct ItypeShift<M, I> {
     rs1: RegisterIndex,
     rd: RegisterIndex,
-    shamt: Immediate,
+    shamt: M,
     inst: I,
 }
 
 #[derive(Debug)]
-pub struct Stype<I> {
+pub struct Stype<M, I> {
     rs2: RegisterIndex,
     rs1: RegisterIndex,
-    imm: Immediate,
+    imm: M,
     inst: I,
 }
 
 #[derive(Debug)]
-pub struct Btype<I> {
+pub struct Btype<M, I> {
     rs2: RegisterIndex,
     rs1: RegisterIndex,
-    imm: Immediate,
+    imm: M,
     inst: I,
 }
 
 #[derive(Debug)]
-pub struct Utype<I> {
+pub struct Utype<M, I> {
     rd: RegisterIndex,
-    imm: Immediate,
+    imm: M,
     inst: I,
 }
 
 #[derive(Debug)]
-pub struct Jtype<I> {
-    rd: usize,
-    imm: i32,
+pub struct Jtype<M, I> {
+    rd: RegisterIndex,
+    imm: M,
     inst: I,
 }
 

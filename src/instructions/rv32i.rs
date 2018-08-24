@@ -6,9 +6,11 @@ use super::utils::{
     stype_immediate, update_register, utype_immediate,
 };
 use super::{
+    rvc,
     Instruction as GenericInstruction,
     Instruction::RV32I,
     RegisterIndex,
+    Immediate,
     UImmediate,
     NextPC,
     Execute,
@@ -96,12 +98,12 @@ pub enum CsrIInstruction {
 }
 
 pub type Rtype = super::Rtype<RtypeInstruction>;
-pub type Itype = super::Itype<ItypeInstruction>;
-pub type Stype = super::Stype<StypeInstruction>;
-pub type Btype = super::Btype<BtypeInstruction>;
-pub type Utype = super::Utype<UtypeInstruction>;
-pub type Jtype = super::Jtype<()>;
-pub type ItypeShift = super::ItypeShift<ItypeShiftInstruction>;
+pub type Itype = super::Itype<Immediate, ItypeInstruction>;
+pub type Stype = super::Stype<Immediate, StypeInstruction>;
+pub type Btype = super::Btype<Immediate, BtypeInstruction>;
+pub type Utype = super::Utype<Immediate, UtypeInstruction>;
+pub type Jtype = super::Jtype<Immediate, ()>;
+pub type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
@@ -133,7 +135,9 @@ pub struct CsrIType {
 impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            RtypeInstruction::ADD => {}
+            RtypeInstruction::ADD => {
+                rvc::common::add(machine, self.rd, self.rs1, self.rs2);
+            }
             RtypeInstruction::SUB => {}
             RtypeInstruction::SLL => {
                 let shift_value = machine.registers[self.rs2] & 0x1F;
