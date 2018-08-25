@@ -5,16 +5,17 @@ use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
     stype_immediate, update_register, utype_immediate,
 };
-use super::{Instruction as GenericInstruction, Instruction::RV32I};
+use super::{
+    common,
+    Instruction as GenericInstruction,
+    Instruction::RV32I,
+    RegisterIndex,
+    Immediate,
+    UImmediate,
+    NextPC,
+    Execute,
+};
 
-type RegisterIndex = usize;
-type Immediate = i32;
-type UImmediate = u32;
-type NextPC = u32;
-
-pub trait Execute {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error>;
-}
 
 #[derive(Debug)]
 pub enum RtypeInstruction {
@@ -28,36 +29,6 @@ pub enum RtypeInstruction {
     SRA,
     OR,
     AND,
-}
-
-#[derive(Debug)]
-pub struct Rtype {
-    rs2: RegisterIndex,
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    inst: RtypeInstruction,
-}
-
-impl Execute for Rtype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
-        match &self.inst {
-            RtypeInstruction::ADD => {}
-            RtypeInstruction::SUB => {}
-            RtypeInstruction::SLL => {
-                let shift_value = machine.registers[self.rs2] & 0x1F;
-                let value = machine.registers[self.rs1] << shift_value;
-                update_register(machine, self.rd, value);
-            }
-            RtypeInstruction::SLT => {}
-            RtypeInstruction::SLTU => {}
-            RtypeInstruction::XOR => {}
-            RtypeInstruction::SRL => {}
-            RtypeInstruction::SRA => {}
-            RtypeInstruction::OR => {}
-            RtypeInstruction::AND => {}
-        }
-        Ok(None)
-    }
 }
 
 #[derive(Debug)]
@@ -77,11 +48,112 @@ pub enum ItypeInstruction {
 }
 
 #[derive(Debug)]
-pub struct Itype {
+pub enum ItypeShiftInstruction {
+    SLLI,
+    SRLI,
+    SRAI,
+}
+
+#[derive(Debug)]
+pub enum StypeInstruction {
+    SB,
+    SH,
+    SW,
+}
+
+#[derive(Debug)]
+pub enum BtypeInstruction {
+    BEQ,
+    BNE,
+    BLT,
+    BGE,
+    BLTU,
+    BGEU,
+}
+
+#[derive(Debug)]
+pub enum UtypeInstruction {
+    LUI,
+    AUIPC,
+}
+
+#[derive(Debug)]
+pub enum EnvInstruction {
+    ECALL,
+    EBREAK,
+}
+
+#[derive(Debug)]
+pub enum CsrInstruction {
+    CSRRW,
+    CSRRS,
+    CSRRC,
+}
+
+#[derive(Debug)]
+pub enum CsrIInstruction {
+    CSRRWI,
+    CSRRSI,
+    CSRRCI,
+}
+
+type Rtype = super::Rtype<RtypeInstruction>;
+type Itype = super::Itype<Immediate, ItypeInstruction>;
+type Stype = super::Stype<Immediate, StypeInstruction>;
+type Btype = super::Btype<Immediate, BtypeInstruction>;
+type Utype = super::Utype<Immediate, UtypeInstruction>;
+type Jtype = super::Jtype<Immediate, ()>;
+type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
+
+// The FENCE instruction is used to order device I/O and memory accesses
+// as viewed by other RISC- V harts and external devices or coprocessors.
+#[derive(Debug)]
+pub struct FenceType {
+    fm: u32,
+    // predecessor
+    pred: u32,
+    // successor
+    succ: u32,
+}
+
+#[derive(Debug)]
+pub struct CsrType {
+    csr: UImmediate,
     rs1: RegisterIndex,
     rd: RegisterIndex,
-    imm: Immediate,
-    inst: ItypeInstruction,
+    inst: CsrInstruction,
+}
+
+#[derive(Debug)]
+pub struct CsrIType {
+    csr: UImmediate,
+    zimm: UImmediate,
+    rd: RegisterIndex,
+    inst: CsrIInstruction,
+}
+
+impl Execute for Rtype {
+    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+        match &self.inst {
+            RtypeInstruction::ADD => {
+                common::add(machine, self.rd, self.rs1, self.rs2);
+            }
+            RtypeInstruction::SUB => {}
+            RtypeInstruction::SLL => {
+                let shift_value = machine.registers[self.rs2] & 0x1F;
+                let value = machine.registers[self.rs1] << shift_value;
+                update_register(machine, self.rd, value);
+            }
+            RtypeInstruction::SLT => {}
+            RtypeInstruction::SLTU => {}
+            RtypeInstruction::XOR => {}
+            RtypeInstruction::SRL => {}
+            RtypeInstruction::SRA => {}
+            RtypeInstruction::OR => {}
+            RtypeInstruction::AND => {}
+        }
+        Ok(None)
+    }
 }
 
 impl Execute for Itype {
@@ -124,21 +196,6 @@ impl Execute for Itype {
     }
 }
 
-#[derive(Debug)]
-pub enum ItypeShiftInstruction {
-    SLLI,
-    SRLI,
-    SRAI,
-}
-
-#[derive(Debug)]
-pub struct ItypeShift {
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    shamt: Immediate,
-    inst: ItypeShiftInstruction,
-}
-
 impl Execute for ItypeShift {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
@@ -151,21 +208,6 @@ impl Execute for ItypeShift {
         }
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum StypeInstruction {
-    SB,
-    SH,
-    SW,
-}
-
-#[derive(Debug)]
-pub struct Stype {
-    rs2: RegisterIndex,
-    rs1: RegisterIndex,
-    imm: Immediate,
-    inst: StypeInstruction,
 }
 
 impl Execute for Stype {
@@ -187,24 +229,6 @@ impl Execute for Stype {
     }
 }
 
-#[derive(Debug)]
-pub enum BtypeInstruction {
-    BEQ,
-    BNE,
-    BLT,
-    BGE,
-    BLTU,
-    BGEU,
-}
-
-#[derive(Debug)]
-pub struct Btype {
-    rs2: RegisterIndex,
-    rs1: RegisterIndex,
-    imm: Immediate,
-    inst: BtypeInstruction,
-}
-
 impl Execute for Btype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         let satisfied = match &self.inst {
@@ -222,19 +246,6 @@ impl Execute for Btype {
     }
 }
 
-#[derive(Debug)]
-pub enum UtypeInstruction {
-    LUI,
-    AUIPC,
-}
-
-#[derive(Debug)]
-pub struct Utype {
-    rd: RegisterIndex,
-    imm: Immediate,
-    inst: UtypeInstruction,
-}
-
 impl Execute for Utype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
@@ -250,39 +261,16 @@ impl Execute for Utype {
     }
 }
 
-#[derive(Debug)]
-pub struct Jtype {
-    rd: usize,
-    imm: i32,
-}
-
 impl Execute for Jtype {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         Ok(None)
     }
 }
 
-// The FENCE instruction is used to order device I/O and memory accesses
-// as viewed by other RISC- V harts and external devices or coprocessors.
-#[derive(Debug)]
-pub struct FenceType {
-    fm: u32,
-    // predecessor
-    pred: u32,
-    // successor
-    succ: u32,
-}
-
 impl Execute for FenceType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum EnvInstruction {
-    ECALL,
-    EBREAK,
 }
 
 impl Execute for EnvInstruction {
@@ -301,21 +289,6 @@ impl Execute for EnvInstruction {
     }
 }
 
-#[derive(Debug)]
-pub enum CsrInstruction {
-    CSRRW,
-    CSRRS,
-    CSRRC,
-}
-
-#[derive(Debug)]
-pub struct CsrType {
-    csr: UImmediate,
-    rs1: RegisterIndex,
-    rd: RegisterIndex,
-    inst: CsrInstruction,
-}
-
 impl Execute for CsrType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
@@ -325,21 +298,6 @@ impl Execute for CsrType {
         }
         Ok(None)
     }
-}
-
-#[derive(Debug)]
-pub enum CsrIInstruction {
-    CSRRWI,
-    CSRRSI,
-    CSRRCI,
-}
-
-#[derive(Debug)]
-pub struct CsrIType {
-    csr: UImmediate,
-    zimm: UImmediate,
-    rd: RegisterIndex,
-    inst: CsrIInstruction,
 }
 
 impl Execute for CsrIType {
@@ -353,22 +311,6 @@ impl Execute for CsrIType {
     }
 }
 
-//
-//  31       27 26 25 24     20 19    15 14    12 11          7 6      0
-// ======================================================================
-// | funct7          |   rs2   |   rs1  | funct3 |  rd         | opcode | R-type
-// +--------------------------------------------------------------------+
-// |          imm[11:0]        |   rs1  | funct3 |  rd         | opcode | I-type
-// +--------------------------------------------------------------------+
-// |   imm[11:5]     |   rs2   |   rs1  | funct3 | imm[4:0]    | opcode | S-type
-// +--------------------------------------------------------------------+
-// |   imm[12|10:5]  |   rs2   |   rs1  | funct3 | imm[4:1|11] | opcode | B-type
-// +--------------------------------------------------------------------+
-// |             imm[31:12]                      |  rd         | opcode | U-type
-// +--------------------------------------------------------------------+
-// |             imm[20|10:1|11|19:12]           |  rd         | opcode | J-type
-// ======================================================================
-//
 #[derive(Debug)]
 pub enum Instruction {
     R(Rtype),
@@ -421,6 +363,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
         0b_1101111 => Some(Instruction::J(Jtype {
             rd: rd(instruction_bits),
             imm: jtype_immediate(instruction_bits),
+            inst: (),
         })),
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits){
