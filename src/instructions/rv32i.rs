@@ -135,22 +135,38 @@ pub struct CsrIType {
 impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            RtypeInstruction::ADD => {
-                common::add(machine, self.rd, self.rs1, self.rs2);
-            }
-            RtypeInstruction::SUB => {}
+            RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::ADD => common::add(machine, self.rd, self.rd, self.rs2),
+            RtypeInstruction::XOR => common::xor(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
                 let shift_value = machine.registers[self.rs2] & 0x1F;
                 let value = machine.registers[self.rs1] << shift_value;
                 update_register(machine, self.rd, value);
             }
-            RtypeInstruction::SLT => {}
-            RtypeInstruction::SLTU => {}
-            RtypeInstruction::XOR => {}
-            RtypeInstruction::SRL => {}
-            RtypeInstruction::SRA => {}
-            RtypeInstruction::OR => {}
-            RtypeInstruction::AND => {}
+            RtypeInstruction::SRL => {
+                let shift_value = machine.registers[self.rs2] & 0x1F;
+                let value = machine.registers[self.rs1] >> shift_value;
+                update_register(machine, self.rd, value);
+            }
+            RtypeInstruction::SRA => {
+                let shift_value = machine.registers[self.rs2] & 0x1F;
+                let value = (machine.registers[self.rs1] as i32) >> shift_value;
+                update_register(machine, self.rd, value as u32);
+            }
+            RtypeInstruction::SLT => {
+                let rs1_value = machine.registers[self.rs1] as i32;
+                let rs2_value = machine.registers[self.rs2] as i32;
+                let value = if rs1_value < rs2_value { 1 } else { 0 };
+                update_register(machine, self.rd, value)
+            }
+            RtypeInstruction::SLTU => {
+                let rs1_value = machine.registers[self.rs1];
+                let rs2_value = machine.registers[self.rs2];
+                let value = if rs1_value < rs2_value { 1 } else { 0 };
+                update_register(machine, self.rd, value)
+            }
         }
         Ok(None)
     }
@@ -159,37 +175,33 @@ impl Execute for Rtype {
 impl Execute for Itype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
+            ItypeInstruction::LB => common::lb(machine, self.rd, self.rs1, self.imm as u32)?,
+            ItypeInstruction::LH => common::lh(machine, self.rd, self.rs1, self.imm as u32)?,
+            ItypeInstruction::LW => common::lw(machine, self.rd, self.rs1, self.imm as u32)?,
+            ItypeInstruction::LBU => common::lbu(machine, self.rd, self.rs1, self.imm as u32)?,
+            ItypeInstruction::LHU => common::lhu(machine, self.rd, self.rs1, self.imm as u32)?,
+            ItypeInstruction::ADDI => common::addi(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeInstruction::XORI => common::xori(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeInstruction::ORI => common::ori(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeInstruction::SLTI => {
+                let rs1_value = machine.registers[self.rs1] as i32;
+                let imm_value = self.imm as i32;
+                let value = if rs1_value < imm_value { 1 } else { 0 };
+                update_register(machine, self.rd, value)
+            }
+            ItypeInstruction::SLTIU => {
+                let rs1_value = machine.registers[self.rs1];
+                let imm_value = self.imm as u32;
+                let value = if rs1_value < imm_value { 1 } else { 0 };
+                update_register(machine, self.rd, value)
+            }
             ItypeInstruction::JALR => {
                 let link = machine.pc + 4;
                 let (mut next_pc, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
                 next_pc &= !(1 as u32);
                 update_register(machine, self.rd, link);
                 return Ok(Some(next_pc));
-            }
-            ItypeInstruction::LB => {}
-            ItypeInstruction::LH => {}
-            ItypeInstruction::LW => {
-                let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
-                let value = machine.memory.load32(address as usize)?;
-                update_register(machine, self.rd, value);
-            }
-            ItypeInstruction::LBU => {
-                let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
-                let value = machine.memory.load8(address as usize)?;
-                update_register(machine, self.rd, value as u32);
-            }
-            ItypeInstruction::LHU => {}
-            ItypeInstruction::ADDI => {
-                let (value, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
-                update_register(machine, self.rd, value);
-            }
-            ItypeInstruction::SLTI => {}
-            ItypeInstruction::SLTIU => {}
-            ItypeInstruction::XORI => {}
-            ItypeInstruction::ORI => {}
-            ItypeInstruction::ANDI => {
-                let value = machine.registers[self.rs1] & (self.imm as u32);
-                update_register(machine, self.rd, value);
             }
         }
         Ok(None)
@@ -199,12 +211,9 @@ impl Execute for Itype {
 impl Execute for ItypeShift {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            ItypeShiftInstruction::SLLI => {
-                let value = machine.registers[self.rs1] << self.shamt;
-                update_register(machine, self.rd, value);
-            }
-            ItypeShiftInstruction::SRLI => {}
-            ItypeShiftInstruction::SRAI => {}
+            ItypeShiftInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.shamt as u32),
         }
         Ok(None)
     }
@@ -213,17 +222,9 @@ impl Execute for ItypeShift {
 impl Execute for Stype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            StypeInstruction::SB => {
-                let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
-                let value = machine.registers[self.rs2] as u8;
-                machine.memory.store8(address as usize, value)?;
-            }
-            StypeInstruction::SH => {}
-            StypeInstruction::SW => {
-                let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
-                let value = machine.registers[self.rs2] as u32;
-                machine.memory.store32(address as usize, value)?;
-            }
+            StypeInstruction::SB => common::sb(machine, self.rs1, self.rs2, self.imm as u32)?,
+            StypeInstruction::SH => common::sh(machine, self.rs1, self.rs2, self.imm as u32)?,
+            StypeInstruction::SW => common::sw(machine, self.rs1, self.rs2, self.imm as u32)?,
         }
         Ok(None)
     }
@@ -281,9 +282,11 @@ impl Execute for EnvInstruction {
                 // is not part of the spec, hence here the implementation is
                 // deferred to the machine. This way custom ECALLs might be
                 // provided for different environments.
-                return machine.ecall().map(|_| None);
+                machine.ecall()?;
             }
-            EnvInstruction::EBREAK => {}
+            EnvInstruction::EBREAK => {
+                machine.ebreak()?;
+            },
         }
         Ok(None)
     }
@@ -291,23 +294,25 @@ impl Execute for EnvInstruction {
 
 impl Execute for CsrType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+        // > All CSR instructions atomically read-modify-write a single CSR.
+        // So no need to implement them yet
         match &self.inst {
-            CsrInstruction::CSRRW => {}
-            CsrInstruction::CSRRS => {}
-            CsrInstruction::CSRRC => {}
+            CsrInstruction::CSRRW => unimplemented!(),
+            CsrInstruction::CSRRS => unimplemented!(),
+            CsrInstruction::CSRRC => unimplemented!(),
         }
-        Ok(None)
     }
 }
 
 impl Execute for CsrIType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+        // > All CSR instructions atomically read-modify-write a single CSR.
+        // So no need to implement them yet
         match &self.inst {
-            CsrIInstruction::CSRRWI => {}
-            CsrIInstruction::CSRRSI => {}
-            CsrIInstruction::CSRRCI => {}
+            CsrIInstruction::CSRRWI => unimplemented!(),
+            CsrIInstruction::CSRRSI => unimplemented!(),
+            CsrIInstruction::CSRRCI => unimplemented!(),
         }
-        Ok(None)
     }
 }
 

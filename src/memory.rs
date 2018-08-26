@@ -28,6 +28,7 @@ pub trait Memory {
     fn load32(&self, addr: usize) -> Result<u32, Error>;
 
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error>;
+    fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error>;
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
 }
@@ -101,6 +102,18 @@ where
             .seek(SeekFrom::Start(addr as u64))
             .map_err(Error::IO)?;
         writer.write_u8(value).map_err(Error::IO)
+    }
+
+    fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error> {
+        let memory = self.borrow_mut();
+        if addr + 2 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut writer = Cursor::new(memory);
+        writer
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        writer.write_u16::<LittleEndian>(value).map_err(Error::IO)
     }
 
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {

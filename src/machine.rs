@@ -32,6 +32,11 @@ where
             _ => Err(Error::InvalidEcall(self.registers[A7])),
         }
     }
+
+    // TODO
+    pub fn ebreak(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 impl<M> Display for Machine<M>

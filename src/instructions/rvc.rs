@@ -238,24 +238,17 @@ impl StypeU {
 impl Execute for ItypeU {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            ItypeUInstruction::FLD => {},
-            // ItypeUInstruction::LQ => {},
-            ItypeUInstruction::LW => {
-                let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm);
-                let value = machine.memory.load32(address as usize)?;
-                update_register(machine, self.rd, value);
-            },
-            ItypeUInstruction::FLW => {},
+            ItypeUInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeUInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeUInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeUInstruction::LW => common::lw(machine, self.rd, self.rs1, self.imm)?,
+
+            // > RV32FC-only
+            ItypeUInstruction::FLW => unimplemented!(),
+            // > RV32DC/RV64DC-only
+            ItypeUInstruction::FLD => unimplemented!(),
             // ItypeUInstruction::LD => {},
-            ItypeUInstruction::SRLI => {},
-            ItypeUInstruction::SRAI => {
-                let value = (machine.registers[self.rs1] as i32) >> self.imm;
-                update_register(machine, self.rd, value as u32);
-            },
-            ItypeUInstruction::SLLI => {
-                let value = machine.registers[self.rs1] << self.imm;
-                update_register(machine, self.rd, value);
-            },
+            // ItypeUInstruction::LQ => {},
         }
         Ok(None)
     }
@@ -264,14 +257,17 @@ impl Execute for ItypeU {
 impl Execute for StypeU {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            StypeUInstruction::FSD => {},
-            // StypeUInstruction::SQ => {},
             StypeUInstruction::SW => {
                 let (address, _) = machine.registers[self.rs1].overflowing_add(self.imm);
                 let value = machine.registers[self.rs2] as u32;
                 machine.memory.store32(address as usize, value)?;
             },
-            StypeUInstruction::FSW => {},
+
+            // > RV32FC-only
+            StypeUInstruction::FSW => unimplemented!(),
+            // > RV32DC/RV64DC-only
+            StypeUInstruction::FSD => unimplemented!(),
+            // StypeUInstruction::SQ => {},
             // StypeUInstruction::SD => {},
         }
         Ok(None)
@@ -281,15 +277,10 @@ impl Execute for StypeU {
 impl Execute for Itype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            ItypeInstruction::ADDI => {
-                let (value, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
-                update_register(machine, self.rd, value);
-            },
+            ItypeInstruction::ADDI => common::addi(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm as u32),
+
             // ItypeInstruction::ADDIW => {},
-            ItypeInstruction::ANDI => {
-                let value = machine.registers[self.rs1] & (self.imm as u32);
-                update_register(machine, self.rd, value);
-            },
         }
         Ok(None)
     }
@@ -317,15 +308,18 @@ impl Execute for UtypeU {
                 let (value, _) = machine.registers[SP].overflowing_add(self.imm);
                 update_register(machine, self.rd, value);
             },
-            UtypeUInstruction::FLDSP => {},
-            // UtypeUInstruction::LQSP => {},
             UtypeUInstruction::LWSP => {
                 let (address, _) = machine.registers[SP].overflowing_add(self.imm);
                 let value = machine.memory.load32(address as usize)?;
                 update_register(machine, self.rd, value);
             },
-            UtypeUInstruction::FLWSP => {},
+
+            // > RV32FC-only
+            UtypeUInstruction::FLWSP => unimplemented!(),
+            // > RV32DC/RV64DC-only
+            UtypeUInstruction::FLDSP => unimplemented!(),
             // UtypeUInstruction::LDSP => {},
+            // UtypeUInstruction::LQSP => {},
         }
         Ok(None)
     }
@@ -334,25 +328,16 @@ impl Execute for UtypeU {
 impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            RtypeInstruction::SUB => {
-                let rs1_value = machine.registers[self.rs1];
-                let rs2_value = machine.registers[self.rs2];
-                let (value, _) = rs1_value.overflowing_sub(rs2_value);
-                update_register(machine, self.rd, value);
-            },
-            RtypeInstruction::XOR => {},
-            RtypeInstruction::OR => {},
-            RtypeInstruction::AND => {
-                let rs1_value = machine.registers[self.rs1];
-                let rs2_value = machine.registers[self.rs2];
-                let value = rs1_value & rs2_value;
-                update_register(machine, self.rd, value);
-            },
-            RtypeInstruction::SUBW => {},
-            RtypeInstruction::ADDW => {},
-            RtypeInstruction::ADD => {
-                common::add(machine, self.rd, self.rd, self.rs2);
-            },
+            RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::ADD => common::add(machine, self.rd, self.rd, self.rs2),
+            RtypeInstruction::XOR => common::xor(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
+
+            // > C.SUBW (RV64/128; RV32 RES)
+            RtypeInstruction::SUBW => unimplemented!(),
+            // > C.ADDW (RV64/128; RV32 RES)
+            RtypeInstruction::ADDW => unimplemented!(),
         }
         Ok(None)
     }
@@ -361,15 +346,18 @@ impl Execute for Rtype {
 impl Execute for CSSformat {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            CSSformatInstruction::FSDSP => {},
-            // CSSformatInstruction::SQSP => {},
             CSSformatInstruction::SWSP => {
                 let (address, _) = machine.registers[SP].overflowing_add(self.imm);
                 let value = machine.registers[self.rs2] as u32;
                 machine.memory.store32(address as usize, value)?;
             },
-            CSSformatInstruction::FSWSP => {},
+
+            // > RV32FC-only
+            CSSformatInstruction::FSWSP => unimplemented!(),
+            // > RV32DC/RV64DC-only
+            CSSformatInstruction::FSDSP => unimplemented!(),
             // CSSformatInstruction::SDSP => {},
+            // CSSformatInstruction::SQSP => {},
         }
         Ok(None)
     }
@@ -448,12 +436,6 @@ pub enum Instruction {
     // C.SDSP (RV64/128)
     CSS(CSSformat),
 
-    // C.SRLI64 (RV128; RV32/64 HINT)
-    SRLI64 { rs1: RegisterIndex, rd: RegisterIndex },
-    // C.SRAI64 (RV128; RV32/64 HINT)
-    SRAI64 { rs1: RegisterIndex, rd: RegisterIndex },
-    // C.SLLI64 (RV128; RV32/64 HINT; HINT, rd=0)
-    SLLI64 { rs1: RegisterIndex, rd: RegisterIndex },
     // C.BEQZ
     BEQZ { rs1: RegisterIndex, imm: Immediate },
     // C.BNEZ
@@ -461,8 +443,6 @@ pub enum Instruction {
     // C.MV (HINT, rd=0)
     MV { rs2: RegisterIndex, rd: RegisterIndex },
 
-    // C.NOP (HINT, nzimm̸=0)
-    NOP { imm: Immediate },
     // C.JAL (RV32)
     JAL { imm: Immediate },
     // C.J
@@ -475,6 +455,14 @@ pub enum Instruction {
     // C.ADDI16SP (RES, nzimm=0)
     ADDI16SP { imm: Immediate },
 
+    // C.NOP (HINT, nzimm̸=0)
+    NOP { imm: Immediate },
+    // C.SRLI64 (RV128; RV32/64 HINT)
+    SRLI64 { rs1: RegisterIndex, rd: RegisterIndex },
+    // C.SRAI64 (RV128; RV32/64 HINT)
+    SRAI64 { rs1: RegisterIndex, rd: RegisterIndex },
+    // C.SLLI64 (RV128; RV32/64 HINT; HINT, rd=0)
+    SLLI64 { rs1: RegisterIndex, rd: RegisterIndex },
     // C.EBREAK
     EBREAK,
 }
@@ -489,9 +477,6 @@ impl Instruction {
             Instruction::Uu(inst) => inst.execute(machine)?,
             Instruction::R(inst) => inst.execute(machine)?,
             Instruction::CSS(inst) => inst.execute(machine)?,
-            Instruction::SRLI64 { .. } => None,
-            Instruction::SRAI64 { .. } => None,
-            Instruction::SLLI64 { .. } => None,
             Instruction::BEQZ { rs1, imm } => {
                 if machine.registers[*rs1] == 0 {
                     Some(machine.pc.overflowing_add(*imm as u32).0)
@@ -511,7 +496,6 @@ impl Instruction {
                 update_register(machine, *rd, value);
                 None
             },
-            Instruction::NOP { .. } => None,
             Instruction::JAL { imm } => {
                 let link = machine.pc + 2;
                 update_register(machine, 1, link);
@@ -529,7 +513,17 @@ impl Instruction {
                 update_register(machine, SP, value);
                 None
             },
-            Instruction::EBREAK => None,
+            // NOP for now
+            Instruction::SRLI64 { .. } => None,
+            // NOP for now
+            Instruction::SRAI64 { .. } => None,
+            // NOP for now
+            Instruction::SLLI64 { .. } => None,
+            Instruction::NOP { .. } => None,
+            Instruction::EBREAK => {
+                machine.ebreak()?;
+                None
+            },
         };
         machine.pc = next_pc.unwrap_or(machine.pc + 2);
         Ok(())
