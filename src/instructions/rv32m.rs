@@ -35,11 +35,33 @@ impl Execute for Rtype {
                 let (value, _) = rs1_value.overflowing_mul(rs2_value);
                 update_register(machine, self.rd, value);
             },
-            RtypeInstruction::MULH => {},
-            RtypeInstruction::MULHSU => {},
-            RtypeInstruction::MULHU => {},
+            RtypeInstruction::MULH => {
+                let rs1_value = (machine.registers[self.rs1] as i32) as i64;
+                let rs2_value = (machine.registers[self.rs2] as i32) as i64;
+                let (value, _) = rs1_value.overflowing_mul(rs2_value);
+                update_register(machine, self.rd, (value >> 32) as u32);
+            },
+            RtypeInstruction::MULHSU => {
+                let rs1_value = (machine.registers[self.rs1] as i32) as i64;
+                let rs2_value = machine.registers[self.rs2] as i64 ;
+                let (value, _) = rs1_value.overflowing_mul(rs2_value);
+                update_register(machine, self.rd, (value >> 32) as u32);
+            },
+            RtypeInstruction::MULHU => {
+                let rs1_value = machine.registers[self.rs1] as u64;
+                let rs2_value = machine.registers[self.rs2] as u64;
+                let (value, _) = rs1_value.overflowing_mul(rs2_value);
+                update_register(machine, self.rd, (value >> 32) as u32);
+            },
+
+            // +---------------------------------------------------------------------------------------+
+            // | Condition              | Dividend  | Divisor | DIVU[W] | REMU[W] |  DIV[W]   | REM[W] |
+            // +------------------------+-----------+---------+---------+---------+-----------+--------+
+            // | Division by zero       |     x     |    0    | 2**L-1  |    x    |    -1     |   x    |
+            // +------------------------+-----------+---------+---------+---------+-----------+--------+
+            // | Overflow (signed only) | −2**(L−1) |   −1    |    -    |    -    | -2**(L-1) |   0    |
+            // +---------------------------------------------------------------------------------------+
             RtypeInstruction::DIV => {
-                let rs1_value: i32 = machine.registers[self.rs1] as i32;
                 let rs2_value: i32 = machine.registers[self.rs2] as i32;
                 let value = if rs2_value == 0 {
                     // This is documented in RISC-V spec, when divided by
@@ -47,13 +69,46 @@ impl Execute for Rtype {
                     // trapping.
                     -1
                 } else {
-                    rs1_value.overflowing_div(rs2_value).0
+                    let rs1_value: i32 = machine.registers[self.rs1] as i32;
+                    let (value, overflow) = rs1_value.overflowing_div(rs2_value);
+                    if overflow { i32::min_value() } else { value }
                 };
                 update_register(machine, self.rd, value as u32);
             },
-            RtypeInstruction::DIVU => {},
-            RtypeInstruction::REM => {},
-            RtypeInstruction::REMU => {},
+            RtypeInstruction::DIVU => {
+                let rs2_value = machine.registers[self.rs2];
+                let value = if rs2_value == 0 {
+                    // This is documented in RISC-V spec, when divided by
+                    // 0, RISC-V machine would return 2**L - 1 for unsigned integer
+                    // in DIV instead of trapping.
+                    u32::max_value()
+                } else {
+                    let rs1_value = machine.registers[self.rs1];
+                    rs1_value.overflowing_div(rs2_value).0
+                };
+                update_register(machine, self.rd, value);
+            },
+            RtypeInstruction::REM => {
+                let rs1_value = machine.registers[self.rs1] as i32;
+                let rs2_value = machine.registers[self.rs2] as i32;
+                let value = if rs2_value == 0 {
+                    rs1_value
+                } else {
+                    let (value, overflow) = rs1_value.overflowing_rem(rs2_value);
+                    if overflow { 0 } else { value }
+                };
+                update_register(machine, self.rd, value as u32);
+            },
+            RtypeInstruction::REMU => {
+                let rs1_value = machine.registers[self.rs1];
+                let rs2_value = machine.registers[self.rs2];
+                let value = if rs2_value == 0 {
+                    rs1_value
+                } else {
+                    rs1_value.overflowing_rem(rs2_value).0
+                };
+                update_register(machine, self.rd, value);
+            },
         }
         Ok(None)
     }
