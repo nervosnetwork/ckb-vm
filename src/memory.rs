@@ -1,6 +1,6 @@
 use super::Error;
 
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::borrow::BorrowMut;
 use std::io::{Cursor, Seek, SeekFrom};
 
@@ -23,8 +23,13 @@ pub trait Memory {
     ) -> Result<usize, Error>;
 
     // TODO: maybe parameterize those?
+    fn load8(&self, addr: usize) -> Result<u8, Error>;
     fn load16(&self, addr: usize) -> Result<u16, Error>;
     fn load32(&self, addr: usize) -> Result<u32, Error>;
+
+    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error>;
+    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
+    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
 }
 
 impl<T> Memory for T
@@ -46,6 +51,18 @@ where
         let (slice, _) = right.split_at_mut(size);
         slice.copy_from_slice(&source[offset..offset + size]);
         Ok(addr)
+    }
+
+    fn load8(&self, addr: usize) -> Result<u8, Error> {
+        let memory = self.borrow();
+        if addr + 1 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut reader = Cursor::new(memory);
+        reader
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        reader.read_u8().map_err(Error::IO)
     }
 
     fn load16(&self, addr: usize) -> Result<u16, Error> {
@@ -72,5 +89,38 @@ where
             .map_err(Error::IO)?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
         reader.read_u32::<LittleEndian>().map_err(Error::IO)
+    }
+
+    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
+        let memory = self.borrow_mut();
+        if addr + 1 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut writer = Cursor::new(memory);
+        writer
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        writer.write_u8(value).map_err(Error::IO)
+    }
+
+    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
+        let memory = self.borrow_mut();
+        if addr + 4 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut writer = Cursor::new(memory);
+        writer
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        writer.write_u32::<LittleEndian>(value).map_err(Error::IO)
+    }
+
+    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
+        // TODO: for now, we can implement this as a shortcut to mmap, but when
+        // we moved to an architecture where we have real MMU, mmap might just
+        // be a simply data structure link rather than a memcpy, at that stage,
+        // we should rewrite this.
+        self.mmap(addr, value.len(), value, 0)?;
+        Ok(())
     }
 }
