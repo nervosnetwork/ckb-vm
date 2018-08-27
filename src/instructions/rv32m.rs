@@ -62,14 +62,14 @@ impl Execute for Rtype {
             // | Overflow (signed only) | −2**(L−1) |   −1    |    -    |    -    | -2**(L-1) |   0    |
             // +---------------------------------------------------------------------------------------+
             RtypeInstruction::DIV => {
-                let rs2_value: i32 = machine.registers[self.rs2] as i32;
+                let rs2_value = machine.registers[self.rs2] as i32;
                 let value = if rs2_value == 0 {
                     // This is documented in RISC-V spec, when divided by
                     // 0, RISC-V machine would return -1 in DIV instead of
                     // trapping.
                     -1
                 } else {
-                    let rs1_value: i32 = machine.registers[self.rs1] as i32;
+                    let rs1_value = machine.registers[self.rs1] as i32;
                     let (value, overflow) = rs1_value.overflowing_div(rs2_value);
                     if overflow { i32::min_value() } else { value }
                 };

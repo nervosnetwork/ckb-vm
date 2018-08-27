@@ -472,23 +472,17 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             })
         }
         0b_0110011 => {
-            let inst_opt = match funct3(instruction_bits) {
-                0b_000 => match funct7(instruction_bits) {
-                    0b_0000000 => Some(RtypeInstruction::ADD),
-                    0b_0100000 => Some(RtypeInstruction::SUB),
-                    _ => None,
-                },
-                0b_001 => Some(RtypeInstruction::SLL),
-                0b_010 => Some(RtypeInstruction::SLT),
-                0b_011 => Some(RtypeInstruction::SLTU),
-                0b_100 => Some(RtypeInstruction::XOR),
-                0b_101 => match funct7(instruction_bits) {
-                    0b_0000000 => Some(RtypeInstruction::SRL),
-                    0b_0100000 => Some(RtypeInstruction::SRA),
-                    _ => None,
-                },
-                0b_110 => Some(RtypeInstruction::OR),
-                0b_111 => Some(RtypeInstruction::AND),
+            let inst_opt = match (funct3(instruction_bits), funct7(instruction_bits)) {
+                (0b_000, 0b_0000000) => Some(RtypeInstruction::ADD),
+                (0b_000, 0b_0100000) => Some(RtypeInstruction::SUB),
+                (0b_001, 0b_0000000) => Some(RtypeInstruction::SLL),
+                (0b_010, 0b_0000000) => Some(RtypeInstruction::SLT),
+                (0b_011, 0b_0000000) => Some(RtypeInstruction::SLTU),
+                (0b_100, 0b_0000000) => Some(RtypeInstruction::XOR),
+                (0b_101, 0b_0000000) => Some(RtypeInstruction::SRL),
+                (0b_101, 0b_0100000) => Some(RtypeInstruction::SRA),
+                (0b_110, 0b_0000000) => Some(RtypeInstruction::OR),
+                (0b_111, 0b_0000000) => Some(RtypeInstruction::AND),
                 _ => None,
             };
             inst_opt.map(|inst| {
