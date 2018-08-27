@@ -1,7 +1,7 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
 use super::utils::{update_register};
-use super::{RegisterIndex, UImmediate, Error};
+use super::{RegisterIndex, UImmediate, Immediate, NextPC, Error};
 
 
 // Other instruction set functions common with RVC
@@ -244,4 +244,18 @@ pub fn srai<M: Memory>(
 ) {
     let value = (machine.registers[rs1] as i32) >> shamt;
     update_register(machine, rd, value as u32);
+}
+
+// =======================
+// #  JUMP instructions  #
+// =======================
+pub fn jal<M: Memory>(
+    machine: &mut Machine<M>,
+    rd: RegisterIndex,
+    imm: Immediate,
+    xbytes: u32,
+) -> Option<NextPC> {
+    let link = machine.pc + xbytes;
+    update_register(machine, rd, link);
+    Some(machine.pc.overflowing_add(imm as u32).0)
 }

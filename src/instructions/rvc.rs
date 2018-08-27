@@ -496,11 +496,7 @@ impl Instruction {
                 update_register(machine, *rd, value);
                 None
             },
-            Instruction::JAL { imm } => {
-                let link = machine.pc + 2;
-                update_register(machine, 1, link);
-                Some(machine.pc.overflowing_add(*imm as u32).0)
-            },
+            Instruction::JAL { imm } => common::jal(machine, 1, *imm, 2),
             Instruction::J { imm } => Some(machine.pc.overflowing_add(*imm as u32).0),
             Instruction::JR { rs1 } => Some(machine.registers[*rs1]),
             Instruction::JALR { rs1 } => {

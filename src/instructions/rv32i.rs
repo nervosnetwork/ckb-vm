@@ -102,7 +102,6 @@ type Itype = super::Itype<Immediate, ItypeInstruction>;
 type Stype = super::Stype<Immediate, StypeInstruction>;
 type Btype = super::Btype<Immediate, BtypeInstruction>;
 type Utype = super::Utype<Immediate, UtypeInstruction>;
-type Jtype = super::Jtype<Immediate, ()>;
 type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
 
 // The FENCE instruction is used to order device I/O and memory accesses
@@ -262,12 +261,6 @@ impl Execute for Utype {
     }
 }
 
-impl Execute for Jtype {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
-        Ok(None)
-    }
-}
-
 impl Execute for FenceType {
     fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         Ok(None)
@@ -324,12 +317,12 @@ pub enum Instruction {
     S(Stype),
     B(Btype),
     U(Utype),
-    J(Jtype),
     Fence(FenceType),
-    FenceI,
     Env(EnvInstruction),
     Csr(CsrType),
     CsrI(CsrIType),
+    JAL{ imm: Immediate, rd: RegisterIndex },
+    FENCEI,
 }
 
 impl Instruction {
@@ -341,12 +334,12 @@ impl Instruction {
             Instruction::S(inst) => inst.execute(machine)?,
             Instruction::B(inst) => inst.execute(machine)?,
             Instruction::U(inst) => inst.execute(machine)?,
-            Instruction::J(inst) => inst.execute(machine)?,
             Instruction::Fence(inst) => inst.execute(machine)?,
-            Instruction::FenceI => unimplemented!(),
             Instruction::Env(inst) => inst.execute(machine)?,
             Instruction::Csr(inst) => inst.execute(machine)?,
             Instruction::CsrI(inst) => inst.execute(machine)?,
+            Instruction::JAL { imm, rd } => common::jal(machine, *rd, *imm, 4),
+            Instruction::FENCEI => unimplemented!(),
         };
         machine.pc = next_pc.unwrap_or(machine.pc + 4);
         Ok(())
@@ -365,11 +358,10 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             imm: utype_immediate(instruction_bits),
             inst: UtypeInstruction::AUIPC,
         })),
-        0b_1101111 => Some(Instruction::J(Jtype {
+        0b_1101111 => Some(Instruction::JAL {
             rd: rd(instruction_bits),
             imm: jtype_immediate(instruction_bits),
-            inst: (),
-        })),
+        }),
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits){
                 // I-type jump instructions
@@ -512,7 +504,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             const FENCE_LOW_BITS: u32 = 0b_00000_000_00000_0001111;
             const FENCEI_VALUE: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
             if instruction_bits == FENCEI_VALUE {
-                Some(Instruction::FenceI)
+                Some(Instruction::FENCEI)
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(Instruction::Fence(FenceType {
                     fm: (instruction_bits & 0xF00_00000) >> 28,

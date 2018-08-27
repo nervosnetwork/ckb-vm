@@ -110,11 +110,3 @@ pub struct Utype<M, I> {
     imm: M,
     inst: I,
 }
-
-#[derive(Debug)]
-pub struct Jtype<M, I> {
-    rd: RegisterIndex,
-    imm: M,
-    inst: I,
-}
-
