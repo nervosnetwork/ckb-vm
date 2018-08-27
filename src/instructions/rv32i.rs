@@ -136,7 +136,7 @@ impl Execute for Rtype {
     fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
-            RtypeInstruction::ADD => common::add(machine, self.rd, self.rd, self.rs2),
+            RtypeInstruction::ADD => common::add(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::XOR => common::xor(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
