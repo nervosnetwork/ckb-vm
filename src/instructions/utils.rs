@@ -74,7 +74,11 @@ pub fn utype_immediate(instruction_bits: u32) -> i32 {
     xs(instruction_bits, 12, 20, 12) as i32
 }
 
-pub fn update_register<M: Memory>(machine: &mut Machine<M>, register_index: usize, value: u32) {
+pub fn update_register<Mac: Machine<u32, M>, M: Memory>(
+    machine: &mut Mac,
+    register_index: usize,
+    value: u32,
+) {
     let register_index = register_index % RISCV_GENERAL_REGISTER_NUMBER;
     // In RISC-V, x0 is a special zero register with the following properties:
     //
@@ -84,6 +88,6 @@ pub fn update_register<M: Memory>(machine: &mut Machine<M>, register_index: usiz
     // The goal here is to maintain a place where we can read zeros to allow for
     // compact encoding. Hence we are ignoring all writes to x0 register here.
     if register_index > 0 {
-        machine.registers[register_index] = value;
+        machine.registers_mut()[register_index] = value;
     }
 }

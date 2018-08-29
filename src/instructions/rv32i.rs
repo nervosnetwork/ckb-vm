@@ -6,16 +6,9 @@ use super::utils::{
     stype_immediate, update_register, utype_immediate,
 };
 use super::{
-    common,
-    Instruction as GenericInstruction,
-    Instruction::RV32I,
-    RegisterIndex,
-    Immediate,
-    UImmediate,
-    NextPC,
-    Execute,
+    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::RV32I, NextPC,
+    RegisterIndex, UImmediate,
 };
-
 
 #[derive(Debug)]
 pub enum RtypeInstruction {
@@ -132,7 +125,10 @@ pub struct CsrIType {
 }
 
 impl Execute for Rtype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::ADD => common::add(machine, self.rd, self.rs1, self.rs2),
@@ -140,29 +136,29 @@ impl Execute for Rtype {
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
-                let shift_value = machine.registers[self.rs2] & 0x1F;
-                let value = machine.registers[self.rs1] << shift_value;
+                let shift_value = machine.registers()[self.rs2] & 0x1F;
+                let value = machine.registers()[self.rs1] << shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRL => {
-                let shift_value = machine.registers[self.rs2] & 0x1F;
-                let value = machine.registers[self.rs1] >> shift_value;
+                let shift_value = machine.registers()[self.rs2] & 0x1F;
+                let value = machine.registers()[self.rs1] >> shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRA => {
-                let shift_value = machine.registers[self.rs2] & 0x1F;
-                let value = (machine.registers[self.rs1] as i32) >> shift_value;
+                let shift_value = machine.registers()[self.rs2] & 0x1F;
+                let value = (machine.registers()[self.rs1] as i32) >> shift_value;
                 update_register(machine, self.rd, value as u32);
             }
             RtypeInstruction::SLT => {
-                let rs1_value = machine.registers[self.rs1] as i32;
-                let rs2_value = machine.registers[self.rs2] as i32;
+                let rs1_value = machine.registers()[self.rs1] as i32;
+                let rs2_value = machine.registers()[self.rs2] as i32;
                 let value = if rs1_value < rs2_value { 1 } else { 0 };
                 update_register(machine, self.rd, value)
             }
             RtypeInstruction::SLTU => {
-                let rs1_value = machine.registers[self.rs1];
-                let rs2_value = machine.registers[self.rs2];
+                let rs1_value = machine.registers()[self.rs1];
+                let rs2_value = machine.registers()[self.rs2];
                 let value = if rs1_value < rs2_value { 1 } else { 0 };
                 update_register(machine, self.rd, value)
             }
@@ -172,7 +168,10 @@ impl Execute for Rtype {
 }
 
 impl Execute for Itype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             ItypeInstruction::LB => common::lb(machine, self.rd, self.rs1, self.imm as u32)?,
             ItypeInstruction::LH => common::lh(machine, self.rd, self.rs1, self.imm as u32)?,
@@ -184,20 +183,21 @@ impl Execute for Itype {
             ItypeInstruction::ORI => common::ori(machine, self.rd, self.rs1, self.imm as u32),
             ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm as u32),
             ItypeInstruction::SLTI => {
-                let rs1_value = machine.registers[self.rs1] as i32;
+                let rs1_value = machine.registers()[self.rs1] as i32;
                 let imm_value = self.imm as i32;
                 let value = if rs1_value < imm_value { 1 } else { 0 };
                 update_register(machine, self.rd, value)
             }
             ItypeInstruction::SLTIU => {
-                let rs1_value = machine.registers[self.rs1];
+                let rs1_value = machine.registers()[self.rs1];
                 let imm_value = self.imm as u32;
                 let value = if rs1_value < imm_value { 1 } else { 0 };
                 update_register(machine, self.rd, value)
             }
             ItypeInstruction::JALR => {
-                let link = machine.pc + 4;
-                let (mut next_pc, _) = machine.registers[self.rs1].overflowing_add(self.imm as u32);
+                let link = machine.pc() + 4;
+                let (mut next_pc, _) =
+                    machine.registers()[self.rs1].overflowing_add(self.imm as u32);
                 next_pc &= !(1 as u32);
                 update_register(machine, self.rd, link);
                 return Ok(Some(next_pc));
@@ -208,18 +208,30 @@ impl Execute for Itype {
 }
 
 impl Execute for ItypeShift {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         match &self.inst {
-            ItypeShiftInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SLLI => {
+                common::slli(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SRLI => {
+                common::srli(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SRAI => {
+                common::srai(machine, self.rd, self.rs1, self.shamt as u32)
+            }
         }
         Ok(None)
     }
 }
 
 impl Execute for Stype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             StypeInstruction::SB => common::sb(machine, self.rs1, self.rs2, self.imm as u32)?,
             StypeInstruction::SH => common::sh(machine, self.rs1, self.rs2, self.imm as u32)?,
@@ -230,30 +242,42 @@ impl Execute for Stype {
 }
 
 impl Execute for Btype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         let satisfied = match &self.inst {
-            BtypeInstruction::BEQ => machine.registers[self.rs1] == machine.registers[self.rs2],
-            BtypeInstruction::BNE => machine.registers[self.rs1] != machine.registers[self.rs2],
-            BtypeInstruction::BLT => (machine.registers[self.rs1] as i32) < (machine.registers[self.rs2] as i32),
-            BtypeInstruction::BGE => (machine.registers[self.rs1] as i32) >= (machine.registers[self.rs2] as i32),
-            BtypeInstruction::BLTU => machine.registers[self.rs1] < machine.registers[self.rs2],
-            BtypeInstruction::BGEU => machine.registers[self.rs1] >=  machine.registers[self.rs2],
+            BtypeInstruction::BEQ => machine.registers()[self.rs1] == machine.registers()[self.rs2],
+            BtypeInstruction::BNE => machine.registers()[self.rs1] != machine.registers()[self.rs2],
+            BtypeInstruction::BLT => {
+                (machine.registers()[self.rs1] as i32) < (machine.registers()[self.rs2] as i32)
+            }
+            BtypeInstruction::BGE => {
+                (machine.registers()[self.rs1] as i32) >= (machine.registers()[self.rs2] as i32)
+            }
+            BtypeInstruction::BLTU => machine.registers()[self.rs1] < machine.registers()[self.rs2],
+            BtypeInstruction::BGEU => {
+                machine.registers()[self.rs1] >= machine.registers()[self.rs2]
+            }
         };
         match satisfied {
-            true => Ok(Some(machine.pc.overflowing_add(self.imm as u32).0)),
-            false => Ok(None)
+            true => Ok(Some(machine.pc().overflowing_add(self.imm as u32).0)),
+            false => Ok(None),
         }
     }
 }
 
 impl Execute for Utype {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         match &self.inst {
             UtypeInstruction::LUI => {
                 update_register(machine, self.rd, self.imm as u32);
             }
             UtypeInstruction::AUIPC => {
-                let (value, _) = machine.pc.overflowing_add(self.imm as u32);
+                let (value, _) = machine.pc().overflowing_add(self.imm as u32);
                 update_register(machine, self.rd, value);
             }
         }
@@ -262,13 +286,19 @@ impl Execute for Utype {
 }
 
 impl Execute for FenceType {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        _machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         Ok(None)
     }
 }
 
 impl Execute for EnvInstruction {
-    fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         match self {
             EnvInstruction::ECALL => {
                 // The semantic of ECALL is determined by the hardware, which
@@ -279,14 +309,17 @@ impl Execute for EnvInstruction {
             }
             EnvInstruction::EBREAK => {
                 machine.ebreak()?;
-            },
+            }
         }
         Ok(None)
     }
 }
 
 impl Execute for CsrType {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        _machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         // > All CSR instructions atomically read-modify-write a single CSR.
         // So no need to implement them yet
         match &self.inst {
@@ -298,7 +331,10 @@ impl Execute for CsrType {
 }
 
 impl Execute for CsrIType {
-    fn execute<M: Memory>(&self, _machine: &mut Machine<M>) -> Result<Option<NextPC>, Error> {
+    fn execute<Mac: Machine<u32, M>, M: Memory>(
+        &self,
+        _machine: &mut Mac,
+    ) -> Result<Option<NextPC>, Error> {
         // > All CSR instructions atomically read-modify-write a single CSR.
         // So no need to implement them yet
         match &self.inst {
@@ -321,12 +357,12 @@ pub enum Instruction {
     Env(EnvInstruction),
     Csr(CsrType),
     CsrI(CsrIType),
-    JAL{ imm: Immediate, rd: RegisterIndex },
+    JAL { imm: Immediate, rd: RegisterIndex },
     FENCEI,
 }
 
 impl Instruction {
-    pub fn execute<M: Memory>(&self, machine: &mut Machine<M>) -> Result<(), Error> {
+    pub fn execute<Mac: Machine<u32, M>, M: Memory>(&self, machine: &mut Mac) -> Result<(), Error> {
         let next_pc: Option<u32> = match self {
             Instruction::R(inst) => inst.execute(machine)?,
             Instruction::I(inst) => inst.execute(machine)?,
@@ -341,7 +377,8 @@ impl Instruction {
             Instruction::JAL { imm, rd } => common::jal(machine, *rd, *imm, 4),
             Instruction::FENCEI => unimplemented!(),
         };
-        machine.pc = next_pc.unwrap_or(machine.pc + 4);
+        let default_next_pc = machine.pc() + 4;
+        machine.set_pc(next_pc.unwrap_or(default_next_pc));
         Ok(())
     }
 }
@@ -363,7 +400,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             imm: jtype_immediate(instruction_bits),
         }),
         0b_1100111 => {
-            let inst_opt = match funct3(instruction_bits){
+            let inst_opt = match funct3(instruction_bits) {
                 // I-type jump instructions
                 0b_000 => Some(ItypeInstruction::JALR),
                 _ => None,
