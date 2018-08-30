@@ -1,5 +1,4 @@
-use super::instructions::{rvc, rv32i, rv32m, Instruction, InstructionFactory};
-use super::machine::Machine;
+use super::instructions::{rv32i, rv32m, rvc, Instruction, InstructionFactory};
 use super::memory::Memory;
 use super::Error;
 
@@ -52,16 +51,16 @@ impl Decoder {
     // Also, due to RISC-V encoding behavior, it's totally okay when we cast a 16-bit
     // RVC instruction into a 32-bit instruction, the meaning of the instruction stays
     // unchanged in the cast conversion.
-    fn decode_bits<M: Memory>(&self, machine: &Machine<M>) -> Result<u32, Error> {
-        let mut instruction_bits: u32 = u32::from(machine.memory.load16(machine.pc as usize)?);
+    fn decode_bits<M: Memory>(&self, memory: &mut M, pc: usize) -> Result<u32, Error> {
+        let mut instruction_bits = u32::from(memory.load16(pc)?);
         if instruction_bits & 0x3 == 0x3 {
-            instruction_bits |= u32::from(machine.memory.load16(machine.pc as usize + 2)?) << 16;
+            instruction_bits |= u32::from(memory.load16(pc + 2)?) << 16;
         }
         Ok(instruction_bits)
     }
 
-    pub fn decode<M: Memory>(&self, machine: &Machine<M>) -> Result<Instruction, Error> {
-        let instruction_bits = self.decode_bits(machine)?;
+    pub fn decode<M: Memory>(&self, memory: &mut M, pc: usize) -> Result<Instruction, Error> {
+        let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
             if let Some(instruction) = factory(instruction_bits) {
                 return Ok(instruction);

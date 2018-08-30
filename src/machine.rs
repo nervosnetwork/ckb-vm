@@ -1,11 +1,25 @@
 use super::decoder::{build_rv32imac_decoder, Decoder};
 use super::memory::Memory;
-use super::{Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP, REGISTER_ABI_NAMES, A0, A7};
-use std::fmt::{self, Display};
+use super::{
+    A0, A7, Error, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP,
+};
 use goblin::elf::program_header::PT_LOAD;
 use goblin::elf::Elf;
+use std::fmt::{self, Display};
 
-pub struct Machine<M: Memory> {
+pub trait Machine<W, M: Memory> {
+    fn pc(&self) -> W;
+    fn set_pc(&mut self, next_pc: W);
+    fn memory(&self) -> &M;
+    fn memory_mut(&mut self) -> &mut M;
+    fn registers(&self) -> &[W];
+    fn registers_mut(&mut self) -> &mut [W];
+
+    fn ecall(&mut self) -> Result<(), Error>;
+    fn ebreak(&mut self) -> Result<(), Error>;
+}
+
+pub struct DefaultMachine<M: Memory> {
     // TODO: while CKB doesn't need it, other environment could benefit from
     // parameterized register size.
     pub registers: [u32; RISCV_GENERAL_REGISTER_NUMBER],
@@ -17,31 +31,61 @@ pub struct Machine<M: Memory> {
     exit_code: u8,
 }
 
-impl<M> Machine<M>
-where
-    M: Memory,
-{
-    pub fn ecall(&mut self) -> Result<(), Error> {
+impl<M: Memory> Machine<u32, M> for DefaultMachine<M> {
+    fn pc(&self) -> u32 {
+        self.pc
+    }
+
+    fn set_pc(&mut self, next_pc: u32) {
+        self.pc = next_pc;
+    }
+
+    fn memory(&self) -> &M {
+        &self.memory
+    }
+
+    fn memory_mut(&mut self) -> &mut M {
+        &mut self.memory
+    }
+
+    fn registers(&self) -> &[u32] {
+        &self.registers
+    }
+
+    fn registers_mut(&mut self) -> &mut [u32] {
+        &mut self.registers
+    }
+
+    fn ecall(&mut self) -> Result<(), Error> {
         match self.registers[A7] {
             93 => {
                 // exit
                 self.exit_code = self.registers[A0] as u8;
                 self.running = false;
                 Ok(())
-            },
+            }
             _ => Err(Error::InvalidEcall(self.registers[A7])),
         }
     }
+
+    // TODO
+    fn ebreak(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
-impl<M> Display for Machine<M>
+impl<M> Display for DefaultMachine<M>
 where
     M: Memory,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "pc  : 0x{:08X}\n", self.pc)?;
         for i in 0..RISCV_GENERAL_REGISTER_NUMBER {
-            write!(f, "{:4}: 0x{:08X}", REGISTER_ABI_NAMES[i], self.registers[i])?;
+            write!(
+                f,
+                "{:4}: 0x{:08X}",
+                REGISTER_ABI_NAMES[i], self.registers[i]
+            )?;
             if (i + 1) % 4 == 0 {
                 write!(f, "\n")?;
             } else {
@@ -52,10 +96,26 @@ where
     }
 }
 
-impl<M> Machine<M>
+impl<M> DefaultMachine<M>
 where
     M: Memory,
 {
+    pub fn new() -> DefaultMachine<Vec<u8>> {
+        // While a real machine might use whatever random data left in the memory(or
+        // random scrubbed data for security), we are initializing everything to 0 here
+        // for deterministic behavior.
+        DefaultMachine {
+            registers: [0; RISCV_GENERAL_REGISTER_NUMBER],
+            pc: 0,
+            // TODO: add real MMU object with proper permission checks, right now
+            // a flat buffer is enough for experimental use.
+            memory: vec![0; RISCV_MAX_MEMORY],
+            decoder: build_rv32imac_decoder(),
+            running: false,
+            exit_code: 0,
+        }
+    }
+
     pub fn load(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         for program_header in &elf.program_headers {
@@ -77,7 +137,11 @@ where
         self.running = true;
         self.initialize_stack(args)?;
         while self.running {
-            let instruction = self.decoder.decode(self)?;
+            let instruction = {
+                let memory = &mut self.memory;
+                let pc = self.pc as usize;
+                self.decoder.decode(memory, pc)?
+            };
             instruction.execute(self)?;
         }
         Ok(self.exit_code)
@@ -110,23 +174,5 @@ where
             self.registers[SP] = address;
         }
         Ok(())
-    }
-}
-
-impl Machine<Vec<u8>> {
-    pub fn default() -> Machine<Vec<u8>> {
-        // While a real machine might use whatever random data left in the memory(or
-        // random scrubbed data for security), we are initializing everything to 0 here
-        // for deterministic behavior.
-        Machine {
-            registers: [0; RISCV_GENERAL_REGISTER_NUMBER],
-            pc: 0,
-            // TODO: add real MMU object with proper permission checks, right now
-            // a flat buffer is enough for experimental use.
-            memory: vec![0; RISCV_MAX_MEMORY],
-            decoder: build_rv32imac_decoder(),
-            running: false,
-            exit_code: 0,
-        }
     }
 }

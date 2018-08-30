@@ -6,7 +6,7 @@ mod instructions;
 mod machine;
 mod memory;
 
-use machine::Machine;
+use machine::DefaultMachine;
 use std::io::Error as IOError;
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
@@ -72,7 +72,7 @@ pub enum Error {
 }
 
 pub fn run(program: &[u8], args: &[String]) -> Result<u8, Error> {
-    let mut machine = Machine::default();
+    let mut machine = DefaultMachine::<Vec<u8>>::new();
     machine.load(program)?;
     machine.run(args)
 }
