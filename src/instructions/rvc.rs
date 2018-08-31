@@ -745,10 +745,10 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                             inst: ItypeUInstruction::SRAI,
                         })),
                         // ANDI
-                        (0b_10_000_00000_00, uimm) => Some(Instruction::I(Itype {
+                        (0b_10_000_00000_00, _) => Some(Instruction::I(Itype {
                             rd,
                             rs1: rd,
-                            imm: uimm as Immediate,
+                            imm: immediate(instruction_bits),
                             inst: ItypeInstruction::ANDI,
                         })),
                         _ => None,
