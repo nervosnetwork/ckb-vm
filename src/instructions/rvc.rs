@@ -611,16 +611,16 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
         // == Quadrant 1
         0b_000_00000000000_01 => {
             let nzimm = immediate(instruction_bits);
-            if nzimm != 0 {
-                match rd(instruction_bits) {
-                    0 => Some(Instruction::NOP { imm: nzimm }),
-                    rd => Some(Instruction::I(Itype {
-                        rd,
-                        rs1: rd,
-                        imm: nzimm,
-                        inst: ItypeInstruction::ADDI,
-                    })),
-                }
+            let rd = rd(instruction_bits);
+            if nzimm != 0 && rd != 0 {
+                Some(Instruction::I(Itype {
+                    rd,
+                    rs1: rd,
+                    imm: nzimm,
+                    inst: ItypeInstruction::ADDI,
+                }))
+            } else if nzimm == 0 && rd == 0 {
+                Some(Instruction::NOP { imm: nzimm })
             } else {
                 // Invalid instruction
                 None
