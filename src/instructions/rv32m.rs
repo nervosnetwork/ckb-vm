@@ -34,20 +34,20 @@ impl Execute for Rtype {
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::MULH => {
-                let rs1_value = (machine.registers()[self.rs1] as i32) as i64;
-                let rs2_value = (machine.registers()[self.rs2] as i32) as i64;
+                let rs1_value = i64::from(machine.registers()[self.rs1] as i32);
+                let rs2_value = i64::from(machine.registers()[self.rs2] as i32);
                 let (value, _) = rs1_value.overflowing_mul(rs2_value);
                 update_register(machine, self.rd, (value >> 32) as u32);
             }
             RtypeInstruction::MULHSU => {
-                let rs1_value = (machine.registers()[self.rs1] as i32) as i64;
-                let rs2_value = machine.registers()[self.rs2] as i64;
+                let rs1_value = i64::from(machine.registers()[self.rs1] as i32);
+                let rs2_value = i64::from(machine.registers()[self.rs2]);
                 let (value, _) = rs1_value.overflowing_mul(rs2_value);
                 update_register(machine, self.rd, (value >> 32) as u32);
             }
             RtypeInstruction::MULHU => {
-                let rs1_value = machine.registers()[self.rs1] as u64;
-                let rs2_value = machine.registers()[self.rs2] as u64;
+                let rs1_value = u64::from(machine.registers()[self.rs1]);
+                let rs2_value = u64::from(machine.registers()[self.rs2]);
                 let (value, _) = rs1_value.overflowing_mul(rs2_value);
                 update_register(machine, self.rd, (value >> 32) as u32);
             }

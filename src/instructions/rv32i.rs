@@ -260,9 +260,10 @@ impl Execute for Btype {
                 machine.registers()[self.rs1] >= machine.registers()[self.rs2]
             }
         };
-        match satisfied {
-            true => Ok(Some(machine.pc().overflowing_add(self.imm as u32).0)),
-            false => Ok(None),
+        if satisfied {
+            Ok(Some(machine.pc().overflowing_add(self.imm as u32).0))
+        } else {
+            Ok(None)
         }
     }
 }
