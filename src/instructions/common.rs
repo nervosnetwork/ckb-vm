@@ -91,7 +91,7 @@ pub fn lbu<Mac: Machine<u32, M>, M: Memory>(
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
     let value = machine.memory().load8(address as usize)?;
-    update_register(machine, rd, value as u32);
+    update_register(machine, rd, u32::from(value));
     Ok(())
 }
 
@@ -103,7 +103,7 @@ pub fn lhu<Mac: Machine<u32, M>, M: Memory>(
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
     let value = machine.memory().load16(address as usize)?;
-    update_register(machine, rd, value as u32);
+    update_register(machine, rd, u32::from(value));
     Ok(())
 }
 

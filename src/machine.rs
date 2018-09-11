@@ -1,7 +1,7 @@
 use super::decoder::{build_rv32imac_decoder, Decoder};
 use super::memory::Memory;
 use super::{
-    A0, A7, Error, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP,
+    Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP,
 };
 use goblin::elf::program_header::PT_LOAD;
 use goblin::elf::Elf;
@@ -79,15 +79,11 @@ where
     M: Memory,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "pc  : 0x{:08X}\n", self.pc)?;
-        for i in 0..RISCV_GENERAL_REGISTER_NUMBER {
-            write!(
-                f,
-                "{:4}: 0x{:08X}",
-                REGISTER_ABI_NAMES[i], self.registers[i]
-            )?;
+        writeln!(f, "pc  : 0x{:08X}", self.pc)?;
+        for (i, name) in REGISTER_ABI_NAMES.iter().enumerate() {
+            write!(f, "{:4}: 0x{:08X}", name, self.registers[i])?;
             if (i + 1) % 4 == 0 {
-                write!(f, "\n")?;
+                writeln!(f)?;
             } else {
                 write!(f, " ")?;
             }

@@ -49,6 +49,7 @@ pub const A5: usize = 15;
 pub const A6: usize = 16;
 pub const A7: usize = 17;
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub const REGISTER_ABI_NAMES: [&str; 32] = [
     "zero", "ra", "sp", "gp",
     "tp", "t0", "t1", "t2",
