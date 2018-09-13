@@ -1,11 +1,15 @@
+use super::bits::{rounddown, roundup};
 use super::decoder::{build_rv32imac_decoder, Decoder};
-use super::memory::Memory;
+use super::memory::mmu::Mmu;
+use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::{
-    Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, SP,
+    Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    RISCV_PAGESIZE, SP,
 };
 use goblin::elf::program_header::PT_LOAD;
 use goblin::elf::Elf;
 use std::fmt::{self, Display};
+use std::rc::Rc;
 
 pub trait Machine<W, M: Memory> {
     fn pc(&self) -> W;
@@ -18,6 +22,8 @@ pub trait Machine<W, M: Memory> {
     fn ecall(&mut self) -> Result<(), Error>;
     fn ebreak(&mut self) -> Result<(), Error>;
 }
+
+const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 pub struct DefaultMachine<M: Memory> {
     // TODO: while CKB doesn't need it, other environment could benefit from
@@ -96,16 +102,15 @@ impl<M> DefaultMachine<M>
 where
     M: Memory,
 {
-    pub fn new() -> DefaultMachine<Vec<u8>> {
+    // By default, we are using a default machine with proper MMU implementation now
+    pub fn default() -> DefaultMachine<Mmu> {
         // While a real machine might use whatever random data left in the memory(or
         // random scrubbed data for security), we are initializing everything to 0 here
         // for deterministic behavior.
         DefaultMachine {
             registers: [0; RISCV_GENERAL_REGISTER_NUMBER],
             pc: 0,
-            // TODO: add real MMU object with proper permission checks, right now
-            // a flat buffer is enough for experimental use.
-            memory: vec![0; RISCV_MAX_MEMORY],
+            memory: Mmu::default(),
             decoder: build_rv32imac_decoder(),
             running: false,
             exit_code: 0,
@@ -116,12 +121,20 @@ where
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
-                // TODO: page alignment
+                let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
+                let padding_start = program_header.p_vaddr as usize - aligned_start;
+                let aligned_size = roundup(
+                    program_header.p_filesz as usize + padding_start,
+                    RISCV_PAGESIZE,
+                );
                 self.memory.mmap(
-                    program_header.p_vaddr as usize,
-                    program_header.p_filesz as usize,
-                    program,
-                    program_header.p_offset as usize,
+                    aligned_start,
+                    aligned_size,
+                    // TODO: do we need to distinguish between code pages and bss pages,
+                    // then mark code pages as readonly?
+                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                    Some(Rc::new(program.to_vec().into_boxed_slice())),
+                    program_header.p_offset as usize - padding_start,
                 )?;
             }
         }
@@ -144,8 +157,14 @@ where
     }
 
     fn initialize_stack(&mut self, args: &[String]) -> Result<(), Error> {
-        // TODO: when MMU is ready, we need to distinguish between heap, stack
-        // and mmap pages and enforce size limit on each of them.
+        // Initialize stack space
+        self.memory.mmap(
+            RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE,
+            DEFAULT_STACK_SIZE,
+            PROT_READ | PROT_WRITE,
+            None,
+            0,
+        )?;
         self.registers[SP] = RISCV_MAX_MEMORY as u32;
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.
