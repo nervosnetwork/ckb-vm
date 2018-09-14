@@ -119,6 +119,7 @@ where
 
     pub fn load(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
+        let program_slice = Rc::new(program.to_vec().into_boxed_slice());
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
@@ -133,7 +134,7 @@ where
                     // TODO: do we need to distinguish between code pages and bss pages,
                     // then mark code pages as readonly?
                     PROT_READ | PROT_WRITE | PROT_EXEC,
-                    Some(Rc::new(program.to_vec().into_boxed_slice())),
+                    Some(program_slice.clone()),
                     program_header.p_offset as usize - padding_start,
                 )?;
             }
