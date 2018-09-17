@@ -111,16 +111,17 @@ impl Mmu {
     }
 
     fn munmap_aligned(&mut self, aligned_addr: usize, aligned_size: usize) -> Result<(), Error> {
-        let mut current_addr = aligned_addr;
-        while current_addr < aligned_addr + aligned_size {
+        for current_addr in (aligned_addr..aligned_addr + aligned_size).step_by(RISCV_PAGESIZE) {
             let current_page = current_addr / RISCV_PAGESIZE;
             let vm_index = self.page_table[current_page];
             if vm_index != INVALID_PAGE_INDEX {
                 self.page_table[current_page] = INVALID_PAGE_INDEX;
                 let page_data_index = self.find_page_data_index(current_addr);
                 if let Some(index) = page_data_index {
-                    self.page_addresses.remove(index);
-                    self.page_data.remove(index);
+                    // page_addresses and page_data share the same indices
+                    // for each item, so it's totally safe to do this.
+                    self.page_addresses.swap_remove(index);
+                    self.page_data.swap_remove(index);
                 }
                 let tlb_index = current_page % MAX_TLB_ENTRIES;
                 let tlb_entry = self.tlb[tlb_index];
@@ -140,7 +141,6 @@ impl Mmu {
                     self.vms[vm_index as usize] = None;
                 }
             }
-            current_addr += RISCV_PAGESIZE;
         }
         Ok(())
     }
@@ -227,41 +227,34 @@ impl Memory for Mmu {
         if addr & (RISCV_PAGESIZE - 1) != 0 || size & (RISCV_PAGESIZE - 1) != 0 {
             return Err(Error::Unaligned);
         }
-        let mut i = 0;
-        while i < self.vms.len() {
-            if self.vms[i].is_none() {
-                break;
+        let position = self.vms.iter().position(|vm| vm.is_none());
+        if let Some(i) = position {
+            debug_assert!(i < MAX_VIRTUAL_MEMORY_ENTRIES);
+            // This one is for extra caution, even though right now
+            // MAX_VIRTUAL_MEMORY_ENTRIES is 64, which is less than 0xFF, this
+            // extra guard can help future-proofing the logic
+            debug_assert!(i < 0xFF);
+            let pages = size / RISCV_PAGESIZE;
+            self.vms[i] = Some(VirtualMemoryEntry {
+                addr,
+                size,
+                prot,
+                source,
+                offset,
+                refcount: pages,
+            });
+            for current_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
+                let current_page = current_addr / RISCV_PAGESIZE;
+                // munmap overlapped pages
+                if self.page_table[current_page] != INVALID_PAGE_INDEX {
+                    self.munmap_aligned(current_addr, RISCV_PAGESIZE)?;
+                }
+                self.page_table[current_page] = i as u8;
             }
-            i += 1;
+            Ok(())
+        } else {
+            Err(Error::MaximumMmappingReached)
         }
-        if i == self.vms.len() {
-            return Err(Error::MaximumMmappingReached);
-        }
-        debug_assert!(i < MAX_VIRTUAL_MEMORY_ENTRIES);
-        // This one is for extra caution, even though right now
-        // MAX_VIRTUAL_MEMORY_ENTRIES is 64, which is less than 0xFF, this
-        // extra guard can help future-proofing the logic
-        debug_assert!(i < 0xFF);
-        let pages = size / RISCV_PAGESIZE;
-        self.vms[i] = Some(VirtualMemoryEntry {
-            addr,
-            size,
-            prot,
-            source,
-            offset,
-            refcount: pages,
-        });
-        let mut current_addr = addr;
-        while current_addr < addr + size {
-            let current_page = current_addr / RISCV_PAGESIZE;
-            // munmap overlapped pages
-            if self.page_table[current_page] != INVALID_PAGE_INDEX {
-                self.munmap_aligned(current_addr, RISCV_PAGESIZE)?;
-            }
-            self.page_table[current_page] = i as u8;
-            current_addr += RISCV_PAGESIZE;
-        }
-        Ok(())
     }
 
     fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error> {
@@ -297,8 +290,7 @@ impl Memory for Mmu {
                 RISCV_PAGESIZE - current_page_offset,
                 value.len() - copied_bytes,
             );
-            let (_, right) = page.split_at_mut(current_page_offset);
-            let (slice, _) = right.split_at_mut(bytes);
+            let slice = &mut page[current_page_offset..current_page_offset + bytes];
             slice.copy_from_slice(&value[copied_bytes..copied_bytes + bytes]);
 
             copied_bytes += bytes;

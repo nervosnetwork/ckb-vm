@@ -34,8 +34,7 @@ where
         }
         if let Some(source) = source {
             let real_size = min(size, source.len() - offset);
-            let (_, right) = memory.split_at_mut(addr);
-            let (slice, _) = right.split_at_mut(real_size);
+            let slice = &mut memory[addr..addr + real_size];
             slice.copy_from_slice(&source[offset..offset + real_size]);
         }
         Ok(())
@@ -136,8 +135,7 @@ where
         if addr + size > memory.len() {
             return Err(Error::OutOfBound);
         }
-        let (_, right) = memory.split_at_mut(addr);
-        let (slice, _) = right.split_at_mut(size);
+        let slice = &mut memory[addr..addr + size];
         slice.copy_from_slice(value);
         Ok(())
     }
