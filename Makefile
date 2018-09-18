@@ -5,6 +5,9 @@ fmt:
 	cargo fmt --all -- --check
 
 clippy:
-	cargo clippy --all -- -D warnings -D clippy::clone_on_ref_ptr -D unused_extern_crates -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
+	cargo clippy --all -- -D warnings -D clone_on_ref_ptr -D unused_extern_crates -D enum_glob_use -A inconsistent_digit_grouping -A large-digit-groups
 
-.PHONY: test clippy fmt
+ci: fmt clippy test
+	git diff --exit-code Cargo.lock
+
+.PHONY: test clippy fmt ci
