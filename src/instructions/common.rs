@@ -52,7 +52,7 @@ pub fn lb<Mac: Machine<u32, M>, M: Memory>(
     imm: UImmediate,
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
-    let value = machine.memory().load8(address as usize)?;
+    let value = machine.memory_mut().load8(address as usize)?;
     // sign-extened
     update_register(machine, rd, (value as i8) as u32);
     Ok(())
@@ -65,7 +65,7 @@ pub fn lh<Mac: Machine<u32, M>, M: Memory>(
     imm: UImmediate,
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
-    let value = machine.memory().load16(address as usize)?;
+    let value = machine.memory_mut().load16(address as usize)?;
     // sign-extened
     update_register(machine, rd, (value as i16) as u32);
     Ok(())
@@ -78,7 +78,7 @@ pub fn lw<Mac: Machine<u32, M>, M: Memory>(
     imm: UImmediate,
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
-    let value = machine.memory().load32(address as usize)?;
+    let value = machine.memory_mut().load32(address as usize)?;
     update_register(machine, rd, value);
     Ok(())
 }
@@ -90,7 +90,7 @@ pub fn lbu<Mac: Machine<u32, M>, M: Memory>(
     imm: UImmediate,
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
-    let value = machine.memory().load8(address as usize)?;
+    let value = machine.memory_mut().load8(address as usize)?;
     update_register(machine, rd, u32::from(value));
     Ok(())
 }
@@ -102,7 +102,7 @@ pub fn lhu<Mac: Machine<u32, M>, M: Memory>(
     imm: UImmediate,
 ) -> Result<(), Error> {
     let (address, _) = machine.registers()[rs1].overflowing_add(imm);
-    let value = machine.memory().load16(address as usize)?;
+    let value = machine.memory_mut().load16(address as usize)?;
     update_register(machine, rd, u32::from(value));
     Ok(())
 }

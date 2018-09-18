@@ -305,7 +305,7 @@ impl Execute for UtypeU {
             }
             UtypeUInstruction::LWSP => {
                 let (address, _) = machine.registers()[SP].overflowing_add(self.imm);
-                let value = machine.memory().load32(address as usize)?;
+                let value = machine.memory_mut().load32(address as usize)?;
                 update_register(machine, self.rd, value);
             }
 

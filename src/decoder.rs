@@ -2,17 +2,12 @@ use super::instructions::{rv32i, rv32m, rvc, Instruction, InstructionFactory};
 use super::memory::Memory;
 use super::Error;
 
+#[derive(Default)]
 pub struct Decoder {
     factories: Vec<InstructionFactory>,
 }
 
 impl Decoder {
-    pub fn new() -> Decoder {
-        Decoder {
-            factories: Vec::new(),
-        }
-    }
-
     pub fn add_instruction_factory(&mut self, factory: InstructionFactory) {
         self.factories.push(factory);
     }
@@ -52,9 +47,9 @@ impl Decoder {
     // RVC instruction into a 32-bit instruction, the meaning of the instruction stays
     // unchanged in the cast conversion.
     fn decode_bits<M: Memory>(&self, memory: &mut M, pc: usize) -> Result<u32, Error> {
-        let mut instruction_bits = u32::from(memory.load16(pc)?);
+        let mut instruction_bits = u32::from(memory.execute_load16(pc)?);
         if instruction_bits & 0x3 == 0x3 {
-            instruction_bits |= u32::from(memory.load16(pc + 2)?) << 16;
+            instruction_bits |= u32::from(memory.execute_load16(pc + 2)?) << 16;
         }
         Ok(instruction_bits)
     }
@@ -71,7 +66,7 @@ impl Decoder {
 }
 
 pub fn build_rv32imac_decoder() -> Decoder {
-    let mut decoder = Decoder::new();
+    let mut decoder = Decoder::default();
     decoder.add_instruction_factory(rvc::factory);
     decoder.add_instruction_factory(rv32i::factory);
     decoder.add_instruction_factory(rv32m::factory);

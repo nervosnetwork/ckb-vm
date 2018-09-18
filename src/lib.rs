@@ -1,12 +1,14 @@
 extern crate byteorder;
 extern crate goblin;
 
-mod decoder;
-mod instructions;
-mod machine;
-mod memory;
+pub mod bits;
+pub mod decoder;
+pub mod instructions;
+pub mod machine;
+pub mod memory;
 
 use machine::DefaultMachine;
+use memory::mmu::Mmu;
 use std::io::Error as IOError;
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
@@ -64,16 +66,18 @@ pub const REGISTER_ABI_NAMES: [&str; 32] = [
 #[derive(Debug)]
 pub enum Error {
     ParseError,
-    Alignment,
+    Unaligned,
     OutOfBound,
     InvalidInstruction(u32),
     InvalidEcall(u32),
     IO(IOError),
+    MaximumMmappingReached,
+    InvalidPermission,
     Unimplemented,
 }
 
 pub fn run(program: &[u8], args: &[String]) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<Vec<u8>>::new();
+    let mut machine = DefaultMachine::<Mmu>::default();
     machine.load(program)?;
     machine.run(args)
 }
