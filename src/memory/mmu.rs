@@ -281,19 +281,16 @@ impl Memory for Mmu {
     }
 
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
-        let mut copied_bytes = 0;
+        let mut remaining_data = value;
         let mut current_page_addr = round_page(addr);
         let mut current_page_offset = addr - current_page_addr;
-        while copied_bytes < value.len() {
+        while !remaining_data.is_empty() {
             let page = self.fetch_page(current_page_addr, PROT_WRITE)?;
-            let bytes = min(
-                RISCV_PAGESIZE - current_page_offset,
-                value.len() - copied_bytes,
-            );
+            let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_data.len());
             let slice = &mut page[current_page_offset..current_page_offset + bytes];
-            slice.copy_from_slice(&value[copied_bytes..copied_bytes + bytes]);
+            slice.copy_from_slice(&remaining_data[..bytes]);
 
-            copied_bytes += bytes;
+            remaining_data = &remaining_data[bytes..];
             current_page_addr += RISCV_PAGESIZE;
             current_page_offset = 0;
         }
