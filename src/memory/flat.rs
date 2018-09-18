@@ -5,6 +5,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::borrow::BorrowMut;
 use std::cmp::min;
 use std::io::{Cursor, Seek, SeekFrom};
+use std::ptr;
 use std::rc::Rc;
 
 /// Here we build a flat memory based Memory object as a starting point for fast
@@ -45,8 +46,10 @@ where
         if addr + size > memory.len() {
             return Err(Error::OutOfBound);
         }
-        for i in 0..size {
-            memory[i + addr] = 0;
+        // This is essentially memset call
+        unsafe {
+            let slice_ptr = memory[..size].as_mut_ptr();
+            ptr::write_bytes(slice_ptr, b'0', size);
         }
         Ok(())
     }
