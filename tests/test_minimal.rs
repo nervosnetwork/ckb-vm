@@ -1,6 +1,6 @@
-extern crate ckb_riscv;
+extern crate ckb_vm;
 
-use ckb_riscv::run;
+use ckb_vm::run;
 use std::fs::File;
 use std::io::Read;
 
