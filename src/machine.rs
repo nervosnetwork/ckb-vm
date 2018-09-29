@@ -134,7 +134,7 @@ where
                     // TODO: do we need to distinguish between code pages and bss pages,
                     // then mark code pages as readonly?
                     PROT_READ | PROT_WRITE | PROT_EXEC,
-                    Some(program_slice.clone()),
+                    Some(Rc::clone(&program_slice)),
                     program_header.p_offset as usize - padding_start,
                 )?;
             }
