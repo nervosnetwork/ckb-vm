@@ -71,7 +71,7 @@ pub enum Error {
     Unaligned,
     OutOfBound,
     InvalidInstruction(u32),
-    InvalidEcall(u32),
+    InvalidEcall(u64),
     IO(IOError),
     MaximumMmappingReached,
     InvalidPermission,
@@ -79,7 +79,7 @@ pub enum Error {
 }
 
 pub fn run(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<Mmu>::default();
+    let mut machine = DefaultMachine::<u32, Mmu>::default();
     machine.load(program)?;
     machine.run(args)
 }

@@ -1,10 +1,11 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
 use super::super::{Error, SP};
+use super::register::Register;
 use super::utils::{rd, update_register, x, xs};
 use super::{
-    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::RVC, NextPC,
-    RegisterIndex, UImmediate,
+    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::RVC, RegisterIndex,
+    UImmediate,
 };
 
 // Notice the location of rs2 in RVC encoding is different from full encoding
@@ -218,15 +219,15 @@ impl StypeU {
 }
 
 impl Execute for ItypeU {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
-            ItypeUInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.imm as u32),
-            ItypeUInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.imm as u32),
-            ItypeUInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.imm as u32),
-            ItypeUInstruction::LW => common::lw(machine, self.rd, self.rs1, self.imm)?,
+            ItypeUInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.imm),
+            ItypeUInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.imm),
+            ItypeUInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.imm),
+            ItypeUInstruction::LW => common::lw(machine, self.rd, self.rs1, self.imm as i32)?,
 
             // > RV32FC-only
             ItypeUInstruction::FLW => unimplemented!(),
@@ -240,15 +241,18 @@ impl Execute for ItypeU {
 }
 
 impl Execute for StypeU {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
             StypeUInstruction::SW => {
-                let (address, _) = machine.registers()[self.rs1].overflowing_add(self.imm);
-                let value = machine.registers()[self.rs2] as u32;
-                machine.memory_mut().store32(address as usize, value)?;
+                let (address, _) =
+                    machine.registers()[self.rs1].overflowing_add(R::from_u32(self.imm));
+                let value = machine.registers()[self.rs2];
+                machine
+                    .memory_mut()
+                    .store32(address.to_usize(), value.to_u32())?;
             }
 
             // > RV32FC-only
@@ -263,13 +267,13 @@ impl Execute for StypeU {
 }
 
 impl Execute for Itype {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
-            ItypeInstruction::ADDI => common::addi(machine, self.rd, self.rs1, self.imm as u32),
-            ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm as u32),
+            ItypeInstruction::ADDI => common::addi(machine, self.rd, self.rs1, self.imm),
+            ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm),
             // ItypeInstruction::ADDIW => {},
         }
         Ok(None)
@@ -277,16 +281,16 @@ impl Execute for Itype {
 }
 
 impl Execute for Utype {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
             UtypeInstruction::LI => {
-                update_register(machine, self.rd, self.imm as u32);
+                update_register(machine, self.rd, R::from_i32(self.imm));
             }
             UtypeInstruction::LUI => {
-                update_register(machine, self.rd, self.imm as u32);
+                update_register(machine, self.rd, R::from_i32(self.imm));
             }
         }
         Ok(None)
@@ -294,20 +298,16 @@ impl Execute for Utype {
 }
 
 impl Execute for UtypeU {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
             UtypeUInstruction::ADDI4SPN => {
-                let (value, _) = machine.registers()[SP].overflowing_add(self.imm);
+                let (value, _) = machine.registers()[SP].overflowing_add(R::from_u32(self.imm));
                 update_register(machine, self.rd, value);
             }
-            UtypeUInstruction::LWSP => {
-                let (address, _) = machine.registers()[SP].overflowing_add(self.imm);
-                let value = machine.memory_mut().load32(address as usize)?;
-                update_register(machine, self.rd, value);
-            }
+            UtypeUInstruction::LWSP => common::lw(machine, self.rd, SP, self.imm as i32)?,
 
             // > RV32FC-only
             UtypeUInstruction::FLWSP => unimplemented!(),
@@ -321,10 +321,10 @@ impl Execute for UtypeU {
 }
 
 impl Execute for Rtype {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
             RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::ADD => common::add(machine, self.rd, self.rd, self.rs2),
@@ -342,15 +342,17 @@ impl Execute for Rtype {
 }
 
 impl Execute for CSSformat {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error> {
+    ) -> Result<Option<R>, Error> {
         match &self.inst {
             CSSformatInstruction::SWSP => {
-                let (address, _) = machine.registers()[SP].overflowing_add(self.imm);
-                let value = machine.registers()[self.rs2] as u32;
-                machine.memory_mut().store32(address as usize, value)?;
+                let (address, _) = machine.registers()[SP].overflowing_add(R::from_u32(self.imm));
+                let value = machine.registers()[self.rs2];
+                machine
+                    .memory_mut()
+                    .store32(address.to_usize(), value.to_u32())?;
             }
 
             // > RV32FC-only
@@ -498,7 +500,10 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn execute<Mac: Machine<u32, M>, M: Memory>(&self, machine: &mut Mac) -> Result<(), Error> {
+    pub fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<(), Error> {
         let next_pc = match self {
             Instruction::Iu(inst) => inst.execute(machine)?,
             Instruction::Su(inst) => inst.execute(machine)?,
@@ -508,15 +513,15 @@ impl Instruction {
             Instruction::R(inst) => inst.execute(machine)?,
             Instruction::CSS(inst) => inst.execute(machine)?,
             Instruction::BEQZ { rs1, imm } => {
-                if machine.registers()[*rs1] == 0 {
-                    Some(machine.pc().overflowing_add(*imm as u32).0)
+                if machine.registers()[*rs1] == R::zero() {
+                    Some(machine.pc().overflowing_add(R::from_i32(*imm)).0)
                 } else {
                     None
                 }
             }
             Instruction::BNEZ { rs1, imm } => {
-                if machine.registers()[*rs1] != 0 {
-                    Some(machine.pc().overflowing_add(*imm as u32).0)
+                if machine.registers()[*rs1] != R::zero() {
+                    Some(machine.pc().overflowing_add(R::from_i32(*imm)).0)
                 } else {
                     None
                 }
@@ -527,15 +532,15 @@ impl Instruction {
                 None
             }
             Instruction::JAL { imm } => common::jal(machine, 1, *imm, 2),
-            Instruction::J { imm } => Some(machine.pc().overflowing_add(*imm as u32).0),
+            Instruction::J { imm } => Some(machine.pc().overflowing_add(R::from_i32(*imm)).0),
             Instruction::JR { rs1 } => Some(machine.registers()[*rs1]),
             Instruction::JALR { rs1 } => {
-                let link = machine.pc() + 2;
+                let link = machine.pc().overflowing_add(R::from_usize(2)).0;
                 update_register(machine, 1, link);
                 Some(machine.registers()[*rs1])
             }
             Instruction::ADDI16SP { imm } => {
-                let (value, _) = machine.registers()[SP].overflowing_add(*imm as u32);
+                let (value, _) = machine.registers()[SP].overflowing_add(R::from_i32(*imm));
                 update_register(machine, SP, value);
                 None
             }
@@ -551,7 +556,7 @@ impl Instruction {
                 None
             }
         };
-        let default_next_pc = machine.pc() + 2;
+        let default_next_pc = machine.pc().overflowing_add(R::from_usize(2)).0;
         machine.set_pc(next_pc.unwrap_or(default_next_pc));
         Ok(())
     }

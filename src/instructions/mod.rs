@@ -1,10 +1,12 @@
 mod common;
+mod register;
 mod utils;
 
 pub mod rv32i;
 pub mod rv32m;
 pub mod rvc;
 
+pub use self::register::Register;
 use super::machine::Machine;
 use super::memory::Memory;
 use super::Error;
@@ -18,7 +20,10 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn execute<Mac: Machine<u32, M>, M: Memory>(&self, machine: &mut Mac) -> Result<(), Error> {
+    pub fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
+        &self,
+        machine: &mut Mac,
+    ) -> Result<(), Error> {
         match self {
             Instruction::RV32I(instruction) => instruction.execute(machine),
             Instruction::RV32M(instruction) => instruction.execute(machine),
@@ -39,16 +44,15 @@ pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
 
 // Instruction execution trait
 pub trait Execute {
-    fn execute<Mac: Machine<u32, M>, M: Memory>(
+    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
         &self,
         machine: &mut Mac,
-    ) -> Result<Option<NextPC>, Error>;
+    ) -> Result<Option<R>, Error>;
 }
 
 type RegisterIndex = usize;
 type Immediate = i32;
 type UImmediate = u32;
-type NextPC = u32;
 
 //
 //  31       27 26 25 24     20 19    15 14    12 11          7 6      0

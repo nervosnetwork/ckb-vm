@@ -1,5 +1,6 @@
 use super::bits::{rounddown, roundup};
 use super::decoder::{build_rv32imac_decoder, Decoder};
+use super::instructions::Register;
 use super::memory::mmu::Mmu;
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::{
@@ -11,7 +12,7 @@ use goblin::elf::Elf;
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
-pub trait Machine<W, M: Memory> {
+pub trait Machine<W: Register, M: Memory> {
     fn pc(&self) -> W;
     fn set_pc(&mut self, next_pc: W);
     fn memory(&self) -> &M;
@@ -25,11 +26,11 @@ pub trait Machine<W, M: Memory> {
 
 const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
 
-pub struct DefaultMachine<M: Memory> {
+pub struct DefaultMachine<R: Register, M: Memory> {
     // TODO: while CKB doesn't need it, other environment could benefit from
     // parameterized register size.
-    pub registers: [u32; RISCV_GENERAL_REGISTER_NUMBER],
-    pub pc: u32,
+    pub registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
+    pub pc: R,
     pub memory: M,
 
     decoder: Decoder,
@@ -37,12 +38,12 @@ pub struct DefaultMachine<M: Memory> {
     exit_code: u8,
 }
 
-impl<M: Memory> Machine<u32, M> for DefaultMachine<M> {
-    fn pc(&self) -> u32 {
+impl<R: Register, M: Memory> Machine<R, M> for DefaultMachine<R, M> {
+    fn pc(&self) -> R {
         self.pc
     }
 
-    fn set_pc(&mut self, next_pc: u32) {
+    fn set_pc(&mut self, next_pc: R) {
         self.pc = next_pc;
     }
 
@@ -54,23 +55,23 @@ impl<M: Memory> Machine<u32, M> for DefaultMachine<M> {
         &mut self.memory
     }
 
-    fn registers(&self) -> &[u32] {
+    fn registers(&self) -> &[R] {
         &self.registers
     }
 
-    fn registers_mut(&mut self) -> &mut [u32] {
+    fn registers_mut(&mut self) -> &mut [R] {
         &mut self.registers
     }
 
     fn ecall(&mut self) -> Result<(), Error> {
-        match self.registers[A7] {
+        match self.registers[A7].to_usize() {
             93 => {
                 // exit
-                self.exit_code = self.registers[A0] as u8;
+                self.exit_code = self.registers[A0].to_u8();
                 self.running = false;
                 Ok(())
             }
-            _ => Err(Error::InvalidEcall(self.registers[A7])),
+            _ => Err(Error::InvalidEcall(self.registers[A7].to_u64())),
         }
     }
 
@@ -80,14 +81,15 @@ impl<M: Memory> Machine<u32, M> for DefaultMachine<M> {
     }
 }
 
-impl<M> Display for DefaultMachine<M>
+impl<R, M> Display for DefaultMachine<R, M>
 where
+    R: Register,
     M: Memory,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "pc  : 0x{:08X}", self.pc)?;
+        writeln!(f, "pc  : 0x{:16X}", self.pc.to_usize())?;
         for (i, name) in REGISTER_ABI_NAMES.iter().enumerate() {
-            write!(f, "{:4}: 0x{:08X}", name, self.registers[i])?;
+            write!(f, "{:4}: 0x{:16X}", name, self.registers[i].to_usize())?;
             if (i + 1) % 4 == 0 {
                 writeln!(f)?;
             } else {
@@ -98,18 +100,19 @@ where
     }
 }
 
-impl<M> DefaultMachine<M>
+impl<R, M> DefaultMachine<R, M>
 where
+    R: Register,
     M: Memory,
 {
     // By default, we are using a default machine with proper MMU implementation now
-    pub fn default() -> DefaultMachine<Mmu> {
+    pub fn default() -> DefaultMachine<R, Mmu> {
         // While a real machine might use whatever random data left in the memory(or
         // random scrubbed data for security), we are initializing everything to 0 here
         // for deterministic behavior.
         DefaultMachine {
-            registers: [0; RISCV_GENERAL_REGISTER_NUMBER],
-            pc: 0,
+            registers: [R::zero(); RISCV_GENERAL_REGISTER_NUMBER],
+            pc: R::zero(),
             memory: Mmu::default(),
             decoder: build_rv32imac_decoder(),
             running: false,
@@ -139,7 +142,7 @@ where
                 )?;
             }
         }
-        self.pc = elf.header.e_entry as u32;
+        self.pc = R::from_u64(elf.header.e_entry);
         Ok(())
     }
 
@@ -149,7 +152,7 @@ where
         while self.running {
             let instruction = {
                 let memory = &mut self.memory;
-                let pc = self.pc as usize;
+                let pc = self.pc.to_usize();
                 self.decoder.decode(memory, pc)?
             };
             instruction.execute(self)?;
@@ -166,17 +169,17 @@ where
             None,
             0,
         )?;
-        self.registers[SP] = RISCV_MAX_MEMORY as u32;
+        self.registers[SP] = R::from_usize(RISCV_MAX_MEMORY);
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.
-        let mut values = vec![args.len() as u32];
+        let mut values = vec![R::from_usize(args.len())];
         for arg in args {
             let bytes = arg.as_slice();
-            let len = bytes.len() as u32 + 1;
-            let address = self.registers[SP] - len;
+            let len = R::from_usize(bytes.len() + 1);
+            let address = self.registers[SP].overflowing_sub(len).0;
 
-            self.memory.store_bytes(address as usize, bytes)?;
-            self.memory.store8(address as usize + bytes.len(), 0)?;
+            self.memory.store_bytes(address.to_usize(), bytes)?;
+            self.memory.store8(address.to_usize() + bytes.len(), 0)?;
 
             values.push(address);
             self.registers[SP] = address;
@@ -185,8 +188,8 @@ where
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
-            let address = self.registers[SP] - 4;
-            self.memory.store32(address as usize, *value)?;
+            let address = self.registers[SP].overflowing_sub(R::from_usize(4)).0;
+            self.memory.store32(address.to_usize(), value.to_u32())?;
             self.registers[SP] = address;
         }
         Ok(())
