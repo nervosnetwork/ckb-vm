@@ -78,7 +78,7 @@ pub enum Error {
     Unimplemented,
 }
 
-pub fn run(program: &[u8], args: &[String]) -> Result<u8, Error> {
+pub fn run(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
     let mut machine = DefaultMachine::<Mmu>::default();
     machine.load(program)?;
     machine.run(args)

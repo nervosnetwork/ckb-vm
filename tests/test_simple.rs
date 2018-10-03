@@ -10,7 +10,7 @@ pub fn test_simple_instructions() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run(&buffer, &vec!["simple".to_string()]);
+    let result = run(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
