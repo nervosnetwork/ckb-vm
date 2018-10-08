@@ -17,8 +17,8 @@ pub trait Register:
     + Shl<usize, Output = Self>
     + Shr<usize, Output = Self>
 {
-    fn bits() -> usize;
-    fn shift_mask() -> usize;
+    const BITS: usize;
+    const SHIFT_MASK: usize;
 
     fn zero() -> Self;
     fn one() -> Self;
@@ -84,13 +84,8 @@ pub trait Register:
 }
 
 impl Register for u32 {
-    fn bits() -> usize {
-        32
-    }
-
-    fn shift_mask() -> usize {
-        0x1F
-    }
+    const BITS: usize = 32;
+    const SHIFT_MASK: usize = 0x1F;
 
     fn zero() -> u32 {
         0
@@ -263,13 +258,8 @@ impl Register for u32 {
 }
 
 impl Register for u64 {
-    fn bits() -> usize {
-        64
-    }
-
-    fn shift_mask() -> usize {
-        0x3F
-    }
+    const BITS: usize = 64;
+    const SHIFT_MASK: usize = 0x3F;
 
     fn zero() -> u64 {
         0

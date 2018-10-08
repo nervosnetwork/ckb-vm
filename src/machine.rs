@@ -189,7 +189,7 @@ where
         // order
         for value in values.iter().rev() {
             let address = self.registers[SP]
-                .overflowing_sub(R::from_usize(R::bits() / 8))
+                .overflowing_sub(R::from_usize(R::BITS / 8))
                 .0;
             self.memory.store32(address.to_usize(), value.to_u32())?;
             self.registers[SP] = address;

@@ -152,7 +152,7 @@ impl Execute for Rtype {
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & R::shift_mask();
+                let shift_value = machine.registers()[self.rs2].to_usize() & R::SHIFT_MASK;
                 let value = machine.registers()[self.rs1] << shift_value;
                 update_register(machine, self.rd, value);
             }
@@ -162,7 +162,7 @@ impl Execute for Rtype {
                 update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::SRL => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & R::shift_mask();
+                let shift_value = machine.registers()[self.rs2].to_usize() & R::SHIFT_MASK;
                 let value = machine.registers()[self.rs1] >> shift_value;
                 update_register(machine, self.rd, value);
             }
@@ -172,7 +172,7 @@ impl Execute for Rtype {
                 update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::SRA => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & R::shift_mask();
+                let shift_value = machine.registers()[self.rs2].to_usize() & R::SHIFT_MASK;
                 let value = machine.registers()[self.rs1].signed_shr(shift_value);
                 update_register(machine, self.rd, value);
             }
@@ -442,7 +442,7 @@ impl Instruction {
 }
 
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction> {
-    let bit_length = R::bits();
+    let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
     }
@@ -521,7 +521,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                         I(Instruction::IShift(ItypeShift {
                             rs1: rs1(instruction_bits),
                             rd: rd(instruction_bits),
-                            shamt: itype_immediate(instruction_bits) & R::shift_mask() as i32,
+                            shamt: itype_immediate(instruction_bits) & R::SHIFT_MASK as i32,
                             inst,
                         }))
                     });
