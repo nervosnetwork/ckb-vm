@@ -10,7 +10,18 @@ pub fn test_simple_instructions() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run(&buffer, &vec![b"simple".to_vec()]);
+    let result = run::<u32>(&buffer, &vec![b"simple".to_vec()]);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_simple_instructions_64() {
+    let mut file = File::open("tests/programs/simple64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let result = run::<u64>(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }

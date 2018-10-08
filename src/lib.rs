@@ -9,6 +9,7 @@ pub mod instructions;
 pub mod machine;
 pub mod memory;
 
+use instructions::Register;
 use machine::DefaultMachine;
 use memory::mmu::Mmu;
 use std::io::Error as IOError;
@@ -78,8 +79,8 @@ pub enum Error {
     Unimplemented,
 }
 
-pub fn run(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<u32, Mmu>::default();
+pub fn run<R: Register>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+    let mut machine = DefaultMachine::<R, Mmu>::default();
     machine.load(program)?;
     machine.run(args)
 }

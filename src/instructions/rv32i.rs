@@ -15,13 +15,18 @@ use std::cmp::Ordering;
 #[derive(Debug)]
 pub enum RtypeInstruction {
     ADD,
+    ADDW,
     SUB,
+    SUBW,
     SLL,
+    SLLW,
+    SRL,
+    SRLW,
+    SRA,
+    SRAW,
     SLT,
     SLTU,
     XOR,
-    SRL,
-    SRA,
     OR,
     AND,
 }
@@ -32,9 +37,12 @@ pub enum ItypeInstruction {
     LB,
     LH,
     LW,
+    LD,
     LBU,
     LHU,
+    LWU,
     ADDI,
+    ADDIW,
     SLTI,
     SLTIU,
     XORI,
@@ -47,6 +55,9 @@ pub enum ItypeShiftInstruction {
     SLLI,
     SRLI,
     SRAI,
+    SLLIW,
+    SRLIW,
+    SRAIW,
 }
 
 #[derive(Debug)]
@@ -54,6 +65,7 @@ pub enum StypeInstruction {
     SB,
     SH,
     SW,
+    SD,
 }
 
 #[derive(Debug)]
@@ -133,24 +145,41 @@ impl Execute for Rtype {
     ) -> Result<Option<R>, Error> {
         match &self.inst {
             RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::SUBW => common::subw(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::ADD => common::add(machine, self.rd, self.rs1, self.rs2),
+            RtypeInstruction::ADDW => common::addw(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::XOR => common::xor(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
+                let shift_value = machine.registers()[self.rs2].to_usize() & R::shift_mask();
                 let value = machine.registers()[self.rs1] << shift_value;
                 update_register(machine, self.rd, value);
             }
-            RtypeInstruction::SRL => {
+            RtypeInstruction::SLLW => {
                 let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
+                let value = machine.registers()[self.rs1] << shift_value;
+                update_register(machine, self.rd, value.sign_extend(32));
+            }
+            RtypeInstruction::SRL => {
+                let shift_value = machine.registers()[self.rs2].to_usize() & R::shift_mask();
                 let value = machine.registers()[self.rs1] >> shift_value;
                 update_register(machine, self.rd, value);
             }
-            RtypeInstruction::SRA => {
+            RtypeInstruction::SRLW => {
                 let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
+                let value = machine.registers()[self.rs1].zero_extend(32) >> shift_value;
+                update_register(machine, self.rd, value.sign_extend(32));
+            }
+            RtypeInstruction::SRA => {
+                let shift_value = machine.registers()[self.rs2].to_usize() & R::shift_mask();
                 let value = machine.registers()[self.rs1].signed_shr(shift_value);
                 update_register(machine, self.rd, value);
+            }
+            RtypeInstruction::SRAW => {
+                let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
+                let value = machine.registers()[self.rs1].sign_extend(32).signed_shr(shift_value);
+                update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::SLT => {
                 let rs1_value = machine.registers()[self.rs1];
@@ -181,9 +210,12 @@ impl Execute for Itype {
             ItypeInstruction::LB => common::lb(machine, self.rd, self.rs1, self.imm)?,
             ItypeInstruction::LH => common::lh(machine, self.rd, self.rs1, self.imm)?,
             ItypeInstruction::LW => common::lw(machine, self.rd, self.rs1, self.imm)?,
+            ItypeInstruction::LD => common::ld(machine, self.rd, self.rs1, self.imm)?,
             ItypeInstruction::LBU => common::lbu(machine, self.rd, self.rs1, self.imm)?,
             ItypeInstruction::LHU => common::lhu(machine, self.rd, self.rs1, self.imm)?,
+            ItypeInstruction::LWU => common::lwu(machine, self.rd, self.rs1, self.imm)?,
             ItypeInstruction::ADDI => common::addi(machine, self.rd, self.rs1, self.imm),
+            ItypeInstruction::ADDIW => common::addiw(machine, self.rd, self.rs1, self.imm),
             ItypeInstruction::XORI => common::xori(machine, self.rd, self.rs1, self.imm),
             ItypeInstruction::ORI => common::ori(machine, self.rd, self.rs1, self.imm),
             ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm),
@@ -221,15 +253,12 @@ impl Execute for ItypeShift {
         machine: &mut Mac,
     ) -> Result<Option<R>, Error> {
         match &self.inst {
-            ItypeShiftInstruction::SLLI => {
-                common::slli(machine, self.rd, self.rs1, self.shamt as u32)
-            }
-            ItypeShiftInstruction::SRLI => {
-                common::srli(machine, self.rd, self.rs1, self.shamt as u32)
-            }
-            ItypeShiftInstruction::SRAI => {
-                common::srai(machine, self.rd, self.rs1, self.shamt as u32)
-            }
+            ItypeShiftInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SLLIW => common::slliw(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SRLIW => common::srliw(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SRAIW => common::sraiw(machine, self.rd, self.rs1, self.shamt as u32),
         }
         Ok(None)
     }
@@ -244,6 +273,7 @@ impl Execute for Stype {
             StypeInstruction::SB => common::sb(machine, self.rs1, self.rs2, self.imm)?,
             StypeInstruction::SH => common::sh(machine, self.rs1, self.rs2, self.imm)?,
             StypeInstruction::SW => common::sw(machine, self.rs1, self.rs2, self.imm)?,
+            StypeInstruction::SD => common::sd(machine, self.rs1, self.rs2, self.imm)?,
         }
         Ok(None)
     }
@@ -397,7 +427,12 @@ impl Instruction {
     }
 }
 
-pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
+pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction> {
+    let bit_length = R::bits();
+    if bit_length != 32 && bit_length != 64 {
+        return None;
+    }
+    let rv64 = bit_length == 64;
     let instruction_opt = match opcode(instruction_bits) {
         0b_0110111 => Some(Instruction::U(Utype {
             rd: rd(instruction_bits),
@@ -436,6 +471,8 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 0b_010 => Some(ItypeInstruction::LW),
                 0b_100 => Some(ItypeInstruction::LBU),
                 0b_101 => Some(ItypeInstruction::LHU),
+                0b_110 if rv64 => Some(ItypeInstruction::LWU),
+                0b_011 if rv64 => Some(ItypeInstruction::LD),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -459,18 +496,18 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 0b_111 => Some(ItypeInstruction::ANDI),
                 // I-type special ALU instructions
                 0b_001 | 0b_101 => {
-                    let funct7_value = funct7(instruction_bits);
-                    let inst_opt = match (funct3_value, funct7_value) {
-                        (0b_001, 0b_0000000) => Some(ItypeShiftInstruction::SLLI),
-                        (0b_101, 0b_0000000) => Some(ItypeShiftInstruction::SRLI),
-                        (0b_101, 0b_0100000) => Some(ItypeShiftInstruction::SRAI),
+                    let top6_value = funct7(instruction_bits) >> 1;
+                    let inst_opt = match (funct3_value, top6_value) {
+                        (0b_001, 0b_000000) => Some(ItypeShiftInstruction::SLLI),
+                        (0b_101, 0b_000000) => Some(ItypeShiftInstruction::SRLI),
+                        (0b_101, 0b_010000) => Some(ItypeShiftInstruction::SRAI),
                         _ => None,
                     };
                     return inst_opt.map(|inst| {
                         RV32I(Instruction::IShift(ItypeShift {
                             rs1: rs1(instruction_bits),
                             rd: rd(instruction_bits),
-                            shamt: itype_immediate(instruction_bits) & 0x1F,
+                            shamt: itype_immediate(instruction_bits) & R::shift_mask() as i32,
                             inst,
                         }))
                     });
@@ -511,6 +548,7 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                 0b_000 => Some(StypeInstruction::SB),
                 0b_001 => Some(StypeInstruction::SH),
                 0b_010 => Some(StypeInstruction::SW),
+                0b_011 if rv64 => Some(StypeInstruction::SD),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -611,7 +649,54 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
                     _ => None,
                 }
             }
-        },
+        }
+        0b_0011011 if rv64 => {
+            let funct3_value = funct3(instruction_bits);
+            match funct3_value {
+                0b_000 => Some(Instruction::I(Itype {
+                    rs1: rs1(instruction_bits),
+                    rd: rd(instruction_bits),
+                    imm: itype_immediate(instruction_bits),
+                    inst: ItypeInstruction::ADDIW,
+                })),
+                0b_001 | 0b_101 => {
+                    let funct7_value = funct7(instruction_bits);
+                    let inst_opt = match (funct3_value, funct7_value) {
+                        (0b_001, 0b_0000000) => Some(ItypeShiftInstruction::SLLIW),
+                        (0b_101, 0b_0000000) => Some(ItypeShiftInstruction::SRLIW),
+                        (0b_101, 0b_0100000) => Some(ItypeShiftInstruction::SRAIW),
+                        _ => None,
+                    };
+                    return inst_opt.map(|inst| {
+                        RV32I(Instruction::IShift(ItypeShift {
+                            rs1: rs1(instruction_bits),
+                            rd: rd(instruction_bits),
+                            shamt: itype_immediate(instruction_bits) & 0x1F,
+                            inst,
+                        }))
+                    });
+                }
+                _ => None,
+            }
+        }
+        0b_0111011 if rv64 => {
+            let inst_opt = match (funct3(instruction_bits), funct7(instruction_bits)) {
+                (0b_000, 0b_0000000) => Some(RtypeInstruction::ADDW),
+                (0b_000, 0b_0100000) => Some(RtypeInstruction::SUBW),
+                (0b_001, 0b_0000000) => Some(RtypeInstruction::SLLW),
+                (0b_101, 0b_0000000) => Some(RtypeInstruction::SRLW),
+                (0b_101, 0b_0100000) => Some(RtypeInstruction::SRAW),
+                _ => None,
+            };
+            inst_opt.map(|inst| {
+                Instruction::R(Rtype {
+                    rs2: rs2(instruction_bits),
+                    rs1: rs1(instruction_bits),
+                    rd: rd(instruction_bits),
+                    inst,
+                })
+            })
+        }
         _ => None,
     };
     instruction_opt.map(RV32I)

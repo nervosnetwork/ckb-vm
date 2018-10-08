@@ -10,7 +10,7 @@ pub fn test_invalid_write() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run(&buffer, &[b"invalidwrite".to_vec()]);
+    let result = run::<u32>(&buffer, &[b"invalidwrite".to_vec()]);
     assert!(result.is_err());
 }
 
@@ -20,6 +20,6 @@ pub fn test_invalid_exec() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run(&buffer, &[b"invalidexec".to_vec()]);
+    let result = run::<u32>(&buffer, &[b"invalidexec".to_vec()]);
     assert!(result.is_err());
 }

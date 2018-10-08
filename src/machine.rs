@@ -1,5 +1,5 @@
 use super::bits::{rounddown, roundup};
-use super::decoder::{build_rv32imac_decoder, Decoder};
+use super::decoder::{build_imac_decoder, Decoder};
 use super::instructions::Register;
 use super::memory::mmu::Mmu;
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
@@ -114,7 +114,7 @@ where
             registers: [R::zero(); RISCV_GENERAL_REGISTER_NUMBER],
             pc: R::zero(),
             memory: Mmu::default(),
-            decoder: build_rv32imac_decoder(),
+            decoder: build_imac_decoder::<R>(),
             running: false,
             exit_code: 0,
         }
@@ -188,7 +188,7 @@ where
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
-            let address = self.registers[SP].overflowing_sub(R::from_usize(4)).0;
+            let address = self.registers[SP].overflowing_sub(R::from_usize(R::bits() / 8)).0;
             self.memory.store32(address.to_usize(), value.to_u32())?;
             self.registers[SP] = address;
         }

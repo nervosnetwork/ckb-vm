@@ -8,13 +8,18 @@ use super::{Execute, Instruction as GenericInstruction, Instruction::RV32M};
 #[derive(Debug)]
 pub enum RtypeInstruction {
     MUL,
+    MULW,
     MULH,
     MULHSU,
     MULHU,
     DIV,
+    DIVW,
     DIVU,
+    DIVUW,
     REM,
+    REMW,
     REMU,
+    REMUW,
 }
 
 type Rtype = super::Rtype<RtypeInstruction>;
@@ -33,6 +38,10 @@ impl Execute for Rtype {
             RtypeInstruction::MUL => {
                 let (value, _) = rs1_value.overflowing_mul(rs2_value);
                 update_register(machine, self.rd, value);
+            }
+            RtypeInstruction::MULW => {
+                let (value, _) = rs1_value.zero_extend(32).overflowing_mul(rs2_value.zero_extend(32));
+                update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::MULH => {
                 let value = rs1_value.overflowing_mul_high_signed(rs2_value);
@@ -70,6 +79,24 @@ impl Execute for Rtype {
                 };
                 update_register(machine, self.rd, value);
             }
+            RtypeInstruction::DIVW => {
+                let rs1_value = rs1_value.sign_extend(32);
+                let rs2_value = rs2_value.sign_extend(32);
+                let value = if rs2_value == R::zero() {
+                    // This is documented in RISC-V spec, when divided by
+                    // 0, RISC-V machine would return -1 in DIV instead of
+                    // trapping.
+                    R::zero().overflowing_sub(R::one()).0
+                } else {
+                    let (value, overflow) = rs1_value.overflowing_div_signed(rs2_value);
+                    if overflow {
+                        R::min_value()
+                    } else {
+                        value.sign_extend(32)
+                    }
+                };
+                update_register(machine, self.rd, value);
+            }
             RtypeInstruction::DIVU => {
                 let value = if rs2_value == R::zero() {
                     // This is documented in RISC-V spec, when divided by
@@ -80,6 +107,19 @@ impl Execute for Rtype {
                     rs1_value.overflowing_div(rs2_value).0
                 };
                 update_register(machine, self.rd, value);
+            }
+            RtypeInstruction::DIVUW => {
+                let rs1_value = rs1_value.zero_extend(32);
+                let rs2_value = rs2_value.zero_extend(32);
+                let value = if rs2_value == R::zero() {
+                    // This is documented in RISC-V spec, when divided by
+                    // 0, RISC-V machine would return 2**L - 1 for unsigned integer
+                    // in DIV instead of trapping.
+                    R::max_value()
+                } else {
+                    rs1_value.overflowing_div(rs2_value).0
+                };
+                update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::REM => {
                 let value = if rs2_value == R::zero() {
@@ -94,6 +134,21 @@ impl Execute for Rtype {
                 };
                 update_register(machine, self.rd, value);
             }
+            RtypeInstruction::REMW => {
+                let rs1_value = rs1_value.sign_extend(32);
+                let rs2_value = rs2_value.sign_extend(32);
+                let value = if rs2_value == R::zero() {
+                    rs1_value
+                } else {
+                    let (value, overflow) = rs1_value.overflowing_rem_signed(rs2_value);
+                    if overflow {
+                        R::zero()
+                    } else {
+                        value
+                    }
+                };
+                update_register(machine, self.rd, value.sign_extend(32));
+            }
             RtypeInstruction::REMU => {
                 let value = if rs2_value == R::zero() {
                     rs1_value
@@ -101,6 +156,16 @@ impl Execute for Rtype {
                     rs1_value.overflowing_rem(rs2_value).0
                 };
                 update_register(machine, self.rd, value);
+            }
+            RtypeInstruction::REMUW => {
+                let rs1_value = rs1_value.zero_extend(32);
+                let rs2_value = rs2_value.zero_extend(32);
+                let value = if rs2_value == R::zero() {
+                    rs1_value
+                } else {
+                    rs1_value.overflowing_rem(rs2_value).0
+                };
+                update_register(machine, self.rd, value.sign_extend(32));
             }
         }
         Ok(None)
@@ -119,11 +184,17 @@ impl Instruction {
     }
 }
 
-pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
-    if opcode(instruction_bits) != 0b_0110011 || funct7(instruction_bits) != 0b_0000001 {
-        None
-    } else {
-        let inst_opt = match funct3(instruction_bits) {
+pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction> {
+    let bit_length = R::bits();
+    if bit_length != 32 && bit_length != 64 {
+        return None;
+    }
+    let rv64 = bit_length == 64;
+    if funct7(instruction_bits) != 0b_0000001 {
+        return None;
+    }
+    let inst_opt = match opcode(instruction_bits) {
+        0b_0110011 => match funct3(instruction_bits) {
             0b_000 => Some(RtypeInstruction::MUL),
             0b_001 => Some(RtypeInstruction::MULH),
             0b_010 => Some(RtypeInstruction::MULHSU),
@@ -133,14 +204,23 @@ pub fn factory(instruction_bits: u32) -> Option<GenericInstruction> {
             0b_110 => Some(RtypeInstruction::REM),
             0b_111 => Some(RtypeInstruction::REMU),
             _ => None,
-        };
-        inst_opt.map(|inst| {
-            RV32M(Instruction(Rtype {
-                rd: rd(instruction_bits),
-                rs1: rs1(instruction_bits),
-                rs2: rs2(instruction_bits),
-                inst,
-            }))
-        })
-    }
+        },
+        0b_0111011 if rv64 => match funct3(instruction_bits) {
+            0b_000 => Some(RtypeInstruction::MULW),
+            0b_100 => Some(RtypeInstruction::DIVW),
+            0b_101 => Some(RtypeInstruction::DIVUW),
+            0b_110 => Some(RtypeInstruction::REMW),
+            0b_111 => Some(RtypeInstruction::REMUW),
+            _ => None,
+        },
+        _ => None,
+    };
+    inst_opt.map(|inst| {
+        RV32M(Instruction(Rtype {
+            rd: rd(instruction_bits),
+            rs1: rs1(instruction_bits),
+            rs2: rs2(instruction_bits),
+            inst,
+        }))
+    })
 }

@@ -10,7 +10,7 @@ pub fn test_andi() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run(&buffer, &vec![b"andi".to_vec()]);
+    let result = run::<u32>(&buffer, &vec![b"andi".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -21,7 +21,7 @@ pub fn test_nop() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run(&buffer, &vec![b"nop".to_vec()]);
+    let result = run::<u32>(&buffer, &vec![b"nop".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }

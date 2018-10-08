@@ -96,6 +96,19 @@ where
         reader.read_u32::<LittleEndian>().map_err(Error::IO)
     }
 
+    fn load64(&mut self, addr: usize) -> Result<u64, Error> {
+        let memory = self.borrow();
+        if addr + 8 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut reader = Cursor::new(memory);
+        reader
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
+        reader.read_u64::<LittleEndian>().map_err(Error::IO)
+    }
+
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
         let memory = self.borrow_mut();
         if addr + 1 > memory.len() {
@@ -130,6 +143,18 @@ where
             .seek(SeekFrom::Start(addr as u64))
             .map_err(Error::IO)?;
         writer.write_u32::<LittleEndian>(value).map_err(Error::IO)
+    }
+
+    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error> {
+        let memory = self.borrow_mut();
+        if addr + 8 > memory.len() {
+            return Err(Error::OutOfBound);
+        }
+        let mut writer = Cursor::new(memory);
+        writer
+            .seek(SeekFrom::Start(addr as u64))
+            .map_err(Error::IO)?;
+        writer.write_u64::<LittleEndian>(value).map_err(Error::IO)
     }
 
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
