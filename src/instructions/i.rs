@@ -7,8 +7,8 @@ use super::utils::{
     stype_immediate, update_register, utype_immediate,
 };
 use super::{
-    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I,
-    RegisterIndex, UImmediate,
+    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I, RegisterIndex,
+    UImmediate,
 };
 use std::cmp::Ordering;
 
@@ -178,7 +178,9 @@ impl Execute for Rtype {
             }
             RtypeInstruction::SRAW => {
                 let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
-                let value = machine.registers()[self.rs1].sign_extend(32).signed_shr(shift_value);
+                let value = machine.registers()[self.rs1]
+                    .sign_extend(32)
+                    .signed_shr(shift_value);
                 update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::SLT => {
@@ -253,12 +255,24 @@ impl Execute for ItypeShift {
         machine: &mut Mac,
     ) -> Result<Option<R>, Error> {
         match &self.inst {
-            ItypeShiftInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SLLIW => common::slliw(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SRLIW => common::srliw(machine, self.rd, self.rs1, self.shamt as u32),
-            ItypeShiftInstruction::SRAIW => common::sraiw(machine, self.rd, self.rs1, self.shamt as u32),
+            ItypeShiftInstruction::SLLI => {
+                common::slli(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SRLI => {
+                common::srli(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SRAI => {
+                common::srai(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SLLIW => {
+                common::slliw(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SRLIW => {
+                common::srliw(machine, self.rd, self.rs1, self.shamt as u32)
+            }
+            ItypeShiftInstruction::SRAIW => {
+                common::sraiw(machine, self.rd, self.rs1, self.shamt as u32)
+            }
         }
         Ok(None)
     }
@@ -649,7 +663,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                     _ => None,
                 }
             }
-        }
+        },
         0b_0011011 if rv64 => {
             let funct3_value = funct3(instruction_bits);
             match funct3_value {

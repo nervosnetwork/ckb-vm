@@ -188,7 +188,9 @@ where
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
-            let address = self.registers[SP].overflowing_sub(R::from_usize(R::bits() / 8)).0;
+            let address = self.registers[SP]
+                .overflowing_sub(R::from_usize(R::bits() / 8))
+                .0;
             self.memory.store32(address.to_usize(), value.to_u32())?;
             self.registers[SP] = address;
         }

@@ -592,7 +592,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             Some(Instruction::Iu(ItypeU::new(
                 instruction_bits,
                 fld_uimmediate(instruction_bits),
-                ItypeUInstruction::LD
+                ItypeUInstruction::LD,
             )))
         },
         // Reserved

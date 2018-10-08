@@ -40,7 +40,9 @@ impl Execute for Rtype {
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::MULW => {
-                let (value, _) = rs1_value.zero_extend(32).overflowing_mul(rs2_value.zero_extend(32));
+                let (value, _) = rs1_value
+                    .zero_extend(32)
+                    .overflowing_mul(rs2_value.zero_extend(32));
                 update_register(machine, self.rd, value.sign_extend(32));
             }
             RtypeInstruction::MULH => {

@@ -342,7 +342,9 @@ pub fn sraiw<Mac: Machine<R, M>, R: Register, M: Memory>(
     rs1: RegisterIndex,
     shamt: UImmediate,
 ) {
-    let value = machine.registers()[rs1].sign_extend(32).signed_shr(shamt as usize);
+    let value = machine.registers()[rs1]
+        .sign_extend(32)
+        .signed_shr(shamt as usize);
     update_register(machine, rd, value.sign_extend(32));
 }
 
