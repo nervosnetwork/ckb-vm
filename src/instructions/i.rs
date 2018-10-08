@@ -7,7 +7,7 @@ use super::utils::{
     stype_immediate, update_register, utype_immediate,
 };
 use super::{
-    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::RV32I,
+    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I,
     RegisterIndex, UImmediate,
 };
 use std::cmp::Ordering;
@@ -504,7 +504,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                         _ => None,
                     };
                     return inst_opt.map(|inst| {
-                        RV32I(Instruction::IShift(ItypeShift {
+                        I(Instruction::IShift(ItypeShift {
                             rs1: rs1(instruction_bits),
                             rd: rd(instruction_bits),
                             shamt: itype_immediate(instruction_bits) & R::shift_mask() as i32,
@@ -668,7 +668,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                         _ => None,
                     };
                     return inst_opt.map(|inst| {
-                        RV32I(Instruction::IShift(ItypeShift {
+                        I(Instruction::IShift(ItypeShift {
                             rs1: rs1(instruction_bits),
                             rd: rd(instruction_bits),
                             shamt: itype_immediate(instruction_bits) & 0x1F,
@@ -699,5 +699,5 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
         }
         _ => None,
     };
-    instruction_opt.map(RV32I)
+    instruction_opt.map(I)
 }

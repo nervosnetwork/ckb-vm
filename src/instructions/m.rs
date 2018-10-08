@@ -3,7 +3,7 @@ use super::super::memory::Memory;
 use super::super::Error;
 use super::register::Register;
 use super::utils::{funct3, funct7, opcode, rd, rs1, rs2, update_register};
-use super::{Execute, Instruction as GenericInstruction, Instruction::RV32M};
+use super::{Execute, Instruction as GenericInstruction, Instruction::M};
 
 #[derive(Debug)]
 pub enum RtypeInstruction {
@@ -216,7 +216,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
         _ => None,
     };
     inst_opt.map(|inst| {
-        RV32M(Instruction(Rtype {
+        M(Instruction(Rtype {
             rd: rd(instruction_bits),
             rs1: rs1(instruction_bits),
             rs2: rs2(instruction_bits),

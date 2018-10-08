@@ -2,8 +2,8 @@ mod common;
 mod register;
 mod utils;
 
-pub mod rv32i;
-pub mod rv32m;
+pub mod i;
+pub mod m;
 pub mod rvc;
 
 pub use self::register::Register;
@@ -15,8 +15,8 @@ use std::fmt::{self, Display};
 #[derive(Debug)]
 pub enum Instruction {
     RVC(rvc::Instruction),
-    RV32I(rv32i::Instruction),
-    RV32M(rv32m::Instruction),
+    I(i::Instruction),
+    M(m::Instruction),
 }
 
 impl Instruction {
@@ -25,8 +25,8 @@ impl Instruction {
         machine: &mut Mac,
     ) -> Result<(), Error> {
         match self {
-            Instruction::RV32I(instruction) => instruction.execute(machine),
-            Instruction::RV32M(instruction) => instruction.execute(machine),
+            Instruction::I(instruction) => instruction.execute(machine),
+            Instruction::M(instruction) => instruction.execute(machine),
             Instruction::RVC(instruction) => instruction.execute(machine),
         }
     }

@@ -1,4 +1,4 @@
-use super::instructions::{rv32i, rv32m, rvc, Instruction, InstructionFactory, Register};
+use super::instructions::{i, m, rvc, Instruction, InstructionFactory, Register};
 use super::memory::Memory;
 use super::Error;
 
@@ -68,7 +68,7 @@ impl Decoder {
 pub fn build_imac_decoder<R: Register>() -> Decoder {
     let mut decoder = Decoder::default();
     decoder.add_instruction_factory(rvc::factory::<R>);
-    decoder.add_instruction_factory(rv32i::factory::<R>);
-    decoder.add_instruction_factory(rv32m::factory::<R>);
+    decoder.add_instruction_factory(i::factory::<R>);
+    decoder.add_instruction_factory(m::factory::<R>);
     decoder
 }
