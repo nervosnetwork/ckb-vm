@@ -143,7 +143,7 @@ where
         Ok(())
     }
 
-    pub fn run(&mut self, args: &[String]) -> Result<u8, Error> {
+    pub fn run(&mut self, args: &[Vec<u8>]) -> Result<u8, Error> {
         self.running = true;
         self.initialize_stack(args)?;
         while self.running {
@@ -157,7 +157,7 @@ where
         Ok(self.exit_code)
     }
 
-    fn initialize_stack(&mut self, args: &[String]) -> Result<(), Error> {
+    fn initialize_stack(&mut self, args: &[Vec<u8>]) -> Result<(), Error> {
         // Initialize stack space
         self.memory.mmap(
             RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE,
@@ -171,7 +171,7 @@ where
         // of each argv object.
         let mut values = vec![args.len() as u32];
         for arg in args {
-            let bytes = arg.as_bytes();
+            let bytes = arg.as_slice();
             let len = bytes.len() as u32 + 1;
             let address = self.registers[SP] - len;
 
