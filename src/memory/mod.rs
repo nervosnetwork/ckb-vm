@@ -34,11 +34,13 @@ pub trait Memory {
     fn load8(&mut self, addr: usize) -> Result<u8, Error>;
     fn load16(&mut self, addr: usize) -> Result<u16, Error>;
     fn load32(&mut self, addr: usize) -> Result<u32, Error>;
+    fn load64(&mut self, addr: usize) -> Result<u64, Error>;
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error>;
 
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error>;
     fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error>;
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
+    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
 }

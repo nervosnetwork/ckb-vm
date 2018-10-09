@@ -1,6 +1,4 @@
-
-typedef signed long long int 	int64_t;
-typedef unsigned long long int 	uint64_t;
+#include <stdint.h>
 
 int main() {
   int small = 0;

@@ -190,16 +190,16 @@ impl Mmu {
         }
     }
 
-    fn load(&mut self, addr: usize, bytes: usize, prot: u32) -> Result<u32, Error> {
-        debug_assert!(bytes == 1 || bytes == 2 || bytes == 4);
+    fn load(&mut self, addr: usize, bytes: usize, prot: u32) -> Result<u64, Error> {
+        debug_assert!(bytes == 1 || bytes == 2 || bytes == 4 || bytes == 8);
         let page_addr = round_page(addr);
         let first_page_bytes = min(bytes, RISCV_PAGESIZE - (addr - page_addr));
         let mut shift = 0;
-        let mut value: u32 = 0;
+        let mut value: u64 = 0;
         {
             let page = self.fetch_page(page_addr, prot)?;
             for i in 0..first_page_bytes {
-                value |= u32::from(page[addr - page_addr + i]) << shift;
+                value |= u64::from(page[addr - page_addr + i]) << shift;
                 shift += 8;
             }
         }
@@ -207,7 +207,7 @@ impl Mmu {
         if second_page_bytes > 0 {
             let second_page = self.fetch_page(page_addr + RISCV_PAGESIZE, PROT_READ)?;
             for &byte in second_page.iter().take(second_page_bytes) {
-                value |= u32::from(byte) << shift;
+                value |= u64::from(byte) << shift;
                 shift += 8;
             }
         }
@@ -273,7 +273,11 @@ impl Memory for Mmu {
     }
 
     fn load32(&mut self, addr: usize) -> Result<u32, Error> {
-        self.load(addr, 4, PROT_READ)
+        self.load(addr, 4, PROT_READ).map(|v| v as u32)
+    }
+
+    fn load64(&mut self, addr: usize) -> Result<u64, Error> {
+        self.load(addr, 8, PROT_READ)
     }
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
@@ -315,6 +319,23 @@ impl Memory for Mmu {
                 ((value >> 8) & 0xFF) as u8,
                 ((value >> 16) & 0xFF) as u8,
                 ((value >> 24) & 0xFF) as u8,
+            ],
+        )
+    }
+
+    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error> {
+        // RISC-V is little-endian by specification
+        self.store_bytes(
+            addr,
+            &[
+                (value & 0xFF) as u8,
+                ((value >> 8) & 0xFF) as u8,
+                ((value >> 16) & 0xFF) as u8,
+                ((value >> 24) & 0xFF) as u8,
+                ((value >> 32) & 0xFF) as u8,
+                ((value >> 40) & 0xFF) as u8,
+                ((value >> 48) & 0xFF) as u8,
+                ((value >> 56) & 0xFF) as u8,
             ],
         )
     }

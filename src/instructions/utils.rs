@@ -1,5 +1,6 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
+use super::register::Register;
 use RISCV_GENERAL_REGISTER_NUMBER;
 
 // Inspired from https://github.com/riscv/riscv-isa-sim/blob/master/riscv/decode.h#L105-L106
@@ -74,10 +75,10 @@ pub fn utype_immediate(instruction_bits: u32) -> i32 {
     xs(instruction_bits, 12, 20, 12) as i32
 }
 
-pub fn update_register<Mac: Machine<u32, M>, M: Memory>(
+pub fn update_register<Mac: Machine<R, M>, R: Register, M: Memory>(
     machine: &mut Mac,
     register_index: usize,
-    value: u32,
+    value: R,
 ) {
     let register_index = register_index % RISCV_GENERAL_REGISTER_NUMBER;
     // In RISC-V, x0 is a special zero register with the following properties:

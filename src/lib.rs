@@ -9,6 +9,7 @@ pub mod instructions;
 pub mod machine;
 pub mod memory;
 
+use instructions::Register;
 use machine::DefaultMachine;
 use memory::mmu::Mmu;
 use std::io::Error as IOError;
@@ -71,15 +72,15 @@ pub enum Error {
     Unaligned,
     OutOfBound,
     InvalidInstruction(u32),
-    InvalidEcall(u32),
+    InvalidEcall(u64),
     IO(IOError),
     MaximumMmappingReached,
     InvalidPermission,
     Unimplemented,
 }
 
-pub fn run(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<Mmu>::default();
+pub fn run<R: Register>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+    let mut machine = DefaultMachine::<R, Mmu>::default();
     machine.load(program)?;
     machine.run(args)
 }
