@@ -1,5 +1,5 @@
 use super::super::{Error, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
-use super::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
+use super::{round_page, Memory, Page, PROT_EXEC, PROT_READ, PROT_WRITE};
 
 use std::cmp::min;
 use std::rc::Rc;
@@ -9,11 +9,6 @@ pub const MAX_VIRTUAL_MEMORY_ENTRIES: usize = 64;
 const MAX_PAGES: usize = RISCV_MAX_MEMORY / RISCV_PAGESIZE;
 const MAX_TLB_ENTRIES: usize = 16;
 const INVALID_PAGE_INDEX: u8 = 0xFF;
-
-#[inline(always)]
-fn round_page(x: usize) -> usize {
-    x & (!(RISCV_PAGESIZE - 1))
-}
 
 /// Virtual memory entry that only keeps track of established memory mapping
 /// (mostly, if not all, created via mmap)
@@ -50,8 +45,6 @@ pub struct TlbEntry {
     prot: u32,
     page_data_index: usize,
 }
-
-type Page = [u8; RISCV_PAGESIZE];
 
 /// An MMU implementation with proper protection schemes. Notice this is a correct
 /// soft MMU, not necessarily a fast MMU. For the best performance, we should

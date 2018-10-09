@@ -1,7 +1,6 @@
 use super::bits::{rounddown, roundup};
 use super::decoder::{build_imac_decoder, Decoder};
 use super::instructions::Register;
-use super::memory::mmu::Mmu;
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::{
     Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
@@ -103,17 +102,17 @@ where
 impl<R, M> DefaultMachine<R, M>
 where
     R: Register,
-    M: Memory,
+    M: Memory + Default,
 {
     // By default, we are using a default machine with proper MMU implementation now
-    pub fn default() -> DefaultMachine<R, Mmu> {
+    pub fn default() -> DefaultMachine<R, M> {
         // While a real machine might use whatever random data left in the memory(or
         // random scrubbed data for security), we are initializing everything to 0 here
         // for deterministic behavior.
         DefaultMachine {
             registers: [R::zero(); RISCV_GENERAL_REGISTER_NUMBER],
             pc: R::zero(),
-            memory: Mmu::default(),
+            memory: M::default(),
             decoder: build_imac_decoder::<R>(),
             running: false,
             exit_code: 0,

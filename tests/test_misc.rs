@@ -1,6 +1,6 @@
 extern crate ckb_vm;
 
-use ckb_vm::run;
+use ckb_vm::{run, SparseMemory};
 use std::fs::File;
 use std::io::Read;
 
@@ -10,7 +10,7 @@ pub fn test_andi() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32>(&buffer, &vec![b"andi".to_vec()]);
+    let result = run::<u32, SparseMemory>(&buffer, &vec![b"andi".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -21,7 +21,7 @@ pub fn test_nop() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32>(&buffer, &vec![b"nop".to_vec()]);
+    let result = run::<u32, SparseMemory>(&buffer, &vec![b"nop".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
