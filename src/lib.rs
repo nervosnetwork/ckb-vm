@@ -8,15 +8,18 @@ pub mod decoder;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
+pub mod syscalls;
 
-use instructions::Register;
-use machine::DefaultMachine;
-use memory::Memory;
 use std::io::Error as IOError;
 
+pub use instructions::Register;
+pub use machine::{CoreMachine, DefaultMachine, Machine};
 pub use memory::flat::FlatMemory;
 pub use memory::mmu::Mmu;
 pub use memory::sparse::SparseMemory;
+pub use memory::Memory;
+
+pub use syscalls::Syscalls;
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
 pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;

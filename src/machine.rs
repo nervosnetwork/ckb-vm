@@ -1,43 +1,49 @@
 use super::bits::{rounddown, roundup};
-use super::decoder::{build_imac_decoder, Decoder};
+use super::decoder::build_imac_decoder;
 use super::instructions::Register;
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
+use super::syscalls::Syscalls;
 use super::{
     Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
     RISCV_PAGESIZE, SP,
 };
 use goblin::elf::program_header::PT_LOAD;
 use goblin::elf::Elf;
+use std::cmp::max;
 use std::fmt::{self, Display};
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
-pub trait Machine<W: Register, M: Memory> {
-    fn pc(&self) -> W;
-    fn set_pc(&mut self, next_pc: W);
+const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+
+// This is the core part of RISC-V that only deals with data part, it
+// is extracted from Machine so we can handle lifetime logic in dynamic
+// syscall support.
+pub trait CoreMachine<R: Register, M: Memory> {
+    fn pc(&self) -> R;
+    fn set_pc(&mut self, next_pc: R);
     fn memory(&self) -> &M;
     fn memory_mut(&mut self) -> &mut M;
-    fn registers(&self) -> &[W];
-    fn registers_mut(&mut self) -> &mut [W];
+    fn registers(&self) -> &[R];
+    fn registers_mut(&mut self) -> &mut [R];
+    // End address of elf segment
+    fn elf_end(&self) -> usize;
+    fn set_elf_end(&mut self, elf_end: usize);
+}
 
+pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
     fn ecall(&mut self) -> Result<(), Error>;
     fn ebreak(&mut self) -> Result<(), Error>;
 }
 
-const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
-
-pub struct DefaultMachine<R: Register, M: Memory> {
-    // TODO: while CKB doesn't need it, other environment could benefit from
-    // parameterized register size.
+pub struct DefaultCoreMachine<R: Register, M: Memory> {
     pub registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pub pc: R,
     pub memory: M,
-
-    decoder: Decoder,
-    running: bool,
-    exit_code: u8,
+    pub elf_end: usize,
 }
 
-impl<R: Register, M: Memory> Machine<R, M> for DefaultMachine<R, M> {
+impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
     fn pc(&self) -> R {
         self.pc
     }
@@ -62,15 +68,108 @@ impl<R: Register, M: Memory> Machine<R, M> for DefaultMachine<R, M> {
         &mut self.registers
     }
 
+    fn elf_end(&self) -> usize {
+        self.elf_end
+    }
+
+    fn set_elf_end(&mut self, elf_end: usize) {
+        self.elf_end = elf_end;
+    }
+}
+
+impl<R, M> Default for DefaultCoreMachine<R, M>
+where
+    R: Register,
+    M: Memory + Default,
+{
+    fn default() -> DefaultCoreMachine<R, M> {
+        // While a real machine might use whatever random data left in the memory(or
+        // random scrubbed data for security), we are initializing everything to 0 here
+        // for deterministic behavior.
+        DefaultCoreMachine {
+            registers: [R::zero(); RISCV_GENERAL_REGISTER_NUMBER],
+            pc: R::zero(),
+            memory: M::default(),
+            elf_end: 0,
+        }
+    }
+}
+
+pub struct DefaultMachine<R: Register, M: Memory> {
+    core: DefaultCoreMachine<R, M>,
+
+    syscalls: Vec<Box<Syscalls<R, M>>>,
+    running: bool,
+    exit_code: u8,
+}
+
+impl<R: Register, M: Memory> Deref for DefaultMachine<R, M> {
+    type Target = DefaultCoreMachine<R, M>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.core
+    }
+}
+
+impl<R: Register, M: Memory> DerefMut for DefaultMachine<R, M> {
+    fn deref_mut(&mut self) -> &mut DefaultCoreMachine<R, M> {
+        &mut self.core
+    }
+}
+
+impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<R, M> {
+    fn pc(&self) -> R {
+        self.pc
+    }
+
+    fn set_pc(&mut self, next_pc: R) {
+        self.pc = next_pc;
+    }
+
+    fn memory(&self) -> &M {
+        &self.memory
+    }
+
+    fn memory_mut(&mut self) -> &mut M {
+        &mut self.memory
+    }
+
+    fn registers(&self) -> &[R] {
+        &self.registers
+    }
+
+    fn registers_mut(&mut self) -> &mut [R] {
+        &mut self.registers
+    }
+
+    fn elf_end(&self) -> usize {
+        self.elf_end
+    }
+
+    fn set_elf_end(&mut self, elf_end: usize) {
+        self.elf_end = elf_end;
+    }
+}
+
+impl<R: Register, M: Memory> Machine<R, M> for DefaultMachine<R, M> {
     fn ecall(&mut self) -> Result<(), Error> {
-        match self.registers[A7].to_usize() {
+        let code = self.registers[A7].to_u64();
+        match code {
             93 => {
                 // exit
                 self.exit_code = self.registers[A0].to_u8();
                 self.running = false;
                 Ok(())
             }
-            _ => Err(Error::InvalidEcall(self.registers[A7].to_u64())),
+            _ => {
+                for syscall in &mut self.syscalls {
+                    let processed = syscall.ecall(&mut self.core)?;
+                    if processed {
+                        return Ok(());
+                    }
+                }
+                Err(Error::InvalidEcall(code))
+            }
         }
     }
 
@@ -99,24 +198,28 @@ where
     }
 }
 
+impl<R, M> Default for DefaultMachine<R, M>
+where
+    R: Register,
+    M: Memory + Default,
+{
+    fn default() -> DefaultMachine<R, M> {
+        DefaultMachine {
+            core: DefaultCoreMachine::default(),
+            syscalls: vec![],
+            running: false,
+            exit_code: 0,
+        }
+    }
+}
+
 impl<R, M> DefaultMachine<R, M>
 where
     R: Register,
     M: Memory + Default,
 {
-    // By default, we are using a default machine with proper MMU implementation now
-    pub fn default() -> DefaultMachine<R, M> {
-        // While a real machine might use whatever random data left in the memory(or
-        // random scrubbed data for security), we are initializing everything to 0 here
-        // for deterministic behavior.
-        DefaultMachine {
-            registers: [R::zero(); RISCV_GENERAL_REGISTER_NUMBER],
-            pc: R::zero(),
-            memory: M::default(),
-            decoder: build_imac_decoder::<R>(),
-            running: false,
-            exit_code: 0,
-        }
+    pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<R, M>>) {
+        self.syscalls.push(syscall);
     }
 
     pub fn load(&mut self, program: &[u8]) -> Result<(), Error> {
@@ -130,6 +233,8 @@ where
                     program_header.p_filesz as usize + padding_start,
                     RISCV_PAGESIZE,
                 );
+                let current_elf_end = self.elf_end();
+                self.set_elf_end(max(aligned_start + aligned_size, current_elf_end));
                 self.memory.mmap(
                     aligned_start,
                     aligned_size,
@@ -141,18 +246,22 @@ where
                 )?;
             }
         }
-        self.pc = R::from_u64(elf.header.e_entry);
+        self.set_pc(R::from_u64(elf.header.e_entry));
         Ok(())
     }
 
     pub fn run(&mut self, args: &[Vec<u8>]) -> Result<u8, Error> {
         self.running = true;
+        for syscall in &mut self.syscalls {
+            syscall.initialize(&mut self.core)?;
+        }
         self.initialize_stack(args)?;
+        let decoder = build_imac_decoder::<R>();
         while self.running {
             let instruction = {
-                let memory = &mut self.memory;
-                let pc = self.pc.to_usize();
-                self.decoder.decode(memory, pc)?
+                let pc = self.pc().to_usize();
+                let memory = self.memory_mut();
+                decoder.decode(memory, pc)?
             };
             instruction.execute(self)?;
         }
