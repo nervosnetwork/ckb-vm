@@ -30,10 +30,7 @@ impl SparseMemory {
 
     fn fetch_page(&mut self, aligned_addr: usize) -> Result<&mut Page, Error> {
         let page = aligned_addr / RISCV_PAGESIZE;
-        if page >= self.indices.len() {
-            return Err(Error::OutOfBound);
-        }
-        let mut index = self.indices[page];
+        let mut index = *(self.indices.get(page).ok_or(Error::OutOfBound)?);
         if index == INVALID_PAGE_INDEX {
             self.pages.push([0; RISCV_PAGESIZE]);
             index = (self.pages.len() - 1) as u16;
@@ -50,8 +47,8 @@ impl SparseMemory {
         let mut value: u64 = 0;
         {
             let page = self.fetch_page(page_addr)?;
-            for i in 0..first_page_bytes {
-                value |= u64::from(page[addr - page_addr + i]) << shift;
+            for &byte in page.iter().skip(addr - page_addr).take(first_page_bytes) {
+                value |= u64::from(byte) << shift;
                 shift += 8;
             }
         }
