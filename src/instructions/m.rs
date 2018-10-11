@@ -74,7 +74,10 @@ impl Execute for Rtype {
                 } else {
                     let (value, overflow) = rs1_value.overflowing_div_signed(rs2_value);
                     if overflow {
-                        R::min_value()
+                        // This is actually -2^(L - 1), where L is R::BITS, we are
+                        // calculating it using (-1) << (L - 1). -1 can be further
+                        // calculated using R::zero() - R::one()
+                        (R::zero().overflowing_sub(R::one()).0) << (R::BITS - 1)
                     } else {
                         value
                     }
@@ -92,7 +95,10 @@ impl Execute for Rtype {
                 } else {
                     let (value, overflow) = rs1_value.overflowing_div_signed(rs2_value);
                     if overflow {
-                        R::min_value()
+                        // This is actually -2^(L - 1), where L is R::BITS, we are
+                        // calculating it using (-1) << (L - 1). -1 can be further
+                        // calculated using R::zero() - R::one()
+                        (R::zero().overflowing_sub(R::one()).0) << (R::BITS - 1)
                     } else {
                         value.sign_extend(32)
                     }
