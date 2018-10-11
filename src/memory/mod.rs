@@ -1,12 +1,20 @@
-use super::Error;
+use super::{Error, RISCV_PAGESIZE};
 use std::rc::Rc;
 
 pub mod flat;
 pub mod mmu;
+pub mod sparse;
 
 pub const PROT_READ: u32 = 0b0001;
 pub const PROT_WRITE: u32 = 0b0010;
 pub const PROT_EXEC: u32 = 0b0100;
+
+#[inline(always)]
+pub fn round_page(x: usize) -> usize {
+    x & (!(RISCV_PAGESIZE - 1))
+}
+
+pub type Page = [u8; RISCV_PAGESIZE];
 
 pub trait Memory {
     // Note this mmap only handles the very low level memory mapping logic.

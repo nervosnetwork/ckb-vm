@@ -8,11 +8,18 @@ pub mod decoder;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
+pub mod syscalls;
 
-use instructions::Register;
-use machine::DefaultMachine;
-use memory::mmu::Mmu;
 use std::io::Error as IOError;
+
+pub use instructions::Register;
+pub use machine::{CoreMachine, DefaultMachine, Machine};
+pub use memory::flat::FlatMemory;
+pub use memory::mmu::Mmu;
+pub use memory::sparse::SparseMemory;
+pub use memory::Memory;
+
+pub use syscalls::Syscalls;
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
 pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;
@@ -79,8 +86,11 @@ pub enum Error {
     Unimplemented,
 }
 
-pub fn run<R: Register>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<R, Mmu>::default();
+pub fn run<R: Register, M: Memory + Default>(
+    program: &[u8],
+    args: &[Vec<u8>],
+) -> Result<u8, Error> {
+    let mut machine = DefaultMachine::<R, M>::default();
     machine.load(program)?;
     machine.run(args)
 }
