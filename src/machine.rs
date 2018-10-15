@@ -287,7 +287,7 @@ where
 impl<R, M> DefaultMachine<R, M>
 where
     R: Register,
-    M: Memory + Default,
+    M: Memory,
 {
     pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<R, M>>) {
         self.syscalls.push(syscall);
