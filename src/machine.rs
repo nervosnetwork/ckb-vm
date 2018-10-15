@@ -29,6 +29,77 @@ pub trait CoreMachine<R: Register, M: Memory> {
     // End address of elf segment
     fn elf_end(&self) -> usize;
     fn set_elf_end(&mut self, elf_end: usize);
+
+    fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
+        let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
+        let program_slice = Rc::new(program.to_vec().into_boxed_slice());
+        for program_header in &elf.program_headers {
+            if program_header.p_type == PT_LOAD {
+                let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
+                let padding_start = program_header.p_vaddr as usize - aligned_start;
+                let aligned_size = roundup(
+                    program_header.p_filesz as usize + padding_start,
+                    RISCV_PAGESIZE,
+                );
+                let current_elf_end = self.elf_end();
+                self.set_elf_end(max(aligned_start + aligned_size, current_elf_end));
+                self.memory_mut().mmap(
+                    aligned_start,
+                    aligned_size,
+                    // TODO: do we need to distinguish between code pages and bss pages,
+                    // then mark code pages as readonly?
+                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                    Some(Rc::clone(&program_slice)),
+                    program_header.p_offset as usize - padding_start,
+                )?;
+            }
+        }
+        self.set_pc(R::from_u64(elf.header.e_entry));
+        Ok(())
+    }
+
+    fn initialize_stack(
+        &mut self,
+        args: &[Vec<u8>],
+        stack_start: usize,
+        stack_size: usize,
+    ) -> Result<(), Error> {
+        self.memory_mut()
+            .mmap(stack_start, stack_size, PROT_READ | PROT_WRITE, None, 0)?;
+        self.registers_mut()[SP] = R::from_usize(stack_start + stack_size);
+        // First value in this array is argc, then it contains the address(pointer)
+        // of each argv object.
+        let mut values = vec![R::from_usize(args.len())];
+        for arg in args {
+            let bytes = arg.as_slice();
+            let len = R::from_usize(bytes.len() + 1);
+            let address = self.registers()[SP].overflowing_sub(len).0;
+
+            self.memory_mut().store_bytes(address.to_usize(), bytes)?;
+            self.memory_mut()
+                .store8(address.to_usize() + bytes.len(), 0)?;
+
+            values.push(address);
+            self.registers_mut()[SP] = address;
+        }
+        // Since we are dealing with a stack, we need to push items in reversed
+        // order
+        for value in values.iter().rev() {
+            let address = self.registers()[SP]
+                .overflowing_sub(R::from_usize(R::BITS / 8))
+                .0;
+
+            self.memory_mut()
+                .store32(address.to_usize(), value.to_u32())?;
+            self.registers_mut()[SP] = address;
+        }
+        if self.registers()[SP].to_usize() < stack_start {
+            // args exceed stack size
+            self.memory_mut().munmap(stack_start, stack_size)?;
+            return Err(Error::OutOfBound);
+        }
+        Ok(())
+    }
 }
 
 pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
@@ -222,41 +293,18 @@ where
         self.syscalls.push(syscall);
     }
 
-    pub fn load(&mut self, program: &[u8]) -> Result<(), Error> {
-        let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
-        let program_slice = Rc::new(program.to_vec().into_boxed_slice());
-        for program_header in &elf.program_headers {
-            if program_header.p_type == PT_LOAD {
-                let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
-                let padding_start = program_header.p_vaddr as usize - aligned_start;
-                let aligned_size = roundup(
-                    program_header.p_filesz as usize + padding_start,
-                    RISCV_PAGESIZE,
-                );
-                let current_elf_end = self.elf_end();
-                self.set_elf_end(max(aligned_start + aligned_size, current_elf_end));
-                self.memory.mmap(
-                    aligned_start,
-                    aligned_size,
-                    // TODO: do we need to distinguish between code pages and bss pages,
-                    // then mark code pages as readonly?
-                    PROT_READ | PROT_WRITE | PROT_EXEC,
-                    Some(Rc::clone(&program_slice)),
-                    program_header.p_offset as usize - padding_start,
-                )?;
-            }
-        }
-        self.set_pc(R::from_u64(elf.header.e_entry));
-        Ok(())
-    }
-
-    pub fn run(&mut self, args: &[Vec<u8>]) -> Result<u8, Error> {
-        self.running = true;
+    pub fn run(&mut self, program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+        self.load_elf(program)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.core)?;
         }
-        self.initialize_stack(args)?;
+        self.initialize_stack(
+            args,
+            RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE,
+            DEFAULT_STACK_SIZE,
+        )?;
         let decoder = build_imac_decoder::<R>();
+        self.running = true;
         while self.running {
             let instruction = {
                 let pc = self.pc().to_usize();
@@ -266,42 +314,5 @@ where
             instruction.execute(self)?;
         }
         Ok(self.exit_code)
-    }
-
-    fn initialize_stack(&mut self, args: &[Vec<u8>]) -> Result<(), Error> {
-        // Initialize stack space
-        self.memory.mmap(
-            RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE,
-            DEFAULT_STACK_SIZE,
-            PROT_READ | PROT_WRITE,
-            None,
-            0,
-        )?;
-        self.registers[SP] = R::from_usize(RISCV_MAX_MEMORY);
-        // First value in this array is argc, then it contains the address(pointer)
-        // of each argv object.
-        let mut values = vec![R::from_usize(args.len())];
-        for arg in args {
-            let bytes = arg.as_slice();
-            let len = R::from_usize(bytes.len() + 1);
-            let address = self.registers[SP].overflowing_sub(len).0;
-
-            self.memory.store_bytes(address.to_usize(), bytes)?;
-            self.memory.store8(address.to_usize() + bytes.len(), 0)?;
-
-            values.push(address);
-            self.registers[SP] = address;
-        }
-
-        // Since we are dealing with a stack, we need to push items in reversed
-        // order
-        for value in values.iter().rev() {
-            let address = self.registers[SP]
-                .overflowing_sub(R::from_usize(R::BITS / 8))
-                .0;
-            self.memory.store32(address.to_usize(), value.to_u32())?;
-            self.registers[SP] = address;
-        }
-        Ok(())
     }
 }

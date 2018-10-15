@@ -59,8 +59,7 @@ pub fn test_custom_syscall() {
 
     let mut machine = DefaultMachine::<u64, SparseMemory>::default();
     machine.add_syscall_module(Box::new(CustomSyscall {}));
-    machine.load(&buffer).unwrap();
-    let result = machine.run(&vec![b"syscall".to_vec()]);
+    let result = machine.run(&buffer, &vec![b"syscall".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 39);
 }

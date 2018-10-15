@@ -90,7 +90,5 @@ pub fn run<R: Register, M: Memory + Default>(
     program: &[u8],
     args: &[Vec<u8>],
 ) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<R, M>::default();
-    machine.load(program)?;
-    machine.run(args)
+    DefaultMachine::<R, M>::default().run(program, args)
 }
