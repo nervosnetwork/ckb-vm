@@ -1,11 +1,11 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
 use super::super::Error;
-use super::register::Register;
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
     stype_immediate, update_register, utype_immediate,
 };
+use super::Register;
 use super::{
     common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I, RegisterIndex,
     UImmediate,
