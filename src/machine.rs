@@ -322,9 +322,10 @@ where
     M: Memory + Default,
 {
     pub fn new(instruction_cycle_func: Box<InstructionCycleFunc>) -> DefaultMachine<R, M> {
-        let mut m = Self::default();
-        m.instruction_cycle_func = Some(instruction_cycle_func);
-        m
+        Self {
+            instruction_cycle_func: Some(instruction_cycle_func),
+            ..Self::default()
+        }
     }
 
     pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<R, M>>) {
