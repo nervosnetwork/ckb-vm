@@ -77,10 +77,8 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
-        reader
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
-        reader.read_u8().map_err(|e| Error::IO(e.kind()))
+        reader.seek(SeekFrom::Start(addr as u64))?;
+        Ok(reader.read_u8()?)
     }
 
     fn load16(&mut self, addr: usize) -> Result<u16, Error> {
@@ -88,13 +86,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
-        reader
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
+        reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        reader
-            .read_u16::<LittleEndian>()
-            .map_err(|e| Error::IO(e.kind()))
+        Ok(reader.read_u16::<LittleEndian>()?)
     }
 
     fn load32(&mut self, addr: usize) -> Result<u32, Error> {
@@ -102,13 +96,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
-        reader
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
+        reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        reader
-            .read_u32::<LittleEndian>()
-            .map_err(|e| Error::IO(e.kind()))
+        Ok(reader.read_u32::<LittleEndian>()?)
     }
 
     fn load64(&mut self, addr: usize) -> Result<u64, Error> {
@@ -116,13 +106,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
-        reader
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
+        reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        reader
-            .read_u64::<LittleEndian>()
-            .map_err(|e| Error::IO(e.kind()))
+        Ok(reader.read_u64::<LittleEndian>()?)
     }
 
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
@@ -130,10 +116,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
-        writer
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
-        writer.write_u8(value).map_err(|e| Error::IO(e.kind()))
+        writer.seek(SeekFrom::Start(addr as u64))?;
+        writer.write_u8(value)?;
+        Ok(())
     }
 
     fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error> {
@@ -141,12 +126,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
-        writer
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
-        writer
-            .write_u16::<LittleEndian>(value)
-            .map_err(|e| Error::IO(e.kind()))
+        writer.seek(SeekFrom::Start(addr as u64))?;
+        writer.write_u16::<LittleEndian>(value)?;
+        Ok(())
     }
 
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
@@ -154,12 +136,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
-        writer
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
-        writer
-            .write_u32::<LittleEndian>(value)
-            .map_err(|e| Error::IO(e.kind()))
+        writer.seek(SeekFrom::Start(addr as u64))?;
+        writer.write_u32::<LittleEndian>(value)?;
+        Ok(())
     }
 
     fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error> {
@@ -167,12 +146,9 @@ impl Memory for FlatMemory {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
-        writer
-            .seek(SeekFrom::Start(addr as u64))
-            .map_err(|e| Error::IO(e.kind()))?;
-        writer
-            .write_u64::<LittleEndian>(value)
-            .map_err(|e| Error::IO(e.kind()))
+        writer.seek(SeekFrom::Start(addr as u64))?;
+        writer.write_u64::<LittleEndian>(value)?;
+        Ok(())
     }
 
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {

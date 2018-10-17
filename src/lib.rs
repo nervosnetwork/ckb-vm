@@ -10,7 +10,7 @@ pub mod machine;
 pub mod memory;
 pub mod syscalls;
 
-use std::io::ErrorKind;
+use std::io::{Error as IOError, ErrorKind};
 
 pub use instructions::{Instruction, Register};
 pub use machine::{CoreMachine, DefaultMachine, Machine};
@@ -85,6 +85,12 @@ pub enum Error {
     MaximumMmappingReached,
     InvalidPermission,
     Unimplemented,
+}
+
+impl From<IOError> for Error {
+    fn from(error: IOError) -> Self {
+        Error::IO(error.kind())
+    }
 }
 
 pub fn run<R: Register, M: Memory + Default>(
