@@ -1,6 +1,6 @@
 use super::bits::{rounddown, roundup};
 use super::decoder::build_imac_decoder;
-use super::instructions::Register;
+use super::instructions::{Instruction, Register};
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::syscalls::Syscalls;
 use super::{
@@ -29,6 +29,12 @@ pub trait CoreMachine<R: Register, M: Memory> {
     // End address of elf segment
     fn elf_end(&self) -> usize;
     fn set_elf_end(&mut self, elf_end: usize);
+    // Current execution cycles, it's up to the actual implementation to
+    // call add_cycles for each instruction/operation to provide cycles.
+    // The implementation might also choose not to do this to ignore this
+    // feature.
+    fn cycles(&self) -> u64;
+    fn add_cycles(&mut self, cycles: u64);
 
     fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
@@ -112,6 +118,7 @@ pub struct DefaultCoreMachine<R: Register, M: Memory> {
     pub pc: R,
     pub memory: M,
     pub elf_end: usize,
+    pub cycles: u64,
 }
 
 impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
@@ -146,6 +153,14 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
     fn set_elf_end(&mut self, elf_end: usize) {
         self.elf_end = elf_end;
     }
+
+    fn cycles(&self) -> u64 {
+        self.cycles
+    }
+
+    fn add_cycles(&mut self, cycles: u64) {
+        self.cycles += cycles;
+    }
 }
 
 impl<R, M> Default for DefaultCoreMachine<R, M>
@@ -162,13 +177,21 @@ where
             pc: R::zero(),
             memory: M::default(),
             elf_end: 0,
+            cycles: 0,
         }
     }
 }
 
+pub type InstructionCycleFunc = Fn(&Instruction) -> u64;
+
 pub struct DefaultMachine<R: Register, M: Memory> {
     core: DefaultCoreMachine<R, M>,
 
+    // We have run benchmarks on secp256k1 verification, the performance
+    // cost of the Box wrapper here is neglectable, hence we are sticking
+    // with Box solution for simplicity now. Later if this becomes an issue,
+    // we can change to static dispatch.
+    instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
     syscalls: Vec<Box<Syscalls<R, M>>>,
     running: bool,
     exit_code: u8,
@@ -219,6 +242,14 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<R, M> {
 
     fn set_elf_end(&mut self, elf_end: usize) {
         self.elf_end = elf_end;
+    }
+
+    fn cycles(&self) -> u64 {
+        self.cycles
+    }
+
+    fn add_cycles(&mut self, cycles: u64) {
+        self.cycles += cycles;
     }
 }
 
@@ -276,6 +307,7 @@ where
 {
     fn default() -> DefaultMachine<R, M> {
         DefaultMachine {
+            instruction_cycle_func: None,
             core: DefaultCoreMachine::default(),
             syscalls: vec![],
             running: false,
@@ -287,8 +319,14 @@ where
 impl<R, M> DefaultMachine<R, M>
 where
     R: Register,
-    M: Memory,
+    M: Memory + Default,
 {
+    pub fn new(instruction_cycle_func: Box<InstructionCycleFunc>) -> DefaultMachine<R, M> {
+        let mut m = Self::default();
+        m.instruction_cycle_func = Some(instruction_cycle_func);
+        m
+    }
+
     pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<R, M>>) {
         self.syscalls.push(syscall);
     }
@@ -312,6 +350,12 @@ where
                 decoder.decode(memory, pc)?
             };
             instruction.execute(self)?;
+            let cycles = self
+                .instruction_cycle_func
+                .as_ref()
+                .map(|f| f(&instruction))
+                .unwrap_or(0);
+            self.add_cycles(cycles);
         }
         Ok(self.exit_code)
     }

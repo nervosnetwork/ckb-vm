@@ -12,7 +12,7 @@ pub mod syscalls;
 
 use std::io::Error as IOError;
 
-pub use instructions::Register;
+pub use instructions::{Instruction, Register};
 pub use machine::{CoreMachine, DefaultMachine, Machine};
 pub use memory::flat::FlatMemory;
 pub use memory::mmu::Mmu;

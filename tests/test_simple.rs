@@ -1,6 +1,6 @@
 extern crate ckb_vm;
 
-use ckb_vm::{run, FlatMemory, SparseMemory};
+use ckb_vm::{run, CoreMachine, DefaultMachine, FlatMemory, Instruction, SparseMemory};
 use std::fs::File;
 use std::io::Read;
 
@@ -35,4 +35,22 @@ pub fn test_simple_instructions_flatmemory() {
     let result = run::<u32, FlatMemory>(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
+}
+
+fn dummy_cycle_func(_i: &Instruction) -> u64 {
+    1
+}
+
+#[test]
+pub fn test_simple_cycles() {
+    let mut file = File::open("tests/programs/simple64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let mut machine = DefaultMachine::<u64, SparseMemory>::new(Box::new(dummy_cycle_func));
+    let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+
+    assert_eq!(CoreMachine::cycles(&machine), 517);
 }
