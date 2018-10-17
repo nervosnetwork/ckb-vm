@@ -114,11 +114,11 @@ pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
 }
 
 pub struct DefaultCoreMachine<R: Register, M: Memory> {
-    pub registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
-    pub pc: R,
-    pub memory: M,
-    pub elf_end: usize,
-    pub cycles: u64,
+    registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
+    pc: R,
+    memory: M,
+    elf_end: usize,
+    cycles: u64,
 }
 
 impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
