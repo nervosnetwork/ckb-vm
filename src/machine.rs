@@ -8,13 +8,25 @@ use super::{
     RISCV_PAGESIZE, SP,
 };
 use goblin::elf::program_header::PT_LOAD;
-use goblin::elf::Elf;
+use goblin::elf::{Elf, Header};
 use std::cmp::max;
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+
+fn elf_bits(header: &Header) -> Option<usize> {
+    // This is documented in ELF specification, we are exacting ELF file
+    // class part here.
+    // Right now we are only supporting 32 and 64 bits, in the future we
+    // might add 128 bits support.
+    match header.e_ident[4] {
+        1 => Some(32),
+        2 => Some(64),
+        _ => None,
+    }
+}
 
 // This is the core part of RISC-V that only deals with data part, it
 // is extracted from Machine so we can handle lifetime logic in dynamic
@@ -38,6 +50,10 @@ pub trait CoreMachine<R: Register, M: Memory> {
 
     fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
+        let bits = elf_bits(&elf.header).ok_or(Error::InvalidElfBits)?;
+        if bits != R::BITS {
+            return Err(Error::InvalidElfBits);
+        }
         let program_slice = Rc::new(program.to_vec().into_boxed_slice());
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {

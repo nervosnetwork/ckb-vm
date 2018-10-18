@@ -10,7 +10,7 @@ pub mod machine;
 pub mod memory;
 pub mod syscalls;
 
-use std::io::Error as IOError;
+use std::io::{Error as IOError, ErrorKind};
 
 pub use instructions::{Instruction, Register};
 pub use machine::{CoreMachine, DefaultMachine, Machine};
@@ -73,17 +73,24 @@ pub const REGISTER_ABI_NAMES: [&str; 32] = [
     "t3", "t4", "t5", "t6",
 ];
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     ParseError,
     Unaligned,
     OutOfBound,
     InvalidInstruction(u32),
     InvalidEcall(u64),
-    IO(IOError),
+    InvalidElfBits,
+    IO(ErrorKind),
     MaximumMmappingReached,
     InvalidPermission,
     Unimplemented,
+}
+
+impl From<IOError> for Error {
+    fn from(error: IOError) -> Self {
+        Error::IO(error.kind())
+    }
 }
 
 pub fn run<R: Register, M: Memory + Default>(
