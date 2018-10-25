@@ -200,7 +200,7 @@ where
 
 pub type InstructionCycleFunc = Fn(&Instruction) -> u64;
 
-pub struct DefaultMachine<R: Register, M: Memory> {
+pub struct DefaultMachine<'a, R: Register, M: Memory> {
     core: DefaultCoreMachine<R, M>,
 
     // We have run benchmarks on secp256k1 verification, the performance
@@ -208,12 +208,12 @@ pub struct DefaultMachine<R: Register, M: Memory> {
     // with Box solution for simplicity now. Later if this becomes an issue,
     // we can change to static dispatch.
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
-    syscalls: Vec<Box<Syscalls<R, M>>>,
+    syscalls: Vec<Box<dyn Syscalls<R, M> + 'a>>,
     running: bool,
     exit_code: u8,
 }
 
-impl<R: Register, M: Memory> Deref for DefaultMachine<R, M> {
+impl<'a, R: Register, M: Memory> Deref for DefaultMachine<'a, R, M> {
     type Target = DefaultCoreMachine<R, M>;
 
     fn deref(&self) -> &Self::Target {
@@ -221,13 +221,13 @@ impl<R: Register, M: Memory> Deref for DefaultMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory> DerefMut for DefaultMachine<R, M> {
+impl<'a, R: Register, M: Memory> DerefMut for DefaultMachine<'a, R, M> {
     fn deref_mut(&mut self) -> &mut DefaultCoreMachine<R, M> {
         &mut self.core
     }
 }
 
-impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<R, M> {
+impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> {
     fn pc(&self) -> R {
         self.pc
     }
@@ -269,7 +269,7 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory> Machine<R, M> for DefaultMachine<R, M> {
+impl<'a, R: Register, M: Memory> Machine<R, M> for DefaultMachine<'a, R, M> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers[A7].to_u64();
         match code {
@@ -297,7 +297,7 @@ impl<R: Register, M: Memory> Machine<R, M> for DefaultMachine<R, M> {
     }
 }
 
-impl<R, M> Display for DefaultMachine<R, M>
+impl<'a, R, M> Display for DefaultMachine<'a, R, M>
 where
     R: Register,
     M: Memory,
@@ -316,12 +316,12 @@ where
     }
 }
 
-impl<R, M> Default for DefaultMachine<R, M>
+impl<'a, R, M> Default for DefaultMachine<'a, R, M>
 where
     R: Register,
     M: Memory + Default,
 {
-    fn default() -> DefaultMachine<R, M> {
+    fn default() -> DefaultMachine<'a, R, M> {
         DefaultMachine {
             instruction_cycle_func: None,
             core: DefaultCoreMachine::default(),
@@ -332,19 +332,19 @@ where
     }
 }
 
-impl<R, M> DefaultMachine<R, M>
+impl<'a, R, M> DefaultMachine<'a, R, M>
 where
     R: Register,
     M: Memory + Default,
 {
-    pub fn new(instruction_cycle_func: Box<InstructionCycleFunc>) -> DefaultMachine<R, M> {
+    pub fn new(instruction_cycle_func: Box<InstructionCycleFunc>) -> DefaultMachine<'a, R, M> {
         Self {
             instruction_cycle_func: Some(instruction_cycle_func),
             ..Self::default()
         }
     }
 
-    pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<R, M>>) {
+    pub fn add_syscall_module(&mut self, syscall: Box<dyn Syscalls<R, M> + 'a>) {
         self.syscalls.push(syscall);
     }
 
