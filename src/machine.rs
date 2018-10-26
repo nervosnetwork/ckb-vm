@@ -1,4 +1,4 @@
-use super::bits::{rounddown, roundup};
+use super::bits::rounddown;
 use super::decoder::build_imac_decoder;
 use super::instructions::{Instruction, Register};
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
@@ -59,21 +59,21 @@ pub trait CoreMachine<R: Register, M: Memory> {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
                 let padding_start = program_header.p_vaddr as usize - aligned_start;
-                let aligned_size = roundup(
-                    program_header.p_filesz as usize + padding_start,
-                    RISCV_PAGESIZE,
-                );
+                // Like a normal mmap, we will align size to pages internally
+                let size = program_header.p_filesz as usize + padding_start;
                 let current_elf_end = self.elf_end();
-                self.set_elf_end(max(aligned_start + aligned_size, current_elf_end));
+                self.set_elf_end(max(aligned_start + size, current_elf_end));
                 self.memory_mut().mmap(
                     aligned_start,
-                    aligned_size,
+                    size,
                     // TODO: do we need to distinguish between code pages and bss pages,
                     // then mark code pages as readonly?
                     PROT_READ | PROT_WRITE | PROT_EXEC,
                     Some(Rc::clone(&program_slice)),
                     program_header.p_offset as usize - padding_start,
                 )?;
+                self.memory_mut()
+                    .store_byte(aligned_start, padding_start, 0)?;
             }
         }
         self.set_pc(R::from_u64(elf.header.e_entry));

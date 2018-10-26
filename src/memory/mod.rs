@@ -50,5 +50,6 @@ pub trait Memory {
     fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error>;
     fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
     fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error>;
+    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
 }
