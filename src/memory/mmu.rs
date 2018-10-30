@@ -2,6 +2,7 @@ use super::super::{Error, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{round_page, Memory, Page, PROT_EXEC, PROT_READ, PROT_WRITE};
 
 use std::cmp::min;
+use std::ptr;
 use std::rc::Rc;
 
 pub const MAX_VIRTUAL_MEMORY_ENTRIES: usize = 64;
@@ -288,6 +289,24 @@ impl Memory for Mmu {
             slice.copy_from_slice(&remaining_data[..bytes]);
 
             remaining_data = &remaining_data[bytes..];
+            current_page_addr += RISCV_PAGESIZE;
+            current_page_offset = 0;
+        }
+        Ok(())
+    }
+
+    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
+        let mut current_page_addr = round_page(addr);
+        let mut current_page_offset = addr - current_page_addr;
+        let mut remaining_size = size;
+        while remaining_size > 0 {
+            let page = self.fetch_page(current_page_addr, PROT_WRITE)?;
+            let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_size);
+            unsafe {
+                let slice_ptr = page[current_page_offset..bytes].as_mut_ptr();
+                ptr::write_bytes(slice_ptr, value, bytes);
+            }
+            remaining_size -= bytes;
             current_page_addr += RISCV_PAGESIZE;
             current_page_offset = 0;
         }

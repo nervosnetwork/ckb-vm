@@ -138,6 +138,24 @@ impl Memory for SparseMemory {
         Ok(())
     }
 
+    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
+        let mut current_page_addr = round_page(addr);
+        let mut current_page_offset = addr - current_page_addr;
+        let mut remaining_size = size;
+        while remaining_size > 0 {
+            let page = self.fetch_page(current_page_addr)?;
+            let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_size);
+            unsafe {
+                let slice_ptr = page[current_page_offset..bytes].as_mut_ptr();
+                ptr::write_bytes(slice_ptr, value, bytes);
+            }
+            remaining_size -= bytes;
+            current_page_addr += RISCV_PAGESIZE;
+            current_page_offset = 0;
+        }
+        Ok(())
+    }
+
     fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
         self.store_bytes(addr, &[value])
     }

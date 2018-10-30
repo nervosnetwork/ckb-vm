@@ -160,4 +160,16 @@ impl Memory for FlatMemory {
         slice.copy_from_slice(value);
         Ok(())
     }
+
+    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
+        if addr + size > self.len() {
+            return Err(Error::OutOfBound);
+        }
+        // This is essentially memset call
+        unsafe {
+            let slice_ptr = self[..size].as_mut_ptr();
+            ptr::write_bytes(slice_ptr, value, size);
+        }
+        Ok(())
+    }
 }
