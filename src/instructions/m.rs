@@ -25,7 +25,7 @@ pub enum RtypeInstruction {
 type Rtype = super::Rtype<RtypeInstruction>;
 
 #[derive(Debug)]
-pub struct Instruction(Rtype);
+pub struct Instruction(pub Rtype);
 
 impl Execute for Rtype {
     fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
