@@ -79,12 +79,24 @@ pub struct Rtype<I> {
     inst: I,
 }
 
+impl<I> Rtype<I> {
+    pub fn inst(&self) -> &I {
+        &self.inst
+    }
+}
+
 #[derive(Debug)]
 pub struct Itype<M, I> {
     rs1: RegisterIndex,
     rd: RegisterIndex,
     imm: M,
     inst: I,
+}
+
+impl<M, I> Itype<M, I> {
+    pub fn inst(&self) -> &I {
+        &self.inst
+    }
 }
 
 #[derive(Debug)]
@@ -95,12 +107,24 @@ pub struct ItypeShift<M, I> {
     inst: I,
 }
 
+impl<M, I> ItypeShift<M, I> {
+    pub fn inst(&self) -> &I {
+        &self.inst
+    }
+}
+
 #[derive(Debug)]
 pub struct Stype<M, I> {
     rs2: RegisterIndex,
     rs1: RegisterIndex,
     imm: M,
     inst: I,
+}
+
+impl<M, I> Stype<M, I> {
+    pub fn inst(&self) -> &I {
+        &self.inst
+    }
 }
 
 #[derive(Debug)]
@@ -111,9 +135,21 @@ pub struct Btype<M, I> {
     inst: I,
 }
 
+impl<M, I> Btype<M, I> {
+    pub fn inst(&self) -> &I {
+        &self.inst
+    }
+}
+
 #[derive(Debug)]
 pub struct Utype<M, I> {
     rd: RegisterIndex,
     imm: M,
     inst: I,
+}
+
+impl<M, I> Utype<M, I> {
+    pub fn inst(&self) -> &I {
+        &self.inst
+    }
 }
