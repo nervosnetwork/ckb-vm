@@ -73,7 +73,7 @@ pub const REGISTER_ABI_NAMES: [&str; 32] = [
     "t3", "t4", "t5", "t6",
 ];
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub enum Error {
     ParseError,
     Unaligned,
