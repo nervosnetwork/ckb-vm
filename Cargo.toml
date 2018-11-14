@@ -1,9 +1,9 @@
 [package]
 name = "ckb-vm"
 version = "0.1.0"
+license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
 
 [dependencies]
 byteorder = "1"
 goblin = "0.0.17"
-
