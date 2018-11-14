@@ -1,4 +1,4 @@
-# [Nervos CKB](http://nervos.org) VM layer
+# [Nervos CKB](http://nervos.org) VM
 
 ---
 
