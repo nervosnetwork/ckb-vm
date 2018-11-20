@@ -6,6 +6,20 @@
 
 CKB VM is a pure software implementation of the [RISC-V](https://riscv.org/) instruction set used as scripting VM in CKB. Right now it implements full IMC instructions for both 32-bit and 64-bit register size support. In the future we might also implement V extensions to enable better crypto implementations.
 
+## License
+
+Nervos CKB is released under the terms of the MIT license. See [COPYING](COPYING) for more information or see [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT).
+
+## Development Process
+
+This project is still in development, it's NOT in production ready status.
+
+The `master` branch is regularly built and tested, but is not guaranteed to be completely stable.
+
+The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md), and security policy is described in [SECURITY.md](SECURITY.md). To propose new protocol or standard for Nervos, see [Nervos RFC](https://github.com/nervosnetwork/rfcs).
+
+---
+
 ## How to build
 
 ```bash
