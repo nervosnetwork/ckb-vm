@@ -7,7 +7,7 @@ use super::{
     Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
     RISCV_PAGESIZE, SP,
 };
-use goblin::elf::program_header::PT_LOAD;
+use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
 use std::cmp::max;
 use std::fmt::{self, Display};
@@ -26,6 +26,21 @@ fn elf_bits(header: &Header) -> Option<usize> {
         2 => Some(64),
         _ => None,
     }
+}
+
+// Converts goblin's ELF flags into RISC-V flags
+fn convert_flags(p_flags: u32) -> u32 {
+    let mut flags = 0;
+    if p_flags & PF_R != 0 {
+        flags |= PROT_READ;
+    }
+    if p_flags & PF_W != 0 {
+        flags |= PROT_WRITE;
+    }
+    if p_flags & PF_X != 0 {
+        flags |= PROT_EXEC;
+    }
+    return flags;
 }
 
 // This is the core part of RISC-V that only deals with data part, it
@@ -66,9 +81,7 @@ pub trait CoreMachine<R: Register, M: Memory> {
                 self.memory_mut().mmap(
                     aligned_start,
                     size,
-                    // TODO: do we need to distinguish between code pages and bss pages,
-                    // then mark code pages as readonly?
-                    PROT_READ | PROT_WRITE | PROT_EXEC,
+                    convert_flags(program_header.p_flags),
                     Some(Rc::clone(&program_slice)),
                     program_header.p_offset as usize - padding_start,
                 )?;
