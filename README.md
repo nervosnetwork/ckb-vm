@@ -1,4 +1,6 @@
 # [Nervos CKB](http://nervos.org) VM
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnervosnetwork%2Fckb-vm.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnervosnetwork%2Fckb-vm?ref=badge_shield)
+
 
 ---
 
@@ -9,6 +11,9 @@ CKB VM is a pure software implementation of the [RISC-V](https://riscv.org/) ins
 ## License
 
 Nervos CKB is released under the terms of the MIT license. See [COPYING](COPYING) for more information or see [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT).
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fnervosnetwork%2Fckb-vm.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fnervosnetwork%2Fckb-vm?ref=badge_large)
 
 ## Development Process
 
