@@ -1,7 +1,7 @@
 // Source: https://en.wikipedia.org/wiki/Bit_manipulation#Example_of_bit_manipulation
 #[inline(always)]
 fn power_of_2(x: usize) -> bool {
-    x > 0 && (!(x & (x - 1))) > 0
+    x > 0 && ((x & (x - 1)) == 0)
 }
 
 #[inline(always)]
@@ -23,6 +23,21 @@ pub fn rounddown(x: usize, round: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_power_of_2() {
+        let test_cases = [
+            (0, false),
+            (1, true),
+            (2, true),
+            (3, false),
+            (4, true),
+            (5, false),
+        ];
+        for test_case in test_cases.iter() {
+            assert_eq!(test_case.1, power_of_2(test_case.0))
+        }
+    }
 
     #[test]
     fn test_roundup() {
