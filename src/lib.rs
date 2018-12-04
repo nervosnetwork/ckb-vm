@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "cargo-clippy", allow(clippy))]
-
 extern crate byteorder;
 extern crate goblin;
 
