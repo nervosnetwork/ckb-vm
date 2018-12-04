@@ -40,7 +40,7 @@ fn convert_flags(p_flags: u32) -> u32 {
     if p_flags & PF_X != 0 {
         flags |= PROT_EXEC;
     }
-    return flags;
+    flags
 }
 
 // This is the core part of RISC-V that only deals with data part, it
