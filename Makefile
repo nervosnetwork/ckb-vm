@@ -10,4 +10,8 @@ clippy:
 ci: fmt clippy test
 	git diff --exit-code Cargo.lock
 
-.PHONY: test clippy fmt ci
+ci-quick: test
+	git diff --exit-code Cargo.lock
+
+.PHONY: test clippy fmt
+.PHONY: ci ci-quick
