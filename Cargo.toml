@@ -6,4 +6,4 @@ authors = ["Nervos Core Dev <dev@nervos.org>"]
 
 [dependencies]
 byteorder = "1"
-goblin = "0.0.17"
+goblin = "0.0.19"

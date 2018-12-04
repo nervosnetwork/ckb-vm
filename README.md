@@ -1,6 +1,7 @@
 # [Nervos CKB](https://nervos.org) VM
 
 [![Build Status](https://travis-ci.com/nervosnetwork/ckb-vm.svg?branch=master)](https://travis-ci.com/nervosnetwork/ckb-vm)
+[![dependency status](https://deps.rs/repo/github/nervosnetwork/ckb-vm/status.svg)](https://deps.rs/repo/github/nervosnetwork/ckb-vm)
 
 ---
 
