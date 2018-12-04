@@ -1,0 +1,36 @@
+language: rust
+sudo: true
+cache:
+  timeout: 1024
+  directories:
+    - $HOME/.cargo
+
+env:
+  global:
+    - RUST_BACKTRACE=full
+
+matrix:
+  include:
+    - os: osx
+      rust: 1.29.2
+      install:
+        - cargo fmt --version || rustup component add rustfmt-preview
+        - cargo clippy --version || rustup component add clippy-preview
+      env: SUITE=ci
+    - rust: 1.29.2
+      addons:
+        apt:
+          packages:
+            - git
+            - autoconf
+            - flex
+            - bison
+            - texinfo
+            - libtool
+      env: SUITE=ci-quick
+
+script:
+- make "$SUITE"
+
+before_cache:
+- rm -rf $HOME/.cargo/registry

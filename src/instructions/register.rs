@@ -209,7 +209,7 @@ impl Register for u32 {
     }
 
     fn to_u64(self) -> u64 {
-        self as u64
+        u64::from(self)
     }
 
     fn to_usize(self) -> usize {

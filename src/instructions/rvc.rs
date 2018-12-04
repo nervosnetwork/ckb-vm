@@ -547,6 +547,7 @@ impl Instruction {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
