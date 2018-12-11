@@ -547,7 +547,7 @@ impl Instruction {
     }
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+#[allow(clippy::cyclomatic_complexity)]
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
@@ -583,19 +583,21 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             sw_uimmediate(instruction_bits),
             ItypeUInstruction::LW,
         ))),
-        0b_011_00000000000_00 => if rv32 {
-            Some(Instruction::Iu(ItypeU::new(
-                instruction_bits,
-                sw_uimmediate(instruction_bits),
-                ItypeUInstruction::FLW,
-            )))
-        } else {
-            Some(Instruction::Iu(ItypeU::new(
-                instruction_bits,
-                fld_uimmediate(instruction_bits),
-                ItypeUInstruction::LD,
-            )))
-        },
+        0b_011_00000000000_00 => {
+            if rv32 {
+                Some(Instruction::Iu(ItypeU::new(
+                    instruction_bits,
+                    sw_uimmediate(instruction_bits),
+                    ItypeUInstruction::FLW,
+                )))
+            } else {
+                Some(Instruction::Iu(ItypeU::new(
+                    instruction_bits,
+                    fld_uimmediate(instruction_bits),
+                    ItypeUInstruction::LD,
+                )))
+            }
+        }
         // Reserved
         0b_100_00000000000_00 => None,
         0b_101_00000000000_00 => Some(Instruction::Su(StypeU::new(
@@ -608,19 +610,21 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             sw_uimmediate(instruction_bits),
             StypeUInstruction::SW,
         ))),
-        0b_111_00000000000_00 => if rv32 {
-            Some(Instruction::Su(StypeU::new(
-                instruction_bits,
-                sw_uimmediate(instruction_bits),
-                StypeUInstruction::FSW,
-            )))
-        } else {
-            Some(Instruction::Su(StypeU::new(
-                instruction_bits,
-                fld_uimmediate(instruction_bits),
-                StypeUInstruction::SD,
-            )))
-        },
+        0b_111_00000000000_00 => {
+            if rv32 {
+                Some(Instruction::Su(StypeU::new(
+                    instruction_bits,
+                    sw_uimmediate(instruction_bits),
+                    StypeUInstruction::FSW,
+                )))
+            } else {
+                Some(Instruction::Su(StypeU::new(
+                    instruction_bits,
+                    fld_uimmediate(instruction_bits),
+                    StypeUInstruction::SD,
+                )))
+            }
+        }
         // == Quadrant 1
         0b_000_00000000000_01 => {
             let nzimm = immediate(instruction_bits);
@@ -639,23 +643,25 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 None
             }
         }
-        0b_001_00000000000_01 => if rv32 {
-            Some(Instruction::JAL {
-                imm: j_immediate(instruction_bits),
-            })
-        } else {
-            let rd = rd(instruction_bits);
-            if rd != 0 {
-                Some(Instruction::I(Itype {
-                    rd,
-                    rs1: rd,
-                    imm: immediate(instruction_bits),
-                    inst: ItypeInstruction::ADDIW,
-                }))
+        0b_001_00000000000_01 => {
+            if rv32 {
+                Some(Instruction::JAL {
+                    imm: j_immediate(instruction_bits),
+                })
             } else {
-                None
+                let rd = rd(instruction_bits);
+                if rd != 0 {
+                    Some(Instruction::I(Itype {
+                        rd,
+                        rs1: rd,
+                        imm: immediate(instruction_bits),
+                        inst: ItypeInstruction::ADDIW,
+                    }))
+                } else {
+                    None
+                }
             }
-        },
+        }
         0b_010_00000000000_01 => {
             let rd = rd(instruction_bits);
             if rd != 0 {
@@ -830,25 +836,27 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 None
             }
         }
-        0b_011_00000000000_10 => if rv32 {
-            Some(Instruction::Uu(UtypeU {
-                rd: rd(instruction_bits),
-                imm: lwsp_uimmediate(instruction_bits),
-                inst: UtypeUInstruction::FLWSP,
-            }))
-        } else {
-            let rd = rd(instruction_bits);
-            if rd != 0 {
+        0b_011_00000000000_10 => {
+            if rv32 {
                 Some(Instruction::Uu(UtypeU {
-                    rd,
-                    imm: fldsp_uimmediate(instruction_bits),
-                    inst: UtypeUInstruction::LDSP,
+                    rd: rd(instruction_bits),
+                    imm: lwsp_uimmediate(instruction_bits),
+                    inst: UtypeUInstruction::FLWSP,
                 }))
             } else {
-                // Reserved
-                None
+                let rd = rd(instruction_bits);
+                if rd != 0 {
+                    Some(Instruction::Uu(UtypeU {
+                        rd,
+                        imm: fldsp_uimmediate(instruction_bits),
+                        inst: UtypeUInstruction::LDSP,
+                    }))
+                } else {
+                    // Reserved
+                    None
+                }
             }
-        },
+        }
         0b_100_00000000000_10 => {
             match instruction_bits & 0b_1_00000_00000_00 {
                 0b_0_00000_00000_00 => {
@@ -891,19 +899,21 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             imm: swsp_uimmediate(instruction_bits),
             inst: CSSformatInstruction::SWSP,
         })),
-        0b_111_00000000000_10 => if rv32 {
-            Some(Instruction::CSS(CSSformat {
-                rs2: c_rs2(instruction_bits),
-                imm: swsp_uimmediate(instruction_bits),
-                inst: CSSformatInstruction::FSWSP,
-            }))
-        } else {
-            Some(Instruction::CSS(CSSformat {
-                rs2: c_rs2(instruction_bits),
-                imm: fsdsp_uimmediate(instruction_bits),
-                inst: CSSformatInstruction::SDSP,
-            }))
-        },
+        0b_111_00000000000_10 => {
+            if rv32 {
+                Some(Instruction::CSS(CSSformat {
+                    rs2: c_rs2(instruction_bits),
+                    imm: swsp_uimmediate(instruction_bits),
+                    inst: CSSformatInstruction::FSWSP,
+                }))
+            } else {
+                Some(Instruction::CSS(CSSformat {
+                    rs2: c_rs2(instruction_bits),
+                    imm: fsdsp_uimmediate(instruction_bits),
+                    inst: CSSformatInstruction::SDSP,
+                }))
+            }
+        }
         _ => None,
     };
     inst_opt.map(RVC)

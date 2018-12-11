@@ -1,6 +1,3 @@
-extern crate byteorder;
-extern crate goblin;
-
 pub mod bits;
 pub mod decoder;
 pub mod instructions;
@@ -8,16 +5,13 @@ pub mod machine;
 pub mod memory;
 pub mod syscalls;
 
+pub use crate::{
+    instructions::{Instruction, Register},
+    machine::{CoreMachine, DefaultMachine, Machine},
+    memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
+    syscalls::Syscalls,
+};
 use std::io::{Error as IOError, ErrorKind};
-
-pub use instructions::{Instruction, Register};
-pub use machine::{CoreMachine, DefaultMachine, Machine};
-pub use memory::flat::FlatMemory;
-pub use memory::mmu::Mmu;
-pub use memory::sparse::SparseMemory;
-pub use memory::Memory;
-
-pub use syscalls::Syscalls;
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
 pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;
