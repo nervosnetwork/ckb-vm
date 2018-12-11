@@ -1,7 +1,7 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
 use super::register::Register;
-use RISCV_GENERAL_REGISTER_NUMBER;
+use crate::RISCV_GENERAL_REGISTER_NUMBER;
 
 // Inspired from https://github.com/riscv/riscv-isa-sim/blob/master/riscv/decode.h#L105-L106
 #[inline(always)]
