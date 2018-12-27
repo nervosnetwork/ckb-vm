@@ -16,7 +16,8 @@ use std::io::{Error as IOError, ErrorKind};
 pub const RISCV_PAGESIZE: usize = 1 << 12;
 pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;
 // 128 MB
-pub const RISCV_MAX_MEMORY: usize = 128 << 20;
+pub const RISCV_MAX_MEMORY: usize = 16 << 20;
+pub const DEFAULT_STACK_SIZE: usize = 2 << 20;
 
 // Register ABI names
 pub const ZERO: usize = 0;
