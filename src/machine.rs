@@ -4,8 +4,8 @@ use super::instructions::{Instruction, Register};
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::syscalls::Syscalls;
 use super::{
-    Error, A0, A7, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGESIZE, SP,
+    Error, A0, A7, DEFAULT_STACK_SIZE, REGISTER_ABI_NAMES, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_MAX_MEMORY, RISCV_PAGESIZE, SP,
 };
 use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
@@ -13,8 +13,6 @@ use std::cmp::max;
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-
-const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 fn elf_bits(header: &Header) -> Option<usize> {
     // This is documented in ELF specification, we are exacting ELF file
