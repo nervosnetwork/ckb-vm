@@ -48,7 +48,7 @@ pub fn test_simple_cycles() {
     file.read_to_end(&mut buffer).unwrap();
 
     let mut machine =
-        DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 1000);
+        DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 517);
     let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -67,7 +67,21 @@ pub fn test_simple_max_cycles_reached() {
         DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 500);
     let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::MaximumCyclesReached);
+    assert_eq!(result.unwrap_err(), Error::IncorrectSpecifiedCycles);
+}
+
+#[test]
+pub fn test_simple_incorrect_cycles() {
+    let mut file = File::open("tests/programs/simple64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    // Running simple64 should consume 517 cycles using dummy cycle func
+    let mut machine =
+        DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 600);
+    let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::IncorrectSpecifiedCycles);
 }
 
 #[test]
