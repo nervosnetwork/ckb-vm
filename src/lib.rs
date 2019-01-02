@@ -75,6 +75,7 @@ pub enum Error {
     InvalidEcall(u64),
     InvalidElfBits,
     IO(ErrorKind),
+    MaximumCyclesReached,
     MaximumMmappingReached,
     InvalidPermission,
     Unimplemented,

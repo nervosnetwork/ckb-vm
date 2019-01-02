@@ -60,6 +60,7 @@ pub trait CoreMachine<R: Register, M: Memory> {
     // feature.
     fn cycles(&self) -> u64;
     fn add_cycles(&mut self, cycles: u64);
+    fn max_cycles(&self) -> Option<u64>;
 
     fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
@@ -146,6 +147,7 @@ pub struct DefaultCoreMachine<R: Register, M: Memory> {
     memory: M,
     elf_end: usize,
     cycles: u64,
+    max_cycles: Option<u64>,
 }
 
 impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
@@ -188,6 +190,10 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
     fn add_cycles(&mut self, cycles: u64) {
         self.cycles += cycles;
     }
+
+    fn max_cycles(&self) -> Option<u64> {
+        self.max_cycles
+    }
 }
 
 impl<R, M> Default for DefaultCoreMachine<R, M>
@@ -205,6 +211,20 @@ where
             memory: M::default(),
             elf_end: 0,
             cycles: 0,
+            max_cycles: None,
+        }
+    }
+}
+
+impl<R, M> DefaultCoreMachine<R, M>
+where
+    R: Register,
+    M: Memory + Default,
+{
+    pub fn new_with_max_cycles(max_cycles: u64) -> DefaultCoreMachine<R, M> {
+        Self {
+            max_cycles: Some(max_cycles),
+            ..Self::default()
         }
     }
 }
@@ -278,6 +298,10 @@ impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> 
     fn add_cycles(&mut self, cycles: u64) {
         self.cycles += cycles;
     }
+
+    fn max_cycles(&self) -> Option<u64> {
+        self.max_cycles
+    }
 }
 
 impl<'a, R: Register, M: Memory> Machine<R, M> for DefaultMachine<'a, R, M> {
@@ -348,8 +372,12 @@ where
     R: Register,
     M: Memory + Default,
 {
-    pub fn new(instruction_cycle_func: Box<InstructionCycleFunc>) -> DefaultMachine<'a, R, M> {
+    pub fn new_with_cost_model(
+        instruction_cycle_func: Box<InstructionCycleFunc>,
+        max_cycles: u64,
+    ) -> DefaultMachine<'a, R, M> {
         Self {
+            core: DefaultCoreMachine::new_with_max_cycles(max_cycles),
             instruction_cycle_func: Some(instruction_cycle_func),
             ..Self::default()
         }
@@ -384,6 +412,11 @@ where
                 .map(|f| f(&instruction))
                 .unwrap_or(0);
             self.add_cycles(cycles);
+            if let Some(max_cycles) = self.max_cycles() {
+                if self.cycles() > max_cycles {
+                    return Err(Error::MaximumCyclesReached);
+                }
+            }
         }
         Ok(self.exit_code)
     }
