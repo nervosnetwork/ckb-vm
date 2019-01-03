@@ -196,6 +196,12 @@ pub struct CSSformat {
     inst: CSSformatInstruction,
 }
 
+impl CSSformat {
+    pub fn inst(&self) -> &CSSformatInstruction {
+        &self.inst
+    }
+}
+
 impl ItypeU {
     pub fn new(instruction_bits: u32, imm: UImmediate, inst: ItypeUInstruction) -> ItypeU {
         ItypeU {
