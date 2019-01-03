@@ -67,7 +67,7 @@ pub fn test_simple_max_cycles_reached() {
         DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 500);
     let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::IncorrectSpecifiedCycles);
+    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
 }
 
 #[test]
@@ -81,7 +81,7 @@ pub fn test_simple_incorrect_cycles() {
         DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 600);
     let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::IncorrectSpecifiedCycles);
+    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
 }
 
 #[test]
