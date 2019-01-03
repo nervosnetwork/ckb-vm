@@ -71,6 +71,7 @@ pub enum Error {
     ParseError,
     Unaligned,
     OutOfBound,
+    InvalidCycles,
     InvalidInstruction(u32),
     InvalidEcall(u64),
     InvalidElfBits,
