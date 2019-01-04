@@ -59,8 +59,22 @@ pub trait CoreMachine<R: Register, M: Memory> {
     // The implementation might also choose not to do this to ignore this
     // feature.
     fn cycles(&self) -> u64;
-    fn add_cycles(&mut self, cycles: u64);
+    fn set_cycles(&mut self, cycles: u64);
     fn max_cycles(&self) -> Option<u64>;
+
+    fn add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
+        let new_cycles = self
+            .cycles()
+            .checked_add(cycles)
+            .ok_or(Error::InvalidCycles)?;
+        if let Some(max_cycles) = self.max_cycles() {
+            if new_cycles > max_cycles {
+                return Err(Error::InvalidCycles);
+            }
+        }
+        self.set_cycles(new_cycles);
+        Ok(())
+    }
 
     fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
@@ -187,8 +201,8 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
         self.cycles
     }
 
-    fn add_cycles(&mut self, cycles: u64) {
-        self.cycles += cycles;
+    fn set_cycles(&mut self, cycles: u64) {
+        self.cycles = cycles;
     }
 
     fn max_cycles(&self) -> Option<u64> {
@@ -295,8 +309,8 @@ impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> 
         self.cycles
     }
 
-    fn add_cycles(&mut self, cycles: u64) {
-        self.cycles += cycles;
+    fn set_cycles(&mut self, cycles: u64) {
+        self.cycles = cycles;
     }
 
     fn max_cycles(&self) -> Option<u64> {
@@ -411,12 +425,7 @@ where
                 .as_ref()
                 .map(|f| f(&instruction))
                 .unwrap_or(0);
-            self.add_cycles(cycles);
-            if let Some(max_cycles) = self.max_cycles() {
-                if self.cycles() > max_cycles {
-                    return Err(Error::InvalidCycles);
-                }
-            }
+            self.add_cycles(cycles)?;
         }
         Ok(self.exit_code)
     }
