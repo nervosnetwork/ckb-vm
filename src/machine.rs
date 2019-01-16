@@ -1,5 +1,4 @@
 use super::bits::rounddown;
-use super::decoder::build_imac_decoder;
 use super::instructions::{Instruction, Register};
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::syscalls::Syscalls;
@@ -41,16 +40,29 @@ fn convert_flags(p_flags: u32) -> u32 {
     flags
 }
 
-// This is the core part of RISC-V that only deals with data part, it
-// is extracted from Machine so we can handle lifetime logic in dynamic
-// syscall support.
+/// This is the core part of RISC-V that only deals with data part, it
+/// is extracted from Machine so we can handle lifetime logic in dynamic
+/// syscall support.
 pub trait CoreMachine<R: Register, M: Memory> {
     fn pc(&self) -> R;
     fn set_pc(&mut self, next_pc: R);
     fn memory(&self) -> &M;
     fn memory_mut(&mut self) -> &mut M;
     fn registers(&self) -> &[R];
-    fn registers_mut(&mut self) -> &mut [R];
+    fn set_register(&mut self, idx: usize, value: R);
+}
+
+/// This is the core trait describing a full RISC-V machine. Instruction
+/// package only needs to deal with the functions in this trait.
+pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
+    fn ecall(&mut self) -> Result<(), Error>;
+    fn ebreak(&mut self) -> Result<(), Error>;
+}
+
+/// This traits extend on top of CoreMachine by adding additional support
+/// such as ELF range, cycles which might be needed on Rust side of the logic,
+/// such as runner or syscall implementations.
+pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
     // End address of elf segment
     fn elf_end(&self) -> usize;
     fn set_elf_end(&mut self, elf_end: usize);
@@ -114,32 +126,30 @@ pub trait CoreMachine<R: Register, M: Memory> {
     ) -> Result<(), Error> {
         self.memory_mut()
             .mmap(stack_start, stack_size, PROT_READ | PROT_WRITE, None, 0)?;
-        self.registers_mut()[SP] = R::from_usize(stack_start + stack_size);
+        self.set_register(SP, R::from_usize(stack_start + stack_size));
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.
         let mut values = vec![R::from_usize(args.len())];
         for arg in args {
             let bytes = arg.as_slice();
             let len = R::from_usize(bytes.len() + 1);
-            let address = self.registers()[SP].overflowing_sub(len).0;
+            let address = self.registers()[SP].overflowing_sub(len);
 
             self.memory_mut().store_bytes(address.to_usize(), bytes)?;
             self.memory_mut()
                 .store8(address.to_usize() + bytes.len(), 0)?;
 
             values.push(address);
-            self.registers_mut()[SP] = address;
+            self.set_register(SP, address);
         }
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
-            let address = self.registers()[SP]
-                .overflowing_sub(R::from_usize(R::BITS / 8))
-                .0;
+            let address = self.registers()[SP].overflowing_sub(R::from_usize(R::BITS / 8));
 
             self.memory_mut()
                 .store32(address.to_usize(), value.to_u32())?;
-            self.registers_mut()[SP] = address;
+            self.set_register(SP, address);
         }
         if self.registers()[SP].to_usize() < stack_start {
             // args exceed stack size
@@ -148,11 +158,6 @@ pub trait CoreMachine<R: Register, M: Memory> {
         }
         Ok(())
     }
-}
-
-pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
-    fn ecall(&mut self) -> Result<(), Error>;
-    fn ebreak(&mut self) -> Result<(), Error>;
 }
 
 pub struct DefaultCoreMachine<R: Register, M: Memory> {
@@ -185,10 +190,12 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
         &self.registers
     }
 
-    fn registers_mut(&mut self) -> &mut [R] {
-        &mut self.registers
+    fn set_register(&mut self, idx: usize, value: R) {
+        self.registers[idx] = value;
     }
+}
 
+impl<R: Register, M: Memory> SupportMachine<R, M> for DefaultCoreMachine<R, M> {
     fn elf_end(&self) -> usize {
         self.elf_end
     }
@@ -293,10 +300,12 @@ impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> 
         &self.registers
     }
 
-    fn registers_mut(&mut self) -> &mut [R] {
-        &mut self.registers
+    fn set_register(&mut self, idx: usize, value: R) {
+        self.registers[idx] = value;
     }
+}
 
+impl<'a, R: Register, M: Memory> SupportMachine<R, M> for DefaultMachine<'a, R, M> {
     fn elf_end(&self) -> usize {
         self.elf_end
     }
@@ -396,12 +405,18 @@ where
             ..Self::default()
         }
     }
+}
 
+impl<'a, R, M> DefaultMachine<'a, R, M>
+where
+    R: Register,
+    M: Memory,
+{
     pub fn add_syscall_module(&mut self, syscall: Box<dyn Syscalls<R, M> + 'a>) {
         self.syscalls.push(syscall);
     }
 
-    pub fn run(&mut self, program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+    pub fn load_program(mut self, program: &[u8], args: &[Vec<u8>]) -> Result<Self, Error> {
         self.load_elf(program)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.core)?;
@@ -411,22 +426,22 @@ where
             RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE,
             DEFAULT_STACK_SIZE,
         )?;
-        let decoder = build_imac_decoder::<R>();
-        self.running = true;
-        while self.running {
-            let instruction = {
-                let pc = self.pc().to_usize();
-                let memory = self.memory_mut();
-                decoder.decode(memory, pc)?
-            };
-            instruction.execute(self)?;
-            let cycles = self
-                .instruction_cycle_func
-                .as_ref()
-                .map(|f| f(&instruction))
-                .unwrap_or(0);
-            self.add_cycles(cycles)?;
-        }
-        Ok(self.exit_code)
+        Ok(self)
+    }
+
+    pub fn running(&self) -> bool {
+        self.running
+    }
+
+    pub fn set_running(&mut self, running: bool) {
+        self.running = running;
+    }
+
+    pub fn exit_code(&self) -> u8 {
+        self.exit_code
+    }
+
+    pub fn instruction_cycle_func(&self) -> &Option<Box<InstructionCycleFunc>> {
+        &self.instruction_cycle_func
     }
 }

@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::fmt::Display;
 use std::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 
@@ -6,16 +5,12 @@ pub trait Register:
     Sized
     + Copy
     + Display
-    + PartialEq
-    + PartialOrd
-    + Ord
-    + Eq
     + Not<Output = Self>
     + BitAnd<Output = Self>
     + BitOr<Output = Self>
     + BitXor<Output = Self>
-    + Shl<usize, Output = Self>
-    + Shr<usize, Output = Self>
+    + Shl<Self, Output = Self>
+    + Shr<Self, Output = Self>
 {
     const BITS: usize;
     const SHIFT_MASK: usize;
@@ -26,31 +21,49 @@ pub trait Register:
     fn min_value() -> Self;
     fn max_value() -> Self;
 
-    // By default, PartialOrd/Ord compares unsigned value, which is the same
-    // as shl/shr.
-    fn signed_cmp(&self, other: &Self) -> Ordering;
+    // Conditional operations, if the condition evaluated here is true, R::one()
+    // will be emitted, otherwise R::zero() will be emitted
+    fn eq(self, other: Self) -> Self;
+    fn less_than(self, other: Self) -> Self;
+    fn less_than_signed(self, other: Self) -> Self;
+    fn logical_not(self) -> Self;
 
-    fn overflowing_add(self, rhs: Self) -> (Self, bool);
-    fn overflowing_sub(self, rhs: Self) -> (Self, bool);
-    fn overflowing_mul(self, rhs: Self) -> (Self, bool);
-    fn overflowing_div(self, rhs: Self) -> (Self, bool);
-    fn overflowing_rem(self, rhs: Self) -> (Self, bool);
+    // self here should be the result of one of the conditional operations, if
+    // self is R::one(), true_value will be returned, otherwise false_value will
+    // be returned. No values other than R::one() or R::zero() should be accepted
+    // as self here.
+    fn cond(self, true_value: Self, false_value: Self) -> Self;
 
-    fn overflowing_div_signed(self, rhs: Self) -> (Self, bool);
-    fn overflowing_rem_signed(self, rhs: Self) -> (Self, bool);
+    fn overflowing_add(self, rhs: Self) -> Self;
+    fn overflowing_sub(self, rhs: Self) -> Self;
+    fn overflowing_mul(self, rhs: Self) -> Self;
+
+    // Those 4 methods should implement RISC-V's overflowing strategies:
+    // +---------------------------------------------------------------------------------------+
+    // | Condition              | Dividend  | Divisor | DIVU[W] | REMU[W] |  DIV[W]   | REM[W] |
+    // +------------------------+-----------+---------+---------+---------+-----------+--------+
+    // | Division by zero       |     x     |    0    | 2**L-1  |    x    |    -1     |   x    |
+    // +------------------------+-----------+---------+---------+---------+-----------+--------+
+    // | Overflow (signed only) | −2**(L−1) |   −1    |    -    |    -    | -2**(L-1) |   0    |
+    // +---------------------------------------------------------------------------------------+
+    fn overflowing_div(self, rhs: Self) -> Self;
+    fn overflowing_rem(self, rhs: Self) -> Self;
+    fn overflowing_div_signed(self, rhs: Self) -> Self;
+    fn overflowing_rem_signed(self, rhs: Self) -> Self;
+
     fn overflowing_mul_high_signed(self, rhs: Self) -> Self;
     fn overflowing_mul_high_unsigned(self, rhs: Self) -> Self;
     fn overflowing_mul_high_signed_unsigned(self, rhs: Self) -> Self;
 
-    fn signed_shl(self, rhs: usize) -> Self;
-    fn signed_shr(self, rhs: usize) -> Self;
+    fn signed_shl(self, rhs: Self) -> Self;
+    fn signed_shr(self, rhs: Self) -> Self;
 
     // Zero extend from start_bit to the highest bit, note
     // start_bit is offset by 0
-    fn zero_extend(self, start_bit: usize) -> Self;
+    fn zero_extend(self, start_bit: Self) -> Self;
     // Sign extend from start_bit to the highest bit leveraging
     // bit in (start_bit - 1), note start_bit is offset by 0
-    fn sign_extend(self, start_bit: usize) -> Self;
+    fn sign_extend(self, start_bit: Self) -> Self;
 
     // NOTE: one alternative solution is to encode those methods using
     // From/Into traits, however we opt for manual conversion here for 2
@@ -103,38 +116,99 @@ impl Register for u32 {
         u32::max_value()
     }
 
-    fn signed_cmp(&self, other: &u32) -> Ordering {
-        (*self as i32).cmp(&(*other as i32))
+    fn eq(self, other: u32) -> u32 {
+        if self == other {
+            Self::one()
+        } else {
+            Self::zero()
+        }
     }
 
-    fn overflowing_add(self, rhs: u32) -> (u32, bool) {
-        self.overflowing_add(rhs)
+    fn less_than(self, other: u32) -> u32 {
+        if self < other {
+            Self::one()
+        } else {
+            Self::zero()
+        }
     }
 
-    fn overflowing_sub(self, rhs: u32) -> (u32, bool) {
-        self.overflowing_sub(rhs)
+    fn less_than_signed(self, other: u32) -> u32 {
+        if (self as i32) < (other as i32) {
+            Self::one()
+        } else {
+            Self::zero()
+        }
     }
 
-    fn overflowing_mul(self, rhs: u32) -> (u32, bool) {
-        self.overflowing_mul(rhs)
+    fn logical_not(self) -> u32 {
+        if self == Self::one() {
+            Self::zero()
+        } else {
+            Self::one()
+        }
     }
 
-    fn overflowing_div(self, rhs: u32) -> (u32, bool) {
-        self.overflowing_div(rhs)
+    fn cond(self, true_value: u32, false_value: u32) -> u32 {
+        if self == Self::one() {
+            true_value
+        } else {
+            false_value
+        }
     }
 
-    fn overflowing_rem(self, rhs: u32) -> (u32, bool) {
-        self.overflowing_rem(rhs)
+    fn overflowing_add(self, rhs: u32) -> u32 {
+        self.overflowing_add(rhs).0
     }
 
-    fn overflowing_div_signed(self, rhs: u32) -> (u32, bool) {
-        let (v, o) = (self as i32).overflowing_div(rhs as i32);
-        (v as u32, o)
+    fn overflowing_sub(self, rhs: u32) -> u32 {
+        self.overflowing_sub(rhs).0
     }
 
-    fn overflowing_rem_signed(self, rhs: u32) -> (u32, bool) {
-        let (v, o) = (self as i32).overflowing_rem(rhs as i32);
-        (v as u32, o)
+    fn overflowing_mul(self, rhs: u32) -> u32 {
+        self.overflowing_mul(rhs).0
+    }
+
+    fn overflowing_div(self, rhs: u32) -> u32 {
+        if rhs == 0 {
+            Self::max_value()
+        } else {
+            self.overflowing_div(rhs).0
+        }
+    }
+
+    fn overflowing_rem(self, rhs: u32) -> u32 {
+        if rhs == 0 {
+            self
+        } else {
+            self.overflowing_rem(rhs).0
+        }
+    }
+
+    fn overflowing_div_signed(self, rhs: u32) -> u32 {
+        if rhs == 0 {
+            (-1i32) as u32
+        } else {
+            let (v, o) = (self as i32).overflowing_div(rhs as i32);
+            if o {
+                // -2**(L-1) implemented using (-1) << (L - 1)
+                ((-1i32) as u32) << (Self::BITS - 1)
+            } else {
+                v as u32
+            }
+        }
+    }
+
+    fn overflowing_rem_signed(self, rhs: u32) -> u32 {
+        if rhs == 0 {
+            self
+        } else {
+            let (v, o) = (self as i32).overflowing_rem(rhs as i32);
+            if o {
+                0
+            } else {
+                v as u32
+            }
+        }
     }
 
     fn overflowing_mul_high_signed(self, rhs: u32) -> u32 {
@@ -158,20 +232,20 @@ impl Register for u32 {
         (value >> 32) as u32
     }
 
-    fn signed_shl(self, rhs: usize) -> u32 {
+    fn signed_shl(self, rhs: u32) -> u32 {
         (self as i32).shl(rhs) as u32
     }
 
-    fn signed_shr(self, rhs: usize) -> u32 {
+    fn signed_shr(self, rhs: u32) -> u32 {
         (self as i32).shr(rhs) as u32
     }
 
-    fn zero_extend(self, start_bit: usize) -> u32 {
+    fn zero_extend(self, start_bit: u32) -> u32 {
         debug_assert!(start_bit < 32 && start_bit > 0);
         (self << (32 - start_bit)) >> (32 - start_bit)
     }
 
-    fn sign_extend(self, start_bit: usize) -> u32 {
+    fn sign_extend(self, start_bit: u32) -> u32 {
         debug_assert!(start_bit < 32 && start_bit > 0);
         (((self << (32 - start_bit)) as i32) >> (32 - start_bit)) as u32
     }
@@ -277,38 +351,99 @@ impl Register for u64 {
         u64::max_value()
     }
 
-    fn signed_cmp(&self, other: &u64) -> Ordering {
-        (*self as i64).cmp(&(*other as i64))
+    fn eq(self, other: u64) -> u64 {
+        if self == other {
+            Self::one()
+        } else {
+            Self::zero()
+        }
     }
 
-    fn overflowing_add(self, rhs: u64) -> (u64, bool) {
-        self.overflowing_add(rhs)
+    fn less_than(self, other: u64) -> u64 {
+        if self < other {
+            Self::one()
+        } else {
+            Self::zero()
+        }
     }
 
-    fn overflowing_sub(self, rhs: u64) -> (u64, bool) {
-        self.overflowing_sub(rhs)
+    fn less_than_signed(self, other: u64) -> u64 {
+        if (self as i64) < (other as i64) {
+            Self::one()
+        } else {
+            Self::zero()
+        }
     }
 
-    fn overflowing_mul(self, rhs: u64) -> (u64, bool) {
-        self.overflowing_mul(rhs)
+    fn logical_not(self) -> u64 {
+        if self == Self::one() {
+            Self::zero()
+        } else {
+            Self::one()
+        }
     }
 
-    fn overflowing_div(self, rhs: u64) -> (u64, bool) {
-        self.overflowing_div(rhs)
+    fn cond(self, true_value: u64, false_value: u64) -> u64 {
+        if self == Self::one() {
+            true_value
+        } else {
+            false_value
+        }
     }
 
-    fn overflowing_rem(self, rhs: u64) -> (u64, bool) {
-        self.overflowing_rem(rhs)
+    fn overflowing_add(self, rhs: u64) -> u64 {
+        self.overflowing_add(rhs).0
     }
 
-    fn overflowing_div_signed(self, rhs: u64) -> (u64, bool) {
-        let (v, o) = (self as i64).overflowing_div(rhs as i64);
-        (v as u64, o)
+    fn overflowing_sub(self, rhs: u64) -> u64 {
+        self.overflowing_sub(rhs).0
     }
 
-    fn overflowing_rem_signed(self, rhs: u64) -> (u64, bool) {
-        let (v, o) = (self as i64).overflowing_rem(rhs as i64);
-        (v as u64, o)
+    fn overflowing_mul(self, rhs: u64) -> u64 {
+        self.overflowing_mul(rhs).0
+    }
+
+    fn overflowing_div(self, rhs: u64) -> u64 {
+        if rhs == 0 {
+            Self::max_value()
+        } else {
+            self.overflowing_div(rhs).0
+        }
+    }
+
+    fn overflowing_rem(self, rhs: u64) -> u64 {
+        if rhs == 0 {
+            self
+        } else {
+            self.overflowing_rem(rhs).0
+        }
+    }
+
+    fn overflowing_div_signed(self, rhs: u64) -> u64 {
+        if rhs == 0 {
+            (-1i64) as u64
+        } else {
+            let (v, o) = (self as i64).overflowing_div(rhs as i64);
+            if o {
+                // -2**(L-1) implemented using (-1) << (L - 1)
+                ((-1i64) as u64) << (Self::BITS - 1)
+            } else {
+                v as u64
+            }
+        }
+    }
+
+    fn overflowing_rem_signed(self, rhs: u64) -> u64 {
+        if rhs == 0 {
+            self
+        } else {
+            let (v, o) = (self as i64).overflowing_rem(rhs as i64);
+            if o {
+                0
+            } else {
+                v as u64
+            }
+        }
     }
 
     fn overflowing_mul_high_signed(self, rhs: u64) -> u64 {
@@ -332,20 +467,20 @@ impl Register for u64 {
         (value >> 64) as u64
     }
 
-    fn signed_shl(self, rhs: usize) -> u64 {
+    fn signed_shl(self, rhs: u64) -> u64 {
         (self as i64).shl(rhs) as u64
     }
 
-    fn signed_shr(self, rhs: usize) -> u64 {
+    fn signed_shr(self, rhs: u64) -> u64 {
         (self as i64).shr(rhs) as u64
     }
 
-    fn zero_extend(self, start_bit: usize) -> u64 {
+    fn zero_extend(self, start_bit: u64) -> u64 {
         debug_assert!(start_bit < 64 && start_bit > 0);
         (self << (64 - start_bit)) >> (64 - start_bit)
     }
 
-    fn sign_extend(self, start_bit: usize) -> u64 {
+    fn sign_extend(self, start_bit: u64) -> u64 {
         debug_assert!(start_bit < 64 && start_bit > 0);
         (((self << (64 - start_bit)) as i64) >> (64 - start_bit)) as u64
     }

@@ -1,6 +1,9 @@
 extern crate ckb_vm;
 
-use ckb_vm::{run, CoreMachine, DefaultMachine, Error, FlatMemory, Instruction, SparseMemory};
+use ckb_vm::{
+    interpreter_run, run, DefaultMachine, Error, FlatMemory, Instruction, SparseMemory,
+    SupportMachine,
+};
 use std::fs::File;
 use std::io::Read;
 
@@ -49,11 +52,14 @@ pub fn test_simple_cycles() {
 
     let mut machine =
         DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 517);
-    let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
+    machine = machine
+        .load_program(&buffer, &vec![b"simple".to_vec()])
+        .unwrap();
+    let result = interpreter_run(&mut machine);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
-    assert_eq!(CoreMachine::cycles(&machine), 517);
+    assert_eq!(SupportMachine::cycles(&machine), 517);
 }
 
 #[test]
@@ -65,7 +71,10 @@ pub fn test_simple_max_cycles_reached() {
     // Running simple64 should consume 517 cycles using dummy cycle func
     let mut machine =
         DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 500);
-    let result = machine.run(&buffer, &vec![b"simple".to_vec()]);
+    machine = machine
+        .load_program(&buffer, &vec![b"simple".to_vec()])
+        .unwrap();
+    let result = interpreter_run(&mut machine);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
 }

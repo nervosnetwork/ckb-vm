@@ -1,7 +1,8 @@
 extern crate ckb_vm;
 
 use ckb_vm::{
-    run, CoreMachine, DefaultMachine, Error, SparseMemory, Syscalls, A0, A1, A2, A3, A4, A5, A7,
+    interpreter_run, run, DefaultMachine, Error, SparseMemory, SupportMachine, Syscalls, A0, A1,
+    A2, A3, A4, A5, A7,
 };
 use std::fs::File;
 use std::io::Read;
@@ -31,11 +32,14 @@ pub fn test_nop() {
 pub struct CustomSyscall {}
 
 impl Syscalls<u64, SparseMemory> for CustomSyscall {
-    fn initialize(&mut self, _machine: &mut CoreMachine<u64, SparseMemory>) -> Result<(), Error> {
+    fn initialize(
+        &mut self,
+        _machine: &mut SupportMachine<u64, SparseMemory>,
+    ) -> Result<(), Error> {
         Ok(())
     }
 
-    fn ecall(&mut self, machine: &mut CoreMachine<u64, SparseMemory>) -> Result<bool, Error> {
+    fn ecall(&mut self, machine: &mut SupportMachine<u64, SparseMemory>) -> Result<bool, Error> {
         let code = machine.registers()[A7];
         if code != 1111 {
             return Ok(false);
@@ -46,7 +50,7 @@ impl Syscalls<u64, SparseMemory> for CustomSyscall {
             + machine.registers()[A3]
             + machine.registers()[A4]
             + machine.registers()[A5];
-        machine.registers_mut()[A0] = result;
+        machine.set_register(A0, result);
         Ok(true)
     }
 }
@@ -59,7 +63,10 @@ pub fn test_custom_syscall() {
 
     let mut machine = DefaultMachine::<u64, SparseMemory>::default();
     machine.add_syscall_module(Box::new(CustomSyscall {}));
-    let result = machine.run(&buffer, &vec![b"syscall".to_vec()]);
+    machine = machine
+        .load_program(&buffer, &vec![b"syscall".to_vec()])
+        .unwrap();
+    let result = interpreter_run(&mut machine);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 39);
 }
