@@ -10,7 +10,6 @@ use super::{
     common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I, RegisterIndex,
     UImmediate,
 };
-use std::cmp::Ordering;
 
 #[derive(Debug)]
 pub enum RtypeInstruction {
@@ -152,51 +151,49 @@ impl Execute for Rtype {
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & R::SHIFT_MASK;
+                let shift_value = machine.registers()[self.rs2] & R::from_usize(R::SHIFT_MASK);
                 let value = machine.registers()[self.rs1] << shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SLLW => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
+                let shift_value = machine.registers()[self.rs2] & R::from_usize(0x1F);
                 let value = machine.registers()[self.rs1] << shift_value;
-                update_register(machine, self.rd, value.sign_extend(32));
+                update_register(machine, self.rd, value.sign_extend(R::from_usize(32)));
             }
             RtypeInstruction::SRL => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & R::SHIFT_MASK;
+                let shift_value = machine.registers()[self.rs2] & R::from_usize(R::SHIFT_MASK);
                 let value = machine.registers()[self.rs1] >> shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRLW => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
-                let value = machine.registers()[self.rs1].zero_extend(32) >> shift_value;
-                update_register(machine, self.rd, value.sign_extend(32));
+                let shift_value = machine.registers()[self.rs2] & R::from_usize(0x1F);
+                let value =
+                    machine.registers()[self.rs1].zero_extend(R::from_usize(32)) >> shift_value;
+                update_register(machine, self.rd, value.sign_extend(R::from_usize(32)));
             }
             RtypeInstruction::SRA => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & R::SHIFT_MASK;
+                let shift_value = machine.registers()[self.rs2] & R::from_usize(R::SHIFT_MASK);
                 let value = machine.registers()[self.rs1].signed_shr(shift_value);
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRAW => {
-                let shift_value = machine.registers()[self.rs2].to_usize() & 0x1F;
+                let shift_value = machine.registers()[self.rs2] & R::from_usize(0x1F);
                 let value = machine.registers()[self.rs1]
-                    .sign_extend(32)
+                    .sign_extend(R::from_usize(32))
                     .signed_shr(shift_value);
-                update_register(machine, self.rd, value.sign_extend(32));
+                update_register(machine, self.rd, value.sign_extend(R::from_usize(32)));
             }
             RtypeInstruction::SLT => {
                 let rs1_value = machine.registers()[self.rs1];
                 let rs2_value = machine.registers()[self.rs2];
-                let value = match rs1_value.signed_cmp(&rs2_value) {
-                    Ordering::Less => 1,
-                    _ => 0,
-                };
-                update_register(machine, self.rd, Register::from_usize(value));
+                let value = rs1_value.lt_s(rs2_value);
+                update_register(machine, self.rd, value);
             }
             RtypeInstruction::SLTU => {
                 let rs1_value = machine.registers()[self.rs1];
                 let rs2_value = machine.registers()[self.rs2];
-                let value = if rs1_value < rs2_value { 1 } else { 0 };
-                update_register(machine, self.rd, Register::from_usize(value));
+                let value = rs1_value.lt(rs2_value);
+                update_register(machine, self.rd, value);
             }
         }
         Ok(None)
@@ -224,21 +221,18 @@ impl Execute for Itype {
             ItypeInstruction::SLTI => {
                 let rs1_value = machine.registers()[self.rs1];
                 let imm_value = R::from_i32(self.imm);
-                let value = match rs1_value.signed_cmp(&imm_value) {
-                    Ordering::Less => 1,
-                    _ => 0,
-                };
-                update_register(machine, self.rd, Register::from_usize(value));
+                let value = rs1_value.lt_s(imm_value);
+                update_register(machine, self.rd, value);
             }
             ItypeInstruction::SLTIU => {
                 let rs1_value = machine.registers()[self.rs1];
                 let imm_value = R::from_i32(self.imm);
-                let value = if rs1_value < imm_value { 1 } else { 0 };
-                update_register(machine, self.rd, Register::from_usize(value));
+                let value = rs1_value.lt(imm_value);
+                update_register(machine, self.rd, value);
             }
             ItypeInstruction::JALR => {
-                let (link, _) = machine.pc().overflowing_add(R::from_usize(4));
-                let (mut next_pc, _) =
+                let link = machine.pc().overflowing_add(R::from_usize(4));
+                let mut next_pc =
                     machine.registers()[self.rs1].overflowing_add(R::from_i32(self.imm));
                 next_pc = next_pc & (!R::one());
                 update_register(machine, self.rd, link);
@@ -298,27 +292,18 @@ impl Execute for Btype {
         &self,
         machine: &mut Mac,
     ) -> Result<Option<R>, Error> {
-        let satisfied = match &self.inst {
-            BtypeInstruction::BEQ => machine.registers()[self.rs1] == machine.registers()[self.rs2],
-            BtypeInstruction::BNE => machine.registers()[self.rs1] != machine.registers()[self.rs2],
-            BtypeInstruction::BLT => {
-                machine.registers()[self.rs1].signed_cmp(&machine.registers()[self.rs2])
-                    == Ordering::Less
-            }
-            BtypeInstruction::BGE => {
-                machine.registers()[self.rs1].signed_cmp(&machine.registers()[self.rs2])
-                    != Ordering::Less
-            }
-            BtypeInstruction::BLTU => machine.registers()[self.rs1] < machine.registers()[self.rs2],
-            BtypeInstruction::BGEU => {
-                machine.registers()[self.rs1] >= machine.registers()[self.rs2]
-            }
+        let rs1_value = machine.registers()[self.rs1];
+        let rs2_value = machine.registers()[self.rs2];
+        let condition = match &self.inst {
+            BtypeInstruction::BEQ => rs1_value.eq(rs2_value),
+            BtypeInstruction::BNE => rs1_value.ne(rs2_value),
+            BtypeInstruction::BLT => rs1_value.lt_s(rs2_value),
+            BtypeInstruction::BGE => rs1_value.ge_s(rs2_value),
+            BtypeInstruction::BLTU => rs1_value.lt(rs2_value),
+            BtypeInstruction::BGEU => rs1_value.ge(rs2_value),
         };
-        if satisfied {
-            Ok(Some(machine.pc().overflowing_add(R::from_i32(self.imm)).0))
-        } else {
-            Ok(None)
-        }
+        let next_pc_offset = condition.cond(R::from_i32(self.imm), R::from_usize(4));
+        Ok(Some(machine.pc().overflowing_add(next_pc_offset)))
     }
 }
 
@@ -332,7 +317,7 @@ impl Execute for Utype {
                 update_register(machine, self.rd, R::from_i32(self.imm));
             }
             UtypeInstruction::AUIPC => {
-                let (value, _) = machine.pc().overflowing_add(R::from_i32(self.imm));
+                let value = machine.pc().overflowing_add(R::from_i32(self.imm));
                 update_register(machine, self.rd, value);
             }
         }
@@ -435,7 +420,7 @@ impl Instruction {
             Instruction::JAL { imm, rd } => common::jal(machine, *rd, *imm, 4),
             Instruction::FENCEI => unimplemented!(),
         };
-        let (default_next_pc, _) = machine.pc().overflowing_add(R::from_usize(4));
+        let default_next_pc = machine.pc().overflowing_add(R::from_usize(4));
         machine.set_pc(next_pc.unwrap_or(default_next_pc));
         Ok(())
     }

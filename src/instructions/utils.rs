@@ -89,6 +89,6 @@ pub fn update_register<Mac: Machine<R, M>, R: Register, M: Memory>(
     // The goal here is to maintain a place where we can read zeros to allow for
     // compact encoding. Hence we are ignoring all writes to x0 register here.
     if register_index > 0 {
-        machine.registers_mut()[register_index] = value;
+        machine.set_register(register_index, value);
     }
 }
