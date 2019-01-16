@@ -296,11 +296,11 @@ impl Execute for Btype {
         let rs2_value = machine.registers()[self.rs2];
         let condition = match &self.inst {
             BtypeInstruction::BEQ => rs1_value.eq(rs2_value),
-            BtypeInstruction::BNE => rs1_value.eq(rs2_value).logical_not(),
+            BtypeInstruction::BNE => rs1_value.ne(rs2_value),
             BtypeInstruction::BLT => rs1_value.less_than_signed(rs2_value),
-            BtypeInstruction::BGE => rs1_value.less_than_signed(rs2_value).logical_not(),
+            BtypeInstruction::BGE => rs1_value.greater_or_equal_than_signed(rs2_value),
             BtypeInstruction::BLTU => rs1_value.less_than(rs2_value),
-            BtypeInstruction::BGEU => rs1_value.less_than(rs2_value).logical_not(),
+            BtypeInstruction::BGEU => rs1_value.greater_or_equal_than(rs2_value),
         };
         let next_pc_offset = condition.cond(R::from_i32(self.imm), R::from_usize(4));
         Ok(Some(machine.pc().overflowing_add(next_pc_offset)))

@@ -94,6 +94,18 @@ pub trait Register:
     fn from_u32(v: u32) -> Self;
     fn from_u64(v: u64) -> Self;
     fn from_usize(v: usize) -> Self;
+
+    fn ne(self, rhs: Self) -> Self {
+        self.eq(rhs).logical_not()
+    }
+
+    fn greater_or_equal_than(self, other: Self) -> Self {
+        self.less_than(other).logical_not()
+    }
+
+    fn greater_or_equal_than_signed(self, other: Self) -> Self {
+        self.less_than_signed(other).logical_not()
+    }
 }
 
 impl Register for u32 {
