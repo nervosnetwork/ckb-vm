@@ -129,35 +129,19 @@ impl Register for u32 {
     }
 
     fn eq(self, other: u32) -> u32 {
-        if self == other {
-            Self::one()
-        } else {
-            Self::zero()
-        }
+        (self == other).into()
     }
 
     fn lt(self, other: u32) -> u32 {
-        if self < other {
-            Self::one()
-        } else {
-            Self::zero()
-        }
+        (self < other).into()
     }
 
     fn lt_s(self, other: u32) -> u32 {
-        if (self as i32) < (other as i32) {
-            Self::one()
-        } else {
-            Self::zero()
-        }
+        ((self as i32) < (other as i32)).into()
     }
 
     fn logical_not(self) -> u32 {
-        if self == Self::one() {
-            Self::zero()
-        } else {
-            Self::one()
-        }
+        (self != Self::one()).into()
     }
 
     fn cond(self, true_value: u32, false_value: u32) -> u32 {
@@ -364,35 +348,19 @@ impl Register for u64 {
     }
 
     fn eq(self, other: u64) -> u64 {
-        if self == other {
-            Self::one()
-        } else {
-            Self::zero()
-        }
+        (self == other).into()
     }
 
     fn lt(self, other: u64) -> u64 {
-        if self < other {
-            Self::one()
-        } else {
-            Self::zero()
-        }
+        (self < other).into()
     }
 
     fn lt_s(self, other: u64) -> u64 {
-        if (self as i64) < (other as i64) {
-            Self::one()
-        } else {
-            Self::zero()
-        }
+        ((self as i64) < (other as i64)).into()
     }
 
     fn logical_not(self) -> u64 {
-        if self == Self::one() {
-            Self::zero()
-        } else {
-            Self::one()
-        }
+        (self != Self::one()).into()
     }
 
     fn cond(self, true_value: u64, false_value: u64) -> u64 {
