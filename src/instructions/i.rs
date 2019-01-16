@@ -186,13 +186,13 @@ impl Execute for Rtype {
             RtypeInstruction::SLT => {
                 let rs1_value = machine.registers()[self.rs1];
                 let rs2_value = machine.registers()[self.rs2];
-                let value = rs1_value.less_than_signed(rs2_value);
+                let value = rs1_value.lt_s(rs2_value);
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SLTU => {
                 let rs1_value = machine.registers()[self.rs1];
                 let rs2_value = machine.registers()[self.rs2];
-                let value = rs1_value.less_than(rs2_value);
+                let value = rs1_value.lt(rs2_value);
                 update_register(machine, self.rd, value);
             }
         }
@@ -221,13 +221,13 @@ impl Execute for Itype {
             ItypeInstruction::SLTI => {
                 let rs1_value = machine.registers()[self.rs1];
                 let imm_value = R::from_i32(self.imm);
-                let value = rs1_value.less_than_signed(imm_value);
+                let value = rs1_value.lt_s(imm_value);
                 update_register(machine, self.rd, value);
             }
             ItypeInstruction::SLTIU => {
                 let rs1_value = machine.registers()[self.rs1];
                 let imm_value = R::from_i32(self.imm);
-                let value = rs1_value.less_than(imm_value);
+                let value = rs1_value.lt(imm_value);
                 update_register(machine, self.rd, value);
             }
             ItypeInstruction::JALR => {
@@ -297,10 +297,10 @@ impl Execute for Btype {
         let condition = match &self.inst {
             BtypeInstruction::BEQ => rs1_value.eq(rs2_value),
             BtypeInstruction::BNE => rs1_value.ne(rs2_value),
-            BtypeInstruction::BLT => rs1_value.less_than_signed(rs2_value),
-            BtypeInstruction::BGE => rs1_value.greater_or_equal_than_signed(rs2_value),
-            BtypeInstruction::BLTU => rs1_value.less_than(rs2_value),
-            BtypeInstruction::BGEU => rs1_value.greater_or_equal_than(rs2_value),
+            BtypeInstruction::BLT => rs1_value.lt_s(rs2_value),
+            BtypeInstruction::BGE => rs1_value.ge_s(rs2_value),
+            BtypeInstruction::BLTU => rs1_value.lt(rs2_value),
+            BtypeInstruction::BGEU => rs1_value.ge(rs2_value),
         };
         let next_pc_offset = condition.cond(R::from_i32(self.imm), R::from_usize(4));
         Ok(Some(machine.pc().overflowing_add(next_pc_offset)))

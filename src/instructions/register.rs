@@ -24,8 +24,8 @@ pub trait Register:
     // Conditional operations, if the condition evaluated here is true, R::one()
     // will be emitted, otherwise R::zero() will be emitted
     fn eq(self, other: Self) -> Self;
-    fn less_than(self, other: Self) -> Self;
-    fn less_than_signed(self, other: Self) -> Self;
+    fn lt(self, other: Self) -> Self;
+    fn lt_s(self, other: Self) -> Self;
     fn logical_not(self) -> Self;
 
     // self here should be the result of one of the conditional operations, if
@@ -99,12 +99,12 @@ pub trait Register:
         self.eq(rhs).logical_not()
     }
 
-    fn greater_or_equal_than(self, other: Self) -> Self {
-        self.less_than(other).logical_not()
+    fn ge(self, other: Self) -> Self {
+        self.lt(other).logical_not()
     }
 
-    fn greater_or_equal_than_signed(self, other: Self) -> Self {
-        self.less_than_signed(other).logical_not()
+    fn ge_s(self, other: Self) -> Self {
+        self.lt_s(other).logical_not()
     }
 }
 
@@ -136,7 +136,7 @@ impl Register for u32 {
         }
     }
 
-    fn less_than(self, other: u32) -> u32 {
+    fn lt(self, other: u32) -> u32 {
         if self < other {
             Self::one()
         } else {
@@ -144,7 +144,7 @@ impl Register for u32 {
         }
     }
 
-    fn less_than_signed(self, other: u32) -> u32 {
+    fn lt_s(self, other: u32) -> u32 {
         if (self as i32) < (other as i32) {
             Self::one()
         } else {
@@ -371,7 +371,7 @@ impl Register for u64 {
         }
     }
 
-    fn less_than(self, other: u64) -> u64 {
+    fn lt(self, other: u64) -> u64 {
         if self < other {
             Self::one()
         } else {
@@ -379,7 +379,7 @@ impl Register for u64 {
         }
     }
 
-    fn less_than_signed(self, other: u64) -> u64 {
+    fn lt_s(self, other: u64) -> u64 {
         if (self as i64) < (other as i64) {
             Self::one()
         } else {
