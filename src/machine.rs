@@ -43,18 +43,20 @@ fn convert_flags(p_flags: u32) -> u32 {
 /// This is the core part of RISC-V that only deals with data part, it
 /// is extracted from Machine so we can handle lifetime logic in dynamic
 /// syscall support.
-pub trait CoreMachine<R: Register, M: Memory> {
-    fn pc(&self) -> &R;
-    fn set_pc(&mut self, next_pc: R);
-    fn memory(&self) -> &M;
-    fn memory_mut(&mut self) -> &mut M;
-    fn registers(&self) -> &[R];
-    fn set_register(&mut self, idx: usize, value: R);
+pub trait CoreMachine {
+    type REG: Register;
+    type MEM: Memory;
+    fn pc(&self) -> &Self::REG;
+    fn set_pc(&mut self, next_pc: Self::REG);
+    fn memory(&self) -> &Self::MEM;
+    fn memory_mut(&mut self) -> &mut Self::MEM;
+    fn registers(&self) -> &[Self::REG];
+    fn set_register(&mut self, idx: usize, value: Self::REG);
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
 /// package only needs to deal with the functions in this trait.
-pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
+pub trait Machine: CoreMachine {
     fn ecall(&mut self) -> Result<(), Error>;
     fn ebreak(&mut self) -> Result<(), Error>;
 }
@@ -62,7 +64,7 @@ pub trait Machine<R: Register, M: Memory>: CoreMachine<R, M> {
 /// This traits extend on top of CoreMachine by adding additional support
 /// such as ELF range, cycles which might be needed on Rust side of the logic,
 /// such as runner or syscall implementations.
-pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
+pub trait SupportMachine: CoreMachine {
     // End address of elf segment
     fn elf_end(&self) -> usize;
     fn set_elf_end(&mut self, elf_end: usize);
@@ -91,7 +93,7 @@ pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
     fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         let bits = elf_bits(&elf.header).ok_or(Error::InvalidElfBits)?;
-        if bits != R::BITS {
+        if bits != Self::REG::BITS {
             return Err(Error::InvalidElfBits);
         }
         let program_slice = Rc::new(program.to_vec().into_boxed_slice());
@@ -114,7 +116,7 @@ pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
                     .store_byte(aligned_start, padding_start, 0)?;
             }
         }
-        self.set_pc(R::from_u64(elf.header.e_entry));
+        self.set_pc(Self::REG::from_u64(elf.header.e_entry));
         Ok(())
     }
 
@@ -126,13 +128,13 @@ pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
     ) -> Result<(), Error> {
         self.memory_mut()
             .mmap(stack_start, stack_size, PROT_READ | PROT_WRITE, None, 0)?;
-        self.set_register(SP, R::from_usize(stack_start + stack_size));
+        self.set_register(SP, Self::REG::from_usize(stack_start + stack_size));
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.
-        let mut values = vec![R::from_usize(args.len())];
+        let mut values = vec![Self::REG::from_usize(args.len())];
         for arg in args {
             let bytes = arg.as_slice();
-            let len = R::from_usize(bytes.len() + 1);
+            let len = Self::REG::from_usize(bytes.len() + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
             self.memory_mut().store_bytes(address.to_usize(), bytes)?;
@@ -145,7 +147,8 @@ pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
-            let address = self.registers()[SP].overflowing_sub(&R::from_usize(R::BITS / 8));
+            let address =
+                self.registers()[SP].overflowing_sub(&Self::REG::from_usize(Self::REG::BITS / 8));
 
             self.memory_mut()
                 .store32(address.to_usize(), value.to_u32())?;
@@ -160,7 +163,7 @@ pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
     }
 }
 
-pub struct DefaultCoreMachine<R: Register, M: Memory> {
+pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pc: R,
     memory: M,
@@ -169,7 +172,9 @@ pub struct DefaultCoreMachine<R: Register, M: Memory> {
     max_cycles: Option<u64>,
 }
 
-impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory> CoreMachine for DefaultCoreMachine<R, M> {
+    type REG = R;
+    type MEM = M;
     fn pc(&self) -> &R {
         &self.pc
     }
@@ -195,7 +200,7 @@ impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory> SupportMachine<R, M> for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory> SupportMachine for DefaultCoreMachine<R, M> {
     fn elf_end(&self) -> usize {
         self.elf_end
     }
@@ -220,7 +225,7 @@ impl<R: Register, M: Memory> SupportMachine<R, M> for DefaultCoreMachine<R, M> {
 impl<R, M> Default for DefaultCoreMachine<R, M>
 where
     R: Register,
-    M: Memory + Default,
+    M: Default,
 {
     fn default() -> DefaultCoreMachine<R, M> {
         // While a real machine might use whatever random data left in the memory(or
@@ -240,7 +245,7 @@ where
 impl<R, M> DefaultCoreMachine<R, M>
 where
     R: Register,
-    M: Memory + Default,
+    M: Default,
 {
     pub fn new_with_max_cycles(max_cycles: u64) -> DefaultCoreMachine<R, M> {
         Self {
@@ -279,7 +284,9 @@ impl<'a, R: Register, M: Memory> DerefMut for DefaultMachine<'a, R, M> {
     }
 }
 
-impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> {
+impl<'a, R: Register, M: Memory> CoreMachine for DefaultMachine<'a, R, M> {
+    type REG = R;
+    type MEM = M;
     fn pc(&self) -> &R {
         &self.pc
     }
@@ -305,7 +312,7 @@ impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> 
     }
 }
 
-impl<'a, R: Register, M: Memory> SupportMachine<R, M> for DefaultMachine<'a, R, M> {
+impl<'a, R: Register, M: Memory> SupportMachine for DefaultMachine<'a, R, M> {
     fn elf_end(&self) -> usize {
         self.elf_end
     }
@@ -327,7 +334,7 @@ impl<'a, R: Register, M: Memory> SupportMachine<R, M> for DefaultMachine<'a, R, 
     }
 }
 
-impl<'a, R: Register, M: Memory> Machine<R, M> for DefaultMachine<'a, R, M> {
+impl<'a, R: Register, M: Memory> Machine for DefaultMachine<'a, R, M> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers[A7].to_u64();
         match code {
