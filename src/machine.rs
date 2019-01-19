@@ -175,27 +175,27 @@ pub struct DefaultCoreMachine<R, M> {
 impl<R: Register, M: Memory> CoreMachine for DefaultCoreMachine<R, M> {
     type REG = R;
     type MEM = M;
-    fn pc(&self) -> &R {
+    fn pc(&self) -> &Self::REG {
         &self.pc
     }
 
-    fn set_pc(&mut self, next_pc: R) {
+    fn set_pc(&mut self, next_pc: Self::REG) {
         self.pc = next_pc;
     }
 
-    fn memory(&self) -> &M {
+    fn memory(&self) -> &Self::MEM {
         &self.memory
     }
 
-    fn memory_mut(&mut self) -> &mut M {
+    fn memory_mut(&mut self) -> &mut Self::MEM {
         &mut self.memory
     }
 
-    fn registers(&self) -> &[R] {
+    fn registers(&self) -> &[Self::REG] {
         &self.registers
     }
 
-    fn set_register(&mut self, idx: usize, value: R) {
+    fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
     }
 }
@@ -244,8 +244,7 @@ where
 
 impl<R, M> DefaultCoreMachine<R, M>
 where
-    R: Register,
-    M: Default,
+    Self: Default
 {
     pub fn new_with_max_cycles(max_cycles: u64) -> DefaultCoreMachine<R, M> {
         Self {
@@ -257,7 +256,7 @@ where
 
 pub type InstructionCycleFunc = Fn(&Instruction) -> u64;
 
-pub struct DefaultMachine<'a, R: Register, M: Memory> {
+pub struct DefaultMachine<'a, R, M> {
     core: DefaultCoreMachine<R, M>,
 
     // We have run benchmarks on secp256k1 verification, the performance
@@ -270,7 +269,7 @@ pub struct DefaultMachine<'a, R: Register, M: Memory> {
     exit_code: u8,
 }
 
-impl<'a, R: Register, M: Memory> Deref for DefaultMachine<'a, R, M> {
+impl<'a, R, M> Deref for DefaultMachine<'a, R, M> {
     type Target = DefaultCoreMachine<R, M>;
 
     fn deref(&self) -> &Self::Target {
@@ -278,7 +277,7 @@ impl<'a, R: Register, M: Memory> Deref for DefaultMachine<'a, R, M> {
     }
 }
 
-impl<'a, R: Register, M: Memory> DerefMut for DefaultMachine<'a, R, M> {
+impl<'a, R, M> DerefMut for DefaultMachine<'a, R, M> {
     fn deref_mut(&mut self) -> &mut DefaultCoreMachine<R, M> {
         &mut self.core
     }
