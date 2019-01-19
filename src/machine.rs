@@ -44,7 +44,7 @@ fn convert_flags(p_flags: u32) -> u32 {
 /// is extracted from Machine so we can handle lifetime logic in dynamic
 /// syscall support.
 pub trait CoreMachine<R: Register, M: Memory> {
-    fn pc(&self) -> R;
+    fn pc(&self) -> &R;
     fn set_pc(&mut self, next_pc: R);
     fn memory(&self) -> &M;
     fn memory_mut(&mut self) -> &mut M;
@@ -133,19 +133,19 @@ pub trait SupportMachine<R: Register, M: Memory>: CoreMachine<R, M> {
         for arg in args {
             let bytes = arg.as_slice();
             let len = R::from_usize(bytes.len() + 1);
-            let address = self.registers()[SP].overflowing_sub(len);
+            let address = self.registers()[SP].overflowing_sub(&len);
 
             self.memory_mut().store_bytes(address.to_usize(), bytes)?;
             self.memory_mut()
                 .store8(address.to_usize() + bytes.len(), 0)?;
 
-            values.push(address);
+            values.push(address.clone());
             self.set_register(SP, address);
         }
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
-            let address = self.registers()[SP].overflowing_sub(R::from_usize(R::BITS / 8));
+            let address = self.registers()[SP].overflowing_sub(&R::from_usize(R::BITS / 8));
 
             self.memory_mut()
                 .store32(address.to_usize(), value.to_u32())?;
@@ -170,8 +170,8 @@ pub struct DefaultCoreMachine<R: Register, M: Memory> {
 }
 
 impl<R: Register, M: Memory> CoreMachine<R, M> for DefaultCoreMachine<R, M> {
-    fn pc(&self) -> R {
-        self.pc
+    fn pc(&self) -> &R {
+        &self.pc
     }
 
     fn set_pc(&mut self, next_pc: R) {
@@ -227,7 +227,7 @@ where
         // random scrubbed data for security), we are initializing everything to 0 here
         // for deterministic behavior.
         DefaultCoreMachine {
-            registers: [R::zero(); RISCV_GENERAL_REGISTER_NUMBER],
+            registers: Default::default(),
             pc: R::zero(),
             memory: M::default(),
             elf_end: 0,
@@ -280,8 +280,8 @@ impl<'a, R: Register, M: Memory> DerefMut for DefaultMachine<'a, R, M> {
 }
 
 impl<'a, R: Register, M: Memory> CoreMachine<R, M> for DefaultMachine<'a, R, M> {
-    fn pc(&self) -> R {
-        self.pc
+    fn pc(&self) -> &R {
+        &self.pc
     }
 
     fn set_pc(&mut self, next_pc: R) {

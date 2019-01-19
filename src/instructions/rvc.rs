@@ -302,7 +302,7 @@ impl Execute for UtypeU {
     ) -> Result<Option<R>, Error> {
         match &self.inst {
             UtypeUInstruction::ADDI4SPN => {
-                let value = machine.registers()[SP].overflowing_add(R::from_u32(self.imm));
+                let value = machine.registers()[SP].overflowing_add(&R::from_u32(self.imm));
                 update_register(machine, self.rd, value);
             }
             UtypeUInstruction::LWSP => common::lw(machine, self.rd, SP, self.imm as i32)?,
@@ -504,30 +504,30 @@ impl Instruction {
             Instruction::R(inst) => inst.execute(machine)?,
             Instruction::CSS(inst) => inst.execute(machine)?,
             Instruction::BEQZ { rs1, imm } => {
-                let condition = machine.registers()[*rs1].eq(R::zero());
-                let next_pc_offset = condition.cond(R::from_i32(*imm), R::from_usize(2));
-                Some(machine.pc().overflowing_add(next_pc_offset))
+                let condition = machine.registers()[*rs1].eq(&R::zero());
+                let next_pc_offset = condition.cond(&R::from_i32(*imm), &R::from_usize(2));
+                Some(machine.pc().overflowing_add(&next_pc_offset))
             }
             Instruction::BNEZ { rs1, imm } => {
-                let condition = machine.registers()[*rs1].eq(R::zero()).logical_not();
-                let next_pc_offset = condition.cond(R::from_i32(*imm), R::from_usize(2));
-                Some(machine.pc().overflowing_add(next_pc_offset))
+                let condition = machine.registers()[*rs1].eq(&R::zero()).logical_not();
+                let next_pc_offset = condition.cond(&R::from_i32(*imm), &R::from_usize(2));
+                Some(machine.pc().overflowing_add(&next_pc_offset))
             }
             Instruction::MV { rs2, rd } => {
-                let value = machine.registers()[*rs2];
-                update_register(machine, *rd, value);
+                let value = &machine.registers()[*rs2];
+                update_register(machine, *rd, value.clone());
                 None
             }
             Instruction::JAL { imm } => common::jal(machine, 1, *imm, 2),
-            Instruction::J { imm } => Some(machine.pc().overflowing_add(R::from_i32(*imm))),
-            Instruction::JR { rs1 } => Some(machine.registers()[*rs1]),
+            Instruction::J { imm } => Some(machine.pc().overflowing_add(&R::from_i32(*imm))),
+            Instruction::JR { rs1 } => Some(machine.registers()[*rs1].clone()),
             Instruction::JALR { rs1 } => {
-                let link = machine.pc().overflowing_add(R::from_usize(2));
+                let link = machine.pc().overflowing_add(&R::from_usize(2));
                 update_register(machine, 1, link);
-                Some(machine.registers()[*rs1])
+                Some(machine.registers()[*rs1].clone())
             }
             Instruction::ADDI16SP { imm } => {
-                let value = machine.registers()[SP].overflowing_add(R::from_i32(*imm));
+                let value = machine.registers()[SP].overflowing_add(&R::from_i32(*imm));
                 update_register(machine, SP, value);
                 None
             }
@@ -543,7 +543,7 @@ impl Instruction {
                 None
             }
         };
-        let default_next_pc = machine.pc().overflowing_add(R::from_usize(2));
+        let default_next_pc = machine.pc().overflowing_add(&R::from_usize(2));
         machine.set_pc(next_pc.unwrap_or(default_next_pc));
         Ok(())
     }

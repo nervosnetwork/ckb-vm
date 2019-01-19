@@ -3,7 +3,8 @@ use std::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 
 pub trait Register:
     Sized
-    + Copy
+    + Clone
+    + Default
     + Display
     + Not<Output = Self>
     + BitAnd<Output = Self>
@@ -23,20 +24,20 @@ pub trait Register:
 
     // Conditional operations, if the condition evaluated here is true, R::one()
     // will be emitted, otherwise R::zero() will be emitted
-    fn eq(self, other: Self) -> Self;
-    fn lt(self, other: Self) -> Self;
-    fn lt_s(self, other: Self) -> Self;
-    fn logical_not(self) -> Self;
+    fn eq(&self, other: &Self) -> Self;
+    fn lt(&self, other: &Self) -> Self;
+    fn lt_s(&self, other: &Self) -> Self;
+    fn logical_not(&self) -> Self;
 
     // self here should be the result of one of the conditional operations, if
     // self is R::one(), true_value will be returned, otherwise false_value will
     // be returned. No values other than R::one() or R::zero() should be accepted
     // as self here.
-    fn cond(self, true_value: Self, false_value: Self) -> Self;
+    fn cond(&self, true_value: &Self, false_value: &Self) -> Self;
 
-    fn overflowing_add(self, rhs: Self) -> Self;
-    fn overflowing_sub(self, rhs: Self) -> Self;
-    fn overflowing_mul(self, rhs: Self) -> Self;
+    fn overflowing_add(&self, rhs: &Self) -> Self;
+    fn overflowing_sub(&self, rhs: &Self) -> Self;
+    fn overflowing_mul(&self, rhs: &Self) -> Self;
 
     // Those 4 methods should implement RISC-V's overflowing strategies:
     // +---------------------------------------------------------------------------------------+
@@ -46,24 +47,24 @@ pub trait Register:
     // +------------------------+-----------+---------+---------+---------+-----------+--------+
     // | Overflow (signed only) | −2**(L−1) |   −1    |    -    |    -    | -2**(L-1) |   0    |
     // +---------------------------------------------------------------------------------------+
-    fn overflowing_div(self, rhs: Self) -> Self;
-    fn overflowing_rem(self, rhs: Self) -> Self;
-    fn overflowing_div_signed(self, rhs: Self) -> Self;
-    fn overflowing_rem_signed(self, rhs: Self) -> Self;
+    fn overflowing_div(&self, rhs: &Self) -> Self;
+    fn overflowing_rem(&self, rhs: &Self) -> Self;
+    fn overflowing_div_signed(&self, rhs: &Self) -> Self;
+    fn overflowing_rem_signed(&self, rhs: &Self) -> Self;
 
-    fn overflowing_mul_high_signed(self, rhs: Self) -> Self;
-    fn overflowing_mul_high_unsigned(self, rhs: Self) -> Self;
-    fn overflowing_mul_high_signed_unsigned(self, rhs: Self) -> Self;
+    fn overflowing_mul_high_signed(&self, rhs: &Self) -> Self;
+    fn overflowing_mul_high_unsigned(&self, rhs: &Self) -> Self;
+    fn overflowing_mul_high_signed_unsigned(&self, rhs: &Self) -> Self;
 
-    fn signed_shl(self, rhs: Self) -> Self;
-    fn signed_shr(self, rhs: Self) -> Self;
+    fn signed_shl(&self, rhs: &Self) -> Self;
+    fn signed_shr(&self, rhs: &Self) -> Self;
 
     // Zero extend from start_bit to the highest bit, note
     // start_bit is offset by 0
-    fn zero_extend(self, start_bit: Self) -> Self;
+    fn zero_extend(&self, start_bit: &Self) -> Self;
     // Sign extend from start_bit to the highest bit leveraging
     // bit in (start_bit - 1), note start_bit is offset by 0
-    fn sign_extend(self, start_bit: Self) -> Self;
+    fn sign_extend(&self, start_bit: &Self) -> Self;
 
     // NOTE: one alternative solution is to encode those methods using
     // From/Into traits, however we opt for manual conversion here for 2
@@ -73,16 +74,16 @@ pub trait Register:
     // tells us it's a different type.
     // 2. Adding those additional methods allows us to implement this trait on
     // plain u32/u64 types.
-    fn to_i8(self) -> i8;
-    fn to_i16(self) -> i16;
-    fn to_i32(self) -> i32;
-    fn to_i64(self) -> i64;
-    fn to_isize(self) -> isize;
-    fn to_u8(self) -> u8;
-    fn to_u16(self) -> u16;
-    fn to_u32(self) -> u32;
-    fn to_u64(self) -> u64;
-    fn to_usize(self) -> usize;
+    fn to_i8(&self) -> i8;
+    fn to_i16(&self) -> i16;
+    fn to_i32(&self) -> i32;
+    fn to_i64(&self) -> i64;
+    fn to_isize(&self) -> isize;
+    fn to_u8(&self) -> u8;
+    fn to_u16(&self) -> u16;
+    fn to_u32(&self) -> u32;
+    fn to_u64(&self) -> u64;
+    fn to_usize(&self) -> usize;
 
     fn from_i8(v: i8) -> Self;
     fn from_i16(v: i16) -> Self;
@@ -95,15 +96,15 @@ pub trait Register:
     fn from_u64(v: u64) -> Self;
     fn from_usize(v: usize) -> Self;
 
-    fn ne(self, rhs: Self) -> Self {
+    fn ne(&self, rhs: &Self) -> Self {
         self.eq(rhs).logical_not()
     }
 
-    fn ge(self, other: Self) -> Self {
+    fn ge(&self, other: &Self) -> Self {
         self.lt(other).logical_not()
     }
 
-    fn ge_s(self, other: Self) -> Self {
+    fn ge_s(&self, other: &Self) -> Self {
         self.lt_s(other).logical_not()
     }
 }
@@ -128,63 +129,63 @@ impl Register for u32 {
         u32::max_value()
     }
 
-    fn eq(self, other: u32) -> u32 {
+    fn eq(&self, other: &u32) -> u32 {
         (self == other).into()
     }
 
-    fn lt(self, other: u32) -> u32 {
+    fn lt(&self, other: &u32) -> u32 {
         (self < other).into()
     }
 
-    fn lt_s(self, other: u32) -> u32 {
-        ((self as i32) < (other as i32)).into()
+    fn lt_s(&self, other: &u32) -> u32 {
+        ((*self as i32) < (*other as i32)).into()
     }
 
-    fn logical_not(self) -> u32 {
-        (self != Self::one()).into()
+    fn logical_not(&self) -> u32 {
+        (*self != Self::one()).into()
     }
 
-    fn cond(self, true_value: u32, false_value: u32) -> u32 {
-        if self == Self::one() {
-            true_value
+    fn cond(&self, true_value: &u32, false_value: &u32) -> u32 {
+        if *self == Self::one() {
+            *true_value
         } else {
-            false_value
+            *false_value
         }
     }
 
-    fn overflowing_add(self, rhs: u32) -> u32 {
-        self.overflowing_add(rhs).0
+    fn overflowing_add(&self, rhs: &u32) -> u32 {
+        (*self).overflowing_add(*rhs).0
     }
 
-    fn overflowing_sub(self, rhs: u32) -> u32 {
-        self.overflowing_sub(rhs).0
+    fn overflowing_sub(&self, rhs: &u32) -> u32 {
+        (*self).overflowing_sub(*rhs).0
     }
 
-    fn overflowing_mul(self, rhs: u32) -> u32 {
-        self.overflowing_mul(rhs).0
+    fn overflowing_mul(&self, rhs: &u32) -> u32 {
+        (*self).overflowing_mul(*rhs).0
     }
 
-    fn overflowing_div(self, rhs: u32) -> u32 {
-        if rhs == 0 {
+    fn overflowing_div(&self, rhs: &u32) -> u32 {
+        if *rhs == 0 {
             Self::max_value()
         } else {
-            self.overflowing_div(rhs).0
+            (*self).overflowing_div(*rhs).0
         }
     }
 
-    fn overflowing_rem(self, rhs: u32) -> u32 {
-        if rhs == 0 {
-            self
+    fn overflowing_rem(&self, rhs: &u32) -> u32 {
+        if *rhs == 0 {
+            *self
         } else {
-            self.overflowing_rem(rhs).0
+            (*self).overflowing_rem(*rhs).0
         }
     }
 
-    fn overflowing_div_signed(self, rhs: u32) -> u32 {
-        if rhs == 0 {
+    fn overflowing_div_signed(&self, rhs: &u32) -> u32 {
+        if *rhs == 0 {
             (-1i32) as u32
         } else {
-            let (v, o) = (self as i32).overflowing_div(rhs as i32);
+            let (v, o) = (*self as i32).overflowing_div(*rhs as i32);
             if o {
                 // -2**(L-1) implemented using (-1) << (L - 1)
                 ((-1i32) as u32) << (Self::BITS - 1)
@@ -194,11 +195,11 @@ impl Register for u32 {
         }
     }
 
-    fn overflowing_rem_signed(self, rhs: u32) -> u32 {
-        if rhs == 0 {
-            self
+    fn overflowing_rem_signed(&self, rhs: &u32) -> u32 {
+        if *rhs == 0 {
+            *self
         } else {
-            let (v, o) = (self as i32).overflowing_rem(rhs as i32);
+            let (v, o) = (*self as i32).overflowing_rem(*rhs as i32);
             if o {
                 0
             } else {
@@ -207,83 +208,85 @@ impl Register for u32 {
         }
     }
 
-    fn overflowing_mul_high_signed(self, rhs: u32) -> u32 {
-        let a = i64::from(self as i32);
-        let b = i64::from(rhs as i32);
+    fn overflowing_mul_high_signed(&self, rhs: &u32) -> u32 {
+        let a = i64::from(*self as i32);
+        let b = i64::from(*rhs as i32);
         let (value, _) = a.overflowing_mul(b);
         (value >> 32) as u32
     }
 
-    fn overflowing_mul_high_unsigned(self, rhs: u32) -> u32 {
-        let a = u64::from(self);
-        let b = u64::from(rhs);
+    fn overflowing_mul_high_unsigned(&self, rhs: &u32) -> u32 {
+        let a = u64::from(*self);
+        let b = u64::from(*rhs);
         let (value, _) = a.overflowing_mul(b);
         (value >> 32) as u32
     }
 
-    fn overflowing_mul_high_signed_unsigned(self, rhs: u32) -> u32 {
-        let a = i64::from(self as i32);
-        let b = i64::from(rhs);
+    fn overflowing_mul_high_signed_unsigned(&self, rhs: &u32) -> u32 {
+        let a = i64::from(*self as i32);
+        let b = i64::from(*rhs);
         let (value, _) = a.overflowing_mul(b);
         (value >> 32) as u32
     }
 
-    fn signed_shl(self, rhs: u32) -> u32 {
-        (self as i32).shl(rhs) as u32
+    fn signed_shl(&self, rhs: &u32) -> u32 {
+        (*self as i32).shl(*rhs) as u32
     }
 
-    fn signed_shr(self, rhs: u32) -> u32 {
-        (self as i32).shr(rhs) as u32
+    fn signed_shr(&self, rhs: &u32) -> u32 {
+        (*self as i32).shr(*rhs) as u32
     }
 
-    fn zero_extend(self, start_bit: u32) -> u32 {
+    fn zero_extend(&self, start_bit: &u32) -> u32 {
+        let start_bit = *start_bit;
         debug_assert!(start_bit < 32 && start_bit > 0);
-        (self << (32 - start_bit)) >> (32 - start_bit)
+        (*self << (32 - start_bit)) >> (32 - start_bit)
     }
 
-    fn sign_extend(self, start_bit: u32) -> u32 {
+    fn sign_extend(&self, start_bit: &u32) -> u32 {
+        let start_bit = *start_bit;
         debug_assert!(start_bit < 32 && start_bit > 0);
-        (((self << (32 - start_bit)) as i32) >> (32 - start_bit)) as u32
+        (((*self << (32 - start_bit)) as i32) >> (32 - start_bit)) as u32
     }
 
-    fn to_i8(self) -> i8 {
-        self as i8
+    fn to_i8(&self) -> i8 {
+        *self as i8
     }
 
-    fn to_i16(self) -> i16 {
-        self as i16
+    fn to_i16(&self) -> i16 {
+        *self as i16
     }
 
-    fn to_i32(self) -> i32 {
-        self as i32
+    fn to_i32(&self) -> i32 {
+        *self as i32
     }
 
-    fn to_i64(self) -> i64 {
-        i64::from(self as i32)
+    fn to_i64(&self) -> i64 {
+        i64::from(*self as i32)
     }
 
-    fn to_isize(self) -> isize {
-        i64::from(self as i32) as isize
+    fn to_isize(&self) -> isize {
+        i64::from(*self as i32) as isize
     }
 
-    fn to_u8(self) -> u8 {
-        self as u8
+    fn to_u8(&self) -> u8 {
+        *self as u8
     }
 
-    fn to_u16(self) -> u16 {
-        self as u16
+    fn to_u16(&self) -> u16 {
+        *self as u16
     }
 
-    fn to_u32(self) -> u32 {
-        self
+    fn to_u32(&self) -> u32 {
+        *self
     }
 
-    fn to_u64(self) -> u64 {
-        u64::from(self)
+    fn to_u64(&self) -> u64 {
+        u64::from(*self)
     }
 
-    fn to_usize(self) -> usize {
-        self as usize
+    fn to_usize(&self) -> usize {
+        *self as usize
     }
 
     fn from_i8(v: i8) -> u32 {
@@ -347,63 +350,63 @@ impl Register for u64 {
         u64::max_value()
     }
 
-    fn eq(self, other: u64) -> u64 {
+    fn eq(&self, other: &u64) -> u64 {
         (self == other).into()
     }
 
-    fn lt(self, other: u64) -> u64 {
+    fn lt(&self, other: &u64) -> u64 {
         (self < other).into()
     }
 
-    fn lt_s(self, other: u64) -> u64 {
-        ((self as i64) < (other as i64)).into()
+    fn lt_s(&self, other: &u64) -> u64 {
+        ((*self as i64) < (*other as i64)).into()
     }
 
-    fn logical_not(self) -> u64 {
-        (self != Self::one()).into()
+    fn logical_not(&self) -> u64 {
+        (*self != Self::one()).into()
     }
 
-    fn cond(self, true_value: u64, false_value: u64) -> u64 {
-        if self == Self::one() {
-            true_value
+    fn cond(&self, true_value: &u64, false_value: &u64) -> u64 {
+        if *self == Self::one() {
+            *true_value
         } else {
-            false_value
+            *false_value
         }
     }
 
-    fn overflowing_add(self, rhs: u64) -> u64 {
-        self.overflowing_add(rhs).0
+    fn overflowing_add(&self, rhs: &u64) -> u64 {
+        (*self).overflowing_add(*rhs).0
     }
 
-    fn overflowing_sub(self, rhs: u64) -> u64 {
-        self.overflowing_sub(rhs).0
+    fn overflowing_sub(&self, rhs: &u64) -> u64 {
+        (*self).overflowing_sub(*rhs).0
     }
 
-    fn overflowing_mul(self, rhs: u64) -> u64 {
-        self.overflowing_mul(rhs).0
+    fn overflowing_mul(&self, rhs: &u64) -> u64 {
+        (*self).overflowing_mul(*rhs).0
     }
 
-    fn overflowing_div(self, rhs: u64) -> u64 {
-        if rhs == 0 {
+    fn overflowing_div(&self, rhs: &u64) -> u64 {
+        if *rhs == 0 {
             Self::max_value()
         } else {
-            self.overflowing_div(rhs).0
+            (*self).overflowing_div(*rhs).0
         }
     }
 
-    fn overflowing_rem(self, rhs: u64) -> u64 {
-        if rhs == 0 {
-            self
+    fn overflowing_rem(&self, rhs: &u64) -> u64 {
+        if *rhs == 0 {
+            *self
         } else {
-            self.overflowing_rem(rhs).0
+            (*self).overflowing_rem(*rhs).0
         }
     }
 
-    fn overflowing_div_signed(self, rhs: u64) -> u64 {
-        if rhs == 0 {
+    fn overflowing_div_signed(&self, rhs: &u64) -> u64 {
+        if *rhs == 0 {
             (-1i64) as u64
         } else {
-            let (v, o) = (self as i64).overflowing_div(rhs as i64);
+            let (v, o) = (*self as i64).overflowing_div(*rhs as i64);
             if o {
                 // -2**(L-1) implemented using (-1) << (L - 1)
                 ((-1i64) as u64) << (Self::BITS - 1)
@@ -413,11 +416,11 @@ impl Register for u64 {
         }
     }
 
-    fn overflowing_rem_signed(self, rhs: u64) -> u64 {
-        if rhs == 0 {
-            self
+    fn overflowing_rem_signed(&self, rhs: &u64) -> u64 {
+        if *rhs == 0 {
+            *self
         } else {
-            let (v, o) = (self as i64).overflowing_rem(rhs as i64);
+            let (v, o) = (*self as i64).overflowing_rem(*rhs as i64);
             if o {
                 0
             } else {
@@ -426,83 +429,85 @@ impl Register for u64 {
         }
     }
 
-    fn overflowing_mul_high_signed(self, rhs: u64) -> u64 {
-        let a = i128::from(self as i64);
-        let b = i128::from(rhs as i64);
+    fn overflowing_mul_high_signed(&self, rhs: &u64) -> u64 {
+        let a = i128::from(*self as i64);
+        let b = i128::from(*rhs as i64);
         let (value, _) = a.overflowing_mul(b);
         (value >> 64) as u64
     }
 
-    fn overflowing_mul_high_unsigned(self, rhs: u64) -> u64 {
-        let a = u128::from(self);
-        let b = u128::from(rhs);
+    fn overflowing_mul_high_unsigned(&self, rhs: &u64) -> u64 {
+        let a = u128::from(*self);
+        let b = u128::from(*rhs);
         let (value, _) = a.overflowing_mul(b);
         (value >> 64) as u64
     }
 
-    fn overflowing_mul_high_signed_unsigned(self, rhs: u64) -> u64 {
-        let a = i128::from(self as i64);
-        let b = i128::from(rhs);
+    fn overflowing_mul_high_signed_unsigned(&self, rhs: &u64) -> u64 {
+        let a = i128::from(*self as i64);
+        let b = i128::from(*rhs);
         let (value, _) = a.overflowing_mul(b);
         (value >> 64) as u64
     }
 
-    fn signed_shl(self, rhs: u64) -> u64 {
-        (self as i64).shl(rhs) as u64
+    fn signed_shl(&self, rhs: &u64) -> u64 {
+        (*self as i64).shl(*rhs) as u64
     }
 
-    fn signed_shr(self, rhs: u64) -> u64 {
-        (self as i64).shr(rhs) as u64
+    fn signed_shr(&self, rhs: &u64) -> u64 {
+        (*self as i64).shr(*rhs) as u64
     }
 
-    fn zero_extend(self, start_bit: u64) -> u64 {
+    fn zero_extend(&self, start_bit: &u64) -> u64 {
+        let start_bit = *start_bit;
         debug_assert!(start_bit < 64 && start_bit > 0);
-        (self << (64 - start_bit)) >> (64 - start_bit)
+        (*self << (64 - start_bit)) >> (64 - start_bit)
     }
 
-    fn sign_extend(self, start_bit: u64) -> u64 {
+    fn sign_extend(&self, start_bit: &u64) -> u64 {
+        let start_bit = *start_bit;
         debug_assert!(start_bit < 64 && start_bit > 0);
-        (((self << (64 - start_bit)) as i64) >> (64 - start_bit)) as u64
+        (((*self << (64 - start_bit)) as i64) >> (64 - start_bit)) as u64
     }
 
-    fn to_i8(self) -> i8 {
-        self as i8
+    fn to_i8(&self) -> i8 {
+        *self as i8
     }
 
-    fn to_i16(self) -> i16 {
-        self as i16
+    fn to_i16(&self) -> i16 {
+        *self as i16
     }
 
-    fn to_i32(self) -> i32 {
-        self as i32
+    fn to_i32(&self) -> i32 {
+        *self as i32
     }
 
-    fn to_i64(self) -> i64 {
-        self as i64
+    fn to_i64(&self) -> i64 {
+        *self as i64
     }
 
-    fn to_isize(self) -> isize {
-        (self as i64) as isize
+    fn to_isize(&self) -> isize {
+        (*self as i64) as isize
     }
 
-    fn to_u8(self) -> u8 {
-        self as u8
+    fn to_u8(&self) -> u8 {
+        *self as u8
     }
 
-    fn to_u16(self) -> u16 {
-        self as u16
+    fn to_u16(&self) -> u16 {
+        *self as u16
     }
 
-    fn to_u32(self) -> u32 {
-        self as u32
+    fn to_u32(&self) -> u32 {
+        *self as u32
     }
 
-    fn to_u64(self) -> u64 {
-        self
+    fn to_u64(&self) -> u64 {
+        *self
     }
 
-    fn to_usize(self) -> usize {
-        self as usize
+    fn to_usize(&self) -> usize {
+        *self as usize
     }
 
     fn from_i8(v: i8) -> u64 {
