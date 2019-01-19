@@ -244,7 +244,7 @@ where
 
 impl<R, M> DefaultCoreMachine<R, M>
 where
-    Self: Default
+    Self: Default,
 {
     pub fn new_with_max_cycles(max_cycles: u64) -> DefaultCoreMachine<R, M> {
         Self {
