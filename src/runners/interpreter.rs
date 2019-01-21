@@ -1,12 +1,9 @@
 use crate::{
-    decoder::build_imac_decoder, CoreMachine, DefaultMachine, Error, Memory, Register,
-    SupportMachine,
+    decoder::build_imac_decoder, CoreMachine, DefaultMachine, Error, Register, SupportMachine,
 };
 
-pub fn run<'a, R: Register, M: Memory>(
-    machine: &mut DefaultMachine<'a, R, M>,
-) -> Result<u8, Error> {
-    let decoder = build_imac_decoder::<R>();
+pub fn run<Core: SupportMachine>(machine: &mut DefaultMachine<Core>) -> Result<u8, Error> {
+    let decoder = build_imac_decoder::<Core::REG>();
     machine.set_running(true);
     while machine.running() {
         let instruction = {

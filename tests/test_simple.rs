@@ -1,8 +1,8 @@
 extern crate ckb_vm;
 
 use ckb_vm::{
-    interpreter_run, run, DefaultMachine, Error, FlatMemory, Instruction, SparseMemory,
-    SupportMachine,
+    interpreter_run, run, DefaultCoreMachine, DefaultMachine, Error, FlatMemory, Instruction,
+    SparseMemory, SupportMachine,
 };
 use std::fs::File;
 use std::io::Read;
@@ -50,8 +50,10 @@ pub fn test_simple_cycles() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let mut machine =
-        DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 517);
+    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory>>::new_with_cost_model(
+        Box::new(dummy_cycle_func),
+        517,
+    );
     machine = machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
@@ -69,8 +71,10 @@ pub fn test_simple_max_cycles_reached() {
     file.read_to_end(&mut buffer).unwrap();
 
     // Running simple64 should consume 517 cycles using dummy cycle func
-    let mut machine =
-        DefaultMachine::<u64, SparseMemory>::new_with_cost_model(Box::new(dummy_cycle_func), 500);
+    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory>>::new_with_cost_model(
+        Box::new(dummy_cycle_func),
+        500,
+    );
     machine = machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
