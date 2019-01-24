@@ -8,7 +8,6 @@ pub mod rvc;
 
 pub use self::register::Register;
 use super::machine::Machine;
-use super::memory::Memory;
 use super::Error;
 use std::fmt::{self, Display};
 
@@ -20,10 +19,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<(), Error> {
+    pub fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<(), Error> {
         match self {
             Instruction::I(instruction) => instruction.execute(machine),
             Instruction::M(instruction) => instruction.execute(machine),
@@ -44,10 +40,7 @@ pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
 
 // Instruction execution trait
 pub trait Execute {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error>;
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error>;
 }
 
 type RegisterIndex = usize;

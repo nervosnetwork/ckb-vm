@@ -1,5 +1,4 @@
 use super::super::machine::Machine;
-use super::super::memory::Memory;
 use super::super::Error;
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
@@ -138,10 +137,7 @@ pub struct CsrIType {
 }
 
 impl Execute for Rtype {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match &self.inst {
             RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SUBW => common::subw(machine, self.rd, self.rs1, self.rs2),
@@ -151,40 +147,55 @@ impl Execute for Rtype {
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
-                let shift_value =
-                    machine.registers()[self.rs2].clone() & R::from_usize(R::SHIFT_MASK);
+                let shift_value = machine.registers()[self.rs2].clone()
+                    & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
                 let value = machine.registers()[self.rs1].clone() << shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SLLW => {
-                let shift_value = machine.registers()[self.rs2].clone() & R::from_usize(0x1F);
+                let shift_value =
+                    machine.registers()[self.rs2].clone() & Mac::REG::from_usize(0x1F);
                 let value = machine.registers()[self.rs1].clone() << shift_value;
-                update_register(machine, self.rd, value.sign_extend(&R::from_usize(32)));
+                update_register(
+                    machine,
+                    self.rd,
+                    value.sign_extend(&Mac::REG::from_usize(32)),
+                );
             }
             RtypeInstruction::SRL => {
-                let shift_value =
-                    machine.registers()[self.rs2].clone() & R::from_usize(R::SHIFT_MASK);
+                let shift_value = machine.registers()[self.rs2].clone()
+                    & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
                 let value = machine.registers()[self.rs1].clone() >> shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRLW => {
-                let shift_value = machine.registers()[self.rs2].clone() & R::from_usize(0x1F);
-                let value =
-                    machine.registers()[self.rs1].zero_extend(&R::from_usize(32)) >> shift_value;
-                update_register(machine, self.rd, value.sign_extend(&R::from_usize(32)));
+                let shift_value =
+                    machine.registers()[self.rs2].clone() & Mac::REG::from_usize(0x1F);
+                let value = machine.registers()[self.rs1].zero_extend(&Mac::REG::from_usize(32))
+                    >> shift_value;
+                update_register(
+                    machine,
+                    self.rd,
+                    value.sign_extend(&Mac::REG::from_usize(32)),
+                );
             }
             RtypeInstruction::SRA => {
-                let shift_value =
-                    machine.registers()[self.rs2].clone() & R::from_usize(R::SHIFT_MASK);
+                let shift_value = machine.registers()[self.rs2].clone()
+                    & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
                 let value = machine.registers()[self.rs1].signed_shr(&shift_value);
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRAW => {
-                let shift_value = machine.registers()[self.rs2].clone() & R::from_usize(0x1F);
+                let shift_value =
+                    machine.registers()[self.rs2].clone() & Mac::REG::from_usize(0x1F);
                 let value = machine.registers()[self.rs1]
-                    .sign_extend(&R::from_usize(32))
+                    .sign_extend(&Mac::REG::from_usize(32))
                     .signed_shr(&shift_value);
-                update_register(machine, self.rd, value.sign_extend(&R::from_usize(32)));
+                update_register(
+                    machine,
+                    self.rd,
+                    value.sign_extend(&Mac::REG::from_usize(32)),
+                );
             }
             RtypeInstruction::SLT => {
                 let rs1_value = &machine.registers()[self.rs1];
@@ -204,10 +215,7 @@ impl Execute for Rtype {
 }
 
 impl Execute for Itype {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match &self.inst {
             ItypeInstruction::LB => common::lb(machine, self.rd, self.rs1, self.imm)?,
             ItypeInstruction::LH => common::lh(machine, self.rd, self.rs1, self.imm)?,
@@ -223,21 +231,21 @@ impl Execute for Itype {
             ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm),
             ItypeInstruction::SLTI => {
                 let rs1_value = &machine.registers()[self.rs1];
-                let imm_value = R::from_i32(self.imm);
+                let imm_value = Mac::REG::from_i32(self.imm);
                 let value = rs1_value.lt_s(&imm_value);
                 update_register(machine, self.rd, value);
             }
             ItypeInstruction::SLTIU => {
                 let rs1_value = &machine.registers()[self.rs1];
-                let imm_value = R::from_i32(self.imm);
+                let imm_value = Mac::REG::from_i32(self.imm);
                 let value = rs1_value.lt(&imm_value);
                 update_register(machine, self.rd, value);
             }
             ItypeInstruction::JALR => {
-                let link = machine.pc().overflowing_add(&R::from_usize(4));
+                let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
                 let mut next_pc =
-                    machine.registers()[self.rs1].overflowing_add(&R::from_i32(self.imm));
-                next_pc = next_pc & (!R::one());
+                    machine.registers()[self.rs1].overflowing_add(&Mac::REG::from_i32(self.imm));
+                next_pc = next_pc & (!Mac::REG::one());
                 update_register(machine, self.rd, link);
                 return Ok(Some(next_pc));
             }
@@ -247,10 +255,7 @@ impl Execute for Itype {
 }
 
 impl Execute for ItypeShift {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match &self.inst {
             ItypeShiftInstruction::SLLI => {
                 common::slli(machine, self.rd, self.rs1, self.shamt as u32)
@@ -276,10 +281,7 @@ impl Execute for ItypeShift {
 }
 
 impl Execute for Stype {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match &self.inst {
             StypeInstruction::SB => common::sb(machine, self.rs1, self.rs2, self.imm)?,
             StypeInstruction::SH => common::sh(machine, self.rs1, self.rs2, self.imm)?,
@@ -291,10 +293,7 @@ impl Execute for Stype {
 }
 
 impl Execute for Btype {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         let rs1_value = &machine.registers()[self.rs1];
         let rs2_value = &machine.registers()[self.rs2];
         let condition = match &self.inst {
@@ -305,22 +304,20 @@ impl Execute for Btype {
             BtypeInstruction::BLTU => rs1_value.lt(&rs2_value),
             BtypeInstruction::BGEU => rs1_value.ge(&rs2_value),
         };
-        let next_pc_offset = condition.cond(&R::from_i32(self.imm), &R::from_usize(4));
+        let next_pc_offset =
+            condition.cond(&Mac::REG::from_i32(self.imm), &Mac::REG::from_usize(4));
         Ok(Some(machine.pc().overflowing_add(&next_pc_offset)))
     }
 }
 
 impl Execute for Utype {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match &self.inst {
             UtypeInstruction::LUI => {
-                update_register(machine, self.rd, R::from_i32(self.imm));
+                update_register(machine, self.rd, Mac::REG::from_i32(self.imm));
             }
             UtypeInstruction::AUIPC => {
-                let value = machine.pc().overflowing_add(&R::from_i32(self.imm));
+                let value = machine.pc().overflowing_add(&Mac::REG::from_i32(self.imm));
                 update_register(machine, self.rd, value);
             }
         }
@@ -329,19 +326,13 @@ impl Execute for Utype {
 }
 
 impl Execute for FenceType {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        _machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, _machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         Ok(None)
     }
 }
 
 impl Execute for EnvInstruction {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match self {
             EnvInstruction::ECALL => {
                 // The semantic of ECALL is determined by the hardware, which
@@ -359,10 +350,7 @@ impl Execute for EnvInstruction {
 }
 
 impl Execute for CsrType {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        _machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, _machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         // > All CSR instructions atomically read-modify-write a single CSR.
         // So no need to implement them yet
         match &self.inst {
@@ -374,10 +362,7 @@ impl Execute for CsrType {
 }
 
 impl Execute for CsrIType {
-    fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        _machine: &mut Mac,
-    ) -> Result<Option<R>, Error> {
+    fn execute<Mac: Machine>(&self, _machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         // > All CSR instructions atomically read-modify-write a single CSR.
         // So no need to implement them yet
         match &self.inst {
@@ -405,11 +390,8 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn execute<Mac: Machine<R, M>, R: Register, M: Memory>(
-        &self,
-        machine: &mut Mac,
-    ) -> Result<(), Error> {
-        let next_pc: Option<R> = match self {
+    pub fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<(), Error> {
+        let next_pc: Option<Mac::REG> = match self {
             Instruction::R(inst) => inst.execute(machine)?,
             Instruction::I(inst) => inst.execute(machine)?,
             Instruction::IShift(inst) => inst.execute(machine)?,
@@ -423,7 +405,7 @@ impl Instruction {
             Instruction::JAL { imm, rd } => common::jal(machine, *rd, *imm, 4),
             Instruction::FENCEI => unimplemented!(),
         };
-        let default_next_pc = machine.pc().overflowing_add(&R::from_usize(4));
+        let default_next_pc = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
         machine.set_pc(next_pc.unwrap_or(default_next_pc));
         Ok(())
     }

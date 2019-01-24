@@ -34,12 +34,15 @@ pub struct CustomSyscall {}
 impl Syscalls<u64, SparseMemory> for CustomSyscall {
     fn initialize(
         &mut self,
-        _machine: &mut SupportMachine<u64, SparseMemory>,
+        _machine: &mut SupportMachine<REG = u64, MEM = SparseMemory>,
     ) -> Result<(), Error> {
         Ok(())
     }
 
-    fn ecall(&mut self, machine: &mut SupportMachine<u64, SparseMemory>) -> Result<bool, Error> {
+    fn ecall(
+        &mut self,
+        machine: &mut SupportMachine<REG = u64, MEM = SparseMemory>,
+    ) -> Result<bool, Error> {
         let code = machine.registers()[A7];
         if code != 1111 {
             return Ok(false);
