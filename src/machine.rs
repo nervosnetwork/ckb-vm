@@ -234,71 +234,71 @@ impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
 pub type InstructionCycleFunc = Fn(&Instruction) -> u64;
 
 #[derive(Default)]
-pub struct DefaultMachine<'a, Core> {
-    core: Core,
+pub struct DefaultMachine<'a, Inner> {
+    inner: Inner,
 
     // We have run benchmarks on secp256k1 verification, the performance
     // cost of the Box wrapper here is neglectable, hence we are sticking
     // with Box solution for simplicity now. Later if this becomes an issue,
     // we can change to static dispatch.
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
-    syscalls: Vec<Box<dyn Syscalls<Core> + 'a>>,
+    syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
     running: bool,
     exit_code: u8,
 }
 
-impl<Core: CoreMachine> CoreMachine for DefaultMachine<'_, Core> {
-    type REG = <Core as CoreMachine>::REG;
-    type MEM = <Core as CoreMachine>::MEM;
+impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
+    type REG = <Inner as CoreMachine>::REG;
+    type MEM = <Inner as CoreMachine>::MEM;
 
     fn pc(&self) -> &Self::REG {
-        &self.core.pc()
+        &self.inner.pc()
     }
 
     fn set_pc(&mut self, next_pc: Self::REG) {
-        self.core.set_pc(next_pc)
+        self.inner.set_pc(next_pc)
     }
 
     fn memory(&self) -> &Self::MEM {
-        self.core.memory()
+        self.inner.memory()
     }
 
     fn memory_mut(&mut self) -> &mut Self::MEM {
-        self.core.memory_mut()
+        self.inner.memory_mut()
     }
 
     fn registers(&self) -> &[Self::REG] {
-        self.core.registers()
+        self.inner.registers()
     }
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
-        self.core.set_register(idx, value)
+        self.inner.set_register(idx, value)
     }
 }
 
-impl<Core: SupportMachine> SupportMachine for DefaultMachine<'_, Core> {
+impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
     fn elf_end(&self) -> usize {
-        self.core.elf_end()
+        self.inner.elf_end()
     }
 
     fn set_elf_end(&mut self, elf_end: usize) {
-        self.core.set_elf_end(elf_end)
+        self.inner.set_elf_end(elf_end)
     }
 
     fn cycles(&self) -> u64 {
-        self.core.cycles()
+        self.inner.cycles()
     }
 
     fn set_cycles(&mut self, cycles: u64) {
-        self.core.set_cycles(cycles)
+        self.inner.set_cycles(cycles)
     }
 
     fn max_cycles(&self) -> Option<u64> {
-        self.core.max_cycles()
+        self.inner.max_cycles()
     }
 }
 
-impl<Core: SupportMachine> Machine for DefaultMachine<'_, Core> {
+impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers()[A7].to_u64();
         match code {
@@ -310,7 +310,7 @@ impl<Core: SupportMachine> Machine for DefaultMachine<'_, Core> {
             }
             _ => {
                 for syscall in &mut self.syscalls {
-                    let processed = syscall.ecall(&mut self.core)?;
+                    let processed = syscall.ecall(&mut self.inner)?;
                     if processed {
                         return Ok(());
                     }
@@ -326,7 +326,7 @@ impl<Core: SupportMachine> Machine for DefaultMachine<'_, Core> {
     }
 }
 
-impl<Core: CoreMachine> Display for DefaultMachine<'_, Core> {
+impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pc  : 0x{:16X}", self.pc().to_usize())?;
         for (i, name) in REGISTER_ABI_NAMES.iter().enumerate() {
@@ -347,22 +347,22 @@ impl<R: Register, M: Memory> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
         max_cycles: u64,
     ) -> Self {
         Self {
-            core: DefaultCoreMachine::new_with_max_cycles(max_cycles),
+            inner: DefaultCoreMachine::new_with_max_cycles(max_cycles),
             instruction_cycle_func: Some(instruction_cycle_func),
             ..Self::default()
         }
     }
 }
 
-impl<'a, Core: SupportMachine> DefaultMachine<'a, Core> {
-    pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<Core> + 'a>) {
+impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
+    pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<Inner> + 'a>) {
         self.syscalls.push(syscall);
     }
 
     pub fn load_program(mut self, program: &[u8], args: &[Vec<u8>]) -> Result<Self, Error> {
         self.load_elf(program)?;
         for syscall in &mut self.syscalls {
-            syscall.initialize(&mut self.core)?;
+            syscall.initialize(&mut self.inner)?;
         }
         self.initialize_stack(
             args,
