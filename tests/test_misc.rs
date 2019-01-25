@@ -13,7 +13,7 @@ pub fn test_andi() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, SparseMemory>(&buffer, &vec![b"andi".to_vec()]);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec![b"andi".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -24,16 +24,14 @@ pub fn test_nop() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, SparseMemory>(&buffer, &vec![b"nop".to_vec()]);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec![b"nop".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
 
-pub struct CustomSyscall<'a> {
-    data: &'a [u8],
-}
+pub struct CustomSyscall {}
 
-impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall<'_> {
+impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
     fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
         Ok(())
     }
@@ -60,9 +58,8 @@ pub fn test_custom_syscall() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let v = vec![1, 2, 3];
-    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory>>::default();
-    machine.add_syscall_module(Box::new(CustomSyscall { data: &v }));
+    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default();
+    machine.add_syscall_module(Box::new(CustomSyscall {}));
     machine = machine
         .load_program(&buffer, &vec![b"syscall".to_vec()])
         .unwrap();

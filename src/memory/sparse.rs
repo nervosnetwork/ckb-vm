@@ -1,7 +1,8 @@
-use super::super::{Error, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{round_page, Memory, Page};
 
 use std::cmp::min;
+use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
 
@@ -10,21 +11,23 @@ const INVALID_PAGE_INDEX: u16 = 0xFFFF;
 
 /// A sparse flat memory implementation, it allocates pages only when requested,
 /// but besides that, it does not permission checking.
-pub struct SparseMemory {
+pub struct SparseMemory<R> {
     // Stores the indices of each page in pages data structure, if a page hasn't
     // been initialized, the corresponding position will be filled with
     // INVALID_PAGE_INDEX. Considering u16 takes 2 bytes, this add an additional
     // of 64KB extra storage cost assuming we have 128MB memory.
     indices: [u16; MAX_PAGES],
     pages: Vec<Page>,
+    _inner: PhantomData<R>,
 }
 
-impl SparseMemory {
+impl<R> SparseMemory<R> {
     pub fn new() -> Self {
         debug_assert!(MAX_PAGES < INVALID_PAGE_INDEX as usize);
         Self {
             indices: [INVALID_PAGE_INDEX; MAX_PAGES],
             pages: Vec::new(),
+            _inner: PhantomData,
         }
     }
 
@@ -64,7 +67,9 @@ impl SparseMemory {
     }
 }
 
-impl Memory for SparseMemory {
+impl<R: Register> Memory for SparseMemory<R> {
+    type REG = R;
+
     fn mmap(
         &mut self,
         addr: usize,
@@ -101,20 +106,24 @@ impl Memory for SparseMemory {
         Ok(())
     }
 
-    fn load8(&mut self, addr: usize) -> Result<u8, Error> {
-        self.load(addr, 1).map(|v| v as u8)
+    fn load8(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 1).map(|v| v as u8)?;
+        Ok(R::from_u8(v))
     }
 
-    fn load16(&mut self, addr: usize) -> Result<u16, Error> {
-        self.load(addr, 2).map(|v| v as u16)
+    fn load16(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 2).map(|v| v as u16)?;
+        Ok(R::from_u16(v))
     }
 
-    fn load32(&mut self, addr: usize) -> Result<u32, Error> {
-        self.load(addr, 4).map(|v| v as u32)
+    fn load32(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 4).map(|v| v as u32)?;
+        Ok(R::from_u32(v))
     }
 
-    fn load64(&mut self, addr: usize) -> Result<u64, Error> {
-        self.load(addr, 8)
+    fn load64(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 8)?;
+        Ok(R::from_u64(v))
     }
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
@@ -146,7 +155,7 @@ impl Memory for SparseMemory {
             let page = self.fetch_page(current_page_addr)?;
             let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_size);
             unsafe {
-                let slice_ptr = page[current_page_offset..bytes].as_mut_ptr();
+                let slice_ptr = page[current_page_offset..current_page_offset + bytes].as_mut_ptr();
                 ptr::write_bytes(slice_ptr, value, bytes);
             }
             remaining_size -= bytes;
@@ -156,19 +165,21 @@ impl Memory for SparseMemory {
         Ok(())
     }
 
-    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
-        self.store_bytes(addr, &[value])
+    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        self.store_bytes(addr.to_usize(), &[value.to_u8()])
     }
 
-    fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error> {
+    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let value = value.to_u16();
         // RISC-V is little-endian by specification
-        self.store_bytes(addr, &[(value & 0xFF) as u8, (value >> 8) as u8])
+        self.store_bytes(addr.to_usize(), &[(value & 0xFF) as u8, (value >> 8) as u8])
     }
 
-    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
+    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let value = value.to_u32();
         // RISC-V is little-endian by specification
         self.store_bytes(
-            addr,
+            addr.to_usize(),
             &[
                 (value & 0xFF) as u8,
                 ((value >> 8) & 0xFF) as u8,
@@ -178,10 +189,11 @@ impl Memory for SparseMemory {
         )
     }
 
-    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error> {
+    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let value = value.to_u64();
         // RISC-V is little-endian by specification
         self.store_bytes(
-            addr,
+            addr.to_usize(),
             &[
                 (value & 0xFF) as u8,
                 ((value >> 8) & 0xFF) as u8,
@@ -196,7 +208,7 @@ impl Memory for SparseMemory {
     }
 }
 
-impl Default for SparseMemory {
+impl<R> Default for SparseMemory<R> {
     fn default() -> Self {
         Self::new()
     }
