@@ -16,7 +16,7 @@ pub fn round_page(x: usize) -> usize {
 
 pub type Page = [u8; RISCV_PAGESIZE];
 
-pub trait Memory {
+pub trait Memory: Default {
     // Note this mmap only handles the very low level memory mapping logic.
     // It only takes an aligned address and size, then maps either existing
     // bytes or empty bytes to this range. It doesn't allocate addresses when

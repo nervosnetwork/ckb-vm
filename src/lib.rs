@@ -8,7 +8,7 @@ pub mod syscalls;
 
 pub use crate::{
     instructions::{Instruction, Register},
-    machine::{CoreMachine, DefaultMachine, Machine, SupportMachine},
+    machine::{CoreMachine, DefaultCoreMachine, DefaultMachine, Machine, SupportMachine},
     memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
     runners::interpreter::run as interpreter_run,
     syscalls::Syscalls,
@@ -89,10 +89,8 @@ impl From<IOError> for Error {
     }
 }
 
-pub fn run<R: Register, M: Memory + Default>(
-    program: &[u8],
-    args: &[Vec<u8>],
-) -> Result<u8, Error> {
-    let mut machine = DefaultMachine::<R, M>::default().load_program(program, args)?;
+pub fn run<R: Register, M: Memory>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+    let mut machine =
+        DefaultMachine::<DefaultCoreMachine<R, M>>::default().load_program(program, args)?;
     interpreter_run(&mut machine)
 }

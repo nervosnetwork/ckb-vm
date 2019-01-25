@@ -1,8 +1,8 @@
 extern crate ckb_vm;
 
 use ckb_vm::{
-    interpreter_run, run, DefaultMachine, Error, SparseMemory, SupportMachine, Syscalls, A0, A1,
-    A2, A3, A4, A5, A7,
+    interpreter_run, run, DefaultCoreMachine, DefaultMachine, Error, Register, SparseMemory,
+    SupportMachine, Syscalls, A0, A1, A2, A3, A4, A5, A7,
 };
 use std::fs::File;
 use std::io::Read;
@@ -29,30 +29,26 @@ pub fn test_nop() {
     assert_eq!(result.unwrap(), 0);
 }
 
-pub struct CustomSyscall {}
+pub struct CustomSyscall<'a> {
+    data: &'a [u8],
+}
 
-impl Syscalls<u64, SparseMemory> for CustomSyscall {
-    fn initialize(
-        &mut self,
-        _machine: &mut SupportMachine<REG = u64, MEM = SparseMemory>,
-    ) -> Result<(), Error> {
+impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall<'_> {
+    fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
         Ok(())
     }
 
-    fn ecall(
-        &mut self,
-        machine: &mut SupportMachine<REG = u64, MEM = SparseMemory>,
-    ) -> Result<bool, Error> {
-        let code = machine.registers()[A7];
-        if code != 1111 {
+    fn ecall(&mut self, machine: &mut Mac) -> Result<bool, Error> {
+        let code = &machine.registers()[A7];
+        if code.to_i32() != 1111 {
             return Ok(false);
         }
         let result = machine.registers()[A0]
-            + machine.registers()[A1]
-            + machine.registers()[A2]
-            + machine.registers()[A3]
-            + machine.registers()[A4]
-            + machine.registers()[A5];
+            .overflowing_add(&machine.registers()[A1])
+            .overflowing_add(&machine.registers()[A2])
+            .overflowing_add(&machine.registers()[A3])
+            .overflowing_add(&machine.registers()[A4])
+            .overflowing_add(&machine.registers()[A5]);
         machine.set_register(A0, result);
         Ok(true)
     }
@@ -64,8 +60,9 @@ pub fn test_custom_syscall() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let mut machine = DefaultMachine::<u64, SparseMemory>::default();
-    machine.add_syscall_module(Box::new(CustomSyscall {}));
+    let v = vec![1, 2, 3];
+    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory>>::default();
+    machine.add_syscall_module(Box::new(CustomSyscall { data: &v }));
     machine = machine
         .load_program(&buffer, &vec![b"syscall".to_vec()])
         .unwrap();
