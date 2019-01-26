@@ -90,7 +90,7 @@ impl From<IOError> for Error {
     }
 }
 
-pub fn run<R: Register, M: Memory<REG = R>>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+pub fn run<R: Register, M: Memory<R>>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
     let mut machine =
         DefaultMachine::<DefaultCoreMachine<R, M>>::default().load_program(program, args)?;
     interpreter_run(&mut machine)

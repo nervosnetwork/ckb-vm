@@ -67,9 +67,7 @@ impl<R> SparseMemory<R> {
     }
 }
 
-impl<R: Register> Memory for SparseMemory<R> {
-    type REG = R;
-
+impl<R: Register> Memory<R> for SparseMemory<R> {
     fn mmap(
         &mut self,
         addr: usize,

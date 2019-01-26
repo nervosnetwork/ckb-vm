@@ -16,9 +16,7 @@ pub fn round_page(x: usize) -> usize {
 
 pub type Page = [u8; RISCV_PAGESIZE];
 
-pub trait Memory: Default {
-    type REG: Register;
-
+pub trait Memory<R: Register>: Default {
     // Note this mmap only handles the very low level memory mapping logic.
     // It only takes an aligned address and size, then maps either existing
     // bytes or empty bytes to this range. It doesn't allocate addresses when
@@ -47,13 +45,13 @@ pub trait Memory: Default {
     // Methods below are used to implement RISC-V instructions, to make JIT
     // possible, we need to use register type here so as to pass enough
     // information around.
-    fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
-    fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
-    fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
-    fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
+    fn load8(&mut self, addr: &R) -> Result<R, Error>;
+    fn load16(&mut self, addr: &R) -> Result<R, Error>;
+    fn load32(&mut self, addr: &R) -> Result<R, Error>;
+    fn load64(&mut self, addr: &R) -> Result<R, Error>;
 
-    fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
-    fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
-    fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
-    fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
+    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error>;
 }

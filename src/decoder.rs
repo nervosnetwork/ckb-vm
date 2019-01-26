@@ -46,7 +46,7 @@ impl Decoder {
     // Also, due to RISC-V encoding behavior, it's totally okay when we cast a 16-bit
     // RVC instruction into a 32-bit instruction, the meaning of the instruction stays
     // unchanged in the cast conversion.
-    fn decode_bits<R: Register, M: Memory<REG = R>>(
+    fn decode_bits<R: Register, M: Memory<R>>(
         &self,
         memory: &mut M,
         pc: usize,
@@ -58,7 +58,7 @@ impl Decoder {
         Ok(instruction_bits)
     }
 
-    pub fn decode<R: Register, M: Memory<REG = R>>(
+    pub fn decode<R: Register, M: Memory<R>>(
         &self,
         memory: &mut M,
         pc: usize,

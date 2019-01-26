@@ -39,9 +39,7 @@ impl<R> DerefMut for FlatMemory<R> {
 
 /// A flat chunk of memory used for RISC-V machine, it lacks all the permission
 /// checking logic.
-impl<R: Register> Memory for FlatMemory<R> {
-    type REG = R;
-
+impl<R: Register> Memory<R> for FlatMemory<R> {
     fn mmap(
         &mut self,
         addr: usize,

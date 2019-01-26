@@ -212,9 +212,7 @@ impl<R> Mmu<R> {
     }
 }
 
-impl<R: Register> Memory for Mmu<R> {
-    type REG = R;
-
+impl<R: Register> Memory<R> for Mmu<R> {
     fn mmap(
         &mut self,
         addr: usize,

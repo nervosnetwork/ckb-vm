@@ -44,7 +44,8 @@ fn convert_flags(p_flags: u32) -> u32 {
 /// syscall support.
 pub trait CoreMachine {
     type REG: Register;
-    type MEM: Memory<REG = Self::REG>;
+    type MEM: Memory<Self::REG>;
+
     fn pc(&self) -> &Self::REG;
     fn set_pc(&mut self, next_pc: Self::REG);
     fn memory(&self) -> &Self::MEM;
@@ -171,7 +172,7 @@ pub struct DefaultCoreMachine<R, M> {
     max_cycles: Option<u64>,
 }
 
-impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
     type REG = R;
     type MEM = M;
     fn pc(&self) -> &Self::REG {
@@ -199,7 +200,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
     fn elf_end(&self) -> usize {
         self.elf_end
     }
@@ -221,7 +222,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
     }
 }
 
-impl<R: Register, M: Memory<REG = R>> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<R>> DefaultCoreMachine<R, M> {
     pub fn new_with_max_cycles(max_cycles: u64) -> Self {
         Self {
             max_cycles: Some(max_cycles),
@@ -340,7 +341,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     }
 }
 
-impl<R: Register, M: Memory<REG = R>> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
+impl<R: Register, M: Memory<R>> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
     pub fn new_with_cost_model(
         instruction_cycle_func: Box<InstructionCycleFunc>,
         max_cycles: u64,
