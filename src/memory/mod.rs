@@ -1,4 +1,4 @@
-use super::{Error, RISCV_PAGESIZE};
+use super::{Error, Register, RISCV_PAGESIZE};
 use std::rc::Rc;
 
 pub mod flat;
@@ -16,7 +16,7 @@ pub fn round_page(x: usize) -> usize {
 
 pub type Page = [u8; RISCV_PAGESIZE];
 
-pub trait Memory: Default {
+pub trait Memory<R: Register>: Default {
     // Note this mmap only handles the very low level memory mapping logic.
     // It only takes an aligned address and size, then maps either existing
     // bytes or empty bytes to this range. It doesn't allocate addresses when
@@ -37,19 +37,21 @@ pub trait Memory: Default {
         offset: usize,
     ) -> Result<(), Error>;
     fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error>;
-
-    // TODO: maybe parameterize those?
-    fn load8(&mut self, addr: usize) -> Result<u8, Error>;
-    fn load16(&mut self, addr: usize) -> Result<u16, Error>;
-    fn load32(&mut self, addr: usize) -> Result<u32, Error>;
-    fn load64(&mut self, addr: usize) -> Result<u64, Error>;
-
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error>;
-
-    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error>;
-    fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error>;
-    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error>;
-    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error>;
+    // This is in fact just memset
     fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
+    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error>;
+
+    // Methods below are used to implement RISC-V instructions, to make JIT
+    // possible, we need to use register type here so as to pass enough
+    // information around.
+    fn load8(&mut self, addr: &R) -> Result<R, Error>;
+    fn load16(&mut self, addr: &R) -> Result<R, Error>;
+    fn load32(&mut self, addr: &R) -> Result<R, Error>;
+    fn load64(&mut self, addr: &R) -> Result<R, Error>;
+
+    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error>;
 }

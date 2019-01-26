@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::Display;
 use std::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 
@@ -238,14 +239,14 @@ impl Register for u32 {
     }
 
     fn zero_extend(&self, start_bit: &u32) -> u32 {
-        let start_bit = *start_bit;
-        debug_assert!(start_bit < 32 && start_bit > 0);
+        let start_bit = min(*start_bit, 32);
+        debug_assert!(start_bit > 0);
         (*self << (32 - start_bit)) >> (32 - start_bit)
     }
 
     fn sign_extend(&self, start_bit: &u32) -> u32 {
-        let start_bit = *start_bit;
-        debug_assert!(start_bit < 32 && start_bit > 0);
+        let start_bit = min(*start_bit, 32);
+        debug_assert!(start_bit > 0);
         (((*self << (32 - start_bit)) as i32) >> (32 - start_bit)) as u32
     }
 
@@ -459,14 +460,14 @@ impl Register for u64 {
     }
 
     fn zero_extend(&self, start_bit: &u64) -> u64 {
-        let start_bit = *start_bit;
-        debug_assert!(start_bit < 64 && start_bit > 0);
+        let start_bit = min(*start_bit, 64);
+        debug_assert!(start_bit > 0);
         (*self << (64 - start_bit)) >> (64 - start_bit)
     }
 
     fn sign_extend(&self, start_bit: &u64) -> u64 {
-        let start_bit = *start_bit;
-        debug_assert!(start_bit < 64 && start_bit > 0);
+        let start_bit = min(*start_bit, 64);
+        debug_assert!(start_bit > 0);
         (((*self << (64 - start_bit)) as i64) >> (64 - start_bit)) as u64
     }
 

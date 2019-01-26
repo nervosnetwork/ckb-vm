@@ -1,26 +1,29 @@
-use super::super::{Error, RISCV_MAX_MEMORY};
+use super::super::{Error, Register, RISCV_MAX_MEMORY};
 use super::Memory;
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::cmp::min;
 use std::io::{Cursor, Seek, SeekFrom};
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
 use std::rc::Rc;
 
-pub struct FlatMemory {
+pub struct FlatMemory<R> {
     data: Vec<u8>,
+    _inner: PhantomData<R>,
 }
 
-impl Default for FlatMemory {
+impl<R> Default for FlatMemory<R> {
     fn default() -> Self {
         Self {
             data: vec![0; RISCV_MAX_MEMORY],
+            _inner: PhantomData,
         }
     }
 }
 
-impl Deref for FlatMemory {
+impl<R> Deref for FlatMemory<R> {
     type Target = Vec<u8>;
 
     fn deref(&self) -> &Self::Target {
@@ -28,7 +31,7 @@ impl Deref for FlatMemory {
     }
 }
 
-impl DerefMut for FlatMemory {
+impl<R> DerefMut for FlatMemory<R> {
     fn deref_mut(&mut self) -> &mut Vec<u8> {
         &mut self.data
     }
@@ -36,7 +39,7 @@ impl DerefMut for FlatMemory {
 
 /// A flat chunk of memory used for RISC-V machine, it lacks all the permission
 /// checking logic.
-impl Memory for FlatMemory {
+impl<R: Register> Memory<R> for FlatMemory<R> {
     fn mmap(
         &mut self,
         addr: usize,
@@ -69,85 +72,97 @@ impl Memory for FlatMemory {
     }
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
-        self.load16(addr)
+        self.load16(&R::from_usize(addr)).map(|v| v.to_u16())
     }
 
-    fn load8(&mut self, addr: usize) -> Result<u8, Error> {
+    fn load8(&mut self, addr: &R) -> Result<R, Error> {
+        let addr = addr.to_usize();
         if addr + 1 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
-        Ok(reader.read_u8()?)
+        let v = reader.read_u8()?;
+        Ok(R::from_u8(v))
     }
 
-    fn load16(&mut self, addr: usize) -> Result<u16, Error> {
+    fn load16(&mut self, addr: &R) -> Result<R, Error> {
+        let addr = addr.to_usize();
         if addr + 2 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        Ok(reader.read_u16::<LittleEndian>()?)
+        let v = reader.read_u16::<LittleEndian>()?;
+        Ok(R::from_u16(v))
     }
 
-    fn load32(&mut self, addr: usize) -> Result<u32, Error> {
+    fn load32(&mut self, addr: &R) -> Result<R, Error> {
+        let addr = addr.to_usize();
         if addr + 4 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        Ok(reader.read_u32::<LittleEndian>()?)
+        let v = reader.read_u32::<LittleEndian>()?;
+        Ok(R::from_u32(v))
     }
 
-    fn load64(&mut self, addr: usize) -> Result<u64, Error> {
+    fn load64(&mut self, addr: &R) -> Result<R, Error> {
+        let addr = addr.to_usize();
         if addr + 8 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        Ok(reader.read_u64::<LittleEndian>()?)
+        let v = reader.read_u64::<LittleEndian>()?;
+        Ok(R::from_u64(v))
     }
 
-    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
+    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let addr = addr.to_usize();
         if addr + 1 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u8(value)?;
+        writer.write_u8(value.to_u8())?;
         Ok(())
     }
 
-    fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error> {
+    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let addr = addr.to_usize();
         if addr + 2 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u16::<LittleEndian>(value)?;
+        writer.write_u16::<LittleEndian>(value.to_u16())?;
         Ok(())
     }
 
-    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
+    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let addr = addr.to_usize();
         if addr + 4 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u32::<LittleEndian>(value)?;
+        writer.write_u32::<LittleEndian>(value.to_u32())?;
         Ok(())
     }
 
-    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error> {
+    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let addr = addr.to_usize();
         if addr + 8 > self.len() {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u64::<LittleEndian>(value)?;
+        writer.write_u64::<LittleEndian>(value.to_u64())?;
         Ok(())
     }
 

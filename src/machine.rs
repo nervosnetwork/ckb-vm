@@ -44,7 +44,8 @@ fn convert_flags(p_flags: u32) -> u32 {
 /// syscall support.
 pub trait CoreMachine {
     type REG: Register;
-    type MEM: Memory;
+    type MEM: Memory<Self::REG>;
+
     fn pc(&self) -> &Self::REG;
     fn set_pc(&mut self, next_pc: Self::REG);
     fn memory(&self) -> &Self::MEM;
@@ -138,7 +139,7 @@ pub trait SupportMachine: CoreMachine {
 
             self.memory_mut().store_bytes(address.to_usize(), bytes)?;
             self.memory_mut()
-                .store8(address.to_usize() + bytes.len(), 0)?;
+                .store_byte(address.to_usize() + bytes.len(), 1, 0)?;
 
             values.push(address.clone());
             self.set_register(SP, address);
@@ -149,8 +150,7 @@ pub trait SupportMachine: CoreMachine {
             let address =
                 self.registers()[SP].overflowing_sub(&Self::REG::from_usize(Self::REG::BITS / 8));
 
-            self.memory_mut()
-                .store32(address.to_usize(), value.to_u32())?;
+            self.memory_mut().store32(&address, value)?;
             self.set_register(SP, address);
         }
         if self.registers()[SP].to_usize() < stack_start {
@@ -172,7 +172,7 @@ pub struct DefaultCoreMachine<R, M> {
     max_cycles: Option<u64>,
 }
 
-impl<R: Register, M: Memory> CoreMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
     type REG = R;
     type MEM = M;
     fn pc(&self) -> &Self::REG {
@@ -200,7 +200,7 @@ impl<R: Register, M: Memory> CoreMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory> SupportMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
     fn elf_end(&self) -> usize {
         self.elf_end
     }
@@ -222,7 +222,7 @@ impl<R: Register, M: Memory> SupportMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<R>> DefaultCoreMachine<R, M> {
     pub fn new_with_max_cycles(max_cycles: u64) -> Self {
         Self {
             max_cycles: Some(max_cycles),
@@ -341,7 +341,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     }
 }
 
-impl<R: Register, M: Memory> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
+impl<R: Register, M: Memory<R>> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
     pub fn new_with_cost_model(
         instruction_cycle_func: Box<InstructionCycleFunc>,
         max_cycles: u64,

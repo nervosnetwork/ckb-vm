@@ -10,7 +10,7 @@ pub fn test_minimal_with_no_args() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, SparseMemory>(&buffer, &vec![b"minimal".to_vec()]);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec![b"minimal".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1);
 }
@@ -21,7 +21,7 @@ pub fn test_minimal_with_a() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, SparseMemory>(&buffer, &vec![b"minimal".to_vec(), b"a".to_vec()]);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec![b"minimal".to_vec(), b"a".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 2);
 }
@@ -32,7 +32,7 @@ pub fn test_minimal_with_b() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, SparseMemory>(&buffer, &vec![b"minimal".to_vec(), b"b".to_vec()]);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec![b"minimal".to_vec(), b"b".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }

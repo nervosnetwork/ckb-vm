@@ -13,7 +13,7 @@ pub fn test_simple_instructions() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, SparseMemory>(&buffer, &vec![b"simple".to_vec()]);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -24,7 +24,7 @@ pub fn test_simple_instructions_64() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u64, SparseMemory>(&buffer, &vec![b"simple".to_vec()]);
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -35,7 +35,7 @@ pub fn test_simple_instructions_flatmemory() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u32, FlatMemory>(&buffer, &vec![b"simple".to_vec()]);
+    let result = run::<u32, FlatMemory<u32>>(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -50,10 +50,11 @@ pub fn test_simple_cycles() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory>>::new_with_cost_model(
-        Box::new(dummy_cycle_func),
-        517,
-    );
+    let mut machine =
+        DefaultMachine::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new_with_cost_model(
+            Box::new(dummy_cycle_func),
+            517,
+        );
     machine = machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
@@ -71,10 +72,11 @@ pub fn test_simple_max_cycles_reached() {
     file.read_to_end(&mut buffer).unwrap();
 
     // Running simple64 should consume 517 cycles using dummy cycle func
-    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory>>::new_with_cost_model(
-        Box::new(dummy_cycle_func),
-        500,
-    );
+    let mut machine =
+        DefaultMachine::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new_with_cost_model(
+            Box::new(dummy_cycle_func),
+            500,
+        );
     machine = machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
@@ -89,7 +91,7 @@ pub fn test_simple_invalid_bits() {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
-    let result = run::<u64, SparseMemory>(&buffer, &vec![b"simple".to_vec()]);
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec![b"simple".to_vec()]);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidElfBits);
 }

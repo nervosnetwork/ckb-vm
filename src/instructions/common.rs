@@ -87,9 +87,9 @@ pub fn lb<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load8(address.to_usize())?;
+    let value = machine.memory_mut().load8(&address)?;
     // sign-extened
-    update_register(machine, rd, Mac::REG::from_i8(value as i8));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(8)));
     Ok(())
 }
 
@@ -100,9 +100,9 @@ pub fn lh<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load16(address.to_usize())?;
+    let value = machine.memory_mut().load16(&address)?;
     // sign-extened
-    update_register(machine, rd, Mac::REG::from_i16(value as i16));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(16)));
     Ok(())
 }
 
@@ -113,8 +113,8 @@ pub fn lw<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load32(address.to_usize())?;
-    update_register(machine, rd, Mac::REG::from_i32(value as i32));
+    let value = machine.memory_mut().load32(&address)?;
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
     Ok(())
 }
 
@@ -125,8 +125,8 @@ pub fn ld<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load64(address.to_usize())?;
-    update_register(machine, rd, Mac::REG::from_i64(value as i64));
+    let value = machine.memory_mut().load64(&address)?;
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(64)));
     Ok(())
 }
 
@@ -137,8 +137,8 @@ pub fn lbu<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load8(address.to_usize())?;
-    update_register(machine, rd, Mac::REG::from_u8(value));
+    let value = machine.memory_mut().load8(&address)?;
+    update_register(machine, rd, value);
     Ok(())
 }
 
@@ -149,8 +149,8 @@ pub fn lhu<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load16(address.to_usize())?;
-    update_register(machine, rd, Mac::REG::from_u16(value));
+    let value = machine.memory_mut().load16(&address)?;
+    update_register(machine, rd, value);
     Ok(())
 }
 
@@ -161,8 +161,8 @@ pub fn lwu<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.memory_mut().load32(address.to_usize())?;
-    update_register(machine, rd, Mac::REG::from_u32(value));
+    let value = machine.memory_mut().load32(&address)?;
+    update_register(machine, rd, value);
     Ok(())
 }
 
@@ -176,8 +176,8 @@ pub fn sb<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.registers()[rs2].to_u8();
-    machine.memory_mut().store8(address.to_usize(), value)?;
+    let value = machine.registers()[rs2].clone();
+    machine.memory_mut().store8(&address, &value)?;
     Ok(())
 }
 
@@ -188,8 +188,8 @@ pub fn sh<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.registers()[rs2].to_u16();
-    machine.memory_mut().store16(address.to_usize(), value)?;
+    let value = machine.registers()[rs2].clone();
+    machine.memory_mut().store16(&address, &value)?;
     Ok(())
 }
 
@@ -200,8 +200,8 @@ pub fn sw<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.registers()[rs2].to_u32();
-    machine.memory_mut().store32(address.to_usize(), value)?;
+    let value = machine.registers()[rs2].clone();
+    machine.memory_mut().store32(&address, &value)?;
     Ok(())
 }
 
@@ -212,8 +212,8 @@ pub fn sd<Mac: Machine>(
     imm: Immediate,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1].overflowing_add(&Mac::REG::from_i32(imm));
-    let value = machine.registers()[rs2].to_u64();
-    machine.memory_mut().store64(address.to_usize(), value)?;
+    let value = machine.registers()[rs2].clone();
+    machine.memory_mut().store64(&address, &value)?;
     Ok(())
 }
 

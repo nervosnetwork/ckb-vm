@@ -1,7 +1,8 @@
-use super::super::{Error, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{round_page, Memory, Page, PROT_EXEC, PROT_READ, PROT_WRITE};
 
 use std::cmp::min;
+use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
 
@@ -50,7 +51,7 @@ pub struct TlbEntry {
 /// An MMU implementation with proper protection schemes. Notice this is a correct
 /// soft MMU, not necessarily a fast MMU. For the best performance, we should
 /// leverage native mmap() calls instead to avoid overheads.
-pub struct Mmu {
+pub struct Mmu<R> {
     vms: Vec<Option<VirtualMemoryEntry>>,
     // Page table that stores indices of VirtualMemoryEntry for each page. We are
     // using u8 here to save some memory since we have a hard upper bound of 64
@@ -69,6 +70,7 @@ pub struct Mmu {
     page_data: Vec<Page>,
     // Translation lookaside buffer
     tlb: [Option<TlbEntry>; MAX_TLB_ENTRIES],
+    _inner: PhantomData<R>,
 }
 
 // Generates a new page based on VM mapping, also copy mapped data to the page
@@ -87,14 +89,15 @@ fn handle_page_fault(vm: &VirtualMemoryEntry, addr: usize) -> Result<Page, Error
     Ok(page)
 }
 
-impl Mmu {
-    pub fn new() -> Mmu {
+impl<R> Mmu<R> {
+    pub fn new() -> Mmu<R> {
         Mmu {
             vms: vec![None; MAX_VIRTUAL_MEMORY_ENTRIES],
             page_table: [INVALID_PAGE_INDEX; MAX_PAGES],
             page_addresses: Vec::new(),
             page_data: Vec::new(),
             tlb: [None; MAX_TLB_ENTRIES],
+            _inner: PhantomData,
         }
     }
 
@@ -209,7 +212,7 @@ impl Mmu {
     }
 }
 
-impl Memory for Mmu {
+impl<R: Register> Memory<R> for Mmu<R> {
     fn mmap(
         &mut self,
         addr: usize,
@@ -258,20 +261,24 @@ impl Memory for Mmu {
         self.munmap_aligned(addr, size)
     }
 
-    fn load8(&mut self, addr: usize) -> Result<u8, Error> {
-        self.load(addr, 1, PROT_READ).map(|v| v as u8)
+    fn load8(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 1, PROT_READ).map(|v| v as u8)?;
+        Ok(R::from_u8(v))
     }
 
-    fn load16(&mut self, addr: usize) -> Result<u16, Error> {
-        self.load(addr, 2, PROT_READ).map(|v| v as u16)
+    fn load16(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 2, PROT_READ).map(|v| v as u16)?;
+        Ok(R::from_u16(v))
     }
 
-    fn load32(&mut self, addr: usize) -> Result<u32, Error> {
-        self.load(addr, 4, PROT_READ).map(|v| v as u32)
+    fn load32(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 4, PROT_READ).map(|v| v as u32)?;
+        Ok(R::from_u32(v))
     }
 
-    fn load64(&mut self, addr: usize) -> Result<u64, Error> {
-        self.load(addr, 8, PROT_READ)
+    fn load64(&mut self, addr: &R) -> Result<R, Error> {
+        let v = self.load(addr.to_usize(), 8, PROT_READ)?;
+        Ok(R::from_u64(v))
     }
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
@@ -313,19 +320,21 @@ impl Memory for Mmu {
         Ok(())
     }
 
-    fn store8(&mut self, addr: usize, value: u8) -> Result<(), Error> {
-        self.store_bytes(addr, &[value])
+    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        self.store_bytes(addr.to_usize(), &[value.to_u8()])
     }
 
-    fn store16(&mut self, addr: usize, value: u16) -> Result<(), Error> {
+    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let value = value.to_u16();
         // RISC-V is little-endian by specification
-        self.store_bytes(addr, &[(value & 0xFF) as u8, (value >> 8) as u8])
+        self.store_bytes(addr.to_usize(), &[(value & 0xFF) as u8, (value >> 8) as u8])
     }
 
-    fn store32(&mut self, addr: usize, value: u32) -> Result<(), Error> {
+    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let value = value.to_u32();
         // RISC-V is little-endian by specification
         self.store_bytes(
-            addr,
+            addr.to_usize(),
             &[
                 (value & 0xFF) as u8,
                 ((value >> 8) & 0xFF) as u8,
@@ -335,10 +344,11 @@ impl Memory for Mmu {
         )
     }
 
-    fn store64(&mut self, addr: usize, value: u64) -> Result<(), Error> {
+    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+        let value = value.to_u64();
         // RISC-V is little-endian by specification
         self.store_bytes(
-            addr,
+            addr.to_usize(),
             &[
                 (value & 0xFF) as u8,
                 ((value >> 8) & 0xFF) as u8,
@@ -353,7 +363,7 @@ impl Memory for Mmu {
     }
 }
 
-impl Default for Mmu {
+impl<R> Default for Mmu<R> {
     fn default() -> Self {
         Self::new()
     }

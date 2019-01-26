@@ -56,7 +56,8 @@ pub const A5: usize = 15;
 pub const A6: usize = 16;
 pub const A7: usize = 17;
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+// Register ABI names
+#[rustfmt::skip]
 pub const REGISTER_ABI_NAMES: [&str; 32] = [
     "zero", "ra", "sp", "gp",
     "tp", "t0", "t1", "t2",
@@ -89,7 +90,7 @@ impl From<IOError> for Error {
     }
 }
 
-pub fn run<R: Register, M: Memory>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+pub fn run<R: Register, M: Memory<R>>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
     let mut machine =
         DefaultMachine::<DefaultCoreMachine<R, M>>::default().load_program(program, args)?;
     interpreter_run(&mut machine)
