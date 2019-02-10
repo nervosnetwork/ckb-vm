@@ -7,4 +7,4 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1"
-goblin = "0.0.19"
+goblin = "0.0.20"
