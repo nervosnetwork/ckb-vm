@@ -372,19 +372,6 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     }
 }
 
-impl<R: Register, M: Memory<R>> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
-    pub fn new_with_cost_model(
-        instruction_cycle_func: Box<InstructionCycleFunc>,
-        max_cycles: u64,
-    ) -> Self {
-        Self {
-            inner: DefaultCoreMachine::new_with_max_cycles(max_cycles),
-            instruction_cycle_func: Some(instruction_cycle_func),
-            ..Self::default()
-        }
-    }
-}
-
 #[derive(Default)]
 pub struct DefaultMachineBuilder<'a, Inner> {
     inner: Inner,
