@@ -8,7 +8,10 @@ pub mod syscalls;
 
 pub use crate::{
     instructions::{Instruction, Register},
-    machine::{CoreMachine, DefaultCoreMachine, DefaultMachine, Machine, SupportMachine},
+    machine::{
+        CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Machine,
+        SupportMachine,
+    },
     memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
     runners::interpreter::run as interpreter_run,
     syscalls::Syscalls,

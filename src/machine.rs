@@ -341,24 +341,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     }
 }
 
-impl<R: Register, M: Memory<R>> DefaultMachine<'_, DefaultCoreMachine<R, M>> {
-    pub fn new_with_cost_model(
-        instruction_cycle_func: Box<InstructionCycleFunc>,
-        max_cycles: u64,
-    ) -> Self {
-        Self {
-            inner: DefaultCoreMachine::new_with_max_cycles(max_cycles),
-            instruction_cycle_func: Some(instruction_cycle_func),
-            ..Self::default()
-        }
-    }
-}
-
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
-    pub fn add_syscall_module(&mut self, syscall: Box<Syscalls<Inner> + 'a>) {
-        self.syscalls.push(syscall);
-    }
-
     pub fn load_program(mut self, program: &[u8], args: &[Vec<u8>]) -> Result<Self, Error> {
         self.load_elf(program)?;
         for syscall in &mut self.syscalls {
@@ -386,5 +369,45 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
 
     pub fn instruction_cycle_func(&self) -> &Option<Box<InstructionCycleFunc>> {
         &self.instruction_cycle_func
+    }
+}
+
+#[derive(Default)]
+pub struct DefaultMachineBuilder<'a, Inner> {
+    inner: Inner,
+    instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+    syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
+}
+
+impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
+    pub fn new(inner: Inner) -> Self {
+        Self {
+            inner,
+            instruction_cycle_func: None,
+            syscalls: vec![],
+        }
+    }
+
+    pub fn instruction_cycle_func(
+        mut self,
+        instruction_cycle_func: Box<InstructionCycleFunc>,
+    ) -> Self {
+        self.instruction_cycle_func = Some(instruction_cycle_func);
+        self
+    }
+
+    pub fn syscall(mut self, syscall: Box<dyn Syscalls<Inner> + 'a>) -> Self {
+        self.syscalls.push(syscall);
+        self
+    }
+
+    pub fn build(self) -> DefaultMachine<'a, Inner> {
+        DefaultMachine {
+            inner: self.inner,
+            instruction_cycle_func: self.instruction_cycle_func,
+            syscalls: self.syscalls,
+            running: false,
+            exit_code: 0,
+        }
     }
 }
