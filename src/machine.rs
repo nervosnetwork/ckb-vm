@@ -1,4 +1,5 @@
 use super::bits::rounddown;
+use super::decoder::build_imac_decoder;
 use super::instructions::{Instruction, Register};
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::syscalls::Syscalls;
@@ -355,6 +356,10 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         Ok(self)
     }
 
+    pub fn take_inner(self) -> Inner {
+        self.inner
+    }
+
     pub fn running(&self) -> bool {
         self.running
     }
@@ -369,6 +374,30 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
 
     pub fn instruction_cycle_func(&self) -> &Option<Box<InstructionCycleFunc>> {
         &self.instruction_cycle_func
+    }
+
+    pub fn inner_mut(&mut self) -> &mut Inner {
+        &mut self.inner
+    }
+
+    pub fn interpret(&mut self) -> Result<u8, Error> {
+        let decoder = build_imac_decoder::<Inner::REG>();
+        self.set_running(true);
+        while self.running() {
+            let instruction = {
+                let pc = self.pc().to_usize();
+                let memory = self.memory_mut();
+                decoder.decode(memory, pc)?
+            };
+            instruction.execute(self)?;
+            let cycles = self
+                .instruction_cycle_func()
+                .as_ref()
+                .map(|f| f(&instruction))
+                .unwrap_or(0);
+            self.add_cycles(cycles)?;
+        }
+        Ok(self.exit_code())
     }
 }
 

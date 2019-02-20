@@ -3,8 +3,10 @@ pub mod decoder;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
-pub mod runners;
 pub mod syscalls;
+
+#[cfg(all(unix, target_pointer_width = "64"))]
+mod jit;
 
 pub use crate::{
     instructions::{Instruction, Register},
@@ -13,10 +15,12 @@ pub use crate::{
         SupportMachine,
     },
     memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
-    runners::interpreter::run as interpreter_run,
     syscalls::Syscalls,
 };
 use std::io::{Error as IOError, ErrorKind};
+
+#[cfg(all(unix, target_pointer_width = "64"))]
+pub use crate::jit::{default_jit_machine, BaselineJitMachine, DefaultTracer, TcgTracer};
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
 pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;
@@ -82,8 +86,10 @@ pub enum Error {
     InvalidEcall(u64),
     InvalidElfBits,
     IO(ErrorKind),
+    Dynasm(i32),
     MaximumMmappingReached,
     InvalidPermission,
+    Unexpected,
     Unimplemented,
 }
 
@@ -94,7 +100,7 @@ impl From<IOError> for Error {
 }
 
 pub fn run<R: Register, M: Memory<R>>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
-    let mut machine =
-        DefaultMachine::<DefaultCoreMachine<R, M>>::default().load_program(program, args)?;
-    interpreter_run(&mut machine)
+    DefaultMachine::<DefaultCoreMachine<R, M>>::default()
+        .load_program(program, args)?
+        .interpret()
 }

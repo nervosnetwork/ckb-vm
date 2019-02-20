@@ -1,0 +1,666 @@
+use super::{
+    emitter::Emitter,
+    instructions::{instruction_length, is_basic_block_end_instruction, is_unjitable_instruction},
+    tracer::Tracer,
+    value::Value,
+};
+use crate::{
+    decoder::build_imac_decoder, CoreMachine, DefaultMachineBuilder, Error, Machine, Memory,
+    Register, SparseMemory, SupportMachine, RISCV_GENERAL_REGISTER_NUMBER,
+};
+use fnv::FnvHashMap;
+use libc::{c_int, uint64_t};
+use memmap::{Mmap, MmapMut};
+use std::cmp::Ordering;
+use std::collections::hash_map::Entry::Occupied;
+use std::mem;
+use std::ptr;
+use std::rc::Rc;
+
+// In this module, we attach PC register to general purpose register array
+// for unified processing
+pub const REGISTER_PC: usize = 32;
+
+const JIT_SEGMENT_LENGTH: usize = 1024 * 1024;
+
+// This is the interface used across Rust side and C side to pass machine
+// related data.
+#[repr(C)]
+struct AsmData {
+    registers: [uint64_t; 33],
+    rust_data: *mut RustData,
+}
+
+impl Default for AsmData {
+    fn default() -> Self {
+        debug_assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
+        AsmData {
+            registers: [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0,
+            ],
+            rust_data: ptr::null_mut(),
+        }
+    }
+}
+
+// This holds all the Rust data in JitCoreMachine, it's organized this way
+// so we can pass the whole Rust related struct as void* in C side for ease
+// of FFI handling.
+struct RustData {
+    // Machine related data, should be cleared before each run
+    memory: SparseMemory<u64>,
+    elf_end: usize,
+    cycles: u64,
+    max_cycles: Option<u64>,
+
+    // JIT related data, should persist across multiple runs
+    buffer: Option<Mmap>,
+    used: usize,
+    freezed: bool,
+    jitted_offsets: FnvHashMap<usize, usize>,
+    jitted_segments: Vec<(usize, usize)>,
+    // We cannot use generics here since the FFI functions at the end of this
+    // file need to stay unmangled, but Rust requires mangled names for
+    // functions with generic types.
+    tracer: Box<Tracer>,
+}
+
+impl RustData {
+    fn new(tracer: Box<Tracer>) -> Self {
+        Self {
+            memory: SparseMemory::default(),
+            elf_end: 0,
+            cycles: 0,
+            max_cycles: None,
+            buffer: None,
+            used: 0,
+            freezed: false,
+            jitted_offsets: FnvHashMap::default(),
+            jitted_segments: vec![],
+            tracer,
+        }
+    }
+
+    fn mark_write(&mut self, offset: usize, length: usize) -> Result<&mut Self, Error> {
+        while !self.jitted_segments.is_empty() {
+            match self
+                .jitted_segments
+                .binary_search_by(|(s, e)| match (s + e).cmp(&offset) {
+                    Ordering::Greater => match s.cmp(&(offset + length)) {
+                        Ordering::Less => Ordering::Equal,
+                        _ => Ordering::Greater,
+                    },
+                    _ => Ordering::Less,
+                }) {
+                Ok(i) => {
+                    // NOTE: there is a quirk that if we have already jitted a
+                    // lot of code, several writes could render most (if not
+                    // all) blocks unusable. // But the other side of the
+                    // problem is that allowing relocating JIT is also a lot of
+                    // work. Hence we are sticking with the simple solution now.
+                    let (s, _) = self.jitted_segments[i];
+                    self.jitted_offsets.remove(&s);
+                    self.jitted_segments.remove(i);
+                    self.tracer.clear(s)?;
+                }
+                Err(_) => break,
+            }
+        }
+        Ok(self)
+    }
+}
+
+/// A baseline JIT-based machine, the design is to provide a 2-level JIT:
+/// * A baseline JIT leveraging similar techniques in qemu's TCG and rv8 to
+/// translate RISC-V instructions to native assembly code. Since this level
+/// serves as the baseline JIT, JIT compilation speed will take priority over
+/// runtime performance of generated code. As a result, only certain but not
+/// all optimizations in rv8 would be introduced here, such as macro-op fusion.
+/// The baseline JIT here will only work on a basic block boundary.
+/// A static register allocation algorithm much like the rv8 one will also be
+/// used here. To help with the next level JIT, trace points would also be
+/// introduced here for profiling use.
+/// * For very hot code, we might introduce a more sophisticated JIT to
+/// further optimize those code pieces to further boost the performance. In
+/// this level we would leverage algorithms to translate RISC-V instructions
+/// to SSA form: http://compilers.cs.uni-saarland.de/papers/bbhlmz13cc.pdf, then
+/// apply different optimizations to further optimize the code. We might choose
+/// to leverage cranelift or MJIT to enjoy existing work. Note that unlike
+/// the above baseline JIT, this path still has many uncertainties which is more
+/// likely to change. Also this will has much lower priority if baseline JIT
+/// is proved to be enough for CKB use.
+pub struct BaselineJitMachine<'a> {
+    asm_data: AsmData,
+    rust_data: RustData,
+    // In fact program should not belong here, however we are putting it here
+    // so as to shape the API in a way that one instance here only works on
+    // one program
+    program: &'a [u8],
+}
+
+impl<'a> BaselineJitMachine<'a> {
+    pub fn new(program: &'a [u8], tracer: Box<Tracer>) -> Self {
+        Self {
+            asm_data: AsmData::default(),
+            rust_data: RustData::new(tracer),
+            program,
+        }
+    }
+
+    pub fn run(mut self, args: &[Vec<u8>]) -> Result<(u8, Self), Error> {
+        self.reset();
+        let program = self.program;
+        let mut machine = DefaultMachineBuilder::<Self>::new(self)
+            .build()
+            .load_program(program, args)?;
+        let mut emitter = Emitter::new()?;
+        let decoder = build_imac_decoder::<u64>();
+        machine.set_running(true);
+        while machine.running() {
+            let pc = machine.pc().to_usize();
+            {
+                let core = machine.inner_mut();
+                let rust_data = &mut core.rust_data;
+                rust_data.tracer.trace(pc)?;
+                if let Some(buffer) = &rust_data.buffer {
+                    if let Occupied(o) = rust_data.jitted_offsets.entry(pc) {
+                        let f: fn(&mut AsmData) =
+                            unsafe { mem::transmute(&(&buffer[..])[*(o.get())] as *const u8) };
+                        f(core.asm_data_mut());
+                        continue;
+                    }
+                }
+            }
+            // Fetch next basic block
+            let mut current_pc = pc;
+            let mut block_length = 0;
+            let mut instructions = Vec::new();
+            loop {
+                let instruction = decoder.decode(machine.memory_mut(), current_pc)?;
+                let unjitable = is_unjitable_instruction(&instruction);
+                let end_instruction = unjitable || is_basic_block_end_instruction(&instruction);
+                // Unjitable instruction will be its own basic block
+                if instructions.is_empty() || (!unjitable) {
+                    let length = instruction_length(&instruction);
+                    current_pc += length;
+                    block_length += length;
+                    instructions.push(instruction);
+                }
+
+                if end_instruction {
+                    break;
+                }
+            }
+            for i in &instructions {
+                i.execute(&mut machine)?;
+            }
+            let rust_data = &mut machine.inner_mut().rust_data;
+            if (!rust_data.freezed)
+                && (rust_data
+                    .tracer
+                    .should_jit(pc, block_length, &instructions)?)
+            {
+                // current basic block is hot, JIT it.
+                let mut compiling_machine = JitCompilingMachine::new(pc);
+                for i in &instructions {
+                    i.execute(&mut compiling_machine)?;
+                }
+                emitter.setup()?;
+                for write in compiling_machine.writes() {
+                    emitter.emit_write(write)?;
+                }
+                let encode_size = emitter.link()?;
+                let mut buffer_mut = match mem::replace(&mut rust_data.buffer, None) {
+                    Some(buffer) => buffer.make_mut()?,
+                    None => MmapMut::map_anon(JIT_SEGMENT_LENGTH)?,
+                };
+                let buffer_mut = if buffer_mut.len() - rust_data.used < encode_size {
+                    rust_data.freezed = true;
+                    buffer_mut
+                } else {
+                    // TODO: check if dynasm handles alignments here.
+                    emitter.encode(&mut buffer_mut[rust_data.used..])?;
+                    let offset = rust_data.used;
+                    rust_data.used += encode_size;
+                    rust_data.jitted_offsets.insert(pc, offset);
+                    match rust_data
+                        .jitted_segments
+                        .binary_search_by(|(s, _)| s.cmp(&pc))
+                    {
+                        // We should not have 2 colliding basic blocks
+                        Ok(_) => return Err(Error::Unexpected),
+                        Err(i) => rust_data.jitted_segments.insert(i, (pc, block_length)),
+                    }
+                    buffer_mut
+                };
+                rust_data.buffer = Some(buffer_mut.make_exec()?);
+            }
+        }
+        Ok((machine.exit_code(), machine.take_inner()))
+    }
+
+    fn reset(&mut self) {
+        self.asm_data = AsmData::default();
+        self.rust_data.memory = SparseMemory::<u64>::default();
+        self.rust_data.elf_end = 0;
+        self.rust_data.cycles = 0;
+        self.rust_data.max_cycles = None;
+    }
+
+    fn asm_data_mut(&mut self) -> &mut AsmData {
+        // TODO: this is an extremely dirty hack for now, but it works :(
+        // When Rust 1.33 is released, we can try switching to Pin
+        self.asm_data.rust_data = &mut self.rust_data;
+        &mut self.asm_data
+    }
+}
+
+impl<'a> CoreMachine for BaselineJitMachine<'a> {
+    type REG = u64;
+    type MEM = SparseMemory<u64>;
+
+    fn pc(&self) -> &u64 {
+        &self.asm_data.registers[REGISTER_PC]
+    }
+
+    fn set_pc(&mut self, next_pc: u64) {
+        self.asm_data.registers[REGISTER_PC] = next_pc;
+    }
+
+    fn memory(&self) -> &SparseMemory<u64> {
+        &self.rust_data.memory
+    }
+
+    fn memory_mut(&mut self) -> &mut SparseMemory<u64> {
+        &mut self.rust_data.memory
+    }
+
+    fn registers(&self) -> &[u64] {
+        &self.asm_data.registers[0..REGISTER_PC]
+    }
+
+    fn set_register(&mut self, idx: usize, value: u64) {
+        self.asm_data.registers[idx] = value;
+    }
+}
+
+impl<'a> SupportMachine for BaselineJitMachine<'a> {
+    fn elf_end(&self) -> usize {
+        self.rust_data.elf_end
+    }
+
+    fn set_elf_end(&mut self, elf_end: usize) {
+        self.rust_data.elf_end = elf_end;
+    }
+
+    fn cycles(&self) -> u64 {
+        self.rust_data.cycles
+    }
+
+    fn set_cycles(&mut self, cycles: u64) {
+        self.rust_data.cycles = cycles;
+    }
+
+    fn max_cycles(&self) -> Option<u64> {
+        self.rust_data.max_cycles
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum MemorySize {
+    Byte = 1,
+    HalfWord = 2,
+    Word = 4,
+    DoubleWord = 8,
+}
+
+#[derive(Debug, Clone)]
+pub enum Write {
+    Memory {
+        address: Value,
+        size: MemorySize,
+        value: Value,
+    },
+    Register {
+        index: usize,
+        value: Value,
+    },
+    Pc {
+        value: Value,
+    },
+}
+
+struct JitCompilingMachine {
+    registers: [Value; 33],
+    writes: Vec<Write>,
+}
+
+impl JitCompilingMachine {
+    fn new(pc: usize) -> Self {
+        debug_assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
+        let registers = [
+            Value::Register(0),
+            Value::Register(1),
+            Value::Register(2),
+            Value::Register(3),
+            Value::Register(4),
+            Value::Register(5),
+            Value::Register(6),
+            Value::Register(7),
+            Value::Register(8),
+            Value::Register(9),
+            Value::Register(10),
+            Value::Register(11),
+            Value::Register(12),
+            Value::Register(13),
+            Value::Register(14),
+            Value::Register(15),
+            Value::Register(16),
+            Value::Register(17),
+            Value::Register(18),
+            Value::Register(19),
+            Value::Register(20),
+            Value::Register(21),
+            Value::Register(22),
+            Value::Register(23),
+            Value::Register(24),
+            Value::Register(25),
+            Value::Register(26),
+            Value::Register(27),
+            Value::Register(28),
+            Value::Register(29),
+            Value::Register(30),
+            Value::Register(31),
+            Value::from_usize(pc),
+        ];
+        Self {
+            registers,
+            writes: vec![],
+        }
+    }
+
+    fn writes(&self) -> &[Write] {
+        &self.writes
+    }
+}
+
+// Dummy implementation used to fix build
+impl Default for JitCompilingMachine {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl CoreMachine for JitCompilingMachine {
+    type REG = Value;
+    type MEM = Self;
+
+    fn pc(&self) -> &Value {
+        &self.registers[REGISTER_PC]
+    }
+
+    fn set_pc(&mut self, next_pc: Value) {
+        self.writes.retain(|write| match write {
+            Write::Pc {
+                value: Value::Imm(_),
+            } => false,
+            _ => true,
+        });
+        self.writes.push(Write::Pc {
+            value: next_pc.clone(),
+        });
+        self.registers[REGISTER_PC] = next_pc;
+    }
+
+    fn memory(&self) -> &Self {
+        &self
+    }
+
+    fn memory_mut(&mut self) -> &mut Self {
+        self
+    }
+
+    fn registers(&self) -> &[Value] {
+        &self.registers[0..REGISTER_PC]
+    }
+
+    fn set_register(&mut self, idx: usize, value: Value) {
+        self.writes.retain(|write| match write {
+            Write::Register {
+                index: idx1,
+                value: Value::Imm(_),
+            } if *idx1 == idx => false,
+            _ => true,
+        });
+        self.writes.push(Write::Register {
+            index: idx,
+            value: value.clone(),
+        });
+        if let Value::Imm(_) = value {
+            self.registers[idx] = value;
+        } else {
+            self.registers[idx] = Value::Register(idx);
+        }
+    }
+}
+
+impl Machine for JitCompilingMachine {
+    fn ecall(&mut self) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn ebreak(&mut self) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+}
+
+impl Memory<Value> for JitCompilingMachine {
+    fn mmap(
+        &mut self,
+        _addr: usize,
+        _size: usize,
+        _prot: u32,
+        _source: Option<Rc<Box<[u8]>>>,
+        _offset: usize,
+    ) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn munmap(&mut self, _addr: usize, _size: usize) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn store_byte(&mut self, _addr: usize, _size: usize, _value: u8) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn store_bytes(&mut self, _addr: usize, _value: &[u8]) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn execute_load16(&mut self, _addr: usize) -> Result<u16, Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn load8(&mut self, addr: &Value) -> Result<Value, Error> {
+        Ok(Value::Load(Rc::new(addr.clone()), MemorySize::Byte))
+    }
+
+    fn load16(&mut self, addr: &Value) -> Result<Value, Error> {
+        Ok(Value::Load(Rc::new(addr.clone()), MemorySize::HalfWord))
+    }
+
+    fn load32(&mut self, addr: &Value) -> Result<Value, Error> {
+        Ok(Value::Load(Rc::new(addr.clone()), MemorySize::Word))
+    }
+
+    fn load64(&mut self, addr: &Value) -> Result<Value, Error> {
+        Ok(Value::Load(Rc::new(addr.clone()), MemorySize::DoubleWord))
+    }
+
+    fn store8(&mut self, addr: &Value, value: &Value) -> Result<(), Error> {
+        self.writes.push(Write::Memory {
+            address: addr.clone(),
+            size: MemorySize::Byte,
+            value: value.clone(),
+        });
+        Ok(())
+    }
+
+    fn store16(&mut self, addr: &Value, value: &Value) -> Result<(), Error> {
+        self.writes.push(Write::Memory {
+            address: addr.clone(),
+            size: MemorySize::HalfWord,
+            value: value.clone(),
+        });
+        Ok(())
+    }
+
+    fn store32(&mut self, addr: &Value, value: &Value) -> Result<(), Error> {
+        self.writes.push(Write::Memory {
+            address: addr.clone(),
+            size: MemorySize::Word,
+            value: value.clone(),
+        });
+        Ok(())
+    }
+
+    fn store64(&mut self, addr: &Value, value: &Value) -> Result<(), Error> {
+        self.writes.push(Write::Memory {
+            address: addr.clone(),
+            size: MemorySize::DoubleWord,
+            value: value.clone(),
+        });
+        Ok(())
+    }
+}
+
+// Following functions are used via FFI in C side.
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_store8(data: *mut RustData, addr: uint64_t, value: uint64_t) -> c_int {
+    unsafe { data.as_mut() }
+        .and_then(|data| {
+            data.mark_write(addr as usize, 1)
+                .and_then(|data| data.memory.store8(&addr, &value))
+                .ok()
+        })
+        .map(|_| 0)
+        .unwrap_or(-1)
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_store16(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: uint64_t,
+) -> c_int {
+    unsafe { data.as_mut() }
+        .and_then(|data| {
+            data.mark_write(addr as usize, 2)
+                .and_then(|data| data.memory.store16(&addr, &value))
+                .ok()
+        })
+        .map(|_| 0)
+        .unwrap_or(-1)
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_store32(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: uint64_t,
+) -> c_int {
+    unsafe { data.as_mut() }
+        .and_then(|data| {
+            data.mark_write(addr as usize, 4)
+                .and_then(|data| data.memory.store32(&addr, &value))
+                .ok()
+        })
+        .map(|_| 0)
+        .unwrap_or(-1)
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_store64(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: uint64_t,
+) -> c_int {
+    unsafe { data.as_mut() }
+        .and_then(|data| {
+            data.mark_write(addr as usize, 8)
+                .and_then(|data| data.memory.store64(&addr, &value))
+                .ok()
+        })
+        .map(|_| 0)
+        .unwrap_or(-1)
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_load8(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: *mut uint64_t,
+) -> c_int {
+    match unsafe { data.as_mut() }.and_then(|data| data.memory.load8(&addr).ok()) {
+        Some(v) => {
+            if let Some(p) = unsafe { value.as_mut() } {
+                *p = v;
+            }
+            0
+        }
+        None => -1,
+    }
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_load16(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: *mut uint64_t,
+) -> c_int {
+    match unsafe { data.as_mut() }.and_then(|data| data.memory.load16(&addr).ok()) {
+        Some(v) => {
+            if let Some(p) = unsafe { value.as_mut() } {
+                *p = v;
+            }
+            0
+        }
+        None => -1,
+    }
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_load32(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: *mut uint64_t,
+) -> c_int {
+    match unsafe { data.as_mut() }.and_then(|data| data.memory.load32(&addr).ok()) {
+        Some(v) => {
+            if let Some(p) = unsafe { value.as_mut() } {
+                *p = v;
+            }
+            0
+        }
+        None => -1,
+    }
+}
+
+#[no_mangle]
+extern "C" fn ckb_vm_jit_ffi_load64(
+    data: *mut RustData,
+    addr: uint64_t,
+    value: *mut uint64_t,
+) -> c_int {
+    match unsafe { data.as_mut() }.and_then(|data| data.memory.load64(&addr).ok()) {
+        Some(v) => {
+            if let Some(p) = unsafe { value.as_mut() } {
+                *p = v;
+            }
+            0
+        }
+        None => -1,
+    }
+}

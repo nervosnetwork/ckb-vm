@@ -1,8 +1,8 @@
 extern crate ckb_vm;
 
 use ckb_vm::{
-    interpreter_run, run, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Instruction, SparseMemory, SupportMachine,
+    run, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction, SparseMemory,
+    SupportMachine,
 };
 use std::fs::File;
 use std::io::Read;
@@ -58,7 +58,7 @@ pub fn test_simple_cycles() {
     machine = machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
-    let result = interpreter_run(&mut machine);
+    let result = machine.interpret();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
@@ -80,7 +80,7 @@ pub fn test_simple_max_cycles_reached() {
     machine = machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
-    let result = interpreter_run(&mut machine);
+    let result = machine.interpret();
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
 }
