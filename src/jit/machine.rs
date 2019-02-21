@@ -5,14 +5,14 @@ use super::{
     value::Value,
 };
 use crate::{
-    decoder::build_imac_decoder, CoreMachine, DefaultMachineBuilder, Error, Machine, Memory,
-    Register, SparseMemory, SupportMachine, RISCV_GENERAL_REGISTER_NUMBER,
+    decoder::build_imac_decoder, CoreMachine, DefaultMachineBuilder, Error, InstructionCycleFunc,
+    Machine, Memory, Register, SparseMemory, SupportMachine, Syscalls,
+    RISCV_GENERAL_REGISTER_NUMBER,
 };
 use fnv::FnvHashMap;
 use libc::{c_int, uint64_t};
 use memmap::{Mmap, MmapMut};
 use std::cmp::Ordering;
-use std::collections::hash_map::Entry::Occupied;
 use std::mem;
 use std::ptr;
 use std::rc::Rc;
@@ -58,7 +58,9 @@ struct RustData {
     buffer: Option<Mmap>,
     used: usize,
     freezed: bool,
-    jitted_offsets: FnvHashMap<usize, usize>,
+    // First item in the value tuple is starting address of jitted basic block,
+    // second item in the tuple is current cycle count of basic block.
+    jitted_blocks: FnvHashMap<usize, (usize, u64)>,
     jitted_segments: Vec<(usize, usize)>,
     // We cannot use generics here since the FFI functions at the end of this
     // file need to stay unmangled, but Rust requires mangled names for
@@ -76,7 +78,7 @@ impl RustData {
             buffer: None,
             used: 0,
             freezed: false,
-            jitted_offsets: FnvHashMap::default(),
+            jitted_blocks: FnvHashMap::default(),
             jitted_segments: vec![],
             tracer,
         }
@@ -100,7 +102,7 @@ impl RustData {
                     // problem is that allowing relocating JIT is also a lot of
                     // work. Hence we are sticking with the simple solution now.
                     let (s, _) = self.jitted_segments[i];
-                    self.jitted_offsets.remove(&s);
+                    self.jitted_blocks.remove(&s);
                     self.jitted_segments.remove(i);
                     self.tracer.clear(s)?;
                 }
@@ -108,6 +110,33 @@ impl RustData {
             }
         }
         Ok(self)
+    }
+}
+
+#[derive(Default)]
+pub struct BaselineJitRunData<'a, 'b> {
+    max_cycles: Option<u64>,
+    instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+    syscalls: Vec<Box<dyn Syscalls<BaselineJitMachine<'a>> + 'b>>,
+}
+
+impl<'a, 'b> BaselineJitRunData<'a, 'b> {
+    pub fn max_cycles(mut self, max_cycles: u64) -> Self {
+        self.max_cycles = Some(max_cycles);
+        self
+    }
+
+    pub fn instruction_cycle_func(
+        mut self,
+        instruction_cycle_func: Box<InstructionCycleFunc>,
+    ) -> Self {
+        self.instruction_cycle_func = Some(instruction_cycle_func);
+        self
+    }
+
+    pub fn syscall(mut self, syscall: Box<dyn Syscalls<BaselineJitMachine<'a>> + 'b>) -> Self {
+        self.syscalls.push(syscall);
+        self
     }
 }
 
@@ -148,33 +177,58 @@ impl<'a> BaselineJitMachine<'a> {
         }
     }
 
-    pub fn run(mut self, args: &[Vec<u8>]) -> Result<(u8, Self), Error> {
+    pub fn run(self, args: &[Vec<u8>]) -> Result<(u8, Self), Error> {
+        self.run_with_data(args, BaselineJitRunData::default())
+    }
+
+    pub fn run_with_data<'b>(
+        mut self,
+        args: &[Vec<u8>],
+        data: BaselineJitRunData<'a, 'b>,
+    ) -> Result<(u8, Self), Error> {
         self.reset();
+        self.rust_data.max_cycles = data.max_cycles;
         let program = self.program;
-        let mut machine = DefaultMachineBuilder::<Self>::new(self)
-            .build()
-            .load_program(program, args)?;
+        let mut builder = DefaultMachineBuilder::<Self>::new(self);
+        if let Some(instruction_cycle_func) = data.instruction_cycle_func {
+            builder = builder.instruction_cycle_func(instruction_cycle_func);
+        }
+        for syscall in data.syscalls {
+            builder = builder.syscall(syscall);
+        }
+        let mut machine = builder.build().load_program(program, args)?;
         let mut emitter = Emitter::new()?;
         let decoder = build_imac_decoder::<u64>();
         machine.set_running(true);
         while machine.running() {
             let pc = machine.pc().to_usize();
-            {
+            let jitted_data = {
+                let rust_data = &mut machine.inner_mut().rust_data;
+                rust_data.tracer.trace(pc)?;
+                if let Some((address, cycles)) = rust_data.jitted_blocks.get(&pc) {
+                    Some((*address, *cycles))
+                } else {
+                    None
+                }
+            };
+            if let Some((address, cycles)) = jitted_data {
+                machine.add_cycles(cycles)?;
                 let core = machine.inner_mut();
                 let rust_data = &mut core.rust_data;
-                rust_data.tracer.trace(pc)?;
                 if let Some(buffer) = &rust_data.buffer {
-                    if let Occupied(o) = rust_data.jitted_offsets.entry(pc) {
-                        let f: fn(&mut AsmData) =
-                            unsafe { mem::transmute(&(&buffer[..])[*(o.get())] as *const u8) };
-                        f(core.asm_data_mut());
-                        continue;
-                    }
+                    let f: fn(&mut AsmData) =
+                        unsafe { mem::transmute(&(&buffer[..])[address] as *const u8) };
+                    f(core.asm_data_mut());
+                    continue;
+                } else {
+                    // This should not happen
+                    return Err(Error::Unexpected);
                 }
             }
             // Fetch next basic block
             let mut current_pc = pc;
             let mut block_length = 0;
+            let mut block_cycles = 0;
             let mut instructions = Vec::new();
             loop {
                 let instruction = decoder.decode(machine.memory_mut(), current_pc)?;
@@ -185,6 +239,11 @@ impl<'a> BaselineJitMachine<'a> {
                     let length = instruction_length(&instruction);
                     current_pc += length;
                     block_length += length;
+                    block_cycles += machine
+                        .instruction_cycle_func()
+                        .as_ref()
+                        .map(|f| f(&instruction))
+                        .unwrap_or(0);
                     instructions.push(instruction);
                 }
 
@@ -195,6 +254,7 @@ impl<'a> BaselineJitMachine<'a> {
             for i in &instructions {
                 i.execute(&mut machine)?;
             }
+            machine.add_cycles(block_cycles)?;
             let rust_data = &mut machine.inner_mut().rust_data;
             if (!rust_data.freezed)
                 && (rust_data
@@ -223,7 +283,7 @@ impl<'a> BaselineJitMachine<'a> {
                     emitter.encode(&mut buffer_mut[rust_data.used..])?;
                     let offset = rust_data.used;
                     rust_data.used += encode_size;
-                    rust_data.jitted_offsets.insert(pc, offset);
+                    rust_data.jitted_blocks.insert(pc, (offset, block_cycles));
                     match rust_data
                         .jitted_segments
                         .binary_search_by(|(s, _)| s.cmp(&pc))

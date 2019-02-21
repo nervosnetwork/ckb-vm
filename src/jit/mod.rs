@@ -5,7 +5,7 @@ mod tracer;
 mod value;
 
 pub use self::{
-    machine::BaselineJitMachine,
+    machine::{BaselineJitMachine, BaselineJitRunData},
     tracer::{DefaultTracer, TcgTracer},
 };
 

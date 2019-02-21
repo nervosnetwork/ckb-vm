@@ -11,8 +11,8 @@ mod jit;
 pub use crate::{
     instructions::{Instruction, Register},
     machine::{
-        CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Machine,
-        SupportMachine,
+        CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder,
+        InstructionCycleFunc, Machine, SupportMachine,
     },
     memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
     syscalls::Syscalls,
@@ -20,7 +20,9 @@ pub use crate::{
 use std::io::{Error as IOError, ErrorKind};
 
 #[cfg(all(unix, target_pointer_width = "64"))]
-pub use crate::jit::{default_jit_machine, BaselineJitMachine, DefaultTracer, TcgTracer};
+pub use crate::jit::{
+    default_jit_machine, BaselineJitMachine, BaselineJitRunData, DefaultTracer, TcgTracer,
+};
 
 pub const RISCV_PAGESIZE: usize = 1 << 12;
 pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;
