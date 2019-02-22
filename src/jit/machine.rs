@@ -221,8 +221,9 @@ impl<'a> BaselineJitMachine<'a> {
                 let core = machine.inner_mut();
                 let rust_data = &mut core.rust_data;
                 if let Some(buffer) = &rust_data.buffer {
-                    let f: fn(&mut AsmData) =
-                        unsafe { mem::transmute(&(&buffer[..])[address] as *const u8) };
+                    let f = unsafe {
+                        mem::transmute::<&u8, fn(&mut AsmData)>(&buffer.as_ref()[address])
+                    };
                     f(core.asm_data_mut());
                     continue;
                 } else {
