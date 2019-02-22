@@ -35,7 +35,7 @@ src/jit/asm.x64.compiled.c: src/jit/asm.x64.c .deps/luajit/src/host/minilua
 	rm -rf .deps/luajit && mkdir -p .deps && \
 		git clone https://github.com/LuaJIT/LuaJIT .deps/luajit && \
 		cd .deps/luajit && git checkout v2.1 && \
-		make src/host/minilua
+		make
 
 .PHONY: test clippy fmt
 .PHONY: ci ci-quick
