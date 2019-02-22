@@ -1,4 +1,4 @@
-use super::instructions::is_unjitable_instruction;
+use super::instructions::is_jitable_instruction;
 use crate::{Error, Instruction};
 use fnv::FnvHashMap;
 use std::collections::hash_map::Entry::Occupied;
@@ -75,7 +75,7 @@ impl Tracer for TcgTracer {
         _block_length: usize,
         instructions: &[Instruction],
     ) -> Result<bool, Error> {
-        Ok(!instructions.iter().any(|i| is_unjitable_instruction(&i)))
+        Ok(instructions.iter().all(|i| is_jitable_instruction(&i)))
     }
 
     fn clear(&mut self, _pc: usize) -> Result<(), Error> {

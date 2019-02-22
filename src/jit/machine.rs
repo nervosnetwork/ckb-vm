@@ -1,6 +1,6 @@
 use super::{
     emitter::Emitter,
-    instructions::{instruction_length, is_basic_block_end_instruction, is_unjitable_instruction},
+    instructions::{instruction_length, is_basic_block_end_instruction, is_jitable_instruction},
     tracer::Tracer,
     value::Value,
 };
@@ -61,6 +61,12 @@ struct RustData {
     // First item in the value tuple is starting address of jitted basic block,
     // second item in the tuple is current cycle count of basic block.
     jitted_blocks: FnvHashMap<usize, (usize, u64)>,
+    // This records the start address(first item) and length(second item) of all
+    // jitted basic block, so when a memory write happens within a jitted block,
+    // we can use this as a hint to clear those jitted blocks since they will be
+    // incorrect afther the memory write. Notice this vec is also sorted based on
+    // the start address(first item) to allow for binary search operations for speed
+    // considerations.
     jitted_segments: Vec<(usize, usize)>,
     // We cannot use generics here since the FFI functions at the end of this
     // file need to stay unmangled, but Rust requires mangled names for
@@ -98,12 +104,11 @@ impl RustData {
                 Ok(i) => {
                     // NOTE: there is a quirk that if we have already jitted a
                     // lot of code, several writes could render most (if not
-                    // all) blocks unusable. // But the other side of the
+                    // all) blocks unusable. But the other side of the
                     // problem is that allowing relocating JIT is also a lot of
                     // work. Hence we are sticking with the simple solution now.
-                    let (s, _) = self.jitted_segments[i];
+                    let (s, _) = self.jitted_segments.remove(i);
                     self.jitted_blocks.remove(&s);
-                    self.jitted_segments.remove(i);
                     self.tracer.clear(s)?;
                 }
                 Err(_) => break,
@@ -232,10 +237,10 @@ impl<'a> BaselineJitMachine<'a> {
             let mut instructions = Vec::new();
             loop {
                 let instruction = decoder.decode(machine.memory_mut(), current_pc)?;
-                let unjitable = is_unjitable_instruction(&instruction);
-                let end_instruction = unjitable || is_basic_block_end_instruction(&instruction);
+                let jitable = is_jitable_instruction(&instruction);
+                let end_instruction = (!jitable) || is_basic_block_end_instruction(&instruction);
                 // Unjitable instruction will be its own basic block
-                if instructions.is_empty() || (!unjitable) {
+                if instructions.is_empty() || jitable {
                     let length = instruction_length(&instruction);
                     current_pc += length;
                     block_length += length;
