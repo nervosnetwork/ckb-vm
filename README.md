@@ -25,6 +25,8 @@ The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md), an
 
 ## How to build
 
+CKB VM is currently tested mainly with `stable-1.32.0` on Linux and Mac OSX.
+
 ```bash
 # download CKB VM
 $ git clone https://github.com/nervosnetwork/ckb-vm
