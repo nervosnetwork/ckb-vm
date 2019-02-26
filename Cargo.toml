@@ -8,3 +8,11 @@ edition = "2018"
 [dependencies]
 byteorder = "1"
 goblin = "0.0.20"
+
+[dev-dependencies]
+criterion = "0.2.10"
+proptest = "0.9.1"
+
+[[bench]]
+name = "bits_benchmark"
+harness = false
