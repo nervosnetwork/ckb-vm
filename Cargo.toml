@@ -8,7 +8,7 @@ build = "build.rs"
 
 [dependencies]
 byteorder = "1"
-goblin = "0.0.20"
+goblin = "0.0.21"
 memmap = "0.7.0"
 libc = "0.2.47"
 fnv = "1.0.6"
