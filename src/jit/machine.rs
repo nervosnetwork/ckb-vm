@@ -14,6 +14,7 @@ use libc::{c_int, uint64_t};
 use memmap::{Mmap, MmapMut};
 use std::cmp::Ordering;
 use std::mem;
+use std::pin::Pin;
 use std::ptr;
 use std::rc::Rc;
 
@@ -166,7 +167,7 @@ impl<'a, 'b> BaselineJitRunData<'a, 'b> {
 /// is proved to be enough for CKB use.
 pub struct BaselineJitMachine<'a> {
     asm_data: AsmData,
-    rust_data: RustData,
+    rust_data: Pin<Box<RustData>>,
     // In fact program should not belong here, however we are putting it here
     // so as to shape the API in a way that one instance here only works on
     // one program
@@ -175,9 +176,18 @@ pub struct BaselineJitMachine<'a> {
 
 impl<'a> BaselineJitMachine<'a> {
     pub fn new(program: &'a [u8], tracer: Box<Tracer>) -> Self {
+        let mut asm_data = AsmData::default();
+        let rust_data = RustData::new(tracer);
+        let mut boxed = Box::pin(rust_data);
+
+        unsafe {
+            let mut_ref: Pin<&mut RustData> = Pin::as_mut(&mut boxed);
+            asm_data.rust_data = Pin::get_unchecked_mut(mut_ref);
+        }
+
         Self {
-            asm_data: AsmData::default(),
-            rust_data: RustData::new(tracer),
+            asm_data,
+            rust_data: boxed,
             program,
         }
     }
@@ -307,7 +317,10 @@ impl<'a> BaselineJitMachine<'a> {
     }
 
     fn reset(&mut self) {
-        self.asm_data = AsmData::default();
+        self.asm_data.registers = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0,
+        ];
         self.rust_data.memory = SparseMemory::<u64>::default();
         self.rust_data.elf_end = 0;
         self.rust_data.cycles = 0;
@@ -315,9 +328,6 @@ impl<'a> BaselineJitMachine<'a> {
     }
 
     fn asm_data_mut(&mut self) -> &mut AsmData {
-        // TODO: this is an extremely dirty hack for now, but it works :(
-        // When Rust 1.33 is released, we can try switching to Pin
-        self.asm_data.rust_data = &mut self.rust_data;
         &mut self.asm_data
     }
 }
