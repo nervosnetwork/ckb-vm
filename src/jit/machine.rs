@@ -21,6 +21,7 @@ use std::rc::Rc;
 // In this module, we attach PC register to general purpose register array
 // for unified processing
 pub const REGISTER_PC: usize = 32;
+const ASM_DATA_REGISTERS_SLOTS: usize = 33;
 
 const JIT_SEGMENT_LENGTH: usize = 1024 * 1024;
 
@@ -28,7 +29,7 @@ const JIT_SEGMENT_LENGTH: usize = 1024 * 1024;
 // related data.
 #[repr(C)]
 struct AsmData {
-    registers: [uint64_t; 33],
+    registers: [uint64_t; ASM_DATA_REGISTERS_SLOTS],
     rust_data: *mut RustData,
 }
 
@@ -36,10 +37,7 @@ impl Default for AsmData {
     fn default() -> Self {
         debug_assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
         AsmData {
-            registers: [
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0,
-            ],
+            registers: [0; ASM_DATA_REGISTERS_SLOTS],
             rust_data: ptr::null_mut(),
         }
     }
@@ -317,10 +315,7 @@ impl<'a> BaselineJitMachine<'a> {
     }
 
     fn reset(&mut self) {
-        self.asm_data.registers = [
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0,
-        ];
+        self.asm_data.registers = [0; ASM_DATA_REGISTERS_SLOTS];
         self.rust_data.memory = SparseMemory::<u64>::default();
         self.rust_data.elf_end = 0;
         self.rust_data.cycles = 0;
