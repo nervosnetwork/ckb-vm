@@ -30,15 +30,15 @@ const JIT_SEGMENT_LENGTH: usize = 1024 * 1024;
 #[repr(C)]
 struct AsmData {
     registers: [uint64_t; ASM_DATA_REGISTERS_SLOTS],
-    rust_data: *mut RustData,
+    rust_data: ptr::NonNull<RustData>,
 }
 
-impl Default for AsmData {
-    fn default() -> Self {
+impl AsmData {
+    fn new(rust_data: &RustData) -> Self {
         debug_assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
         AsmData {
             registers: [0; ASM_DATA_REGISTERS_SLOTS],
-            rust_data: ptr::null_mut(),
+            rust_data: ptr::NonNull::from(rust_data),
         }
     }
 }
@@ -174,18 +174,12 @@ pub struct BaselineJitMachine<'a> {
 
 impl<'a> BaselineJitMachine<'a> {
     pub fn new(program: &'a [u8], tracer: Box<Tracer>) -> Self {
-        let mut asm_data = AsmData::default();
-        let rust_data = RustData::new(tracer);
-        let mut boxed = Box::pin(rust_data);
-
-        unsafe {
-            let mut_ref: Pin<&mut RustData> = Pin::as_mut(&mut boxed);
-            asm_data.rust_data = Pin::get_unchecked_mut(mut_ref);
-        }
+        let rust_data = Box::pin(RustData::new(tracer));
+        let asm_data = AsmData::new(rust_data.as_ref().get_ref());
 
         Self {
             asm_data,
-            rust_data: boxed,
+            rust_data,
             program,
         }
     }
