@@ -28,13 +28,28 @@ matrix:
             - texinfo
             - libtool
       env: SUITE=ci-quick
-    - rust: 1.32.0
+    - rust: 1.33.0
       addons:
         apt:
           packages:
             - git
             - build-essential
       env: SUITE=ci-asm
+    - rust: 1.33.0
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+      env: SUITE=ci-jit
+    - os: osx
+      rust: 1.33.0
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+      env: SUITE=ci-jit
 
 script:
 - make "$SUITE"
