@@ -1,6 +1,9 @@
 test:
 	cargo test --all -- --nocapture
 
+test-jit:
+	cargo test --all --features=jit -- --nocapture
+
 fmt:
 	cargo fmt --all -- --check
 
@@ -11,6 +14,9 @@ ci: fmt clippy test
 	git diff --exit-code Cargo.lock
 
 ci-quick: test
+	git diff --exit-code Cargo.lock
+
+ci-jit: test-jit
 	git diff --exit-code Cargo.lock
 
 ci-asm: src/jit/asm.x64.compiled.c
