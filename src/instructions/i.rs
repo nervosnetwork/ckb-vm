@@ -7,7 +7,7 @@ use super::utils::{
 use super::Register;
 use super::{
     common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I, RegisterIndex,
-    UImmediate,
+    UImmediate, UShortImmediate,
 };
 
 #[derive(Debug)]
@@ -113,11 +113,11 @@ type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
 // as viewed by other RISC- V harts and external devices or coprocessors.
 #[derive(Debug)]
 pub struct FenceType {
-    fm: u32,
+    fm: u8,
     // predecessor
-    pred: u32,
+    pred: u8,
     // successor
-    succ: u32,
+    succ: u8,
 }
 
 #[derive(Debug)]
@@ -130,8 +130,8 @@ pub struct CsrType {
 
 #[derive(Debug)]
 pub struct CsrIType {
-    csr: UImmediate,
-    zimm: UImmediate,
+    csr: UShortImmediate,
+    zimm: UShortImmediate,
     rd: RegisterIndex,
     inst: CsrIInstruction,
 }
@@ -575,9 +575,9 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 Some(Instruction::FENCEI)
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(Instruction::Fence(FenceType {
-                    fm: (instruction_bits & 0xF00_00000) >> 28,
-                    pred: (instruction_bits & 0x0F0_00000) >> 24,
-                    succ: (instruction_bits & 0x00F_00000) >> 20,
+                    fm: ((instruction_bits & 0xF00_00000) >> 28) as u8,
+                    pred: ((instruction_bits & 0x0F0_00000) >> 24) as u8,
+                    succ: ((instruction_bits & 0x00F_00000) >> 20) as u8,
                 }))
             } else {
                 None
@@ -614,21 +614,21 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                         inst: CsrInstruction::CSRRC,
                     })),
                     0b_101 => Some(Instruction::CsrI(CsrIType {
-                        csr,
+                        csr: csr as u16,
                         rd,
-                        zimm: u32::from(rs1_zimm),
+                        zimm: u16::from(rs1_zimm),
                         inst: CsrIInstruction::CSRRWI,
                     })),
                     0b_110 => Some(Instruction::CsrI(CsrIType {
-                        csr,
+                        csr: csr as u16,
                         rd,
-                        zimm: u32::from(rs1_zimm),
+                        zimm: u16::from(rs1_zimm),
                         inst: CsrIInstruction::CSRRSI,
                     })),
                     0b_111 => Some(Instruction::CsrI(CsrIType {
-                        csr,
+                        csr: csr as u16,
                         rd,
-                        zimm: u32::from(rs1_zimm),
+                        zimm: u16::from(rs1_zimm),
                         inst: CsrIInstruction::CSRRCI,
                     })),
                     _ => None,

@@ -64,6 +64,7 @@ pub trait Execute {
 type RegisterIndex = u8;
 type Immediate = i32;
 type UImmediate = u32;
+type UShortImmediate = u16;
 
 //
 //  31       27 26 25 24     20 19    15 14    12 11          7 6      0
