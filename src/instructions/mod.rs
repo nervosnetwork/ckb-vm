@@ -61,7 +61,7 @@ pub trait Execute {
     fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error>;
 }
 
-type RegisterIndex = usize;
+type RegisterIndex = u8;
 type Immediate = i32;
 type UImmediate = u32;
 

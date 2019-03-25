@@ -28,8 +28,8 @@ pub struct Instruction(pub Rtype);
 
 impl Execute for Rtype {
     fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        let rs1_value = &machine.registers()[self.rs1];
-        let rs2_value = &machine.registers()[self.rs2];
+        let rs1_value = &machine.registers()[self.rs1 as usize];
+        let rs2_value = &machine.registers()[self.rs2 as usize];
         match &self.inst {
             RtypeInstruction::MUL => {
                 let value = rs1_value.overflowing_mul(&rs2_value);

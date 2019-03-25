@@ -1,5 +1,5 @@
 use super::super::machine::Machine;
-use super::super::{Error, SP};
+use super::super::{Error, SP as CRATE_SP};
 use super::register::Register;
 use super::utils::{rd, update_register, x, xs};
 use super::{
@@ -7,10 +7,12 @@ use super::{
     UImmediate,
 };
 
+const SP: u8 = CRATE_SP as u8;
+
 // Notice the location of rs2 in RVC encoding is different from full encoding
 #[inline(always)]
-fn c_rs2(instruction_bits: u32) -> usize {
-    x(instruction_bits, 2, 5, 0) as usize
+fn c_rs2(instruction_bits: u32) -> u8 {
+    x(instruction_bits, 2, 5, 0) as u8
 }
 
 // This function extract 3 bits from least_bit to form a register number,
@@ -18,8 +20,8 @@ fn c_rs2(instruction_bits: u32) -> usize {
 // used registers x8 - x15. In other words, a number of 0 extracted here means
 // x8, 1 means x9, etc.
 #[inline(always)]
-fn compact_register_number(instruction_bits: u32, least_bit: usize) -> usize {
-    x(instruction_bits, least_bit, 3, 0) as usize + 8
+fn compact_register_number(instruction_bits: u32, least_bit: usize) -> u8 {
+    x(instruction_bits, least_bit, 3, 0) as u8 + 8
 }
 
 // [12]  => imm[5]
@@ -286,7 +288,8 @@ impl Execute for UtypeU {
     fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
         match &self.inst {
             UtypeUInstruction::ADDI4SPN => {
-                let value = machine.registers()[SP].overflowing_add(&Mac::REG::from_u32(self.imm));
+                let value =
+                    machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_u32(self.imm));
                 update_register(machine, self.rd, value);
             }
             UtypeUInstruction::LWSP => common::lw(machine, self.rd, SP, self.imm as i32)?,
@@ -479,13 +482,13 @@ impl Instruction {
             Instruction::R(inst) => inst.execute(machine)?,
             Instruction::CSS(inst) => inst.execute(machine)?,
             Instruction::BEQZ { rs1, imm } => {
-                let condition = machine.registers()[*rs1].eq(&Mac::REG::zero());
+                let condition = machine.registers()[*rs1 as usize].eq(&Mac::REG::zero());
                 let next_pc_offset =
                     condition.cond(&Mac::REG::from_i32(*imm), &Mac::REG::from_usize(2));
                 Some(machine.pc().overflowing_add(&next_pc_offset))
             }
             Instruction::BNEZ { rs1, imm } => {
-                let condition = machine.registers()[*rs1]
+                let condition = machine.registers()[*rs1 as usize]
                     .eq(&Mac::REG::zero())
                     .logical_not();
                 let next_pc_offset =
@@ -493,20 +496,21 @@ impl Instruction {
                 Some(machine.pc().overflowing_add(&next_pc_offset))
             }
             Instruction::MV { rs2, rd } => {
-                let value = &machine.registers()[*rs2];
+                let value = &machine.registers()[*rs2 as usize];
                 update_register(machine, *rd, value.clone());
                 None
             }
             Instruction::JAL { imm } => common::jal(machine, 1, *imm, 2),
             Instruction::J { imm } => Some(machine.pc().overflowing_add(&Mac::REG::from_i32(*imm))),
-            Instruction::JR { rs1 } => Some(machine.registers()[*rs1].clone()),
+            Instruction::JR { rs1 } => Some(machine.registers()[*rs1 as usize].clone()),
             Instruction::JALR { rs1 } => {
                 let link = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
                 update_register(machine, 1, link);
-                Some(machine.registers()[*rs1].clone())
+                Some(machine.registers()[*rs1 as usize].clone())
             }
             Instruction::ADDI16SP { imm } => {
-                let value = machine.registers()[SP].overflowing_add(&Mac::REG::from_i32(*imm));
+                let value =
+                    machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_i32(*imm));
                 update_register(machine, SP, value);
                 None
             }

@@ -28,18 +28,18 @@ pub fn funct7(instruction_bits: u32) -> u32 {
 }
 
 #[inline(always)]
-pub fn rd(instruction_bits: u32) -> usize {
-    x(instruction_bits, 7, 5, 0) as usize
+pub fn rd(instruction_bits: u32) -> u8 {
+    x(instruction_bits, 7, 5, 0) as u8
 }
 
 #[inline(always)]
-pub fn rs1(instruction_bits: u32) -> usize {
-    x(instruction_bits, 15, 5, 0) as usize
+pub fn rs1(instruction_bits: u32) -> u8 {
+    x(instruction_bits, 15, 5, 0) as u8
 }
 
 #[inline(always)]
-pub fn rs2(instruction_bits: u32) -> usize {
-    x(instruction_bits, 20, 5, 0) as usize
+pub fn rs2(instruction_bits: u32) -> u8 {
+    x(instruction_bits, 20, 5, 0) as u8
 }
 
 #[inline(always)]
@@ -73,8 +73,8 @@ pub fn utype_immediate(instruction_bits: u32) -> i32 {
     xs(instruction_bits, 12, 20, 12) as i32
 }
 
-pub fn update_register<M: Machine>(machine: &mut M, register_index: usize, value: M::REG) {
-    let register_index = register_index % RISCV_GENERAL_REGISTER_NUMBER;
+pub fn update_register<M: Machine>(machine: &mut M, register_index: u8, value: M::REG) {
+    let register_index = register_index as usize % RISCV_GENERAL_REGISTER_NUMBER;
     // In RISC-V, x0 is a special zero register with the following properties:
     //
     // * All writes to this register are silently ignored
