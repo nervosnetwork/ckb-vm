@@ -13,6 +13,10 @@ use std::fmt::{self, Display};
 
 #[derive(Debug)]
 pub enum Instruction {
+    // Empty instruction serves as a marker to denote no instruction is here.
+    // Although nop serves the same purpose, this allows us to skip many method
+    // calls and return directly.
+    Empty,
     RVC(rvc::Instruction),
     I(i::Instruction),
     M(m::Instruction),
@@ -24,7 +28,21 @@ impl Instruction {
             Instruction::I(instruction) => instruction.execute(machine),
             Instruction::M(instruction) => instruction.execute(machine),
             Instruction::RVC(instruction) => instruction.execute(machine),
+            Instruction::Empty => Ok(()),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Instruction::Empty => true,
+            _ => false,
+        }
+    }
+}
+
+impl Default for Instruction {
+    fn default() -> Self {
+        Instruction::Empty
     }
 }
 
@@ -144,5 +162,39 @@ pub struct Utype<M, I> {
 impl<M, I> Utype<M, I> {
     pub fn inst(&self) -> &I {
         &self.inst
+    }
+}
+
+pub fn is_basic_block_end_instruction(i: &Instruction) -> bool {
+    match i {
+        Instruction::I(i) => match i {
+            i::Instruction::I(i) => match i.inst() {
+                i::ItypeInstruction::JALR => true,
+                _ => false,
+            },
+            i::Instruction::B(_) => true,
+            i::Instruction::Env(_) => true,
+            i::Instruction::JAL { .. } => true,
+            _ => false,
+        },
+        Instruction::RVC(i) => match i {
+            rvc::Instruction::BEQZ { .. } => true,
+            rvc::Instruction::BNEZ { .. } => true,
+            rvc::Instruction::JAL { .. } => true,
+            rvc::Instruction::J { .. } => true,
+            rvc::Instruction::JR { .. } => true,
+            rvc::Instruction::JALR { .. } => true,
+            rvc::Instruction::EBREAK => true,
+            _ => false,
+        },
+        Instruction::M(_) => false,
+        Instruction::Empty => false,
+    }
+}
+
+pub fn instruction_length(i: &Instruction) -> usize {
+    match i {
+        Instruction::RVC(_) => 2,
+        _ => 4,
     }
 }

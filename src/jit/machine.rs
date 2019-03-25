@@ -1,13 +1,9 @@
-use super::{
-    emitter::Emitter,
-    instructions::{instruction_length, is_basic_block_end_instruction, is_jitable_instruction},
-    tracer::Tracer,
-    value::Value,
-};
+use super::{emitter::Emitter, instructions::is_jitable_instruction, tracer::Tracer, value::Value};
 use crate::{
-    decoder::build_imac_decoder, CoreMachine, DefaultMachineBuilder, Error, InstructionCycleFunc,
-    Machine, Memory, Register, SparseMemory, SupportMachine, Syscalls,
-    RISCV_GENERAL_REGISTER_NUMBER,
+    decoder::build_imac_decoder,
+    instructions::{instruction_length, is_basic_block_end_instruction},
+    CoreMachine, DefaultMachineBuilder, Error, InstructionCycleFunc, Machine, Memory, Register,
+    SparseMemory, SupportMachine, Syscalls, RISCV_GENERAL_REGISTER_NUMBER,
 };
 use fnv::FnvHashMap;
 use libc::{c_int, uint64_t};

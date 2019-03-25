@@ -40,8 +40,11 @@ pub fn test_simple_instructions_flatmemory() {
     assert_eq!(result.unwrap(), 0);
 }
 
-fn dummy_cycle_func(_i: &Instruction) -> u64 {
-    1
+fn dummy_cycle_func(i: &Instruction) -> u64 {
+    match i {
+        Instruction::Empty => 0,
+        _ => 1,
+    }
 }
 
 #[test]

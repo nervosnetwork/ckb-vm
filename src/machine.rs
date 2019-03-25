@@ -1,6 +1,8 @@
 use super::bits::rounddown;
 use super::decoder::build_imac_decoder;
-use super::instructions::{Instruction, Register};
+use super::instructions::{
+    instruction_length, is_basic_block_end_instruction, Instruction, Register,
+};
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::syscalls::Syscalls;
 use super::{
@@ -342,6 +344,22 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     }
 }
 
+// The number of trace items to keep
+const TRACE_SIZE: usize = 8192;
+// Quick bit-mask to truncate a value in trace size range
+const TRACE_MASK: usize = (TRACE_SIZE - 1);
+// The maximum number of instructions to cache in a trace item
+const TRACE_ITEM_LENGTH: usize = 16;
+// Shifts to truncate a value so 2 traces won't share the same code,
+// should be log2(TRACE_ITEM_LENGTH)
+const TRACE_ADDRESS_SHIFTS: usize = 4;
+
+#[derive(Default)]
+struct Trace {
+    address: usize,
+    instructions: [Instruction; TRACE_ITEM_LENGTH],
+}
+
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     pub fn load_program(mut self, program: &[u8], args: &[Vec<u8>]) -> Result<Self, Error> {
         self.load_elf(program)?;
@@ -383,19 +401,41 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     pub fn interpret(&mut self) -> Result<u8, Error> {
         let decoder = build_imac_decoder::<Inner::REG>();
         self.set_running(true);
+        let mut traces: Vec<Trace> = Vec::new();
+        // For current trace size this is acceptable, however we might want
+        // to tweak the code here if we choose to use a larger trace size or
+        // larger trace item length.
+        traces.resize_with(TRACE_SIZE, Trace::default);
         while self.running() {
-            let instruction = {
-                let pc = self.pc().to_usize();
-                let memory = self.memory_mut();
-                decoder.decode(memory, pc)?
-            };
-            instruction.execute(self)?;
-            let cycles = self
-                .instruction_cycle_func()
-                .as_ref()
-                .map(|f| f(&instruction))
-                .unwrap_or(0);
-            self.add_cycles(cycles)?;
+            let pc = self.pc().to_usize();
+            let slot = (pc >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK;
+            if pc != traces[slot].address {
+                for i in 0..TRACE_ITEM_LENGTH {
+                    traces[slot].instructions[i] = Instruction::Empty;
+                }
+                let mut current_pc = pc;
+                let mut i = 0;
+                while i < TRACE_ITEM_LENGTH {
+                    let instruction = decoder.decode(self.memory_mut(), current_pc)?;
+                    let end_instruction = is_basic_block_end_instruction(&instruction);
+                    current_pc += instruction_length(&instruction);
+                    traces[slot].instructions[i] = instruction;
+                    if end_instruction {
+                        break;
+                    }
+                    i += 1;
+                }
+                traces[slot].address = pc;
+            }
+            for i in &traces[slot].instructions {
+                i.execute(self)?;
+                let cycles = self
+                    .instruction_cycle_func
+                    .as_ref()
+                    .map(|f| f(&i))
+                    .unwrap_or(0);
+                self.add_cycles(cycles)?;
+            }
         }
         Ok(self.exit_code())
     }
