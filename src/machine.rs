@@ -428,6 +428,9 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
                 traces[slot].address = pc;
             }
             for i in &traces[slot].instructions {
+                if let Instruction::Empty = i {
+                    break;
+                }
                 i.execute(self)?;
                 let cycles = self
                     .instruction_cycle_func
