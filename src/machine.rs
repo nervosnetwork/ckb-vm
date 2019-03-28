@@ -357,7 +357,7 @@ const TRACE_ADDRESS_SHIFTS: usize = 4;
 #[derive(Default)]
 struct Trace {
     address: usize,
-    instructions: [Instruction; TRACE_ITEM_LENGTH],
+    instructions: [Option<Instruction>; TRACE_ITEM_LENGTH],
 }
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
@@ -411,7 +411,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             let slot = (pc >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK;
             if pc != traces[slot].address {
                 for i in 0..TRACE_ITEM_LENGTH {
-                    traces[slot].instructions[i] = Instruction::Empty;
+                    traces[slot].instructions[i] = None;
                 }
                 let mut current_pc = pc;
                 let mut i = 0;
@@ -419,7 +419,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
                     let instruction = decoder.decode(self.memory_mut(), current_pc)?;
                     let end_instruction = is_basic_block_end_instruction(&instruction);
                     current_pc += instruction_length(&instruction);
-                    traces[slot].instructions[i] = instruction;
+                    traces[slot].instructions[i] = Some(instruction);
                     if end_instruction {
                         break;
                     }
@@ -428,16 +428,18 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
                 traces[slot].address = pc;
             }
             for i in &traces[slot].instructions {
-                if let Instruction::Empty = i {
-                    break;
+                match i {
+                    Some(i) => {
+                        i.execute(self)?;
+                        let cycles = self
+                            .instruction_cycle_func
+                            .as_ref()
+                            .map(|f| f(&i))
+                            .unwrap_or(0);
+                        self.add_cycles(cycles)?;
+                    }
+                    None => break,
                 }
-                i.execute(self)?;
-                let cycles = self
-                    .instruction_cycle_func
-                    .as_ref()
-                    .map(|f| f(&i))
-                    .unwrap_or(0);
-                self.add_cycles(cycles)?;
             }
         }
         Ok(self.exit_code())

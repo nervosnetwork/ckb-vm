@@ -11,6 +11,5 @@ pub fn is_jitable_instruction(i: &Instruction) -> bool {
             _ => true,
         },
         Instruction::M(_) => true,
-        Instruction::Empty => false,
     }
 }

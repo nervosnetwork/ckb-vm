@@ -686,3 +686,12 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
     };
     instruction_opt.map(I)
 }
+
+pub fn nop() -> GenericInstruction {
+    I(Instruction::I(Itype {
+        rs1: 0,
+        rd: 0,
+        imm: 0,
+        inst: ItypeInstruction::ADDI,
+    }))
+}

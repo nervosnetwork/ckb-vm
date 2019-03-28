@@ -13,13 +13,17 @@ use std::fmt::{self, Display};
 
 #[derive(Debug)]
 pub enum Instruction {
-    // Empty instruction serves as a marker to denote no instruction is here.
-    // Although nop serves the same purpose, this allows us to skip many method
-    // calls and return directly.
-    Empty,
     RVC(rvc::Instruction),
     I(i::Instruction),
     M(m::Instruction),
+}
+
+impl Default for Instruction {
+    fn default() -> Self {
+        // Default instruction is NOP, note that we don't use NOP from RVC,
+        // since it's more likely every chip will implement I than RVC.
+        i::nop()
+    }
 }
 
 impl Instruction {
@@ -28,21 +32,7 @@ impl Instruction {
             Instruction::I(instruction) => instruction.execute(machine),
             Instruction::M(instruction) => instruction.execute(machine),
             Instruction::RVC(instruction) => instruction.execute(machine),
-            Instruction::Empty => Ok(()),
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Instruction::Empty => true,
-            _ => false,
-        }
-    }
-}
-
-impl Default for Instruction {
-    fn default() -> Self {
-        Instruction::Empty
     }
 }
 
@@ -189,7 +179,6 @@ pub fn is_basic_block_end_instruction(i: &Instruction) -> bool {
             _ => false,
         },
         Instruction::M(_) => false,
-        Instruction::Empty => false,
     }
 }
 
