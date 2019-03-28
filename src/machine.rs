@@ -488,8 +488,8 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::bits::power_of_2;
+    use super::*;
 
     #[test]
     fn test_trace_constant_rules() {
