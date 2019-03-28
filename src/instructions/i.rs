@@ -7,7 +7,7 @@ use super::utils::{
 use super::Register;
 use super::{
     common, Execute, Immediate, Instruction as GenericInstruction, Instruction::I, RegisterIndex,
-    UImmediate,
+    UImmediate, UShortImmediate,
 };
 
 #[derive(Debug)]
@@ -113,11 +113,11 @@ type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
 // as viewed by other RISC- V harts and external devices or coprocessors.
 #[derive(Debug)]
 pub struct FenceType {
-    fm: u32,
+    fm: u8,
     // predecessor
-    pred: u32,
+    pred: u8,
     // successor
-    succ: u32,
+    succ: u8,
 }
 
 #[derive(Debug)]
@@ -130,8 +130,8 @@ pub struct CsrType {
 
 #[derive(Debug)]
 pub struct CsrIType {
-    csr: UImmediate,
-    zimm: UImmediate,
+    csr: UShortImmediate,
+    zimm: UShortImmediate,
     rd: RegisterIndex,
     inst: CsrIInstruction,
 }
@@ -147,15 +147,15 @@ impl Execute for Rtype {
             RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
             RtypeInstruction::SLL => {
-                let shift_value = machine.registers()[self.rs2].clone()
+                let shift_value = machine.registers()[self.rs2 as usize].clone()
                     & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-                let value = machine.registers()[self.rs1].clone() << shift_value;
+                let value = machine.registers()[self.rs1 as usize].clone() << shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SLLW => {
                 let shift_value =
-                    machine.registers()[self.rs2].clone() & Mac::REG::from_usize(0x1F);
-                let value = machine.registers()[self.rs1].clone() << shift_value;
+                    machine.registers()[self.rs2 as usize].clone() & Mac::REG::from_usize(0x1F);
+                let value = machine.registers()[self.rs1 as usize].clone() << shift_value;
                 update_register(
                     machine,
                     self.rd,
@@ -163,15 +163,16 @@ impl Execute for Rtype {
                 );
             }
             RtypeInstruction::SRL => {
-                let shift_value = machine.registers()[self.rs2].clone()
+                let shift_value = machine.registers()[self.rs2 as usize].clone()
                     & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-                let value = machine.registers()[self.rs1].clone() >> shift_value;
+                let value = machine.registers()[self.rs1 as usize].clone() >> shift_value;
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRLW => {
                 let shift_value =
-                    machine.registers()[self.rs2].clone() & Mac::REG::from_usize(0x1F);
-                let value = machine.registers()[self.rs1].zero_extend(&Mac::REG::from_usize(32))
+                    machine.registers()[self.rs2 as usize].clone() & Mac::REG::from_usize(0x1F);
+                let value = machine.registers()[self.rs1 as usize]
+                    .zero_extend(&Mac::REG::from_usize(32))
                     >> shift_value;
                 update_register(
                     machine,
@@ -180,15 +181,15 @@ impl Execute for Rtype {
                 );
             }
             RtypeInstruction::SRA => {
-                let shift_value = machine.registers()[self.rs2].clone()
+                let shift_value = machine.registers()[self.rs2 as usize].clone()
                     & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-                let value = machine.registers()[self.rs1].signed_shr(&shift_value);
+                let value = machine.registers()[self.rs1 as usize].signed_shr(&shift_value);
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SRAW => {
                 let shift_value =
-                    machine.registers()[self.rs2].clone() & Mac::REG::from_usize(0x1F);
-                let value = machine.registers()[self.rs1]
+                    machine.registers()[self.rs2 as usize].clone() & Mac::REG::from_usize(0x1F);
+                let value = machine.registers()[self.rs1 as usize]
                     .sign_extend(&Mac::REG::from_usize(32))
                     .signed_shr(&shift_value);
                 update_register(
@@ -198,14 +199,14 @@ impl Execute for Rtype {
                 );
             }
             RtypeInstruction::SLT => {
-                let rs1_value = &machine.registers()[self.rs1];
-                let rs2_value = &machine.registers()[self.rs2];
+                let rs1_value = &machine.registers()[self.rs1 as usize];
+                let rs2_value = &machine.registers()[self.rs2 as usize];
                 let value = rs1_value.lt_s(&rs2_value);
                 update_register(machine, self.rd, value);
             }
             RtypeInstruction::SLTU => {
-                let rs1_value = &machine.registers()[self.rs1];
-                let rs2_value = &machine.registers()[self.rs2];
+                let rs1_value = &machine.registers()[self.rs1 as usize];
+                let rs2_value = &machine.registers()[self.rs2 as usize];
                 let value = rs1_value.lt(&rs2_value);
                 update_register(machine, self.rd, value);
             }
@@ -230,21 +231,21 @@ impl Execute for Itype {
             ItypeInstruction::ORI => common::ori(machine, self.rd, self.rs1, self.imm),
             ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm),
             ItypeInstruction::SLTI => {
-                let rs1_value = &machine.registers()[self.rs1];
+                let rs1_value = &machine.registers()[self.rs1 as usize];
                 let imm_value = Mac::REG::from_i32(self.imm);
                 let value = rs1_value.lt_s(&imm_value);
                 update_register(machine, self.rd, value);
             }
             ItypeInstruction::SLTIU => {
-                let rs1_value = &machine.registers()[self.rs1];
+                let rs1_value = &machine.registers()[self.rs1 as usize];
                 let imm_value = Mac::REG::from_i32(self.imm);
                 let value = rs1_value.lt(&imm_value);
                 update_register(machine, self.rd, value);
             }
             ItypeInstruction::JALR => {
                 let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
-                let mut next_pc =
-                    machine.registers()[self.rs1].overflowing_add(&Mac::REG::from_i32(self.imm));
+                let mut next_pc = machine.registers()[self.rs1 as usize]
+                    .overflowing_add(&Mac::REG::from_i32(self.imm));
                 next_pc = next_pc & (!Mac::REG::one());
                 update_register(machine, self.rd, link);
                 return Ok(Some(next_pc));
@@ -294,8 +295,8 @@ impl Execute for Stype {
 
 impl Execute for Btype {
     fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        let rs1_value = &machine.registers()[self.rs1];
-        let rs2_value = &machine.registers()[self.rs2];
+        let rs1_value = &machine.registers()[self.rs1 as usize];
+        let rs2_value = &machine.registers()[self.rs2 as usize];
         let condition = match &self.inst {
             BtypeInstruction::BEQ => rs1_value.eq(&rs2_value),
             BtypeInstruction::BNE => rs1_value.ne(&rs2_value),
@@ -574,9 +575,9 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 Some(Instruction::FENCEI)
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(Instruction::Fence(FenceType {
-                    fm: (instruction_bits & 0xF00_00000) >> 28,
-                    pred: (instruction_bits & 0x0F0_00000) >> 24,
-                    succ: (instruction_bits & 0x00F_00000) >> 20,
+                    fm: ((instruction_bits & 0xF00_00000) >> 28) as u8,
+                    pred: ((instruction_bits & 0x0F0_00000) >> 24) as u8,
+                    succ: ((instruction_bits & 0x00F_00000) >> 20) as u8,
                 }))
             } else {
                 None
@@ -613,21 +614,21 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                         inst: CsrInstruction::CSRRC,
                     })),
                     0b_101 => Some(Instruction::CsrI(CsrIType {
-                        csr,
+                        csr: csr as u16,
                         rd,
-                        zimm: rs1_zimm as u32,
+                        zimm: u16::from(rs1_zimm),
                         inst: CsrIInstruction::CSRRWI,
                     })),
                     0b_110 => Some(Instruction::CsrI(CsrIType {
-                        csr,
+                        csr: csr as u16,
                         rd,
-                        zimm: rs1_zimm as u32,
+                        zimm: u16::from(rs1_zimm),
                         inst: CsrIInstruction::CSRRSI,
                     })),
                     0b_111 => Some(Instruction::CsrI(CsrIType {
-                        csr,
+                        csr: csr as u16,
                         rd,
-                        zimm: rs1_zimm as u32,
+                        zimm: u16::from(rs1_zimm),
                         inst: CsrIInstruction::CSRRCI,
                     })),
                     _ => None,
@@ -684,4 +685,13 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
         _ => None,
     };
     instruction_opt.map(I)
+}
+
+pub fn nop() -> GenericInstruction {
+    I(Instruction::I(Itype {
+        rs1: 0,
+        rd: 0,
+        imm: 0,
+        inst: ItypeInstruction::ADDI,
+    }))
 }
