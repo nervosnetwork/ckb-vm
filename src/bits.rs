@@ -1,6 +1,6 @@
 // Source: https://en.wikipedia.org/wiki/Bit_manipulation#Example_of_bit_manipulation
 #[inline(always)]
-fn power_of_2(x: usize) -> bool {
+pub fn power_of_2(x: usize) -> bool {
     x > 0 && ((x & (x - 1)) == 0)
 }
 

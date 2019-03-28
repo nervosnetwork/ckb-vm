@@ -485,3 +485,17 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::bits::power_of_2;
+
+    #[test]
+    fn test_trace_constant_rules() {
+        assert!(power_of_2(TRACE_SIZE));
+        assert_eq!(TRACE_MASK, TRACE_SIZE - 1);
+        assert!(power_of_2(TRACE_ITEM_LENGTH));
+        assert_eq!(TRACE_ITEM_LENGTH, 1 << TRACE_ADDRESS_SHIFTS);
+    }
+}
