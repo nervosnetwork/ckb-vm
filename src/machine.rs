@@ -250,7 +250,8 @@ const TRACE_ADDRESS_SHIFTS: usize = 5;
 struct Trace {
     address: usize,
     length: usize,
-    instructions: [Option<Instruction>; TRACE_ITEM_LENGTH],
+    instruction_count: u8,
+    instructions: [Instruction; TRACE_ITEM_LENGTH],
 }
 
 #[inline(always)]
@@ -552,32 +553,29 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
                     let instruction = decoder.decode(self.memory_mut(), current_pc)?;
                     let end_instruction = is_basic_block_end_instruction(&instruction);
                     current_pc += instruction_length(&instruction);
-                    self.traces[slot].instructions[i] = Some(instruction);
+                    self.traces[slot].instructions[i] = instruction;
+                    i += 1;
                     if end_instruction {
                         break;
                     }
-                    i += 1;
                 }
                 self.traces[slot].address = pc;
                 self.traces[slot].length = current_pc - pc;
+                self.traces[slot].instruction_count = i as u8;
             }
             self.running_trace_slot = slot;
             self.running_trace_cleared = false;
-            for i in self.traces[slot].instructions.clone().iter() {
-                match i {
-                    Some(i) => {
-                        i.execute(self)?;
-                        let cycles = self
-                            .instruction_cycle_func
-                            .as_ref()
-                            .map(|f| f(&i))
-                            .unwrap_or(0);
-                        self.add_cycles(cycles)?;
-                        if self.running_trace_cleared {
-                            break;
-                        }
-                    }
-                    None => break,
+            for i in 0..self.traces[slot].instruction_count {
+                let i = self.traces[slot].instructions[i as usize].clone();
+                i.execute(self)?;
+                let cycles = self
+                    .instruction_cycle_func
+                    .as_ref()
+                    .map(|f| f(&i))
+                    .unwrap_or(0);
+                self.add_cycles(cycles)?;
+                if self.running_trace_cleared {
+                    break;
                 }
             }
         }
@@ -638,5 +636,6 @@ mod tests {
         assert!(power_of_2(TRACE_SIZE));
         assert_eq!(TRACE_MASK, TRACE_SIZE - 1);
         assert!(power_of_2(TRACE_ITEM_LENGTH));
+        assert!(TRACE_ITEM_LENGTH <= 255);
     }
 }
