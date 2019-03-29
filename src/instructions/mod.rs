@@ -11,7 +11,7 @@ use super::machine::Machine;
 use super::Error;
 use std::fmt::{self, Display};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     RVC(rvc::Instruction),
     I(i::Instruction),
@@ -73,7 +73,7 @@ type UShortImmediate = u16;
 // ======================================================================
 //
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Rtype<I> {
     rs2: RegisterIndex,
     rs1: RegisterIndex,
@@ -87,7 +87,7 @@ impl<I> Rtype<I> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Itype<M, I> {
     rs1: RegisterIndex,
     rd: RegisterIndex,
@@ -101,7 +101,7 @@ impl<M, I> Itype<M, I> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ItypeShift<M, I> {
     rs1: RegisterIndex,
     rd: RegisterIndex,
@@ -115,7 +115,7 @@ impl<M, I> ItypeShift<M, I> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Stype<M, I> {
     rs2: RegisterIndex,
     rs1: RegisterIndex,
@@ -129,7 +129,7 @@ impl<M, I> Stype<M, I> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Btype<M, I> {
     rs2: RegisterIndex,
     rs1: RegisterIndex,
@@ -143,7 +143,7 @@ impl<M, I> Btype<M, I> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Utype<M, I> {
     rd: RegisterIndex,
     imm: M,

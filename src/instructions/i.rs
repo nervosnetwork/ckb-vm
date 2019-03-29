@@ -10,7 +10,7 @@ use super::{
     UImmediate, UShortImmediate,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RtypeInstruction {
     ADD,
     ADDW,
@@ -29,7 +29,7 @@ pub enum RtypeInstruction {
     AND,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ItypeInstruction {
     JALR,
     LB,
@@ -48,7 +48,7 @@ pub enum ItypeInstruction {
     ANDI,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ItypeShiftInstruction {
     SLLI,
     SRLI,
@@ -58,7 +58,7 @@ pub enum ItypeShiftInstruction {
     SRAIW,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StypeInstruction {
     SB,
     SH,
@@ -66,7 +66,7 @@ pub enum StypeInstruction {
     SD,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BtypeInstruction {
     BEQ,
     BNE,
@@ -76,26 +76,26 @@ pub enum BtypeInstruction {
     BGEU,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UtypeInstruction {
     LUI,
     AUIPC,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EnvInstruction {
     ECALL,
     EBREAK,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CsrInstruction {
     CSRRW,
     CSRRS,
     CSRRC,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CsrIInstruction {
     CSRRWI,
     CSRRSI,
@@ -111,7 +111,7 @@ type ItypeShift = super::ItypeShift<Immediate, ItypeShiftInstruction>;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FenceType {
     fm: u8,
     // predecessor
@@ -120,7 +120,7 @@ pub struct FenceType {
     succ: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CsrType {
     csr: UImmediate,
     rs1: RegisterIndex,
@@ -128,7 +128,7 @@ pub struct CsrType {
     inst: CsrInstruction,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CsrIType {
     csr: UShortImmediate,
     zimm: UShortImmediate,
@@ -374,7 +374,7 @@ impl Execute for CsrIType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     R(Rtype),
     I(Itype),
