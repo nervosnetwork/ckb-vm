@@ -28,3 +28,7 @@ proptest = "0.9.1"
 [[bench]]
 name = "bits_benchmark"
 harness = false
+
+[[bench]]
+name = "vm_benchmark"
+harness = false

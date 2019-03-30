@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate criterion;
+
 use ckb_vm::bits;
 use criterion::Criterion;
 
