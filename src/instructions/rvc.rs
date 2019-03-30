@@ -92,7 +92,7 @@ fn b_immediate(instruction_bits: u32) -> i32 {
         | xs(instruction_bits, 12, 1, 8)) as i32
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RtypeInstruction {
     SUB,
     XOR,
@@ -103,14 +103,14 @@ pub enum RtypeInstruction {
     ADD,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ItypeInstruction {
     ADDI,
     ADDIW,
     ANDI,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ItypeUInstruction {
     FLD,
     // LQ,
@@ -122,7 +122,7 @@ pub enum ItypeUInstruction {
     SLLI,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StypeUInstruction {
     FSD,
     // SQ,
@@ -131,13 +131,13 @@ pub enum StypeUInstruction {
     SD,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UtypeInstruction {
     LI,
     LUI,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UtypeUInstruction {
     ADDI4SPN,
     FLDSP,
@@ -147,7 +147,7 @@ pub enum UtypeUInstruction {
     LDSP,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CSSformatInstruction {
     FSDSP,
     // SQSP,
@@ -190,7 +190,7 @@ type Utype = super::Utype<Immediate, UtypeInstruction>;
 // CIW format
 type UtypeU = super::Utype<UImmediate, UtypeUInstruction>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CSSformat {
     rs2: RegisterIndex,
     imm: UImmediate,
@@ -359,7 +359,7 @@ impl Execute for CSSformat {
 //             11 |                                       >16b                                     |
 //            =====================================================================================+
 //
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instruction {
     // C.FLD (RV32/64)
     // C.LQ (RV128)

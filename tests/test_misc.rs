@@ -69,3 +69,14 @@ pub fn test_custom_syscall() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 39);
 }
+
+#[test]
+pub fn test_trace() {
+    let mut file = File::open("tests/programs/trace64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec![b"trace64".to_vec()]);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 7);
+}

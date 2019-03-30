@@ -101,7 +101,10 @@ impl From<IOError> for Error {
     }
 }
 
-pub fn run<R: Register, M: Memory<R>>(program: &[u8], args: &[Vec<u8>]) -> Result<u8, Error> {
+pub fn run<R: Register, M: Memory<R> + Default>(
+    program: &[u8],
+    args: &[Vec<u8>],
+) -> Result<u8, Error> {
     DefaultMachine::<DefaultCoreMachine<R, M>>::default()
         .load_program(program, args)?
         .interpret()

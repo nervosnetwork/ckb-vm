@@ -4,7 +4,7 @@ use super::register::Register;
 use super::utils::{funct3, funct7, opcode, rd, rs1, rs2, update_register};
 use super::{Execute, Instruction as GenericInstruction, Instruction::M};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RtypeInstruction {
     MUL,
     MULW,
@@ -23,7 +23,7 @@ pub enum RtypeInstruction {
 
 type Rtype = super::Rtype<RtypeInstruction>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Instruction(pub Rtype);
 
 impl Execute for Rtype {
