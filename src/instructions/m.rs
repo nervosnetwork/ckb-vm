@@ -8,8 +8,8 @@ use crate::instructions as insts;
 pub fn execute<Mac: Machine>(i: Instruction, machine: &mut Mac) -> Result<(), Error> {
     let i = Rtype(i);
     let op = i.op();
-    let rs1_value = &machine.registers()[i.rs1() as usize];
-    let rs2_value = &machine.registers()[i.rs2() as usize];
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
     match op {
         insts::OP_MUL => {
             let value = rs1_value.overflowing_mul(&rs2_value);

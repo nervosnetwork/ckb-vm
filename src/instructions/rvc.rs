@@ -1,5 +1,5 @@
 use super::super::machine::Machine;
-use super::super::{Error, SP as CRATE_SP};
+use super::super::{Error, SP};
 use super::register::Register;
 use super::utils::{rd, update_register, x, xs};
 use super::{
@@ -7,12 +7,10 @@ use super::{
 };
 use crate::instructions as insts;
 
-const SP: u8 = CRATE_SP as u8;
-
 // Notice the location of rs2 in RVC encoding is different from full encoding
 #[inline(always)]
-fn c_rs2(instruction_bits: u32) -> u8 {
-    x(instruction_bits, 2, 5, 0) as u8
+fn c_rs2(instruction_bits: u32) -> usize {
+    x(instruction_bits, 2, 5, 0) as usize
 }
 
 // This function extract 3 bits from least_bit to form a register number,
@@ -20,8 +18,8 @@ fn c_rs2(instruction_bits: u32) -> u8 {
 // used registers x8 - x15. In other words, a number of 0 extracted here means
 // x8, 1 means x9, etc.
 #[inline(always)]
-fn compact_register_number(instruction_bits: u32, least_bit: usize) -> u8 {
-    x(instruction_bits, least_bit, 3, 0) as u8 + 8
+fn compact_register_number(instruction_bits: u32, least_bit: usize) -> usize {
+    x(instruction_bits, least_bit, 3, 0) as usize + 8
 }
 
 // [12]  => imm[5]
@@ -194,8 +192,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_ADDI4SPN => {
             let i = Utype(inst);
-            let value =
-                machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_u32(i.immediate()));
+            let value = machine.registers()[SP].overflowing_add(&Mac::REG::from_u32(i.immediate()));
             update_register(machine, i.rd(), value);
             None
         }
@@ -221,7 +218,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BEQZ => {
             let i = Stype(inst);
-            let condition = machine.registers()[i.rs1() as usize].eq(&Mac::REG::zero());
+            let condition = machine.registers()[i.rs1()].eq(&Mac::REG::zero());
             let next_pc_offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),
                 &Mac::REG::from_usize(2),
@@ -230,7 +227,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BNEZ => {
             let i = Stype(inst);
-            let condition = machine.registers()[i.rs1() as usize]
+            let condition = machine.registers()[i.rs1()]
                 .eq(&Mac::REG::zero())
                 .logical_not();
             let next_pc_offset = condition.cond(
@@ -241,7 +238,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_MV => {
             let i = Rtype(inst);
-            let value = &machine.registers()[i.rs2() as usize];
+            let value = &machine.registers()[i.rs2()];
             update_register(machine, i.rd(), value.clone());
             None
         }
@@ -259,18 +256,18 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_JR => {
             let i = Stype(inst);
-            Some(machine.registers()[i.rs1() as usize].clone())
+            Some(machine.registers()[i.rs1()].clone())
         }
         insts::OP_JALR => {
             let i = Stype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
             update_register(machine, 1, link);
-            Some(machine.registers()[i.rs1() as usize].clone())
+            Some(machine.registers()[i.rs1()].clone())
         }
         insts::OP_ADDI16SP => {
             let i = Itype(inst);
             let value =
-                machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+                machine.registers()[SP].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
             update_register(machine, SP, value);
             None
         }

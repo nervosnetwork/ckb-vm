@@ -17,19 +17,28 @@ pub struct FenceType(Instruction);
 
 impl FenceType {
     pub fn new(fm: u8, pred: u8, succ: u8) -> Self {
-        FenceType(Rtype::new(insts::OP_FENCE, fm, pred, succ, MODULE_I).0)
+        FenceType(
+            Rtype::new(
+                insts::OP_FENCE,
+                fm as usize,
+                pred as usize,
+                succ as usize,
+                MODULE_I,
+            )
+            .0,
+        )
     }
 
     pub fn fm(self) -> u8 {
-        Rtype(self.0).rd()
+        Rtype(self.0).rd() as u8
     }
 
     pub fn pred(self) -> u8 {
-        Rtype(self.0).rs1()
+        Rtype(self.0).rs1() as u8
     }
 
     pub fn succ(self) -> u8 {
-        Rtype(self.0).rs2()
+        Rtype(self.0).rs2() as u8
     }
 }
 
@@ -73,17 +82,17 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SLL => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2() as usize].clone()
+            let shift_value = machine.registers()[i.rs2()].clone()
                 & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1() as usize].clone() << shift_value;
+            let value = machine.registers()[i.rs1()].clone() << shift_value;
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SLLW => {
             let i = Rtype(inst);
             let shift_value =
-                machine.registers()[i.rs2() as usize].clone() & Mac::REG::from_usize(0x1F);
-            let value = machine.registers()[i.rs1() as usize].clone() << shift_value;
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let value = machine.registers()[i.rs1()].clone() << shift_value;
             update_register(
                 machine,
                 i.rd(),
@@ -93,17 +102,17 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SRL => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2() as usize].clone()
+            let shift_value = machine.registers()[i.rs2()].clone()
                 & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1() as usize].clone() >> shift_value;
+            let value = machine.registers()[i.rs1()].clone() >> shift_value;
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SRLW => {
             let i = Rtype(inst);
             let shift_value =
-                machine.registers()[i.rs2() as usize].clone() & Mac::REG::from_usize(0x1F);
-            let value = machine.registers()[i.rs1() as usize]
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let value = machine.registers()[i.rs1()]
                 .zero_extend(&Mac::REG::from_usize(32))
                 >> shift_value;
             update_register(
@@ -115,17 +124,17 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SRA => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2() as usize].clone()
+            let shift_value = machine.registers()[i.rs2()].clone()
                 & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1() as usize].signed_shr(&shift_value);
+            let value = machine.registers()[i.rs1()].signed_shr(&shift_value);
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SRAW => {
             let i = Rtype(inst);
             let shift_value =
-                machine.registers()[i.rs2() as usize].clone() & Mac::REG::from_usize(0x1F);
-            let value = machine.registers()[i.rs1() as usize]
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let value = machine.registers()[i.rs1()]
                 .sign_extend(&Mac::REG::from_usize(32))
                 .signed_shr(&shift_value);
             update_register(
@@ -137,16 +146,16 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SLT => {
             let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let value = rs1_value.lt_s(&rs2_value);
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SLTU => {
             let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let value = rs1_value.lt(&rs2_value);
             update_register(machine, i.rd(), value);
             None
@@ -213,7 +222,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SLTI => {
             let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
             let imm_value = Mac::REG::from_i32(i.immediate_s());
             let value = rs1_value.lt_s(&imm_value);
             update_register(machine, i.rd(), value);
@@ -221,7 +230,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SLTIU => {
             let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
             let imm_value = Mac::REG::from_i32(i.immediate_s());
             let value = rs1_value.lt(&imm_value);
             update_register(machine, i.rd(), value);
@@ -230,7 +239,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         insts::OP_JALR => {
             let i = Itype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
-            let mut next_pc = machine.registers()[i.rs1() as usize]
+            let mut next_pc = machine.registers()[i.rs1()]
                 .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
             next_pc = next_pc & (!Mac::REG::one());
             update_register(machine, i.rd(), link);
@@ -288,8 +297,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BEQ => {
             let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.eq(&rs2_value);
             let offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),
@@ -299,8 +308,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BNE => {
             let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.ne(&rs2_value);
             let offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),
@@ -310,8 +319,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BLT => {
             let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.lt_s(&rs2_value);
             let offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),
@@ -321,8 +330,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BGE => {
             let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.ge_s(&rs2_value);
             let offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),
@@ -332,8 +341,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BLTU => {
             let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.lt(&rs2_value);
             let offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),
@@ -343,8 +352,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BGEU => {
             let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1() as usize];
-            let rs2_value = &machine.registers()[i.rs2() as usize];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.ge(&rs2_value);
             let offset = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()),

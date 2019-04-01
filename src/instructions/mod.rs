@@ -10,7 +10,7 @@ pub use self::register::Register;
 use super::machine::Machine;
 use super::Error;
 
-type RegisterIndex = u8;
+type RegisterIndex = usize;
 type Immediate = i32;
 type UImmediate = u32;
 
@@ -171,10 +171,10 @@ impl Rtype {
     ) -> Self {
         Rtype(
             u64::from(op as u8)
-                | (u64::from(rd) << 8)
+                | (u64::from(rd as u8) << 8)
                 | (u64::from(m as u8) << 16)
-                | (u64::from(rs1) << 32)
-                | (u64::from(rs2) << 40),
+                | (u64::from(rs1 as u8) << 32)
+                | (u64::from(rs2 as u8) << 40),
         )
     }
 
@@ -183,15 +183,15 @@ impl Rtype {
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as RegisterIndex
+        (self.0 >> 8) as u8 as RegisterIndex
     }
 
     pub fn rs1(self) -> RegisterIndex {
-        (self.0 >> 32) as RegisterIndex
+        (self.0 >> 32) as u8 as RegisterIndex
     }
 
     pub fn rs2(self) -> RegisterIndex {
-        (self.0 >> 40) as RegisterIndex
+        (self.0 >> 40) as u8 as RegisterIndex
     }
 }
 
@@ -208,9 +208,9 @@ impl Itype {
     ) -> Self {
         Itype(
             u64::from(op as u8) |
-              (u64::from(rd) << 8) |
+              (u64::from(rd as u8) << 8) |
               (u64::from(m as u8) << 16) |
-              (u64::from(rs1) << 32) |
+              (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, I-type uses 12 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
               (u64::from(immediate) << 40),
@@ -232,11 +232,11 @@ impl Itype {
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as RegisterIndex
+        (self.0 >> 8) as u8 as RegisterIndex
     }
 
     pub fn rs1(self) -> RegisterIndex {
-        (self.0 >> 32) as RegisterIndex
+        (self.0 >> 32) as u8 as RegisterIndex
     }
 
     pub fn immediate(self) -> UImmediate {
@@ -261,9 +261,9 @@ impl Stype {
     ) -> Self {
         Stype(
             u64::from(op as u8) |
-              (u64::from(rs2) << 8) |
+              (u64::from(rs2 as u8) << 8) |
               (u64::from(m as u8) << 16) |
-              (u64::from(rs1) << 32) |
+              (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, S/B type uses 13 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
               (u64::from(immediate) << 40),
@@ -285,11 +285,11 @@ impl Stype {
     }
 
     pub fn rs1(self) -> RegisterIndex {
-        (self.0 >> 32) as RegisterIndex
+        (self.0 >> 32) as u8 as RegisterIndex
     }
 
     pub fn rs2(self) -> RegisterIndex {
-        (self.0 >> 8) as RegisterIndex
+        (self.0 >> 8) as u8 as RegisterIndex
     }
 
     pub fn immediate(self) -> UImmediate {
@@ -313,7 +313,7 @@ impl Utype {
     ) -> Self {
         Utype(
             u64::from(op as u8)
-                | (u64::from(rd) << 8)
+                | (u64::from(rd as u8) << 8)
                 | (u64::from(m as u8) << 16)
                 | (u64::from(immediate) << 32),
         )
@@ -333,7 +333,7 @@ impl Utype {
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as RegisterIndex
+        (self.0 >> 8) as u8 as RegisterIndex
     }
 
     pub fn immediate(self) -> UImmediate {
