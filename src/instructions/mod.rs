@@ -162,7 +162,13 @@ pub fn blank_instruction(op: InstructionOpcode, m: InstructionModule) -> Instruc
 pub struct Rtype(Instruction);
 
 impl Rtype {
-    pub fn new(op: InstructionOpcode, rd: u8, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
+    pub fn new(
+        op: InstructionOpcode,
+        rd: RegisterIndex,
+        rs1: RegisterIndex,
+        rs2: RegisterIndex,
+        m: InstructionModule,
+    ) -> Self {
         Rtype(
             u64::from(op as u8)
                 | (u64::from(rd) << 8)
@@ -173,19 +179,19 @@ impl Rtype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        self.0 as u8
+        self.0 as InstructionOpcode
     }
 
-    pub fn rd(self) -> u8 {
-        (self.0 >> 8) as u8
+    pub fn rd(self) -> RegisterIndex {
+        (self.0 >> 8) as RegisterIndex
     }
 
-    pub fn rs1(self) -> u8 {
-        (self.0 >> 32) as u8
+    pub fn rs1(self) -> RegisterIndex {
+        (self.0 >> 32) as RegisterIndex
     }
 
-    pub fn rs2(self) -> u8 {
-        (self.0 >> 40) as u8
+    pub fn rs2(self) -> RegisterIndex {
+        (self.0 >> 40) as RegisterIndex
     }
 }
 
@@ -195,9 +201,9 @@ pub struct Itype(Instruction);
 impl Itype {
     pub fn new(
         op: InstructionOpcode,
-        rd: u8,
-        rs1: u8,
-        immediate: u32,
+        rd: RegisterIndex,
+        rs1: RegisterIndex,
+        immediate: UImmediate,
         m: InstructionModule,
     ) -> Self {
         Itype(
@@ -213,32 +219,32 @@ impl Itype {
 
     pub fn new_s(
         op: InstructionOpcode,
-        rd: u8,
-        rs1: u8,
-        immediate: i32,
+        rd: RegisterIndex,
+        rs1: RegisterIndex,
+        immediate: Immediate,
         m: InstructionModule,
     ) -> Self {
-        Self::new(op, rd, rs1, immediate as u32, m)
+        Self::new(op, rd, rs1, immediate as UImmediate, m)
     }
 
     pub fn op(self) -> InstructionOpcode {
-        self.0 as u8
+        self.0 as InstructionOpcode
     }
 
-    pub fn rd(self) -> u8 {
-        (self.0 >> 8) as u8
+    pub fn rd(self) -> RegisterIndex {
+        (self.0 >> 8) as RegisterIndex
     }
 
-    pub fn rs1(self) -> u8 {
-        (self.0 >> 32) as u8
+    pub fn rs1(self) -> RegisterIndex {
+        (self.0 >> 32) as RegisterIndex
     }
 
-    pub fn immediate(self) -> u32 {
-        self.immediate_s() as u32
+    pub fn immediate(self) -> UImmediate {
+        self.immediate_s() as UImmediate
     }
 
-    pub fn immediate_s(self) -> i32 {
-        ((self.0 as i64) >> 40) as i32
+    pub fn immediate_s(self) -> Immediate {
+        ((self.0 as i64) >> 40) as Immediate
     }
 }
 
@@ -248,9 +254,9 @@ pub struct Stype(Instruction);
 impl Stype {
     pub fn new(
         op: InstructionOpcode,
-        immediate: u32,
-        rs1: u8,
-        rs2: u8,
+        immediate: UImmediate,
+        rs1: RegisterIndex,
+        rs2: RegisterIndex,
         m: InstructionModule,
     ) -> Self {
         Stype(
@@ -266,32 +272,32 @@ impl Stype {
 
     pub fn new_s(
         op: InstructionOpcode,
-        immediate: i32,
-        rs1: u8,
-        rs2: u8,
+        immediate: Immediate,
+        rs1: RegisterIndex,
+        rs2: RegisterIndex,
         m: InstructionModule,
     ) -> Self {
-        Self::new(op, immediate as u32, rs1, rs2, m)
+        Self::new(op, immediate as UImmediate, rs1, rs2, m)
     }
 
     pub fn op(self) -> InstructionOpcode {
-        self.0 as u8
+        self.0 as InstructionOpcode
     }
 
-    pub fn rs1(self) -> u8 {
-        (self.0 >> 32) as u8
+    pub fn rs1(self) -> RegisterIndex {
+        (self.0 >> 32) as RegisterIndex
     }
 
-    pub fn rs2(self) -> u8 {
-        (self.0 >> 8) as u8
+    pub fn rs2(self) -> RegisterIndex {
+        (self.0 >> 8) as RegisterIndex
     }
 
-    pub fn immediate(self) -> u32 {
-        self.immediate_s() as u32
+    pub fn immediate(self) -> UImmediate {
+        self.immediate_s() as UImmediate
     }
 
-    pub fn immediate_s(self) -> i32 {
-        ((self.0 as i64) >> 40) as i32
+    pub fn immediate_s(self) -> Immediate {
+        ((self.0 as i64) >> 40) as Immediate
     }
 }
 
@@ -299,7 +305,12 @@ impl Stype {
 pub struct Utype(Instruction);
 
 impl Utype {
-    pub fn new(op: InstructionOpcode, rd: u8, immediate: u32, m: InstructionModule) -> Self {
+    pub fn new(
+        op: InstructionOpcode,
+        rd: RegisterIndex,
+        immediate: UImmediate,
+        m: InstructionModule,
+    ) -> Self {
         Utype(
             u64::from(op as u8)
                 | (u64::from(rd) << 8)
@@ -308,24 +319,29 @@ impl Utype {
         )
     }
 
-    pub fn new_s(op: InstructionOpcode, rd: u8, immediate: i32, m: InstructionModule) -> Self {
-        Self::new(op, rd, immediate as u32, m)
+    pub fn new_s(
+        op: InstructionOpcode,
+        rd: RegisterIndex,
+        immediate: Immediate,
+        m: InstructionModule,
+    ) -> Self {
+        Self::new(op, rd, immediate as UImmediate, m)
     }
 
     pub fn op(self) -> InstructionOpcode {
-        self.0 as u8
+        self.0 as InstructionOpcode
     }
 
-    pub fn rd(self) -> u8 {
-        (self.0 >> 8) as u8
+    pub fn rd(self) -> RegisterIndex {
+        (self.0 >> 8) as RegisterIndex
     }
 
-    pub fn immediate(self) -> u32 {
-        self.immediate_s() as u32
+    pub fn immediate(self) -> UImmediate {
+        self.immediate_s() as UImmediate
     }
 
-    pub fn immediate_s(self) -> i32 {
-        ((self.0 as i64) >> 32) as i32
+    pub fn immediate_s(self) -> Immediate {
+        ((self.0 as i64) >> 32) as Immediate
     }
 }
 
