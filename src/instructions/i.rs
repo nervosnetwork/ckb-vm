@@ -1,3 +1,4 @@
+use crate::instructions as insts;
 use super::super::machine::Machine;
 use super::super::Error;
 use super::utils::{
@@ -6,8 +7,8 @@ use super::utils::{
 };
 use super::Register;
 use super::{
-    assemble_no_argument_instruction, common, extract_opcode, Instruction, InstructionOp, Itype,
-    Module, Rtype, Stype, Utype,
+    assemble_no_argument_instruction, common, extract_opcode, Instruction, Itype,
+    MODULE_I, Rtype, Stype, Utype,
 };
 
 // The FENCE instruction is used to order device I/O and memory accesses
@@ -17,7 +18,7 @@ pub struct FenceType(Instruction);
 
 impl FenceType {
     pub fn assemble(fm: u8, pred: u8, succ: u8) -> Self {
-        FenceType(Rtype::assemble(InstructionOp::FENCE, fm, pred, succ, Module::I).0)
+        FenceType(Rtype::assemble(insts::OP_FENCE, fm, pred, succ, MODULE_I).0)
     }
 
     pub fn fm(self) -> u8 {
@@ -34,44 +35,44 @@ impl FenceType {
 }
 
 pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
-    let op = extract_opcode(inst)?;
+    let op = extract_opcode(inst);
     let next_pc: Option<Mac::REG> = match op {
-        InstructionOp::SUB => {
+        insts::OP_SUB => {
             let i = Rtype(inst);
             common::sub(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::SUBW => {
+        insts::OP_SUBW => {
             let i = Rtype(inst);
             common::subw(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::ADD => {
+        insts::OP_ADD => {
             let i = Rtype(inst);
             common::add(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::ADDW => {
+        insts::OP_ADDW => {
             let i = Rtype(inst);
             common::addw(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::XOR => {
+        insts::OP_XOR => {
             let i = Rtype(inst);
             common::xor(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::OR => {
+        insts::OP_OR => {
             let i = Rtype(inst);
             common::or(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::AND => {
+        insts::OP_AND => {
             let i = Rtype(inst);
             common::and(machine, i.rd(), i.rs1(), i.rs2());
             None
         }
-        InstructionOp::SLL => {
+        insts::OP_SLL => {
             let i = Rtype(inst);
             let shift_value = machine.registers()[i.rs2() as usize].clone()
                 & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
@@ -79,7 +80,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::SLLW => {
+        insts::OP_SLLW => {
             let i = Rtype(inst);
             let shift_value =
                 machine.registers()[i.rs2() as usize].clone() & Mac::REG::from_usize(0x1F);
@@ -91,7 +92,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             None
         }
-        InstructionOp::SRL => {
+        insts::OP_SRL => {
             let i = Rtype(inst);
             let shift_value = machine.registers()[i.rs2() as usize].clone()
                 & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
@@ -99,7 +100,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::SRLW => {
+        insts::OP_SRLW => {
             let i = Rtype(inst);
             let shift_value =
                 machine.registers()[i.rs2() as usize].clone() & Mac::REG::from_usize(0x1F);
@@ -113,7 +114,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             None
         }
-        InstructionOp::SRA => {
+        insts::OP_SRA => {
             let i = Rtype(inst);
             let shift_value = machine.registers()[i.rs2() as usize].clone()
                 & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
@@ -121,7 +122,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::SRAW => {
+        insts::OP_SRAW => {
             let i = Rtype(inst);
             let shift_value =
                 machine.registers()[i.rs2() as usize].clone() & Mac::REG::from_usize(0x1F);
@@ -135,7 +136,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             None
         }
-        InstructionOp::SLT => {
+        insts::OP_SLT => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -143,7 +144,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::SLTU => {
+        insts::OP_SLTU => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -151,67 +152,67 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::LB => {
+        insts::OP_LB => {
             let i = Itype(inst);
             common::lb(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::LH => {
+        insts::OP_LH => {
             let i = Itype(inst);
             common::lh(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::LW => {
+        insts::OP_LW => {
             let i = Itype(inst);
             common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::LD => {
+        insts::OP_LD => {
             let i = Itype(inst);
             common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::LBU => {
+        insts::OP_LBU => {
             let i = Itype(inst);
             common::lbu(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::LHU => {
+        insts::OP_LHU => {
             let i = Itype(inst);
             common::lhu(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::LWU => {
+        insts::OP_LWU => {
             let i = Itype(inst);
             common::lwu(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        InstructionOp::ADDI => {
+        insts::OP_ADDI => {
             let i = Itype(inst);
             common::addi(machine, i.rd(), i.rs1(), i.immediate_s());
             None
         }
-        InstructionOp::ADDIW => {
+        insts::OP_ADDIW => {
             let i = Itype(inst);
             common::addiw(machine, i.rd(), i.rs1(), i.immediate_s());
             None
         }
-        InstructionOp::XORI => {
+        insts::OP_XORI => {
             let i = Itype(inst);
             common::xori(machine, i.rd(), i.rs1(), i.immediate_s());
             None
         }
-        InstructionOp::ORI => {
+        insts::OP_ORI => {
             let i = Itype(inst);
             common::ori(machine, i.rd(), i.rs1(), i.immediate_s());
             None
         }
-        InstructionOp::ANDI => {
+        insts::OP_ANDI => {
             let i = Itype(inst);
             common::andi(machine, i.rd(), i.rs1(), i.immediate_s());
             None
         }
-        InstructionOp::SLTI => {
+        insts::OP_SLTI => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let imm_value = Mac::REG::from_i32(i.immediate_s());
@@ -219,7 +220,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::SLTIU => {
+        insts::OP_SLTIU => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let imm_value = Mac::REG::from_i32(i.immediate_s());
@@ -227,7 +228,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::JALR => {
+        insts::OP_JALR => {
             let i = Itype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
             let mut next_pc = machine.registers()[i.rs1() as usize]
@@ -236,57 +237,57 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), link);
             Some(next_pc)
         }
-        InstructionOp::SLLI => {
+        insts::OP_SLLI => {
             let i = Itype(inst);
             common::slli(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        InstructionOp::SRLI => {
+        insts::OP_SRLI => {
             let i = Itype(inst);
             common::srli(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        InstructionOp::SRAI => {
+        insts::OP_SRAI => {
             let i = Itype(inst);
             common::srai(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        InstructionOp::SLLIW => {
+        insts::OP_SLLIW => {
             let i = Itype(inst);
             common::slliw(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        InstructionOp::SRLIW => {
+        insts::OP_SRLIW => {
             let i = Itype(inst);
             common::srliw(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        InstructionOp::SRAIW => {
+        insts::OP_SRAIW => {
             let i = Itype(inst);
             common::sraiw(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        InstructionOp::SB => {
+        insts::OP_SB => {
             let i = Stype(inst);
             common::sb(machine, i.rs1(), i.rs2(), i.immediate_s())?;
             None
         }
-        InstructionOp::SH => {
+        insts::OP_SH => {
             let i = Stype(inst);
             common::sh(machine, i.rs1(), i.rs2(), i.immediate_s())?;
             None
         }
-        InstructionOp::SW => {
+        insts::OP_SW => {
             let i = Stype(inst);
             common::sw(machine, i.rs1(), i.rs2(), i.immediate_s())?;
             None
         }
-        InstructionOp::SD => {
+        insts::OP_SD => {
             let i = Stype(inst);
             common::sd(machine, i.rs1(), i.rs2(), i.immediate_s())?;
             None
         }
-        InstructionOp::BEQ => {
+        insts::OP_BEQ => {
             let i = Stype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -297,7 +298,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             Some(machine.pc().overflowing_add(&offset))
         }
-        InstructionOp::BNE => {
+        insts::OP_BNE => {
             let i = Stype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -308,7 +309,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             Some(machine.pc().overflowing_add(&offset))
         }
-        InstructionOp::BLT => {
+        insts::OP_BLT => {
             let i = Stype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -319,7 +320,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             Some(machine.pc().overflowing_add(&offset))
         }
-        InstructionOp::BGE => {
+        insts::OP_BGE => {
             let i = Stype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -330,7 +331,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             Some(machine.pc().overflowing_add(&offset))
         }
-        InstructionOp::BLTU => {
+        insts::OP_BLTU => {
             let i = Stype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -341,7 +342,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             Some(machine.pc().overflowing_add(&offset))
         }
-        InstructionOp::BGEU => {
+        insts::OP_BGEU => {
             let i = Stype(inst);
             let rs1_value = &machine.registers()[i.rs1() as usize];
             let rs2_value = &machine.registers()[i.rs2() as usize];
@@ -352,12 +353,12 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             );
             Some(machine.pc().overflowing_add(&offset))
         }
-        InstructionOp::LUI => {
+        insts::OP_LUI => {
             let i = Utype(inst);
             update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
             None
         }
-        InstructionOp::AUIPC => {
+        insts::OP_AUIPC => {
             let i = Utype(inst);
             let value = machine
                 .pc()
@@ -365,7 +366,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        InstructionOp::ECALL => {
+        insts::OP_ECALL => {
             // The semantic of ECALL is determined by the hardware, which
             // is not part of the spec, hence here the implementation is
             // deferred to the machine. This way custom ECALLs might be
@@ -373,13 +374,13 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             machine.ecall()?;
             None
         }
-        InstructionOp::EBREAK => {
+        insts::OP_EBREAK => {
             machine.ebreak()?;
             None
         }
-        InstructionOp::FENCEI => None,
-        InstructionOp::FENCE => None,
-        InstructionOp::JAL => {
+        insts::OP_FENCEI => None,
+        insts::OP_FENCE => None,
+        insts::OP_JAL => {
             let i = Utype(inst);
             common::jal(machine, i.rd(), i.immediate_s(), 4)
         }
@@ -399,35 +400,35 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     match opcode(instruction_bits) {
         0b_0110111 => Some(
             Utype::assemble_s(
-                InstructionOp::LUI,
+                insts::OP_LUI,
                 rd(instruction_bits),
                 utype_immediate(instruction_bits),
-                Module::I,
+                MODULE_I,
             )
             .0,
         ),
         0b_0010111 => Some(
             Utype::assemble_s(
-                InstructionOp::AUIPC,
+                insts::OP_AUIPC,
                 rd(instruction_bits),
                 utype_immediate(instruction_bits),
-                Module::I,
+                MODULE_I,
             )
             .0,
         ),
         0b_1101111 => Some(
             Utype::assemble_s(
-                InstructionOp::JAL,
+                insts::OP_JAL,
                 rd(instruction_bits),
                 jtype_immediate(instruction_bits),
-                Module::I,
+                MODULE_I,
             )
             .0,
         ),
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits) {
                 // I-type jump instructions
-                0b_000 => Some(InstructionOp::JALR),
+                0b_000 => Some(insts::OP_JALR),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -436,7 +437,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     itype_immediate(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
@@ -444,13 +445,13 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         0b_0000011 => {
             let inst_opt = match funct3(instruction_bits) {
                 // I-type load instructions
-                0b_000 => Some(InstructionOp::LB),
-                0b_001 => Some(InstructionOp::LH),
-                0b_010 => Some(InstructionOp::LW),
-                0b_100 => Some(InstructionOp::LBU),
-                0b_101 => Some(InstructionOp::LHU),
-                0b_110 if rv64 => Some(InstructionOp::LWU),
-                0b_011 if rv64 => Some(InstructionOp::LD),
+                0b_000 => Some(insts::OP_LB),
+                0b_001 => Some(insts::OP_LH),
+                0b_010 => Some(insts::OP_LW),
+                0b_100 => Some(insts::OP_LBU),
+                0b_101 => Some(insts::OP_LHU),
+                0b_110 if rv64 => Some(insts::OP_LWU),
+                0b_011 if rv64 => Some(insts::OP_LD),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -459,7 +460,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     itype_immediate(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
@@ -468,19 +469,19 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             let funct3_value = funct3(instruction_bits);
             let inst_opt = match funct3_value {
                 // I-type ALU instructions
-                0b_000 => Some(InstructionOp::ADDI),
-                0b_010 => Some(InstructionOp::SLTI),
-                0b_011 => Some(InstructionOp::SLTIU),
-                0b_100 => Some(InstructionOp::XORI),
-                0b_110 => Some(InstructionOp::ORI),
-                0b_111 => Some(InstructionOp::ANDI),
+                0b_000 => Some(insts::OP_ADDI),
+                0b_010 => Some(insts::OP_SLTI),
+                0b_011 => Some(insts::OP_SLTIU),
+                0b_100 => Some(insts::OP_XORI),
+                0b_110 => Some(insts::OP_ORI),
+                0b_111 => Some(insts::OP_ANDI),
                 // I-type special ALU instructions
                 0b_001 | 0b_101 => {
                     let top6_value = funct7(instruction_bits) >> 1;
                     let inst_opt = match (funct3_value, top6_value) {
-                        (0b_001, 0b_000000) => Some(InstructionOp::SLLI),
-                        (0b_101, 0b_000000) => Some(InstructionOp::SRLI),
-                        (0b_101, 0b_010000) => Some(InstructionOp::SRAI),
+                        (0b_001, 0b_000000) => Some(insts::OP_SLLI),
+                        (0b_101, 0b_000000) => Some(insts::OP_SRLI),
+                        (0b_101, 0b_010000) => Some(insts::OP_SRAI),
                         _ => None,
                     };
                     return inst_opt.map(|inst| {
@@ -489,7 +490,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                             rd(instruction_bits),
                             rs1(instruction_bits),
                             itype_immediate(instruction_bits) & R::SHIFT_MASK as i32,
-                            Module::I,
+                            MODULE_I,
                         )
                         .0
                     });
@@ -503,19 +504,19 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     itype_immediate(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
         }
         0b_1100011 => {
             let inst_opt = match funct3(instruction_bits) {
-                0b_000 => Some(InstructionOp::BEQ),
-                0b_001 => Some(InstructionOp::BNE),
-                0b_100 => Some(InstructionOp::BLT),
-                0b_101 => Some(InstructionOp::BGE),
-                0b_110 => Some(InstructionOp::BLTU),
-                0b_111 => Some(InstructionOp::BGEU),
+                0b_000 => Some(insts::OP_BEQ),
+                0b_001 => Some(insts::OP_BNE),
+                0b_100 => Some(insts::OP_BLT),
+                0b_101 => Some(insts::OP_BGE),
+                0b_110 => Some(insts::OP_BLTU),
+                0b_111 => Some(insts::OP_BGEU),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -524,17 +525,17 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     btype_immediate(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
         }
         0b_0100011 => {
             let inst_opt = match funct3(instruction_bits) {
-                0b_000 => Some(InstructionOp::SB),
-                0b_001 => Some(InstructionOp::SH),
-                0b_010 => Some(InstructionOp::SW),
-                0b_011 if rv64 => Some(InstructionOp::SD),
+                0b_000 => Some(insts::OP_SB),
+                0b_001 => Some(insts::OP_SH),
+                0b_010 => Some(insts::OP_SW),
+                0b_011 if rv64 => Some(insts::OP_SD),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -543,23 +544,23 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     stype_immediate(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
         }
         0b_0110011 => {
             let inst_opt = match (funct3(instruction_bits), funct7(instruction_bits)) {
-                (0b_000, 0b_0000000) => Some(InstructionOp::ADD),
-                (0b_000, 0b_0100000) => Some(InstructionOp::SUB),
-                (0b_001, 0b_0000000) => Some(InstructionOp::SLL),
-                (0b_010, 0b_0000000) => Some(InstructionOp::SLT),
-                (0b_011, 0b_0000000) => Some(InstructionOp::SLTU),
-                (0b_100, 0b_0000000) => Some(InstructionOp::XOR),
-                (0b_101, 0b_0000000) => Some(InstructionOp::SRL),
-                (0b_101, 0b_0100000) => Some(InstructionOp::SRA),
-                (0b_110, 0b_0000000) => Some(InstructionOp::OR),
-                (0b_111, 0b_0000000) => Some(InstructionOp::AND),
+                (0b_000, 0b_0000000) => Some(insts::OP_ADD),
+                (0b_000, 0b_0100000) => Some(insts::OP_SUB),
+                (0b_001, 0b_0000000) => Some(insts::OP_SLL),
+                (0b_010, 0b_0000000) => Some(insts::OP_SLT),
+                (0b_011, 0b_0000000) => Some(insts::OP_SLTU),
+                (0b_100, 0b_0000000) => Some(insts::OP_XOR),
+                (0b_101, 0b_0000000) => Some(insts::OP_SRL),
+                (0b_101, 0b_0100000) => Some(insts::OP_SRA),
+                (0b_110, 0b_0000000) => Some(insts::OP_OR),
+                (0b_111, 0b_0000000) => Some(insts::OP_AND),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -568,7 +569,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
@@ -578,8 +579,8 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             const FENCEI_VALUE: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
             if instruction_bits == FENCEI_VALUE {
                 Some(assemble_no_argument_instruction(
-                    InstructionOp::FENCEI,
-                    Module::I,
+                    insts::OP_FENCEI,
+                    MODULE_I,
                 ))
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(
@@ -596,12 +597,12 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         }
         0b_1110011 => match instruction_bits {
             0b_000000000000_00000_000_00000_1110011 => Some(assemble_no_argument_instruction(
-                InstructionOp::ECALL,
-                Module::I,
+                insts::OP_ECALL,
+                MODULE_I,
             )),
             0b_000000000001_00000_000_00000_1110011 => Some(assemble_no_argument_instruction(
-                InstructionOp::EBREAK,
-                Module::I,
+                insts::OP_EBREAK,
+                MODULE_I,
             )),
             _ => None,
         },
@@ -610,20 +611,20 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             match funct3_value {
                 0b_000 => Some(
                     Itype::assemble_s(
-                        InstructionOp::ADDIW,
+                        insts::OP_ADDIW,
                         rd(instruction_bits),
                         rs1(instruction_bits),
                         itype_immediate(instruction_bits),
-                        Module::I,
+                        MODULE_I,
                     )
                     .0,
                 ),
                 0b_001 | 0b_101 => {
                     let funct7_value = funct7(instruction_bits);
                     let inst_opt = match (funct3_value, funct7_value) {
-                        (0b_001, 0b_0000000) => Some(InstructionOp::SLLIW),
-                        (0b_101, 0b_0000000) => Some(InstructionOp::SRLIW),
-                        (0b_101, 0b_0100000) => Some(InstructionOp::SRAIW),
+                        (0b_001, 0b_0000000) => Some(insts::OP_SLLIW),
+                        (0b_101, 0b_0000000) => Some(insts::OP_SRLIW),
+                        (0b_101, 0b_0100000) => Some(insts::OP_SRAIW),
                         _ => None,
                     };
                     inst_opt.map(|inst| {
@@ -632,7 +633,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                             rd(instruction_bits),
                             rs1(instruction_bits),
                             itype_immediate(instruction_bits) & 0x1F,
-                            Module::I,
+                            MODULE_I,
                         )
                         .0
                     })
@@ -642,11 +643,11 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         }
         0b_0111011 if rv64 => {
             let inst_opt = match (funct3(instruction_bits), funct7(instruction_bits)) {
-                (0b_000, 0b_0000000) => Some(InstructionOp::ADDW),
-                (0b_000, 0b_0100000) => Some(InstructionOp::SUBW),
-                (0b_001, 0b_0000000) => Some(InstructionOp::SLLW),
-                (0b_101, 0b_0000000) => Some(InstructionOp::SRLW),
-                (0b_101, 0b_0100000) => Some(InstructionOp::SRAW),
+                (0b_000, 0b_0000000) => Some(insts::OP_ADDW),
+                (0b_000, 0b_0100000) => Some(insts::OP_SUBW),
+                (0b_001, 0b_0000000) => Some(insts::OP_SLLW),
+                (0b_101, 0b_0000000) => Some(insts::OP_SRLW),
+                (0b_101, 0b_0100000) => Some(insts::OP_SRAW),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -655,7 +656,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    Module::I,
+                    MODULE_I,
                 )
                 .0
             })
@@ -665,5 +666,5 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
 }
 
 pub fn nop() -> Instruction {
-    Itype::assemble(InstructionOp::ADDI, 0, 0, 0, Module::I).0
+    Itype::assemble(insts::OP_ADDI, 0, 0, 0, MODULE_I).0
 }

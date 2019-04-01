@@ -40,221 +40,119 @@ type UImmediate = u32;
 // instruction into the internal form here(much like how traces/micro-ops work.)
 pub type Instruction = u64;
 
-#[derive(Copy, Clone, Debug)]
-pub enum InstructionOp {
-    // ADDI must have an opcode of 0, this way the default 0 value for u64
-    // happens to be a NOP operation in RISC-V format
-    ADDI = 0,
-    ADD = 1,
-    ADDI16SP = 2,
-    ADDI4SPN = 3,
-    ADDIW = 4,
-    ADDW = 5,
-    AND = 6,
-    ANDI = 7,
-    AUIPC = 8,
-    BEQ = 9,
-    BEQZ = 10,
-    BGE = 11,
-    BGEU = 12,
-    BLT = 13,
-    BLTU = 14,
-    BNE = 15,
-    BNEZ = 16,
-    DIV = 17,
-    DIVU = 18,
-    DIVUW = 19,
-    DIVW = 20,
-    EBREAK = 21,
-    ECALL = 22,
-    FENCE = 23,
-    FENCEI = 24,
-    J = 25,
-    JAL = 26,
-    JALR = 27,
-    JR = 28,
-    LB = 29,
-    LBU = 30,
-    LD = 31,
-    LDSP = 32,
-    LH = 33,
-    LHU = 34,
-    LI = 35,
-    LUI = 36,
-    LW = 37,
-    LWSP = 38,
-    LWU = 39,
-    MUL = 40,
-    MULH = 41,
-    MULHSU = 42,
-    MULHU = 43,
-    MULW = 44,
-    MV = 45,
-    NOP = 46,
-    OR = 47,
-    ORI = 48,
-    REM = 49,
-    REMU = 50,
-    REMUW = 51,
-    REMW = 52,
-    SB = 53,
-    SD = 54,
-    SDSP = 55,
-    SH = 56,
-    SLL = 57,
-    SLLI = 58,
-    SLLI64 = 59,
-    SLLIW = 60,
-    SLLW = 61,
-    SLT = 62,
-    SLTI = 63,
-    SLTIU = 64,
-    SLTU = 65,
-    SRA = 66,
-    SRAI = 67,
-    SRAI64 = 68,
-    SRAIW = 69,
-    SRAW = 70,
-    SRL = 71,
-    SRLI = 72,
-    SRLI64 = 73,
-    SRLIW = 74,
-    SRLW = 75,
-    SUB = 76,
-    SUBW = 77,
-    SW = 78,
-    SWSP = 79,
-    XOR = 80,
-    XORI = 81,
+pub type InstructionOp = u8;
+
+// ADDI must have an opcode of 0, this way the default 0 value for u64
+// happens to be a NOP operation in RISC-V format
+pub const OP_ADDI: u8 = 0;
+pub const OP_ADD: u8 = 1;
+pub const OP_ADDI16SP: u8 = 2;
+pub const OP_ADDI4SPN: u8 = 3;
+pub const OP_ADDIW: u8 = 4;
+pub const OP_ADDW: u8 = 5;
+pub const OP_AND: u8 = 6;
+pub const OP_ANDI: u8 = 7;
+pub const OP_AUIPC: u8 = 8;
+pub const OP_BEQ: u8 = 9;
+pub const OP_BEQZ: u8 = 10;
+pub const OP_BGE: u8 = 11;
+pub const OP_BGEU: u8 = 12;
+pub const OP_BLT: u8 = 13;
+pub const OP_BLTU: u8 = 14;
+pub const OP_BNE: u8 = 15;
+pub const OP_BNEZ: u8 = 16;
+pub const OP_DIV: u8 = 17;
+pub const OP_DIVU: u8 = 18;
+pub const OP_DIVUW: u8 = 19;
+pub const OP_DIVW: u8 = 20;
+pub const OP_EBREAK: u8 = 21;
+pub const OP_ECALL: u8 = 22;
+pub const OP_FENCE: u8 = 23;
+pub const OP_FENCEI: u8 = 24;
+pub const OP_J: u8 = 25;
+pub const OP_JAL: u8 = 26;
+pub const OP_JALR: u8 = 27;
+pub const OP_JR: u8 = 28;
+pub const OP_LB: u8 = 29;
+pub const OP_LBU: u8 = 30;
+pub const OP_LD: u8 = 31;
+pub const OP_LDSP: u8 = 32;
+pub const OP_LH: u8 = 33;
+pub const OP_LHU: u8 = 34;
+pub const OP_LI: u8 = 35;
+pub const OP_LUI: u8 = 36;
+pub const OP_LW: u8 = 37;
+pub const OP_LWSP: u8 = 38;
+pub const OP_LWU: u8 = 39;
+pub const OP_MUL: u8 = 40;
+pub const OP_MULH: u8 = 41;
+pub const OP_MULHSU: u8 = 42;
+pub const OP_MULHU: u8 = 43;
+pub const OP_MULW: u8 = 44;
+pub const OP_MV: u8 = 45;
+pub const OP_NOP: u8 = 46;
+pub const OP_OR: u8 = 47;
+pub const OP_ORI: u8 = 48;
+pub const OP_REM: u8 = 49;
+pub const OP_REMU: u8 = 50;
+pub const OP_REMUW: u8 = 51;
+pub const OP_REMW: u8 = 52;
+pub const OP_SB: u8 = 53;
+pub const OP_SD: u8 = 54;
+pub const OP_SDSP: u8 = 55;
+pub const OP_SH: u8 = 56;
+pub const OP_SLL: u8 = 57;
+pub const OP_SLLI: u8 = 58;
+pub const OP_SLLI64: u8 = 59;
+pub const OP_SLLIW: u8 = 60;
+pub const OP_SLLW: u8 = 61;
+pub const OP_SLT: u8 = 62;
+pub const OP_SLTI: u8 = 63;
+pub const OP_SLTIU: u8 = 64;
+pub const OP_SLTU: u8 = 65;
+pub const OP_SRA: u8 = 66;
+pub const OP_SRAI: u8 = 67;
+pub const OP_SRAI64: u8 = 68;
+pub const OP_SRAIW: u8 = 69;
+pub const OP_SRAW: u8 = 70;
+pub const OP_SRL: u8 = 71;
+pub const OP_SRLI: u8 = 72;
+pub const OP_SRLI64: u8 = 73;
+pub const OP_SRLIW: u8 = 74;
+pub const OP_SRLW: u8 = 75;
+pub const OP_SUB: u8 = 76;
+pub const OP_SUBW: u8 = 77;
+pub const OP_SW: u8 = 78;
+pub const OP_SWSP: u8 = 79;
+pub const OP_XOR: u8 = 80;
+pub const OP_XORI: u8 = 81;
+
+pub fn extract_opcode(i: Instruction) -> InstructionOp {
+    i as u8
 }
 
-impl InstructionOp {
-    fn from_u8(value: u8) -> Result<InstructionOp, Error> {
-        match value {
-            0 => Ok(InstructionOp::ADDI),
-            1 => Ok(InstructionOp::ADD),
-            2 => Ok(InstructionOp::ADDI16SP),
-            3 => Ok(InstructionOp::ADDI4SPN),
-            4 => Ok(InstructionOp::ADDIW),
-            5 => Ok(InstructionOp::ADDW),
-            6 => Ok(InstructionOp::AND),
-            7 => Ok(InstructionOp::ANDI),
-            8 => Ok(InstructionOp::AUIPC),
-            9 => Ok(InstructionOp::BEQ),
-            10 => Ok(InstructionOp::BEQZ),
-            11 => Ok(InstructionOp::BGE),
-            12 => Ok(InstructionOp::BGEU),
-            13 => Ok(InstructionOp::BLT),
-            14 => Ok(InstructionOp::BLTU),
-            15 => Ok(InstructionOp::BNE),
-            16 => Ok(InstructionOp::BNEZ),
-            17 => Ok(InstructionOp::DIV),
-            18 => Ok(InstructionOp::DIVU),
-            19 => Ok(InstructionOp::DIVUW),
-            20 => Ok(InstructionOp::DIVW),
-            21 => Ok(InstructionOp::EBREAK),
-            22 => Ok(InstructionOp::ECALL),
-            23 => Ok(InstructionOp::FENCE),
-            24 => Ok(InstructionOp::FENCEI),
-            25 => Ok(InstructionOp::J),
-            26 => Ok(InstructionOp::JAL),
-            27 => Ok(InstructionOp::JALR),
-            28 => Ok(InstructionOp::JR),
-            29 => Ok(InstructionOp::LB),
-            30 => Ok(InstructionOp::LBU),
-            31 => Ok(InstructionOp::LD),
-            32 => Ok(InstructionOp::LDSP),
-            33 => Ok(InstructionOp::LH),
-            34 => Ok(InstructionOp::LHU),
-            35 => Ok(InstructionOp::LI),
-            36 => Ok(InstructionOp::LUI),
-            37 => Ok(InstructionOp::LW),
-            38 => Ok(InstructionOp::LWSP),
-            39 => Ok(InstructionOp::LWU),
-            40 => Ok(InstructionOp::MUL),
-            41 => Ok(InstructionOp::MULH),
-            42 => Ok(InstructionOp::MULHSU),
-            43 => Ok(InstructionOp::MULHU),
-            44 => Ok(InstructionOp::MULW),
-            45 => Ok(InstructionOp::MV),
-            46 => Ok(InstructionOp::NOP),
-            47 => Ok(InstructionOp::OR),
-            48 => Ok(InstructionOp::ORI),
-            49 => Ok(InstructionOp::REM),
-            50 => Ok(InstructionOp::REMU),
-            51 => Ok(InstructionOp::REMUW),
-            52 => Ok(InstructionOp::REMW),
-            53 => Ok(InstructionOp::SB),
-            54 => Ok(InstructionOp::SD),
-            55 => Ok(InstructionOp::SDSP),
-            56 => Ok(InstructionOp::SH),
-            57 => Ok(InstructionOp::SLL),
-            58 => Ok(InstructionOp::SLLI),
-            59 => Ok(InstructionOp::SLLI64),
-            60 => Ok(InstructionOp::SLLIW),
-            61 => Ok(InstructionOp::SLLW),
-            62 => Ok(InstructionOp::SLT),
-            63 => Ok(InstructionOp::SLTI),
-            64 => Ok(InstructionOp::SLTIU),
-            65 => Ok(InstructionOp::SLTU),
-            66 => Ok(InstructionOp::SRA),
-            67 => Ok(InstructionOp::SRAI),
-            68 => Ok(InstructionOp::SRAI64),
-            69 => Ok(InstructionOp::SRAIW),
-            70 => Ok(InstructionOp::SRAW),
-            71 => Ok(InstructionOp::SRL),
-            72 => Ok(InstructionOp::SRLI),
-            73 => Ok(InstructionOp::SRLI64),
-            74 => Ok(InstructionOp::SRLIW),
-            75 => Ok(InstructionOp::SRLW),
-            76 => Ok(InstructionOp::SUB),
-            77 => Ok(InstructionOp::SUBW),
-            78 => Ok(InstructionOp::SW),
-            79 => Ok(InstructionOp::SWSP),
-            80 => Ok(InstructionOp::XOR),
-            81 => Ok(InstructionOp::XORI),
-            _ => Err(Error::ParseError),
-        }
-    }
-}
+pub type InstructionModule = u8;
 
-pub fn extract_opcode(i: Instruction) -> Result<InstructionOp, Error> {
-    InstructionOp::from_u8(i as u8)
-}
+pub const MODULE_I: u8 = 0;
+pub const MODULE_M: u8 = 1;
+pub const MODULE_RVC: u8 = 2;
 
-#[derive(Copy, Clone, Debug)]
-pub enum Module {
-    I = 0,
-    M = 1,
-    RVC = 2,
-}
-
-impl Module {
-    fn from_u8(value: u8) -> Result<Module, Error> {
-        match value {
-            0 => Ok(Module::I),
-            1 => Ok(Module::M),
-            2 => Ok(Module::RVC),
-            _ => Err(Error::ParseError),
-        }
-    }
-
-    fn from_instruction(instruction: Instruction) -> Result<Module, Error> {
-        Module::from_u8((instruction >> 16) as u8)
-    }
+pub fn extract_module(i: Instruction) -> InstructionModule {
+    (i >> 16) as u8
 }
 
 pub fn execute<Mac: Machine>(i: Instruction, machine: &mut Mac) -> Result<(), Error> {
-    match Module::from_instruction(i)? {
-        Module::I => i::execute(i, machine),
-        Module::M => m::execute(i, machine),
-        Module::RVC => rvc::execute(i, machine),
+    match extract_module(i) {
+        MODULE_I => i::execute(i, machine),
+        MODULE_M => m::execute(i, machine),
+        MODULE_RVC => rvc::execute(i, machine),
+        _ => Err(Error::ParseError),
     }
 }
 
 pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
 
-pub fn assemble_no_argument_instruction(op: InstructionOp, m: Module) -> Instruction {
+pub fn assemble_no_argument_instruction(op: InstructionOp, m: InstructionModule) -> Instruction {
     (u64::from(op as u8)) | ((u64::from(m as u8)) << 16)
 }
 
@@ -262,7 +160,7 @@ pub fn assemble_no_argument_instruction(op: InstructionOp, m: Module) -> Instruc
 pub struct Rtype(Instruction);
 
 impl Rtype {
-    pub fn assemble(op: InstructionOp, rd: u8, rs1: u8, rs2: u8, m: Module) -> Self {
+    pub fn assemble(op: InstructionOp, rd: u8, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
         Rtype(
             u64::from(op as u8)
                 | (u64::from(rd) << 8)
@@ -272,8 +170,8 @@ impl Rtype {
         )
     }
 
-    pub fn op(self) -> Result<InstructionOp, Error> {
-        InstructionOp::from_u8(self.0 as u8)
+    pub fn op(self) -> InstructionOp {
+        self.0 as u8
     }
 
     pub fn rd(self) -> u8 {
@@ -293,7 +191,7 @@ impl Rtype {
 pub struct Itype(Instruction);
 
 impl Itype {
-    pub fn assemble(op: InstructionOp, rd: u8, rs1: u8, immediate: u32, m: Module) -> Self {
+    pub fn assemble(op: InstructionOp, rd: u8, rs1: u8, immediate: u32, m: InstructionModule) -> Self {
         Itype(
             u64::from(op as u8) |
               (u64::from(rd) << 8) |
@@ -305,12 +203,12 @@ impl Itype {
         )
     }
 
-    pub fn assemble_s(op: InstructionOp, rd: u8, rs1: u8, immediate: i32, m: Module) -> Self {
+    pub fn assemble_s(op: InstructionOp, rd: u8, rs1: u8, immediate: i32, m: InstructionModule) -> Self {
         Self::assemble(op, rd, rs1, immediate as u32, m)
     }
 
-    pub fn op(self) -> Result<InstructionOp, Error> {
-        InstructionOp::from_u8(self.0 as u8)
+    pub fn op(self) -> InstructionOp {
+        self.0 as u8
     }
 
     pub fn rd(self) -> u8 {
@@ -334,7 +232,7 @@ impl Itype {
 pub struct Stype(Instruction);
 
 impl Stype {
-    pub fn assemble(op: InstructionOp, immediate: u32, rs1: u8, rs2: u8, m: Module) -> Self {
+    pub fn assemble(op: InstructionOp, immediate: u32, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
         Stype(
             u64::from(op as u8) |
               (u64::from(rs2) << 8) |
@@ -346,12 +244,12 @@ impl Stype {
         )
     }
 
-    pub fn assemble_s(op: InstructionOp, immediate: i32, rs1: u8, rs2: u8, m: Module) -> Self {
+    pub fn assemble_s(op: InstructionOp, immediate: i32, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
         Self::assemble(op, immediate as u32, rs1, rs2, m)
     }
 
-    pub fn op(self) -> Result<InstructionOp, Error> {
-        InstructionOp::from_u8(self.0 as u8)
+    pub fn op(self) -> InstructionOp {
+        self.0 as u8
     }
 
     pub fn rs1(self) -> u8 {
@@ -375,7 +273,7 @@ impl Stype {
 pub struct Utype(Instruction);
 
 impl Utype {
-    pub fn assemble(op: InstructionOp, rd: u8, immediate: u32, m: Module) -> Self {
+    pub fn assemble(op: InstructionOp, rd: u8, immediate: u32, m: InstructionModule) -> Self {
         Utype(
             u64::from(op as u8)
                 | (u64::from(rd) << 8)
@@ -384,12 +282,12 @@ impl Utype {
         )
     }
 
-    pub fn assemble_s(op: InstructionOp, rd: u8, immediate: i32, m: Module) -> Self {
+    pub fn assemble_s(op: InstructionOp, rd: u8, immediate: i32, m: InstructionModule) -> Self {
         Self::assemble(op, rd, immediate as u32, m)
     }
 
-    pub fn op(self) -> Result<InstructionOp, Error> {
-        InstructionOp::from_u8(self.0 as u8)
+    pub fn op(self) -> InstructionOp {
+        self.0 as u8
     }
 
     pub fn rd(self) -> u8 {
@@ -407,27 +305,27 @@ impl Utype {
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
     match extract_opcode(i) {
-        Ok(InstructionOp::JALR) => true,
-        Ok(InstructionOp::BEQ) => true,
-        Ok(InstructionOp::BNE) => true,
-        Ok(InstructionOp::BLT) => true,
-        Ok(InstructionOp::BGE) => true,
-        Ok(InstructionOp::BLTU) => true,
-        Ok(InstructionOp::BGEU) => true,
-        Ok(InstructionOp::ECALL) => true,
-        Ok(InstructionOp::EBREAK) => true,
-        Ok(InstructionOp::JAL) => true,
-        Ok(InstructionOp::BEQZ) => true,
-        Ok(InstructionOp::BNEZ) => true,
-        Ok(InstructionOp::J) => true,
-        Ok(InstructionOp::JR) => true,
+        OP_JALR => true,
+        OP_BEQ => true,
+        OP_BNE => true,
+        OP_BLT => true,
+        OP_BGE => true,
+        OP_BLTU => true,
+        OP_BGEU => true,
+        OP_ECALL => true,
+        OP_EBREAK => true,
+        OP_JAL => true,
+        OP_BEQZ => true,
+        OP_BNEZ => true,
+        OP_J => true,
+        OP_JR => true,
         _ => false,
     }
 }
 
 pub fn instruction_length(i: Instruction) -> usize {
-    match Module::from_instruction(i) {
-        Ok(Module::RVC) => 2,
+    match extract_module(i) {
+        MODULE_RVC => 2,
         _ => 4,
     }
 }
@@ -444,6 +342,6 @@ mod tests {
 
     #[test]
     fn test_module_should_fit_in_byte() {
-        assert_eq!(1, size_of::<Module>());
+        assert_eq!(1, size_of::<InstructionModule>());
     }
 }
