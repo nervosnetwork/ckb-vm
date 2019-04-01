@@ -87,6 +87,7 @@ pub enum Error {
     InvalidInstruction(u32),
     InvalidEcall(u64),
     InvalidElfBits,
+    InvalidOp(u8),
     IO(ErrorKind),
     Dynasm(i32),
     MaximumMmappingReached,

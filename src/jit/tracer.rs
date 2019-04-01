@@ -75,7 +75,7 @@ impl Tracer for TcgTracer {
         _block_length: usize,
         instructions: &[Instruction],
     ) -> Result<bool, Error> {
-        Ok(instructions.iter().all(|i| is_jitable_instruction(&i)))
+        Ok(instructions.iter().all(|i| is_jitable_instruction(*i)))
     }
 
     fn clear(&mut self, _pc: usize) -> Result<(), Error> {

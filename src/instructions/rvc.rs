@@ -3,8 +3,8 @@ use super::super::{Error, SP as CRATE_SP};
 use super::register::Register;
 use super::utils::{rd, update_register, x, xs};
 use super::{
-    common, Execute, Immediate, Instruction as GenericInstruction, Instruction::RVC, RegisterIndex,
-    UImmediate,
+    assemble_no_argument_instruction, common, extract_opcode, Instruction, InstructionOp, Itype,
+    Module, Rtype, Stype, Utype,
 };
 
 const SP: u8 = CRATE_SP as u8;
@@ -92,455 +92,212 @@ fn b_immediate(instruction_bits: u32) -> i32 {
         | xs(instruction_bits, 12, 1, 8)) as i32
 }
 
-#[derive(Debug, Clone)]
-pub enum RtypeInstruction {
-    SUB,
-    XOR,
-    OR,
-    AND,
-    SUBW,
-    ADDW,
-    ADD,
-}
-
-#[derive(Debug, Clone)]
-pub enum ItypeInstruction {
-    ADDI,
-    ADDIW,
-    ANDI,
-}
-
-#[derive(Debug, Clone)]
-pub enum ItypeUInstruction {
-    FLD,
-    // LQ,
-    LW,
-    FLW,
-    LD,
-    SRLI,
-    SRAI,
-    SLLI,
-}
-
-#[derive(Debug, Clone)]
-pub enum StypeUInstruction {
-    FSD,
-    // SQ,
-    SW,
-    FSW,
-    SD,
-}
-
-#[derive(Debug, Clone)]
-pub enum UtypeInstruction {
-    LI,
-    LUI,
-}
-
-#[derive(Debug, Clone)]
-pub enum UtypeUInstruction {
-    ADDI4SPN,
-    FLDSP,
-    // LQSP,
-    LWSP,
-    FLWSP,
-    LDSP,
-}
-
-#[derive(Debug, Clone)]
-pub enum CSSformatInstruction {
-    FSDSP,
-    // SQSP,
-    SWSP,
-    FSWSP,
-    SDSP,
-}
-
-// ## Compressed 16-bit RVC instruction formats
-//
-//  Format |    Meaning              15 14 13   12    11 10   9 8 7   6 5   4  3  2   1 0
-//  -------+-----------------      +----------+-----+-------+-------+-----+---------+----+
-//    CR   |    Register           |     funct4     |    rd/rs1     |      rs2      | op |
-//         |                       +----------+-----+---------------+---------------+----+
-//    CI   |   Immediate           |  funct3  | imm |    rd/rs1     |      imm      | op |
-//         |                       +----------+-----+---------------+---------------+----+
-//    CSS  | Stack-relative Store  |  funct3  |         imm         |      rs2      | op |
-//         |                       +----------+---------------------+-----+---------+----+
-//    CIW  |   Wide Immediate      |  funct3  |            imm            |   rd′   | op |
-//         |                       +----------+-------------+-------+-----+---------+----+
-//    CL   |     Load              |  funct3  | imm         | rs1′  | imm |   rd′   | op |
-//         |                       +----------+-------------+-------+-----+---------+----+
-//    CS   |     Store             |  funct3  | imm         | rs1′  | imm |   rs2′  | op |
-//         |                       +----------+-------------+-------+-----+---------+----+
-//    CB   |     Branch            |  funct3  | offset      | rs1′  |    offset     | op |
-//         |                       +----------+-------------+-------+---------------+----+
-//    CJ   |     Jump              |  funct3  |             jump target             | op |
-//  -------+-----------------      +----------+-------------------------------------+----+
-
-// CR format
-type Rtype = super::Rtype<RtypeInstruction>;
-// CI/CL format
-type Itype = super::Itype<Immediate, ItypeInstruction>;
-// CI/CL format
-type ItypeU = super::Itype<UImmediate, ItypeUInstruction>;
-// CS format
-type StypeU = super::Stype<UImmediate, StypeUInstruction>;
-// CIW format
-type Utype = super::Utype<Immediate, UtypeInstruction>;
-// CIW format
-type UtypeU = super::Utype<UImmediate, UtypeUInstruction>;
-
-#[derive(Debug, Clone)]
-pub struct CSSformat {
-    rs2: RegisterIndex,
-    imm: UImmediate,
-    inst: CSSformatInstruction,
-}
-
-impl CSSformat {
-    pub fn inst(&self) -> &CSSformatInstruction {
-        &self.inst
-    }
-}
-
-impl ItypeU {
-    pub fn new(instruction_bits: u32, imm: UImmediate, inst: ItypeUInstruction) -> ItypeU {
-        ItypeU {
-            rs1: compact_register_number(instruction_bits, 7),
-            rd: compact_register_number(instruction_bits, 2),
-            imm,
-            inst,
+pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
+    let op = extract_opcode(inst)?;
+    let next_pc: Option<Mac::REG> = match op {
+        InstructionOp::SUB => {
+            let i = Rtype(inst);
+            common::sub(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-    }
-}
-
-impl StypeU {
-    pub fn new(instruction_bits: u32, imm: UImmediate, inst: StypeUInstruction) -> StypeU {
-        StypeU {
-            rs1: compact_register_number(instruction_bits, 7),
-            rs2: compact_register_number(instruction_bits, 2),
-            imm,
-            inst,
+        InstructionOp::ADD => {
+            let i = Rtype(inst);
+            common::add(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-    }
-}
-
-impl Execute for ItypeU {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            ItypeUInstruction::SLLI => common::slli(machine, self.rd, self.rs1, self.imm),
-            ItypeUInstruction::SRLI => common::srli(machine, self.rd, self.rs1, self.imm),
-            ItypeUInstruction::SRAI => common::srai(machine, self.rd, self.rs1, self.imm),
-            ItypeUInstruction::LW => common::lw(machine, self.rd, self.rs1, self.imm as i32)?,
-
-            // > RV32FC-only
-            ItypeUInstruction::FLW => unimplemented!(),
-            // > RV32DC/RV64DC-only
-            ItypeUInstruction::FLD => unimplemented!(),
-            ItypeUInstruction::LD => common::ld(machine, self.rd, self.rs1, self.imm as i32)?,
-            // ItypeUInstruction::LQ => {},
+        InstructionOp::XOR => {
+            let i = Rtype(inst);
+            common::xor(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-        Ok(None)
-    }
-}
-
-impl Execute for StypeU {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            StypeUInstruction::SW => common::sw(machine, self.rs1, self.rs2, self.imm as i32)?,
-            // > RV32FC-only
-            StypeUInstruction::FSW => unimplemented!(),
-            // > RV32DC/RV64DC-only
-            StypeUInstruction::FSD => unimplemented!(),
-            // StypeUInstruction::SQ => {},
-            StypeUInstruction::SD => common::sd(machine, self.rs1, self.rs2, self.imm as i32)?,
+        InstructionOp::OR => {
+            let i = Rtype(inst);
+            common::or(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-        Ok(None)
-    }
-}
-
-impl Execute for Itype {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            ItypeInstruction::ADDI => common::addi(machine, self.rd, self.rs1, self.imm),
-            ItypeInstruction::ANDI => common::andi(machine, self.rd, self.rs1, self.imm),
-            ItypeInstruction::ADDIW => common::addiw(machine, self.rd, self.rs1, self.imm),
+        InstructionOp::AND => {
+            let i = Rtype(inst);
+            common::and(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-        Ok(None)
-    }
-}
-
-impl Execute for Utype {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            UtypeInstruction::LI => {
-                update_register(machine, self.rd, Mac::REG::from_i32(self.imm));
-            }
-            UtypeInstruction::LUI => {
-                update_register(machine, self.rd, Mac::REG::from_i32(self.imm));
-            }
+        // > C.SUBW (RV64/128; RV32 RES)
+        InstructionOp::SUBW => {
+            let i = Rtype(inst);
+            common::subw(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-        Ok(None)
-    }
-}
-
-impl Execute for UtypeU {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            UtypeUInstruction::ADDI4SPN => {
-                let value =
-                    machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_u32(self.imm));
-                update_register(machine, self.rd, value);
-            }
-            UtypeUInstruction::LWSP => common::lw(machine, self.rd, SP, self.imm as i32)?,
-
-            // > RV32FC-only
-            UtypeUInstruction::FLWSP => unimplemented!(),
-            // > RV32DC/RV64DC-only
-            UtypeUInstruction::FLDSP => unimplemented!(),
-            UtypeUInstruction::LDSP => common::ld(machine, self.rd, SP, self.imm as i32)?,
-            // UtypeUInstruction::LQSP => {},
+        // > C.ADDW (RV64/128; RV32 RES)
+        InstructionOp::ADDW => {
+            let i = Rtype(inst);
+            common::addw(machine, i.rd(), i.rs1(), i.rs2());
+            None
         }
-        Ok(None)
-    }
-}
-
-impl Execute for Rtype {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            RtypeInstruction::SUB => common::sub(machine, self.rd, self.rs1, self.rs2),
-            RtypeInstruction::ADD => common::add(machine, self.rd, self.rd, self.rs2),
-            RtypeInstruction::XOR => common::xor(machine, self.rd, self.rs1, self.rs2),
-            RtypeInstruction::OR => common::or(machine, self.rd, self.rs1, self.rs2),
-            RtypeInstruction::AND => common::and(machine, self.rd, self.rs1, self.rs2),
-
-            // > C.SUBW (RV64/128; RV32 RES)
-            RtypeInstruction::SUBW => common::subw(machine, self.rd, self.rs1, self.rs2),
-            // > C.ADDW (RV64/128; RV32 RES)
-            RtypeInstruction::ADDW => common::addw(machine, self.rd, self.rd, self.rs2),
+        InstructionOp::ADDI => {
+            let i = Itype(inst);
+            common::addi(machine, i.rd(), i.rs1(), i.immediate_s());
+            None
         }
-        Ok(None)
-    }
-}
-
-impl Execute for CSSformat {
-    fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<Option<Mac::REG>, Error> {
-        match &self.inst {
-            CSSformatInstruction::SWSP => common::sw(machine, SP, self.rs2, self.imm as i32)?,
-            // > RV32FC-only
-            CSSformatInstruction::FSWSP => unimplemented!(),
-            // > RV32DC/RV64DC-only
-            CSSformatInstruction::FSDSP => unimplemented!(),
-            CSSformatInstruction::SDSP => common::sd(machine, SP, self.rs2, self.imm as i32)?,
-            // CSSformatInstruction::SQSP => {},
+        InstructionOp::ANDI => {
+            let i = Itype(inst);
+            common::andi(machine, i.rd(), i.rs1(), i.immediate_s());
+            None
         }
-        Ok(None)
-    }
-}
-
-// ## Map of the major opcodes for RVC
-//
-//  +-------------+
-//  | inst[15:13] |
-//  | inst[1:0]   | 000      | 001   | 010   | 011          | 100           | 101   | 110  | 111   |
-//  +-------------+----------+-------+-------+--------------+---------------+-------+------+-------+
-//                |          | FLD   |       | FLW          |               | FSD   |      | FSW   | RV32
-//             00 | ADDI4SPN | FLD   | LW    | LD           | Reserved      | FSD   | SW   | SD    | RV64
-//                |          | LQ    |       | LD           |               | SQ    |      | SD    | RV128
-//            ----+----------+-------+-------+--------------+---------------+-------+------+-------+-------
-//                |          | JAL   |       |              |               |       |      |       | RV32
-//             01 | ADDI     | ADDIW | LI    | LUI/ADDI16SP | MISC-ALU      | J     | BEQZ | BNEZ  | RV64
-//                |          | ADDIW |       |              |               |       |      |       | RV128
-//            ----+----------+-------+-------+--------------+---------------+-------+------+-------+-------
-//                |          | FLDSP |       | FLWSP        |               | FSDSP |      | FSWSP | RV32
-//             10 | SLLI     | FLDSP | LWSP  | LDSP         | J[AL]R/MV/ADD | FSDSP | SWSP | SDSP  | RV64
-//                |          | LQSP  |       | LDSP         |               | SQSP  |      | SDSP  | RV128
-//            ----+--------------------------------------------------------------------------------+
-//             11 |                                       >16b                                     |
-//            =====================================================================================+
-//
-#[derive(Debug, Clone)]
-pub enum Instruction {
-    // C.FLD (RV32/64)
-    // C.LQ (RV128)
-    // C.LW
-    // C.FLW (RV32)
-    // C.LD (RV64/128)
-    // C.SRLI (RV32 NSE, nzuimm[5]=1)
-    // C.SRAI (RV32 NSE, nzuimm[5]=1)
-    // C.SLLI (HINT, rd=0; RV32 NSE, nzuimm[5]=1)
-    Iu(ItypeU),
-
-    // C.FSD (RV32/64)
-    // C.SQ (RV128)
-    // C.SW
-    // C.FSW (RV32)
-    // C.SD (RV64/128)
-    Su(StypeU),
-
-    // C.ADDI (HINT, nzimm=0)
-    // C.ADDIW (RV64/128; RES, rd=0)
-    // C.ANDI
-    I(Itype),
-
-    // C.LI (HINT, rd=0)
-    // C.LUI (RES, nzimm=0; HINT, rd=0)
-    U(Utype),
-
-    // C.ADDI4SPN (RES, nzuimm=0)
-    // C.FLDSP (RV32/64)
-    // C.LQSP (RV128; RES, rd=0)
-    // C.LWSP (RES, rd=0) C.FLWSP (RV32)
-    // C.LDSP (RV64/128; RES, rd=0)
-    Uu(UtypeU),
-
-    // C.SUB
-    // C.XOR
-    // C.OR
-    // C.AND
-    // C.SUBW (RV64/128; RV32 RES)
-    // C.ADDW (RV64/128; RV32 RES)
-    // C.ADD (HINT, rd=0)
-    R(Rtype),
-
-    // C.FSDSP (RV32/64)
-    // C.SQSP (RV128)
-    // C.SWSP
-    // C.FSWSP (RV32)
-    // C.SDSP (RV64/128)
-    CSS(CSSformat),
-
-    // C.BEQZ
-    BEQZ {
-        rs1: RegisterIndex,
-        imm: Immediate,
-    },
-    // C.BNEZ
-    BNEZ {
-        rs1: RegisterIndex,
-        imm: Immediate,
-    },
-    // C.MV (HINT, rd=0)
-    MV {
-        rs2: RegisterIndex,
-        rd: RegisterIndex,
-    },
-
-    // C.JAL (RV32)
-    JAL {
-        imm: Immediate,
-    },
-    // C.J
-    J {
-        imm: Immediate,
-    },
-    // C.JR (RES, rs1=0)
-    JR {
-        rs1: RegisterIndex,
-    },
-    // C.JALR
-    JALR {
-        rs1: RegisterIndex,
-    },
-
-    // C.ADDI16SP (RES, nzimm=0)
-    ADDI16SP {
-        imm: Immediate,
-    },
-
-    // C.NOP (HINT, nzimm̸=0)
-    NOP {
-        imm: Immediate,
-    },
-    // C.SRLI64 (RV128; RV32/64 HINT)
-    SRLI64 {
-        rs1: RegisterIndex,
-        rd: RegisterIndex,
-    },
-    // C.SRAI64 (RV128; RV32/64 HINT)
-    SRAI64 {
-        rs1: RegisterIndex,
-        rd: RegisterIndex,
-    },
-    // C.SLLI64 (RV128; RV32/64 HINT; HINT, rd=0)
-    SLLI64 {
-        rs1: RegisterIndex,
-        rd: RegisterIndex,
-    },
-    // C.EBREAK
-    EBREAK,
-}
-
-impl Instruction {
-    pub fn execute<Mac: Machine>(&self, machine: &mut Mac) -> Result<(), Error> {
-        let next_pc = match self {
-            Instruction::Iu(inst) => inst.execute(machine)?,
-            Instruction::Su(inst) => inst.execute(machine)?,
-            Instruction::I(inst) => inst.execute(machine)?,
-            Instruction::U(inst) => inst.execute(machine)?,
-            Instruction::Uu(inst) => inst.execute(machine)?,
-            Instruction::R(inst) => inst.execute(machine)?,
-            Instruction::CSS(inst) => inst.execute(machine)?,
-            Instruction::BEQZ { rs1, imm } => {
-                let condition = machine.registers()[*rs1 as usize].eq(&Mac::REG::zero());
-                let next_pc_offset =
-                    condition.cond(&Mac::REG::from_i32(*imm), &Mac::REG::from_usize(2));
-                Some(machine.pc().overflowing_add(&next_pc_offset))
-            }
-            Instruction::BNEZ { rs1, imm } => {
-                let condition = machine.registers()[*rs1 as usize]
-                    .eq(&Mac::REG::zero())
-                    .logical_not();
-                let next_pc_offset =
-                    condition.cond(&Mac::REG::from_i32(*imm), &Mac::REG::from_usize(2));
-                Some(machine.pc().overflowing_add(&next_pc_offset))
-            }
-            Instruction::MV { rs2, rd } => {
-                let value = &machine.registers()[*rs2 as usize];
-                update_register(machine, *rd, value.clone());
-                None
-            }
-            Instruction::JAL { imm } => common::jal(machine, 1, *imm, 2),
-            Instruction::J { imm } => Some(machine.pc().overflowing_add(&Mac::REG::from_i32(*imm))),
-            Instruction::JR { rs1 } => Some(machine.registers()[*rs1 as usize].clone()),
-            Instruction::JALR { rs1 } => {
-                let link = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
-                update_register(machine, 1, link);
-                Some(machine.registers()[*rs1 as usize].clone())
-            }
-            Instruction::ADDI16SP { imm } => {
-                let value =
-                    machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_i32(*imm));
-                update_register(machine, SP, value);
-                None
-            }
-            // NOP for now
-            Instruction::SRLI64 { .. } => None,
-            // NOP for now
-            Instruction::SRAI64 { .. } => None,
-            // NOP for now
-            Instruction::SLLI64 { .. } => None,
-            Instruction::NOP { .. } => None,
-            Instruction::EBREAK => {
-                machine.ebreak()?;
-                None
-            }
-        };
-        let default_next_pc = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
-        machine.set_pc(next_pc.unwrap_or(default_next_pc));
-        Ok(())
-    }
+        InstructionOp::ADDIW => {
+            let i = Itype(inst);
+            common::addiw(machine, i.rd(), i.rs1(), i.immediate_s());
+            None
+        }
+        InstructionOp::SLLI => {
+            let i = Itype(inst);
+            common::slli(machine, i.rd(), i.rs1(), i.immediate());
+            None
+        }
+        InstructionOp::SRLI => {
+            let i = Itype(inst);
+            common::srli(machine, i.rd(), i.rs1(), i.immediate());
+            None
+        }
+        InstructionOp::SRAI => {
+            let i = Itype(inst);
+            common::srai(machine, i.rd(), i.rs1(), i.immediate());
+            None
+        }
+        InstructionOp::LW => {
+            let i = Itype(inst);
+            common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            None
+        }
+        InstructionOp::LD => {
+            let i = Itype(inst);
+            common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            None
+        }
+        InstructionOp::SW => {
+            let i = Stype(inst);
+            common::sw(machine, i.rs1(), i.rs2(), i.immediate_s())?;
+            None
+        }
+        InstructionOp::SD => {
+            let i = Stype(inst);
+            common::sd(machine, i.rs1(), i.rs2(), i.immediate_s())?;
+            None
+        }
+        InstructionOp::LI => {
+            let i = Utype(inst);
+            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+            None
+        }
+        InstructionOp::LUI => {
+            let i = Utype(inst);
+            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+            None
+        }
+        InstructionOp::ADDI4SPN => {
+            let i = Utype(inst);
+            let value =
+                machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_u32(i.immediate()));
+            update_register(machine, i.rd(), value);
+            None
+        }
+        InstructionOp::LWSP => {
+            let i = Utype(inst);
+            common::lw(machine, i.rd(), SP, i.immediate_s())?;
+            None
+        }
+        InstructionOp::LDSP => {
+            let i = Utype(inst);
+            common::ld(machine, i.rd(), SP, i.immediate_s())?;
+            None
+        }
+        InstructionOp::SWSP => {
+            let i = Stype(inst);
+            common::sw(machine, SP, i.rs2(), i.immediate_s())?;
+            None
+        }
+        InstructionOp::SDSP => {
+            let i = Stype(inst);
+            common::sd(machine, SP, i.rs2(), i.immediate_s())?;
+            None
+        }
+        InstructionOp::BEQZ => {
+            let i = Stype(inst);
+            let condition = machine.registers()[i.rs1() as usize].eq(&Mac::REG::zero());
+            let next_pc_offset = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()),
+                &Mac::REG::from_usize(2),
+            );
+            Some(machine.pc().overflowing_add(&next_pc_offset))
+        }
+        InstructionOp::BNEZ => {
+            let i = Stype(inst);
+            let condition = machine.registers()[i.rs1() as usize]
+                .eq(&Mac::REG::zero())
+                .logical_not();
+            let next_pc_offset = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()),
+                &Mac::REG::from_usize(2),
+            );
+            Some(machine.pc().overflowing_add(&next_pc_offset))
+        }
+        InstructionOp::MV => {
+            let i = Rtype(inst);
+            let value = &machine.registers()[i.rs2() as usize];
+            update_register(machine, i.rd(), value.clone());
+            None
+        }
+        InstructionOp::JAL => {
+            let i = Utype(inst);
+            common::jal(machine, 1, i.immediate_s(), 2)
+        }
+        InstructionOp::J => {
+            let i = Utype(inst);
+            Some(
+                machine
+                    .pc()
+                    .overflowing_add(&Mac::REG::from_i32(i.immediate_s())),
+            )
+        }
+        InstructionOp::JR => {
+            let i = Stype(inst);
+            Some(machine.registers()[i.rs1() as usize].clone())
+        }
+        InstructionOp::JALR => {
+            let i = Stype(inst);
+            let link = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
+            update_register(machine, 1, link);
+            Some(machine.registers()[i.rs1() as usize].clone())
+        }
+        InstructionOp::ADDI16SP => {
+            let i = Itype(inst);
+            let value =
+                machine.registers()[CRATE_SP].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+            update_register(machine, SP, value);
+            None
+        }
+        InstructionOp::SRLI64 => None,
+        InstructionOp::SRAI64 => None,
+        InstructionOp::SLLI64 => None,
+        InstructionOp::NOP => None,
+        InstructionOp::EBREAK => {
+            machine.ebreak()?;
+            None
+        }
+        _ => return Err(Error::InvalidOp(op as u8)),
+    };
+    let default_next_pc = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
+    machine.set_pc(next_pc.unwrap_or(default_next_pc));
+    Ok(())
 }
 
 #[allow(clippy::cyclomatic_complexity)]
-pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction> {
+pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
     }
     let rv32 = bit_length == 32;
     let rv64 = bit_length == 64;
-    let inst_opt = match instruction_bits & 0b_111_00000000000_11 {
+    match instruction_bits & 0b_111_00000000000_11 {
         // == Quadrant 0
         0b_000_00000000000_00 => {
             let nzuimm = x(instruction_bits, 6, 1, 2)
@@ -548,66 +305,72 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 | x(instruction_bits, 11, 2, 4)
                 | x(instruction_bits, 7, 4, 6);
             if nzuimm != 0 {
-                Some(Instruction::Uu(UtypeU {
-                    rd: compact_register_number(instruction_bits, 2),
-                    imm: nzuimm,
-                    inst: UtypeUInstruction::ADDI4SPN,
-                }))
+                Some(
+                    Utype::assemble(
+                        InstructionOp::ADDI4SPN,
+                        compact_register_number(instruction_bits, 2),
+                        nzuimm,
+                        Module::RVC,
+                    )
+                    .0,
+                )
             } else {
                 // Illegal instruction
                 None
             }
         }
-        0b_001_00000000000_00 => Some(Instruction::Iu(ItypeU::new(
-            instruction_bits,
-            fld_uimmediate(instruction_bits),
-            ItypeUInstruction::FLD,
-        ))),
-        0b_010_00000000000_00 => Some(Instruction::Iu(ItypeU::new(
-            instruction_bits,
-            sw_uimmediate(instruction_bits),
-            ItypeUInstruction::LW,
-        ))),
+        0b_010_00000000000_00 => Some(
+            Itype::assemble(
+                InstructionOp::LW,
+                compact_register_number(instruction_bits, 2),
+                compact_register_number(instruction_bits, 7),
+                sw_uimmediate(instruction_bits),
+                Module::RVC,
+            )
+            .0,
+        ),
         0b_011_00000000000_00 => {
             if rv32 {
-                Some(Instruction::Iu(ItypeU::new(
-                    instruction_bits,
-                    sw_uimmediate(instruction_bits),
-                    ItypeUInstruction::FLW,
-                )))
+                None
             } else {
-                Some(Instruction::Iu(ItypeU::new(
-                    instruction_bits,
-                    fld_uimmediate(instruction_bits),
-                    ItypeUInstruction::LD,
-                )))
+                Some(
+                    Itype::assemble(
+                        InstructionOp::LD,
+                        compact_register_number(instruction_bits, 2),
+                        compact_register_number(instruction_bits, 7),
+                        fld_uimmediate(instruction_bits),
+                        Module::RVC,
+                    )
+                    .0,
+                )
             }
         }
         // Reserved
         0b_100_00000000000_00 => None,
-        0b_101_00000000000_00 => Some(Instruction::Su(StypeU::new(
-            instruction_bits,
-            fld_uimmediate(instruction_bits),
-            StypeUInstruction::FSD,
-        ))),
-        0b_110_00000000000_00 => Some(Instruction::Su(StypeU::new(
-            instruction_bits,
-            sw_uimmediate(instruction_bits),
-            StypeUInstruction::SW,
-        ))),
+        0b_110_00000000000_00 => Some(
+            Stype::assemble(
+                InstructionOp::SW,
+                sw_uimmediate(instruction_bits),
+                compact_register_number(instruction_bits, 7),
+                compact_register_number(instruction_bits, 2),
+                Module::RVC,
+            )
+            .0,
+        ),
         0b_111_00000000000_00 => {
             if rv32 {
-                Some(Instruction::Su(StypeU::new(
-                    instruction_bits,
-                    sw_uimmediate(instruction_bits),
-                    StypeUInstruction::FSW,
-                )))
+                None
             } else {
-                Some(Instruction::Su(StypeU::new(
-                    instruction_bits,
-                    fld_uimmediate(instruction_bits),
-                    StypeUInstruction::SD,
-                )))
+                Some(
+                    Stype::assemble(
+                        InstructionOp::SD,
+                        fld_uimmediate(instruction_bits),
+                        compact_register_number(instruction_bits, 7),
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                )
             }
         }
         // == Quadrant 1
@@ -615,14 +378,12 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             let nzimm = immediate(instruction_bits);
             let rd = rd(instruction_bits);
             if nzimm != 0 && rd != 0 {
-                Some(Instruction::I(Itype {
-                    rd,
-                    rs1: rd,
-                    imm: nzimm,
-                    inst: ItypeInstruction::ADDI,
-                }))
+                Some(Itype::assemble_s(InstructionOp::ADDI, rd, rd, nzimm, Module::RVC).0)
             } else if nzimm == 0 && rd == 0 {
-                Some(Instruction::NOP { imm: nzimm })
+                Some(assemble_no_argument_instruction(
+                    InstructionOp::NOP,
+                    Module::RVC,
+                ))
             } else {
                 // Invalid instruction
                 None
@@ -630,18 +391,28 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
         }
         0b_001_00000000000_01 => {
             if rv32 {
-                Some(Instruction::JAL {
-                    imm: j_immediate(instruction_bits),
-                })
+                Some(
+                    Utype::assemble_s(
+                        InstructionOp::JAL,
+                        0,
+                        j_immediate(instruction_bits),
+                        Module::RVC,
+                    )
+                    .0,
+                )
             } else {
                 let rd = rd(instruction_bits);
                 if rd != 0 {
-                    Some(Instruction::I(Itype {
-                        rd,
-                        rs1: rd,
-                        imm: immediate(instruction_bits),
-                        inst: ItypeInstruction::ADDIW,
-                    }))
+                    Some(
+                        Itype::assemble_s(
+                            InstructionOp::ADDIW,
+                            rd,
+                            rd,
+                            immediate(instruction_bits),
+                            Module::RVC,
+                        )
+                        .0,
+                    )
                 } else {
                     None
                 }
@@ -650,11 +421,15 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
         0b_010_00000000000_01 => {
             let rd = rd(instruction_bits);
             if rd != 0 {
-                Some(Instruction::U(Utype {
-                    rd,
-                    imm: immediate(instruction_bits),
-                    inst: UtypeInstruction::LI,
-                }))
+                Some(
+                    Utype::assemble_s(
+                        InstructionOp::LI,
+                        rd,
+                        immediate(instruction_bits),
+                        Module::RVC,
+                    )
+                    .0,
+                )
             } else {
                 None
             }
@@ -664,19 +439,23 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             if imm != 0 {
                 let rd = rd(instruction_bits);
                 if rd == SP {
-                    Some(Instruction::ADDI16SP {
-                        imm: (x(instruction_bits, 6, 1, 4)
-                            | x(instruction_bits, 2, 1, 5)
-                            | x(instruction_bits, 5, 1, 6)
-                            | x(instruction_bits, 3, 2, 7)
-                            | xs(instruction_bits, 12, 1, 9)) as i32,
-                    })
+                    Some(
+                        Itype::assemble_s(
+                            InstructionOp::ADDI16SP,
+                            0,
+                            0,
+                            (x(instruction_bits, 6, 1, 4)
+                                | x(instruction_bits, 2, 1, 5)
+                                | x(instruction_bits, 5, 1, 6)
+                                | x(instruction_bits, 3, 2, 7)
+                                | xs(instruction_bits, 12, 1, 9))
+                                as i32,
+                            Module::RVC,
+                        )
+                        .0,
+                    )
                 } else if rd != 0 {
-                    Some(Instruction::U(Utype {
-                        rd,
-                        imm,
-                        inst: UtypeInstruction::LUI,
-                    }))
+                    Some(Utype::assemble_s(InstructionOp::LUI, rd, imm, Module::RVC).0)
                 } else {
                     None
                 }
@@ -688,55 +467,79 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
             let rd = compact_register_number(instruction_bits, 7);
             match instruction_bits & 0b_1_11_000_11000_00 {
                 // SRLI64
-                0b_0_00_000_00000_00 if instruction_bits & 0b_111_00 == 0 => {
-                    Some(Instruction::SRLI64 { rd, rs1: rd })
-                }
+                0b_0_00_000_00000_00 if instruction_bits & 0b_111_00 == 0 => Some(
+                    assemble_no_argument_instruction(InstructionOp::SRLI64, Module::RVC),
+                ),
                 // SRAI64
-                0b_0_01_000_00000_00 if instruction_bits & 0b_111_00 == 0 => {
-                    Some(Instruction::SRAI64 { rd, rs1: rd })
-                }
+                0b_0_01_000_00000_00 if instruction_bits & 0b_111_00 == 0 => Some(
+                    assemble_no_argument_instruction(InstructionOp::SRAI64, Module::RVC),
+                ),
                 // SUB
-                0b_0_11_000_00000_00 => Some(Instruction::R(Rtype {
-                    rd,
-                    rs1: rd,
-                    rs2: compact_register_number(instruction_bits, 2),
-                    inst: RtypeInstruction::SUB,
-                })),
+                0b_0_11_000_00000_00 => Some(
+                    Rtype::assemble(
+                        InstructionOp::SUB,
+                        rd,
+                        rd,
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                ),
                 // XOR
-                0b_0_11_000_01000_00 => Some(Instruction::R(Rtype {
-                    rd,
-                    rs1: rd,
-                    rs2: compact_register_number(instruction_bits, 2),
-                    inst: RtypeInstruction::XOR,
-                })),
+                0b_0_11_000_01000_00 => Some(
+                    Rtype::assemble(
+                        InstructionOp::XOR,
+                        rd,
+                        rd,
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                ),
                 // OR
-                0b_0_11_000_10000_00 => Some(Instruction::R(Rtype {
-                    rd,
-                    rs1: rd,
-                    rs2: compact_register_number(instruction_bits, 2),
-                    inst: RtypeInstruction::OR,
-                })),
+                0b_0_11_000_10000_00 => Some(
+                    Rtype::assemble(
+                        InstructionOp::OR,
+                        rd,
+                        rd,
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                ),
                 // AND
-                0b_0_11_000_11000_00 => Some(Instruction::R(Rtype {
-                    rd,
-                    rs1: rd,
-                    rs2: compact_register_number(instruction_bits, 2),
-                    inst: RtypeInstruction::AND,
-                })),
+                0b_0_11_000_11000_00 => Some(
+                    Rtype::assemble(
+                        InstructionOp::AND,
+                        rd,
+                        rd,
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                ),
                 // SUBW
-                0b_1_11_000_00000_00 if rv64 => Some(Instruction::R(Rtype {
-                    rd,
-                    rs1: rd,
-                    rs2: compact_register_number(instruction_bits, 2),
-                    inst: RtypeInstruction::SUBW,
-                })),
+                0b_1_11_000_00000_00 if rv64 => Some(
+                    Rtype::assemble(
+                        InstructionOp::SUBW,
+                        rd,
+                        rd,
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                ),
                 // ADDW
-                0b_1_11_000_01000_00 if rv64 => Some(Instruction::R(Rtype {
-                    rd,
-                    rs1: rd,
-                    rs2: compact_register_number(instruction_bits, 2),
-                    inst: RtypeInstruction::ADDW,
-                })),
+                0b_1_11_000_01000_00 if rv64 => Some(
+                    Rtype::assemble(
+                        InstructionOp::ADDW,
+                        rd,
+                        rd,
+                        compact_register_number(instruction_bits, 2),
+                        Module::RVC,
+                    )
+                    .0,
+                ),
                 // Reserved
                 0b_1_11_000_10000_00 => None,
                 // Reserved
@@ -747,44 +550,60 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                         // Invalid instruction
                         (0b_00_000_00000_00, 0) => None,
                         // SRLI
-                        (0b_00_000_00000_00, uimm) => Some(Instruction::Iu(ItypeU {
-                            rd,
-                            rs1: rd,
-                            imm: uimm,
-                            inst: ItypeUInstruction::SRLI,
-                        })),
+                        (0b_00_000_00000_00, uimm) => {
+                            Some(Itype::assemble(InstructionOp::SRLI, rd, rd, uimm, Module::RVC).0)
+                        }
                         // Invalid instruction
                         (0b_01_000_00000_00, 0) => None,
                         // SRAI
-                        (0b_01_000_00000_00, uimm) => Some(Instruction::Iu(ItypeU {
-                            rd,
-                            rs1: rd,
-                            imm: uimm,
-                            inst: ItypeUInstruction::SRAI,
-                        })),
+                        (0b_01_000_00000_00, uimm) => {
+                            Some(Itype::assemble(InstructionOp::SRAI, rd, rd, uimm, Module::RVC).0)
+                        }
                         // ANDI
-                        (0b_10_000_00000_00, _) => Some(Instruction::I(Itype {
-                            rd,
-                            rs1: rd,
-                            imm: immediate(instruction_bits),
-                            inst: ItypeInstruction::ANDI,
-                        })),
+                        (0b_10_000_00000_00, _) => Some(
+                            Itype::assemble_s(
+                                InstructionOp::ANDI,
+                                rd,
+                                rd,
+                                immediate(instruction_bits),
+                                Module::RVC,
+                            )
+                            .0,
+                        ),
                         _ => None,
                     }
                 }
             }
         }
-        0b_101_00000000000_01 => Some(Instruction::J {
-            imm: j_immediate(instruction_bits),
-        }),
-        0b_110_00000000000_01 => Some(Instruction::BEQZ {
-            rs1: compact_register_number(instruction_bits, 7),
-            imm: b_immediate(instruction_bits),
-        }),
-        0b_111_00000000000_01 => Some(Instruction::BNEZ {
-            rs1: compact_register_number(instruction_bits, 7),
-            imm: b_immediate(instruction_bits),
-        }),
+        0b_101_00000000000_01 => Some(
+            Utype::assemble_s(
+                InstructionOp::J,
+                0,
+                j_immediate(instruction_bits),
+                Module::RVC,
+            )
+            .0,
+        ),
+        0b_110_00000000000_01 => Some(
+            Stype::assemble_s(
+                InstructionOp::BEQZ,
+                b_immediate(instruction_bits),
+                compact_register_number(instruction_bits, 7),
+                0,
+                Module::RVC,
+            )
+            .0,
+        ),
+        0b_111_00000000000_01 => Some(
+            Stype::assemble_s(
+                InstructionOp::BNEZ,
+                b_immediate(instruction_bits),
+                compact_register_number(instruction_bits, 7),
+                0,
+                Module::RVC,
+            )
+            .0,
+        ),
         // == Quadrant 2
         0b_000_00000000000_10 => {
             let uimm = uimmediate(instruction_bits);
@@ -793,29 +612,26 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 // Reserved
                 None
             } else if uimm != 0 {
-                Some(Instruction::Iu(ItypeU {
-                    rs1: rd,
-                    rd,
-                    imm: uimm,
-                    inst: ItypeUInstruction::SLLI,
-                }))
+                Some(Itype::assemble(InstructionOp::SLLI, rd, rd, uimm, Module::RVC).0)
             } else {
-                Some(Instruction::SLLI64 { rs1: rd, rd })
+                Some(assemble_no_argument_instruction(
+                    InstructionOp::SLLI64,
+                    Module::RVC,
+                ))
             }
         }
-        0b_001_00000000000_10 => Some(Instruction::Uu(UtypeU {
-            rd: rd(instruction_bits),
-            imm: fldsp_uimmediate(instruction_bits),
-            inst: UtypeUInstruction::FLDSP,
-        })),
         0b_010_00000000000_10 => {
             let rd = rd(instruction_bits);
             if rd != 0 {
-                Some(Instruction::Uu(UtypeU {
-                    rd,
-                    imm: lwsp_uimmediate(instruction_bits),
-                    inst: UtypeUInstruction::LWSP,
-                }))
+                Some(
+                    Utype::assemble(
+                        InstructionOp::LWSP,
+                        rd,
+                        lwsp_uimmediate(instruction_bits),
+                        Module::RVC,
+                    )
+                    .0,
+                )
             } else {
                 // Reserved
                 None
@@ -823,19 +639,19 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
         }
         0b_011_00000000000_10 => {
             if rv32 {
-                Some(Instruction::Uu(UtypeU {
-                    rd: rd(instruction_bits),
-                    imm: lwsp_uimmediate(instruction_bits),
-                    inst: UtypeUInstruction::FLWSP,
-                }))
+                None
             } else {
                 let rd = rd(instruction_bits);
                 if rd != 0 {
-                    Some(Instruction::Uu(UtypeU {
-                        rd,
-                        imm: fldsp_uimmediate(instruction_bits),
-                        inst: UtypeUInstruction::LDSP,
-                    }))
+                    Some(
+                        Utype::assemble(
+                            InstructionOp::LDSP,
+                            rd,
+                            fldsp_uimmediate(instruction_bits),
+                            Module::RVC,
+                        )
+                        .0,
+                    )
                 } else {
                     // Reserved
                     None
@@ -850,23 +666,25 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                     if rd == 0 {
                         None
                     } else if rs2 == 0 {
-                        Some(Instruction::JR { rs1: rd })
+                        Some(Stype::assemble(InstructionOp::JR, 0, rd, 0, Module::RVC).0)
                     } else {
-                        Some(Instruction::MV { rd, rs2 })
+                        Some(Rtype::assemble(InstructionOp::MV, rd, 0, rs2, Module::RVC).0)
                     }
                 }
                 0b_1_00000_00000_00 => {
                     let rd = rd(instruction_bits);
                     let rs2 = c_rs2(instruction_bits);
                     match (rd, rs2) {
-                        (0, 0) => Some(Instruction::EBREAK),
-                        (rs1, 0) => Some(Instruction::JALR { rs1 }),
-                        (rd, rs2) if rd != 0 => Some(Instruction::R(Rtype {
-                            rd,
-                            rs1: rd,
-                            rs2,
-                            inst: RtypeInstruction::ADD,
-                        })),
+                        (0, 0) => Some(assemble_no_argument_instruction(
+                            InstructionOp::EBREAK,
+                            Module::RVC,
+                        )),
+                        (rs1, 0) => {
+                            Some(Stype::assemble(InstructionOp::JALR, 0, rs1, 0, Module::RVC).0)
+                        }
+                        (rd, rs2) if rd != 0 => {
+                            Some(Rtype::assemble(InstructionOp::ADD, rd, rd, rs2, Module::RVC).0)
+                        }
                         // Invalid instruction
                         _ => None,
                     }
@@ -874,32 +692,32 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<GenericInstruction>
                 _ => unreachable!(),
             }
         }
-        0b_101_00000000000_10 => Some(Instruction::CSS(CSSformat {
-            rs2: c_rs2(instruction_bits),
-            imm: fsdsp_uimmediate(instruction_bits),
-            inst: CSSformatInstruction::FSDSP,
-        })),
-        0b_110_00000000000_10 => Some(Instruction::CSS(CSSformat {
-            rs2: c_rs2(instruction_bits),
-            imm: swsp_uimmediate(instruction_bits),
-            inst: CSSformatInstruction::SWSP,
-        })),
+        0b_110_00000000000_10 => Some(
+            Stype::assemble(
+                InstructionOp::SWSP,
+                swsp_uimmediate(instruction_bits),
+                0,
+                c_rs2(instruction_bits),
+                Module::RVC,
+            )
+            .0,
+        ),
         0b_111_00000000000_10 => {
             if rv32 {
-                Some(Instruction::CSS(CSSformat {
-                    rs2: c_rs2(instruction_bits),
-                    imm: swsp_uimmediate(instruction_bits),
-                    inst: CSSformatInstruction::FSWSP,
-                }))
+                None
             } else {
-                Some(Instruction::CSS(CSSformat {
-                    rs2: c_rs2(instruction_bits),
-                    imm: fsdsp_uimmediate(instruction_bits),
-                    inst: CSSformatInstruction::SDSP,
-                }))
+                Some(
+                    Stype::assemble(
+                        InstructionOp::SDSP,
+                        fsdsp_uimmediate(instruction_bits),
+                        0,
+                        c_rs2(instruction_bits),
+                        Module::RVC,
+                    )
+                    .0,
+                )
             }
         }
         _ => None,
-    };
-    inst_opt.map(RVC)
+    }
 }

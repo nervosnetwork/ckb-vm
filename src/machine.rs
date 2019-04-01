@@ -1,7 +1,7 @@
 use super::bits::rounddown;
 use super::decoder::build_imac_decoder;
 use super::instructions::{
-    instruction_length, is_basic_block_end_instruction, Instruction, Register,
+    execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
 };
 use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
 use super::syscalls::Syscalls;
@@ -551,8 +551,8 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
                 let mut i = 0;
                 while i < TRACE_ITEM_LENGTH {
                     let instruction = decoder.decode(self.memory_mut(), current_pc)?;
-                    let end_instruction = is_basic_block_end_instruction(&instruction);
-                    current_pc += instruction_length(&instruction);
+                    let end_instruction = is_basic_block_end_instruction(instruction);
+                    current_pc += instruction_length(instruction);
                     self.traces[slot].instructions[i] = instruction;
                     i += 1;
                     if end_instruction {
@@ -566,8 +566,8 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             self.running_trace_slot = slot;
             self.running_trace_cleared = false;
             for i in 0..self.traces[slot].instruction_count {
-                let i = self.traces[slot].instructions[i as usize].clone();
-                i.execute(self)?;
+                let i = self.traces[slot].instructions[i as usize];
+                execute(i, self)?;
                 let cycles = self
                     .instruction_cycle_func
                     .as_ref()
