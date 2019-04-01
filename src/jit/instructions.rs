@@ -1,9 +1,9 @@
-use crate::instructions::{extract_opcode, Instruction, InstructionOp};
+use crate::instructions::{extract_opcode, Instruction, OP_EBREAK, OP_ECALL};
 
 pub fn is_jitable_instruction(i: Instruction) -> bool {
     match extract_opcode(i) {
-        Ok(InstructionOp::ECALL) => false,
-        Ok(InstructionOp::EBREAK) => false,
+        OP_ECALL => false,
+        OP_EBREAK => false,
         _ => true,
     }
 }
