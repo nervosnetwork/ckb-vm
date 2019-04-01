@@ -1,4 +1,3 @@
-use crate::instructions as insts;
 use super::super::machine::Machine;
 use super::super::Error;
 use super::utils::{
@@ -7,9 +6,10 @@ use super::utils::{
 };
 use super::Register;
 use super::{
-    assemble_no_argument_instruction, common, extract_opcode, Instruction, Itype,
-    MODULE_I, Rtype, Stype, Utype,
+    assemble_no_argument_instruction, common, extract_opcode, Instruction, Itype, Rtype, Stype,
+    Utype, MODULE_I,
 };
+use crate::instructions as insts;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
@@ -578,10 +578,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             const FENCE_LOW_BITS: u32 = 0b_00000_000_00000_0001111;
             const FENCEI_VALUE: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
             if instruction_bits == FENCEI_VALUE {
-                Some(assemble_no_argument_instruction(
-                    insts::OP_FENCEI,
-                    MODULE_I,
-                ))
+                Some(assemble_no_argument_instruction(insts::OP_FENCEI, MODULE_I))
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(
                     FenceType::assemble(
@@ -596,14 +593,12 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             }
         }
         0b_1110011 => match instruction_bits {
-            0b_000000000000_00000_000_00000_1110011 => Some(assemble_no_argument_instruction(
-                insts::OP_ECALL,
-                MODULE_I,
-            )),
-            0b_000000000001_00000_000_00000_1110011 => Some(assemble_no_argument_instruction(
-                insts::OP_EBREAK,
-                MODULE_I,
-            )),
+            0b_000000000000_00000_000_00000_1110011 => {
+                Some(assemble_no_argument_instruction(insts::OP_ECALL, MODULE_I))
+            }
+            0b_000000000001_00000_000_00000_1110011 => {
+                Some(assemble_no_argument_instruction(insts::OP_EBREAK, MODULE_I))
+            }
             _ => None,
         },
         0b_0011011 if rv64 => {

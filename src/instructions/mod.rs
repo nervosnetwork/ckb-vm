@@ -191,7 +191,13 @@ impl Rtype {
 pub struct Itype(Instruction);
 
 impl Itype {
-    pub fn assemble(op: InstructionOp, rd: u8, rs1: u8, immediate: u32, m: InstructionModule) -> Self {
+    pub fn assemble(
+        op: InstructionOp,
+        rd: u8,
+        rs1: u8,
+        immediate: u32,
+        m: InstructionModule,
+    ) -> Self {
         Itype(
             u64::from(op as u8) |
               (u64::from(rd) << 8) |
@@ -203,7 +209,13 @@ impl Itype {
         )
     }
 
-    pub fn assemble_s(op: InstructionOp, rd: u8, rs1: u8, immediate: i32, m: InstructionModule) -> Self {
+    pub fn assemble_s(
+        op: InstructionOp,
+        rd: u8,
+        rs1: u8,
+        immediate: i32,
+        m: InstructionModule,
+    ) -> Self {
         Self::assemble(op, rd, rs1, immediate as u32, m)
     }
 
@@ -232,7 +244,13 @@ impl Itype {
 pub struct Stype(Instruction);
 
 impl Stype {
-    pub fn assemble(op: InstructionOp, immediate: u32, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
+    pub fn assemble(
+        op: InstructionOp,
+        immediate: u32,
+        rs1: u8,
+        rs2: u8,
+        m: InstructionModule,
+    ) -> Self {
         Stype(
             u64::from(op as u8) |
               (u64::from(rs2) << 8) |
@@ -244,7 +262,13 @@ impl Stype {
         )
     }
 
-    pub fn assemble_s(op: InstructionOp, immediate: i32, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
+    pub fn assemble_s(
+        op: InstructionOp,
+        immediate: i32,
+        rs1: u8,
+        rs2: u8,
+        m: InstructionModule,
+    ) -> Self {
         Self::assemble(op, immediate as u32, rs1, rs2, m)
     }
 

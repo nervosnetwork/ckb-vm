@@ -1,9 +1,9 @@
-use crate::instructions as insts;
 use super::super::machine::Machine;
 use super::super::Error;
 use super::register::Register;
 use super::utils::{funct3, funct7, opcode, rd, rs1, rs2, update_register};
-use super::{Instruction, MODULE_M, Rtype};
+use super::{Instruction, Rtype, MODULE_M};
+use crate::instructions as insts;
 
 pub fn execute<Mac: Machine>(i: Instruction, machine: &mut Mac) -> Result<(), Error> {
     let i = Rtype(i);
