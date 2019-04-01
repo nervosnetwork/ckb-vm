@@ -132,7 +132,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         _ => None,
     };
     inst_opt.map(|inst| {
-        Rtype::assemble(
+        Rtype::new(
             inst,
             rd(instruction_bits),
             rs1(instruction_bits),

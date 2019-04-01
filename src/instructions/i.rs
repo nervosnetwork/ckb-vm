@@ -6,8 +6,7 @@ use super::utils::{
 };
 use super::Register;
 use super::{
-    assemble_no_argument_instruction, common, extract_opcode, Instruction, Itype, Rtype, Stype,
-    Utype, MODULE_I,
+    blank_instruction, common, extract_opcode, Instruction, Itype, Rtype, Stype, Utype, MODULE_I,
 };
 use crate::instructions as insts;
 
@@ -17,8 +16,8 @@ use crate::instructions as insts;
 pub struct FenceType(Instruction);
 
 impl FenceType {
-    pub fn assemble(fm: u8, pred: u8, succ: u8) -> Self {
-        FenceType(Rtype::assemble(insts::OP_FENCE, fm, pred, succ, MODULE_I).0)
+    pub fn new(fm: u8, pred: u8, succ: u8) -> Self {
+        FenceType(Rtype::new(insts::OP_FENCE, fm, pred, succ, MODULE_I).0)
     }
 
     pub fn fm(self) -> u8 {
@@ -399,7 +398,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let rv64 = bit_length == 64;
     match opcode(instruction_bits) {
         0b_0110111 => Some(
-            Utype::assemble_s(
+            Utype::new_s(
                 insts::OP_LUI,
                 rd(instruction_bits),
                 utype_immediate(instruction_bits),
@@ -408,7 +407,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             .0,
         ),
         0b_0010111 => Some(
-            Utype::assemble_s(
+            Utype::new_s(
                 insts::OP_AUIPC,
                 rd(instruction_bits),
                 utype_immediate(instruction_bits),
@@ -417,7 +416,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             .0,
         ),
         0b_1101111 => Some(
-            Utype::assemble_s(
+            Utype::new_s(
                 insts::OP_JAL,
                 rd(instruction_bits),
                 jtype_immediate(instruction_bits),
@@ -432,7 +431,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Itype::assemble_s(
+                Itype::new_s(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
@@ -455,7 +454,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Itype::assemble_s(
+                Itype::new_s(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
@@ -485,7 +484,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         _ => None,
                     };
                     return inst_opt.map(|inst| {
-                        Itype::assemble_s(
+                        Itype::new_s(
                             inst,
                             rd(instruction_bits),
                             rs1(instruction_bits),
@@ -499,7 +498,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             };
 
             inst_opt.map(|inst| {
-                Itype::assemble_s(
+                Itype::new_s(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
@@ -520,7 +519,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Stype::assemble_s(
+                Stype::new_s(
                     inst,
                     btype_immediate(instruction_bits),
                     rs1(instruction_bits),
@@ -539,7 +538,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Stype::assemble_s(
+                Stype::new_s(
                     inst,
                     stype_immediate(instruction_bits),
                     rs1(instruction_bits),
@@ -564,7 +563,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Rtype::assemble(
+                Rtype::new(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
@@ -578,10 +577,10 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             const FENCE_LOW_BITS: u32 = 0b_00000_000_00000_0001111;
             const FENCEI_VALUE: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
             if instruction_bits == FENCEI_VALUE {
-                Some(assemble_no_argument_instruction(insts::OP_FENCEI, MODULE_I))
+                Some(blank_instruction(insts::OP_FENCEI, MODULE_I))
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(
-                    FenceType::assemble(
+                    FenceType::new(
                         ((instruction_bits & 0xF00_00000) >> 28) as u8,
                         ((instruction_bits & 0x0F0_00000) >> 24) as u8,
                         ((instruction_bits & 0x00F_00000) >> 20) as u8,
@@ -594,10 +593,10 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         }
         0b_1110011 => match instruction_bits {
             0b_000000000000_00000_000_00000_1110011 => {
-                Some(assemble_no_argument_instruction(insts::OP_ECALL, MODULE_I))
+                Some(blank_instruction(insts::OP_ECALL, MODULE_I))
             }
             0b_000000000001_00000_000_00000_1110011 => {
-                Some(assemble_no_argument_instruction(insts::OP_EBREAK, MODULE_I))
+                Some(blank_instruction(insts::OP_EBREAK, MODULE_I))
             }
             _ => None,
         },
@@ -605,7 +604,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             let funct3_value = funct3(instruction_bits);
             match funct3_value {
                 0b_000 => Some(
-                    Itype::assemble_s(
+                    Itype::new_s(
                         insts::OP_ADDIW,
                         rd(instruction_bits),
                         rs1(instruction_bits),
@@ -623,7 +622,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         _ => None,
                     };
                     inst_opt.map(|inst| {
-                        Itype::assemble_s(
+                        Itype::new_s(
                             inst,
                             rd(instruction_bits),
                             rs1(instruction_bits),
@@ -646,7 +645,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Rtype::assemble(
+                Rtype::new(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
@@ -661,5 +660,5 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
 }
 
 pub fn nop() -> Instruction {
-    Itype::assemble(insts::OP_ADDI, 0, 0, 0, MODULE_I).0
+    Itype::new(insts::OP_ADDI, 0, 0, 0, MODULE_I).0
 }

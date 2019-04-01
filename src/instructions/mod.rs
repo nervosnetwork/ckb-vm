@@ -40,7 +40,7 @@ type UImmediate = u32;
 // instruction into the internal form here(much like how traces/micro-ops work.)
 pub type Instruction = u64;
 
-pub type InstructionOp = u8;
+pub type InstructionOpcode = u8;
 
 // ADDI must have an opcode of 0, this way the default 0 value for u64
 // happens to be a NOP operation in RISC-V format
@@ -127,7 +127,7 @@ pub const OP_SWSP: u8 = 79;
 pub const OP_XOR: u8 = 80;
 pub const OP_XORI: u8 = 81;
 
-pub fn extract_opcode(i: Instruction) -> InstructionOp {
+pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
     i as u8
 }
 
@@ -152,7 +152,9 @@ pub fn execute<Mac: Machine>(i: Instruction, machine: &mut Mac) -> Result<(), Er
 
 pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
 
-pub fn assemble_no_argument_instruction(op: InstructionOp, m: InstructionModule) -> Instruction {
+// Blank instructions need no register indices nor immediates, they only have opcode
+// and module bit set.
+pub fn blank_instruction(op: InstructionOpcode, m: InstructionModule) -> Instruction {
     (u64::from(op as u8)) | ((u64::from(m as u8)) << 16)
 }
 
@@ -160,7 +162,7 @@ pub fn assemble_no_argument_instruction(op: InstructionOp, m: InstructionModule)
 pub struct Rtype(Instruction);
 
 impl Rtype {
-    pub fn assemble(op: InstructionOp, rd: u8, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
+    pub fn new(op: InstructionOpcode, rd: u8, rs1: u8, rs2: u8, m: InstructionModule) -> Self {
         Rtype(
             u64::from(op as u8)
                 | (u64::from(rd) << 8)
@@ -170,7 +172,7 @@ impl Rtype {
         )
     }
 
-    pub fn op(self) -> InstructionOp {
+    pub fn op(self) -> InstructionOpcode {
         self.0 as u8
     }
 
@@ -191,8 +193,8 @@ impl Rtype {
 pub struct Itype(Instruction);
 
 impl Itype {
-    pub fn assemble(
-        op: InstructionOp,
+    pub fn new(
+        op: InstructionOpcode,
         rd: u8,
         rs1: u8,
         immediate: u32,
@@ -209,17 +211,17 @@ impl Itype {
         )
     }
 
-    pub fn assemble_s(
-        op: InstructionOp,
+    pub fn new_s(
+        op: InstructionOpcode,
         rd: u8,
         rs1: u8,
         immediate: i32,
         m: InstructionModule,
     ) -> Self {
-        Self::assemble(op, rd, rs1, immediate as u32, m)
+        Self::new(op, rd, rs1, immediate as u32, m)
     }
 
-    pub fn op(self) -> InstructionOp {
+    pub fn op(self) -> InstructionOpcode {
         self.0 as u8
     }
 
@@ -244,8 +246,8 @@ impl Itype {
 pub struct Stype(Instruction);
 
 impl Stype {
-    pub fn assemble(
-        op: InstructionOp,
+    pub fn new(
+        op: InstructionOpcode,
         immediate: u32,
         rs1: u8,
         rs2: u8,
@@ -262,17 +264,17 @@ impl Stype {
         )
     }
 
-    pub fn assemble_s(
-        op: InstructionOp,
+    pub fn new_s(
+        op: InstructionOpcode,
         immediate: i32,
         rs1: u8,
         rs2: u8,
         m: InstructionModule,
     ) -> Self {
-        Self::assemble(op, immediate as u32, rs1, rs2, m)
+        Self::new(op, immediate as u32, rs1, rs2, m)
     }
 
-    pub fn op(self) -> InstructionOp {
+    pub fn op(self) -> InstructionOpcode {
         self.0 as u8
     }
 
@@ -297,7 +299,7 @@ impl Stype {
 pub struct Utype(Instruction);
 
 impl Utype {
-    pub fn assemble(op: InstructionOp, rd: u8, immediate: u32, m: InstructionModule) -> Self {
+    pub fn new(op: InstructionOpcode, rd: u8, immediate: u32, m: InstructionModule) -> Self {
         Utype(
             u64::from(op as u8)
                 | (u64::from(rd) << 8)
@@ -306,11 +308,11 @@ impl Utype {
         )
     }
 
-    pub fn assemble_s(op: InstructionOp, rd: u8, immediate: i32, m: InstructionModule) -> Self {
-        Self::assemble(op, rd, immediate as u32, m)
+    pub fn new_s(op: InstructionOpcode, rd: u8, immediate: i32, m: InstructionModule) -> Self {
+        Self::new(op, rd, immediate as u32, m)
     }
 
-    pub fn op(self) -> InstructionOp {
+    pub fn op(self) -> InstructionOpcode {
         self.0 as u8
     }
 
@@ -361,7 +363,7 @@ mod tests {
 
     #[test]
     fn test_instruction_op_should_fit_in_byte() {
-        assert_eq!(1, size_of::<InstructionOp>());
+        assert_eq!(1, size_of::<InstructionOpcode>());
     }
 
     #[test]

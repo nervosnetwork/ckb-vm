@@ -3,8 +3,7 @@ use super::super::{Error, SP as CRATE_SP};
 use super::register::Register;
 use super::utils::{rd, update_register, x, xs};
 use super::{
-    assemble_no_argument_instruction, common, extract_opcode, Instruction, Itype, Rtype, Stype,
-    Utype, MODULE_RVC,
+    blank_instruction, common, extract_opcode, Instruction, Itype, Rtype, Stype, Utype, MODULE_RVC,
 };
 use crate::instructions as insts;
 
@@ -307,7 +306,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 | x(instruction_bits, 7, 4, 6);
             if nzuimm != 0 {
                 Some(
-                    Utype::assemble(
+                    Utype::new(
                         insts::OP_ADDI4SPN,
                         compact_register_number(instruction_bits, 2),
                         nzuimm,
@@ -321,7 +320,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             }
         }
         0b_010_00000000000_00 => Some(
-            Itype::assemble(
+            Itype::new(
                 insts::OP_LW,
                 compact_register_number(instruction_bits, 2),
                 compact_register_number(instruction_bits, 7),
@@ -335,7 +334,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 None
             } else {
                 Some(
-                    Itype::assemble(
+                    Itype::new(
                         insts::OP_LD,
                         compact_register_number(instruction_bits, 2),
                         compact_register_number(instruction_bits, 7),
@@ -349,7 +348,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         // Reserved
         0b_100_00000000000_00 => None,
         0b_110_00000000000_00 => Some(
-            Stype::assemble(
+            Stype::new(
                 insts::OP_SW,
                 sw_uimmediate(instruction_bits),
                 compact_register_number(instruction_bits, 7),
@@ -363,7 +362,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 None
             } else {
                 Some(
-                    Stype::assemble(
+                    Stype::new(
                         insts::OP_SD,
                         fld_uimmediate(instruction_bits),
                         compact_register_number(instruction_bits, 7),
@@ -379,9 +378,9 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             let nzimm = immediate(instruction_bits);
             let rd = rd(instruction_bits);
             if nzimm != 0 && rd != 0 {
-                Some(Itype::assemble_s(insts::OP_ADDI, rd, rd, nzimm, MODULE_RVC).0)
+                Some(Itype::new_s(insts::OP_ADDI, rd, rd, nzimm, MODULE_RVC).0)
             } else if nzimm == 0 && rd == 0 {
-                Some(assemble_no_argument_instruction(insts::OP_NOP, MODULE_RVC))
+                Some(blank_instruction(insts::OP_NOP, MODULE_RVC))
             } else {
                 // Invalid instruction
                 None
@@ -389,15 +388,12 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         }
         0b_001_00000000000_01 => {
             if rv32 {
-                Some(
-                    Utype::assemble_s(insts::OP_JAL, 0, j_immediate(instruction_bits), MODULE_RVC)
-                        .0,
-                )
+                Some(Utype::new_s(insts::OP_JAL, 0, j_immediate(instruction_bits), MODULE_RVC).0)
             } else {
                 let rd = rd(instruction_bits);
                 if rd != 0 {
                     Some(
-                        Itype::assemble_s(
+                        Itype::new_s(
                             insts::OP_ADDIW,
                             rd,
                             rd,
@@ -414,7 +410,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         0b_010_00000000000_01 => {
             let rd = rd(instruction_bits);
             if rd != 0 {
-                Some(Utype::assemble_s(insts::OP_LI, rd, immediate(instruction_bits), MODULE_RVC).0)
+                Some(Utype::new_s(insts::OP_LI, rd, immediate(instruction_bits), MODULE_RVC).0)
             } else {
                 None
             }
@@ -425,7 +421,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 let rd = rd(instruction_bits);
                 if rd == SP {
                     Some(
-                        Itype::assemble_s(
+                        Itype::new_s(
                             insts::OP_ADDI16SP,
                             0,
                             0,
@@ -440,7 +436,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         .0,
                     )
                 } else if rd != 0 {
-                    Some(Utype::assemble_s(insts::OP_LUI, rd, imm, MODULE_RVC).0)
+                    Some(Utype::new_s(insts::OP_LUI, rd, imm, MODULE_RVC).0)
                 } else {
                     None
                 }
@@ -452,16 +448,16 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             let rd = compact_register_number(instruction_bits, 7);
             match instruction_bits & 0b_1_11_000_11000_00 {
                 // SRLI64
-                0b_0_00_000_00000_00 if instruction_bits & 0b_111_00 == 0 => Some(
-                    assemble_no_argument_instruction(insts::OP_SRLI64, MODULE_RVC),
-                ),
+                0b_0_00_000_00000_00 if instruction_bits & 0b_111_00 == 0 => {
+                    Some(blank_instruction(insts::OP_SRLI64, MODULE_RVC))
+                }
                 // SRAI64
-                0b_0_01_000_00000_00 if instruction_bits & 0b_111_00 == 0 => Some(
-                    assemble_no_argument_instruction(insts::OP_SRAI64, MODULE_RVC),
-                ),
+                0b_0_01_000_00000_00 if instruction_bits & 0b_111_00 == 0 => {
+                    Some(blank_instruction(insts::OP_SRAI64, MODULE_RVC))
+                }
                 // SUB
                 0b_0_11_000_00000_00 => Some(
-                    Rtype::assemble(
+                    Rtype::new(
                         insts::OP_SUB,
                         rd,
                         rd,
@@ -472,7 +468,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 ),
                 // XOR
                 0b_0_11_000_01000_00 => Some(
-                    Rtype::assemble(
+                    Rtype::new(
                         insts::OP_XOR,
                         rd,
                         rd,
@@ -483,7 +479,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 ),
                 // OR
                 0b_0_11_000_10000_00 => Some(
-                    Rtype::assemble(
+                    Rtype::new(
                         insts::OP_OR,
                         rd,
                         rd,
@@ -494,7 +490,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 ),
                 // AND
                 0b_0_11_000_11000_00 => Some(
-                    Rtype::assemble(
+                    Rtype::new(
                         insts::OP_AND,
                         rd,
                         rd,
@@ -505,7 +501,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 ),
                 // SUBW
                 0b_1_11_000_00000_00 if rv64 => Some(
-                    Rtype::assemble(
+                    Rtype::new(
                         insts::OP_SUBW,
                         rd,
                         rd,
@@ -516,7 +512,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 ),
                 // ADDW
                 0b_1_11_000_01000_00 if rv64 => Some(
-                    Rtype::assemble(
+                    Rtype::new(
                         insts::OP_ADDW,
                         rd,
                         rd,
@@ -536,17 +532,17 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         (0b_00_000_00000_00, 0) => None,
                         // SRLI
                         (0b_00_000_00000_00, uimm) => {
-                            Some(Itype::assemble(insts::OP_SRLI, rd, rd, uimm, MODULE_RVC).0)
+                            Some(Itype::new(insts::OP_SRLI, rd, rd, uimm, MODULE_RVC).0)
                         }
                         // Invalid instruction
                         (0b_01_000_00000_00, 0) => None,
                         // SRAI
                         (0b_01_000_00000_00, uimm) => {
-                            Some(Itype::assemble(insts::OP_SRAI, rd, rd, uimm, MODULE_RVC).0)
+                            Some(Itype::new(insts::OP_SRAI, rd, rd, uimm, MODULE_RVC).0)
                         }
                         // ANDI
                         (0b_10_000_00000_00, _) => Some(
-                            Itype::assemble_s(
+                            Itype::new_s(
                                 insts::OP_ANDI,
                                 rd,
                                 rd,
@@ -561,10 +557,10 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             }
         }
         0b_101_00000000000_01 => {
-            Some(Utype::assemble_s(insts::OP_J, 0, j_immediate(instruction_bits), MODULE_RVC).0)
+            Some(Utype::new_s(insts::OP_J, 0, j_immediate(instruction_bits), MODULE_RVC).0)
         }
         0b_110_00000000000_01 => Some(
-            Stype::assemble_s(
+            Stype::new_s(
                 insts::OP_BEQZ,
                 b_immediate(instruction_bits),
                 compact_register_number(instruction_bits, 7),
@@ -574,7 +570,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             .0,
         ),
         0b_111_00000000000_01 => Some(
-            Stype::assemble_s(
+            Stype::new_s(
                 insts::OP_BNEZ,
                 b_immediate(instruction_bits),
                 compact_register_number(instruction_bits, 7),
@@ -591,19 +587,16 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 // Reserved
                 None
             } else if uimm != 0 {
-                Some(Itype::assemble(insts::OP_SLLI, rd, rd, uimm, MODULE_RVC).0)
+                Some(Itype::new(insts::OP_SLLI, rd, rd, uimm, MODULE_RVC).0)
             } else {
-                Some(assemble_no_argument_instruction(
-                    insts::OP_SLLI64,
-                    MODULE_RVC,
-                ))
+                Some(blank_instruction(insts::OP_SLLI64, MODULE_RVC))
             }
         }
         0b_010_00000000000_10 => {
             let rd = rd(instruction_bits);
             if rd != 0 {
                 Some(
-                    Utype::assemble(
+                    Utype::new(
                         insts::OP_LWSP,
                         rd,
                         lwsp_uimmediate(instruction_bits),
@@ -623,7 +616,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 let rd = rd(instruction_bits);
                 if rd != 0 {
                     Some(
-                        Utype::assemble(
+                        Utype::new(
                             insts::OP_LDSP,
                             rd,
                             fldsp_uimmediate(instruction_bits),
@@ -645,22 +638,19 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     if rd == 0 {
                         None
                     } else if rs2 == 0 {
-                        Some(Stype::assemble(insts::OP_JR, 0, rd, 0, MODULE_RVC).0)
+                        Some(Stype::new(insts::OP_JR, 0, rd, 0, MODULE_RVC).0)
                     } else {
-                        Some(Rtype::assemble(insts::OP_MV, rd, 0, rs2, MODULE_RVC).0)
+                        Some(Rtype::new(insts::OP_MV, rd, 0, rs2, MODULE_RVC).0)
                     }
                 }
                 0b_1_00000_00000_00 => {
                     let rd = rd(instruction_bits);
                     let rs2 = c_rs2(instruction_bits);
                     match (rd, rs2) {
-                        (0, 0) => Some(assemble_no_argument_instruction(
-                            insts::OP_EBREAK,
-                            MODULE_RVC,
-                        )),
-                        (rs1, 0) => Some(Stype::assemble(insts::OP_JALR, 0, rs1, 0, MODULE_RVC).0),
+                        (0, 0) => Some(blank_instruction(insts::OP_EBREAK, MODULE_RVC)),
+                        (rs1, 0) => Some(Stype::new(insts::OP_JALR, 0, rs1, 0, MODULE_RVC).0),
                         (rd, rs2) if rd != 0 => {
-                            Some(Rtype::assemble(insts::OP_ADD, rd, rd, rs2, MODULE_RVC).0)
+                            Some(Rtype::new(insts::OP_ADD, rd, rd, rs2, MODULE_RVC).0)
                         }
                         // Invalid instruction
                         _ => None,
@@ -670,7 +660,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             }
         }
         0b_110_00000000000_10 => Some(
-            Stype::assemble(
+            Stype::new(
                 insts::OP_SWSP,
                 swsp_uimmediate(instruction_bits),
                 0,
@@ -684,7 +674,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 None
             } else {
                 Some(
-                    Stype::assemble(
+                    Stype::new(
                         insts::OP_SDSP,
                         fsdsp_uimmediate(instruction_bits),
                         0,
