@@ -82,16 +82,15 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SLL => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone()
-                & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
+            let shift_value =
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
             let value = machine.registers()[i.rs1()].clone() << shift_value;
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SLLW => {
             let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
             let value = machine.registers()[i.rs1()].clone() << shift_value;
             update_register(
                 machine,
@@ -102,19 +101,17 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SRL => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone()
-                & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
+            let shift_value =
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
             let value = machine.registers()[i.rs1()].clone() >> shift_value;
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SRLW => {
             let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
-            let value = machine.registers()[i.rs1()]
-                .zero_extend(&Mac::REG::from_usize(32))
-                >> shift_value;
+            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let value =
+                machine.registers()[i.rs1()].zero_extend(&Mac::REG::from_usize(32)) >> shift_value;
             update_register(
                 machine,
                 i.rd(),
@@ -124,16 +121,15 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_SRA => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone()
-                & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
+            let shift_value =
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
             let value = machine.registers()[i.rs1()].signed_shr(&shift_value);
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SRAW => {
             let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
             let value = machine.registers()[i.rs1()]
                 .sign_extend(&Mac::REG::from_usize(32))
                 .signed_shr(&shift_value);
@@ -239,8 +235,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         insts::OP_JALR => {
             let i = Itype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
-            let mut next_pc = machine.registers()[i.rs1()]
-                .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+            let mut next_pc =
+                machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
             next_pc = next_pc & (!Mac::REG::one());
             update_register(machine, i.rd(), link);
             Some(next_pc)
