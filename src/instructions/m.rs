@@ -1,104 +1,7 @@
-use super::super::machine::Machine;
-use super::super::Error;
 use super::register::Register;
-use super::utils::{funct3, funct7, opcode, rd, rs1, rs2, update_register};
-use super::{Instruction, Rtype, MODULE_M};
+use super::utils::{funct3, funct7, opcode, rd, rs1, rs2};
+use super::{Instruction, Rtype};
 use crate::instructions as insts;
-
-pub fn execute<Mac: Machine>(i: Instruction, machine: &mut Mac) -> Result<(), Error> {
-    let i = Rtype(i);
-    let op = i.op();
-    let rs1_value = &machine.registers()[i.rs1()];
-    let rs2_value = &machine.registers()[i.rs2()];
-    match op {
-        insts::OP_MUL => {
-            let value = rs1_value.overflowing_mul(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MULW => {
-            let value = rs1_value
-                .zero_extend(&Mac::REG::from_usize(32))
-                .overflowing_mul(&rs2_value.zero_extend(&Mac::REG::from_usize(32)));
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-        }
-        insts::OP_MULH => {
-            let value = rs1_value.overflowing_mul_high_signed(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MULHSU => {
-            let value = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MULHU => {
-            let value = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_DIV => {
-            let value = rs1_value.overflowing_div_signed(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_DIVW => {
-            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_usize(32));
-            let value = rs1_value.overflowing_div_signed(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-        }
-        insts::OP_DIVU => {
-            let value = rs1_value.overflowing_div(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_DIVUW => {
-            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_usize(32));
-            let value = rs1_value.overflowing_div(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-        }
-        insts::OP_REM => {
-            let value = rs1_value.overflowing_rem_signed(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_REMW => {
-            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_usize(32));
-            let value = rs1_value.overflowing_rem_signed(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-        }
-        insts::OP_REMU => {
-            let value = rs1_value.overflowing_rem(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_REMUW => {
-            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_usize(32));
-            let value = rs1_value.overflowing_rem(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-        }
-        _ => return Err(Error::InvalidOp(op as u8)),
-    };
-    let next_pc = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
-    machine.set_pc(next_pc);
-    Ok(())
-}
 
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
@@ -137,7 +40,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             rd(instruction_bits),
             rs1(instruction_bits),
             rs2(instruction_bits),
-            MODULE_M,
         )
         .0
     })

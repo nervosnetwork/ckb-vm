@@ -1,13 +1,9 @@
-use super::super::machine::Machine;
-use super::super::Error;
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
-    stype_immediate, update_register, utype_immediate,
+    stype_immediate, utype_immediate,
 };
 use super::Register;
-use super::{
-    blank_instruction, common, extract_opcode, Instruction, Itype, Rtype, Stype, Utype, MODULE_I,
-};
+use super::{blank_instruction, Instruction, Itype, Rtype, Stype, Utype};
 use crate::instructions as insts;
 
 // The FENCE instruction is used to order device I/O and memory accesses
@@ -17,16 +13,7 @@ pub struct FenceType(Instruction);
 
 impl FenceType {
     pub fn new(fm: u8, pred: u8, succ: u8) -> Self {
-        FenceType(
-            Rtype::new(
-                insts::OP_FENCE,
-                fm as usize,
-                pred as usize,
-                succ as usize,
-                MODULE_I,
-            )
-            .0,
-        )
+        FenceType(Rtype::new(insts::OP_FENCE, fm as usize, pred as usize, succ as usize).0)
     }
 
     pub fn fm(self) -> u8 {
@@ -42,359 +29,6 @@ impl FenceType {
     }
 }
 
-pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
-    let op = extract_opcode(inst);
-    let next_pc: Option<Mac::REG> = match op {
-        insts::OP_SUB => {
-            let i = Rtype(inst);
-            common::sub(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_SUBW => {
-            let i = Rtype(inst);
-            common::subw(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_ADD => {
-            let i = Rtype(inst);
-            common::add(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_ADDW => {
-            let i = Rtype(inst);
-            common::addw(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_XOR => {
-            let i = Rtype(inst);
-            common::xor(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_OR => {
-            let i = Rtype(inst);
-            common::or(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_AND => {
-            let i = Rtype(inst);
-            common::and(machine, i.rd(), i.rs1(), i.rs2());
-            None
-        }
-        insts::OP_SLL => {
-            let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1()].clone() << shift_value;
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_SLLW => {
-            let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
-            let value = machine.registers()[i.rs1()].clone() << shift_value;
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-            None
-        }
-        insts::OP_SRL => {
-            let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1()].clone() >> shift_value;
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_SRLW => {
-            let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
-            let value =
-                machine.registers()[i.rs1()].zero_extend(&Mac::REG::from_usize(32)) >> shift_value;
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-            None
-        }
-        insts::OP_SRA => {
-            let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1()].signed_shr(&shift_value);
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_SRAW => {
-            let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
-            let value = machine.registers()[i.rs1()]
-                .sign_extend(&Mac::REG::from_usize(32))
-                .signed_shr(&shift_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
-            None
-        }
-        insts::OP_SLT => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt_s(&rs2_value);
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_SLTU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt(&rs2_value);
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_LB => {
-            let i = Itype(inst);
-            common::lb(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_LH => {
-            let i = Itype(inst);
-            common::lh(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_LW => {
-            let i = Itype(inst);
-            common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_LD => {
-            let i = Itype(inst);
-            common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_LBU => {
-            let i = Itype(inst);
-            common::lbu(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_LHU => {
-            let i = Itype(inst);
-            common::lhu(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_LWU => {
-            let i = Itype(inst);
-            common::lwu(machine, i.rd(), i.rs1(), i.immediate_s())?;
-            None
-        }
-        insts::OP_ADDI => {
-            let i = Itype(inst);
-            common::addi(machine, i.rd(), i.rs1(), i.immediate_s());
-            None
-        }
-        insts::OP_ADDIW => {
-            let i = Itype(inst);
-            common::addiw(machine, i.rd(), i.rs1(), i.immediate_s());
-            None
-        }
-        insts::OP_XORI => {
-            let i = Itype(inst);
-            common::xori(machine, i.rd(), i.rs1(), i.immediate_s());
-            None
-        }
-        insts::OP_ORI => {
-            let i = Itype(inst);
-            common::ori(machine, i.rd(), i.rs1(), i.immediate_s());
-            None
-        }
-        insts::OP_ANDI => {
-            let i = Itype(inst);
-            common::andi(machine, i.rd(), i.rs1(), i.immediate_s());
-            None
-        }
-        insts::OP_SLTI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let imm_value = Mac::REG::from_i32(i.immediate_s());
-            let value = rs1_value.lt_s(&imm_value);
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_SLTIU => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let imm_value = Mac::REG::from_i32(i.immediate_s());
-            let value = rs1_value.lt(&imm_value);
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_JALR => {
-            let i = Itype(inst);
-            let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
-            let mut next_pc =
-                machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-            next_pc = next_pc & (!Mac::REG::one());
-            update_register(machine, i.rd(), link);
-            Some(next_pc)
-        }
-        insts::OP_SLLI => {
-            let i = Itype(inst);
-            common::slli(machine, i.rd(), i.rs1(), i.immediate());
-            None
-        }
-        insts::OP_SRLI => {
-            let i = Itype(inst);
-            common::srli(machine, i.rd(), i.rs1(), i.immediate());
-            None
-        }
-        insts::OP_SRAI => {
-            let i = Itype(inst);
-            common::srai(machine, i.rd(), i.rs1(), i.immediate());
-            None
-        }
-        insts::OP_SLLIW => {
-            let i = Itype(inst);
-            common::slliw(machine, i.rd(), i.rs1(), i.immediate());
-            None
-        }
-        insts::OP_SRLIW => {
-            let i = Itype(inst);
-            common::srliw(machine, i.rd(), i.rs1(), i.immediate());
-            None
-        }
-        insts::OP_SRAIW => {
-            let i = Itype(inst);
-            common::sraiw(machine, i.rd(), i.rs1(), i.immediate());
-            None
-        }
-        insts::OP_SB => {
-            let i = Stype(inst);
-            common::sb(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-            None
-        }
-        insts::OP_SH => {
-            let i = Stype(inst);
-            common::sh(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-            None
-        }
-        insts::OP_SW => {
-            let i = Stype(inst);
-            common::sw(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-            None
-        }
-        insts::OP_SD => {
-            let i = Stype(inst);
-            common::sd(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-            None
-        }
-        insts::OP_BEQ => {
-            let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.eq(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
-            );
-            Some(machine.pc().overflowing_add(&offset))
-        }
-        insts::OP_BNE => {
-            let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ne(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
-            );
-            Some(machine.pc().overflowing_add(&offset))
-        }
-        insts::OP_BLT => {
-            let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.lt_s(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
-            );
-            Some(machine.pc().overflowing_add(&offset))
-        }
-        insts::OP_BGE => {
-            let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ge_s(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
-            );
-            Some(machine.pc().overflowing_add(&offset))
-        }
-        insts::OP_BLTU => {
-            let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.lt(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
-            );
-            Some(machine.pc().overflowing_add(&offset))
-        }
-        insts::OP_BGEU => {
-            let i = Stype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ge(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
-            );
-            Some(machine.pc().overflowing_add(&offset))
-        }
-        insts::OP_LUI => {
-            let i = Utype(inst);
-            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
-            None
-        }
-        insts::OP_AUIPC => {
-            let i = Utype(inst);
-            let value = machine
-                .pc()
-                .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-            update_register(machine, i.rd(), value);
-            None
-        }
-        insts::OP_ECALL => {
-            // The semantic of ECALL is determined by the hardware, which
-            // is not part of the spec, hence here the implementation is
-            // deferred to the machine. This way custom ECALLs might be
-            // provided for different environments.
-            machine.ecall()?;
-            None
-        }
-        insts::OP_EBREAK => {
-            machine.ebreak()?;
-            None
-        }
-        insts::OP_FENCEI => None,
-        insts::OP_FENCE => None,
-        insts::OP_JAL => {
-            let i = Utype(inst);
-            common::jal(machine, i.rd(), i.immediate_s(), 4)
-        }
-        _ => return Err(Error::InvalidOp(op as u8)),
-    };
-    let default_next_pc = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
-    machine.set_pc(next_pc.unwrap_or(default_next_pc));
-    Ok(())
-}
-
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
@@ -407,7 +41,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 insts::OP_LUI,
                 rd(instruction_bits),
                 utype_immediate(instruction_bits),
-                MODULE_I,
             )
             .0,
         ),
@@ -416,7 +49,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 insts::OP_AUIPC,
                 rd(instruction_bits),
                 utype_immediate(instruction_bits),
-                MODULE_I,
             )
             .0,
         ),
@@ -425,7 +57,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 insts::OP_JAL,
                 rd(instruction_bits),
                 jtype_immediate(instruction_bits),
-                MODULE_I,
             )
             .0,
         ),
@@ -441,7 +72,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     itype_immediate(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -464,7 +94,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     itype_immediate(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -494,7 +123,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                             rd(instruction_bits),
                             rs1(instruction_bits),
                             itype_immediate(instruction_bits) & R::SHIFT_MASK as i32,
-                            MODULE_I,
                         )
                         .0
                     });
@@ -508,7 +136,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     itype_immediate(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -529,7 +156,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     btype_immediate(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -548,7 +174,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     stype_immediate(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -573,7 +198,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -582,7 +206,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             const FENCE_LOW_BITS: u32 = 0b_00000_000_00000_0001111;
             const FENCEI_VALUE: u32 = 0b_0000_0000_0000_00000_001_00000_0001111;
             if instruction_bits == FENCEI_VALUE {
-                Some(blank_instruction(insts::OP_FENCEI, MODULE_I))
+                Some(blank_instruction(insts::OP_FENCEI))
             } else if instruction_bits & 0x000_FFFFF == FENCE_LOW_BITS {
                 Some(
                     FenceType::new(
@@ -597,12 +221,8 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             }
         }
         0b_1110011 => match instruction_bits {
-            0b_000000000000_00000_000_00000_1110011 => {
-                Some(blank_instruction(insts::OP_ECALL, MODULE_I))
-            }
-            0b_000000000001_00000_000_00000_1110011 => {
-                Some(blank_instruction(insts::OP_EBREAK, MODULE_I))
-            }
+            0b_000000000000_00000_000_00000_1110011 => Some(blank_instruction(insts::OP_ECALL)),
+            0b_000000000001_00000_000_00000_1110011 => Some(blank_instruction(insts::OP_EBREAK)),
             _ => None,
         },
         0b_0011011 if rv64 => {
@@ -614,7 +234,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         rd(instruction_bits),
                         rs1(instruction_bits),
                         itype_immediate(instruction_bits),
-                        MODULE_I,
                     )
                     .0,
                 ),
@@ -632,7 +251,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                             rd(instruction_bits),
                             rs1(instruction_bits),
                             itype_immediate(instruction_bits) & 0x1F,
-                            MODULE_I,
                         )
                         .0
                     })
@@ -655,7 +273,6 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                     rd(instruction_bits),
                     rs1(instruction_bits),
                     rs2(instruction_bits),
-                    MODULE_I,
                 )
                 .0
             })
@@ -665,5 +282,5 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
 }
 
 pub fn nop() -> Instruction {
-    Itype::new(insts::OP_ADDI, 0, 0, 0, MODULE_I).0
+    Itype::new(insts::OP_ADDI, 0, 0, 0).0
 }

@@ -1,4 +1,5 @@
 mod common;
+mod execute;
 mod register;
 mod utils;
 
@@ -7,8 +8,8 @@ pub mod m;
 pub mod rvc;
 
 pub use self::register::Register;
-use super::machine::Machine;
 use super::Error;
+pub use execute::execute;
 
 type RegisterIndex = usize;
 type Immediate = i32;
@@ -18,20 +19,16 @@ type UImmediate = u32;
 // into 64 bit unsigned integer in the following format:
 //
 // +-----+-----+-----+-----+-----+-----+-----+-----+
-// |           | rs2 | rs1 | res | mod | rd  | op  | R-type
+// |           | rs2 | rs1 | res |     | rd  | op  | R-type
 // +-----------+-----------------------------------+
-// |    immediate    | rs1 | res | mod | rd  | op  | I-type
+// |    immediate    | rs1 | res |     | rd  | op  | I-type
 // +-----------------------------------------------+
-// |    immediate    | rs1 | res | mod | rs2 | op  | S-type/B-type
+// |    immediate    | rs1 | res |     | rs2 | op  | S-type/B-type
 // +-----------------+-----------------------------+
-// |       immediate       | res | mod | rd  | op  | U-type/J-type
+// |       immediate       | res |     | rd  | op  | U-type/J-type
 // +-----+-----+-----+-----+-----+-----+-----+-----+
 //
 // +res+ here means reserved field that is not yet used.
-// +mod+ includes the RISC-V module extension current instruction lives,
-// theoretically we won't need those since op is fully flattened and should
-// contain all instructions in every module. But having mod here can be handy
-// when we want to quickly determine what RISC-V module one instruction lives in.
 //
 // This way each op and register index are in full byte, accessing them
 // will be much faster than the original compact form. Hence we will have
@@ -150,35 +147,21 @@ pub const OP_RVC_SW: u8 = 100;
 pub const OP_RVC_SWSP: u8 = 101;
 pub const OP_RVC_XOR: u8 = 102;
 
+// Maximum opcode for instructions consuming 4 bytes. Any opcode
+// larger than this one is treated as RVC instructions(which consume
+// 2 bytes)
+pub const MAXIMUM_NORMAL_OPCODE: InstructionOpcode = OP_XORI;
+
 pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
     i as u8
-}
-
-pub type InstructionModule = u8;
-
-pub const MODULE_I: u8 = 0;
-pub const MODULE_M: u8 = 1;
-pub const MODULE_RVC: u8 = 2;
-
-pub fn extract_module(i: Instruction) -> InstructionModule {
-    (i >> 16) as u8
-}
-
-pub fn execute<Mac: Machine>(i: Instruction, machine: &mut Mac) -> Result<(), Error> {
-    match extract_module(i) {
-        MODULE_I => i::execute(i, machine),
-        MODULE_M => m::execute(i, machine),
-        MODULE_RVC => rvc::execute(i, machine),
-        _ => Err(Error::ParseError),
-    }
 }
 
 pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
 
 // Blank instructions need no register indices nor immediates, they only have opcode
 // and module bit set.
-pub fn blank_instruction(op: InstructionOpcode, m: InstructionModule) -> Instruction {
-    (u64::from(op as u8)) | ((u64::from(m as u8)) << 16)
+pub fn blank_instruction(op: InstructionOpcode) -> Instruction {
+    (u64::from(op as u8))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -190,12 +173,10 @@ impl Rtype {
         rd: RegisterIndex,
         rs1: RegisterIndex,
         rs2: RegisterIndex,
-        m: InstructionModule,
     ) -> Self {
         Rtype(
             u64::from(op as u8)
                 | (u64::from(rd as u8) << 8)
-                | (u64::from(m as u8) << 16)
                 | (u64::from(rs1 as u8) << 32)
                 | (u64::from(rs2 as u8) << 40),
         )
@@ -227,12 +208,10 @@ impl Itype {
         rd: RegisterIndex,
         rs1: RegisterIndex,
         immediate: UImmediate,
-        m: InstructionModule,
     ) -> Self {
         Itype(
             u64::from(op as u8) |
               (u64::from(rd as u8) << 8) |
-              (u64::from(m as u8) << 16) |
               (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, I-type uses 12 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
@@ -245,9 +224,8 @@ impl Itype {
         rd: RegisterIndex,
         rs1: RegisterIndex,
         immediate: Immediate,
-        m: InstructionModule,
     ) -> Self {
-        Self::new(op, rd, rs1, immediate as UImmediate, m)
+        Self::new(op, rd, rs1, immediate as UImmediate)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -280,12 +258,10 @@ impl Stype {
         immediate: UImmediate,
         rs1: RegisterIndex,
         rs2: RegisterIndex,
-        m: InstructionModule,
     ) -> Self {
         Stype(
             u64::from(op as u8) |
               (u64::from(rs2 as u8) << 8) |
-              (u64::from(m as u8) << 16) |
               (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, S/B type uses 13 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
@@ -298,9 +274,8 @@ impl Stype {
         immediate: Immediate,
         rs1: RegisterIndex,
         rs2: RegisterIndex,
-        m: InstructionModule,
     ) -> Self {
-        Self::new(op, immediate as UImmediate, rs1, rs2, m)
+        Self::new(op, immediate as UImmediate, rs1, rs2)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -328,27 +303,12 @@ impl Stype {
 pub struct Utype(Instruction);
 
 impl Utype {
-    pub fn new(
-        op: InstructionOpcode,
-        rd: RegisterIndex,
-        immediate: UImmediate,
-        m: InstructionModule,
-    ) -> Self {
-        Utype(
-            u64::from(op as u8)
-                | (u64::from(rd as u8) << 8)
-                | (u64::from(m as u8) << 16)
-                | (u64::from(immediate) << 32),
-        )
+    pub fn new(op: InstructionOpcode, rd: RegisterIndex, immediate: UImmediate) -> Self {
+        Utype(u64::from(op as u8) | (u64::from(rd as u8) << 8) | (u64::from(immediate) << 32))
     }
 
-    pub fn new_s(
-        op: InstructionOpcode,
-        rd: RegisterIndex,
-        immediate: Immediate,
-        m: InstructionModule,
-    ) -> Self {
-        Self::new(op, rd, immediate as UImmediate, m)
+    pub fn new_s(op: InstructionOpcode, rd: RegisterIndex, immediate: Immediate) -> Self {
+        Self::new(op, rd, immediate as UImmediate)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -392,9 +352,10 @@ pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
 }
 
 pub fn instruction_length(i: Instruction) -> usize {
-    match extract_module(i) {
-        MODULE_RVC => 2,
-        _ => 4,
+    if extract_opcode(i) <= MAXIMUM_NORMAL_OPCODE {
+        4
+    } else {
+        2
     }
 }
 
@@ -406,10 +367,5 @@ mod tests {
     #[test]
     fn test_instruction_op_should_fit_in_byte() {
         assert_eq!(1, size_of::<InstructionOpcode>());
-    }
-
-    #[test]
-    fn test_module_should_fit_in_byte() {
-        assert_eq!(1, size_of::<InstructionModule>());
     }
 }
