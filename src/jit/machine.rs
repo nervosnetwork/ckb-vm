@@ -1,7 +1,7 @@
 use super::{emitter::Emitter, instructions::is_jitable_instruction, tracer::Tracer, value::Value};
 use crate::{
     decoder::build_imac_decoder,
-    instructions::{instruction_length, is_basic_block_end_instruction},
+    instructions::{execute, instruction_length, is_basic_block_end_instruction},
     CoreMachine, DefaultMachineBuilder, Error, InstructionCycleFunc, Machine, Memory, Register,
     SparseMemory, SupportMachine, Syscalls, RISCV_GENERAL_REGISTER_NUMBER,
 };
@@ -236,11 +236,11 @@ impl<'a> BaselineJitMachine<'a> {
             let mut instructions = Vec::new();
             loop {
                 let instruction = decoder.decode(machine.memory_mut(), current_pc)?;
-                let jitable = is_jitable_instruction(&instruction);
-                let end_instruction = (!jitable) || is_basic_block_end_instruction(&instruction);
+                let jitable = is_jitable_instruction(instruction);
+                let end_instruction = (!jitable) || is_basic_block_end_instruction(instruction);
                 // Unjitable instruction will be its own basic block
                 if instructions.is_empty() || jitable {
-                    let length = instruction_length(&instruction);
+                    let length = instruction_length(instruction);
                     current_pc += length;
                     block_length += length;
                     block_cycles += machine
@@ -256,7 +256,7 @@ impl<'a> BaselineJitMachine<'a> {
                 }
             }
             for i in &instructions {
-                i.execute(&mut machine)?;
+                execute(*i, &mut machine)?;
             }
             machine.add_cycles(block_cycles)?;
             let rust_data = &mut machine.inner_mut().rust_data;
@@ -268,7 +268,7 @@ impl<'a> BaselineJitMachine<'a> {
                 // current basic block is hot, JIT it.
                 let mut compiling_machine = JitCompilingMachine::new(pc);
                 for i in &instructions {
-                    i.execute(&mut compiling_machine)?;
+                    execute(*i, &mut compiling_machine)?;
                 }
                 emitter.setup()?;
                 for write in compiling_machine.writes() {

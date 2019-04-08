@@ -1,15 +1,9 @@
-use crate::instructions::{i, rvc, Instruction};
+use crate::instructions::{extract_opcode, Instruction, OP_EBREAK, OP_ECALL};
 
-pub fn is_jitable_instruction(i: &Instruction) -> bool {
-    match i {
-        Instruction::I(i) => match i {
-            i::Instruction::Env(_) => false,
-            _ => true,
-        },
-        Instruction::RVC(i) => match i {
-            rvc::Instruction::EBREAK => false,
-            _ => true,
-        },
-        Instruction::M(_) => true,
+pub fn is_jitable_instruction(i: Instruction) -> bool {
+    match extract_opcode(i) {
+        OP_ECALL => false,
+        OP_EBREAK => false,
+        _ => true,
     }
 }
