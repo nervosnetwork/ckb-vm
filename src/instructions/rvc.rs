@@ -1,8 +1,8 @@
-use super::super::SP;
+use super::super::registers::SP;
 use super::register::Register;
 use super::utils::{rd, x, xs};
 use super::{blank_instruction, Instruction, Itype, Rtype, Stype, Utype};
-use crate::instructions as insts;
+use ckb_vm_definitions::instructions as insts;
 
 // Notice the location of rs2 in RVC encoding is different from full encoding
 #[inline(always)]

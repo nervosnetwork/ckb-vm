@@ -3,7 +3,7 @@ use crate::{
     decoder::build_imac_decoder,
     instructions::{execute, instruction_length, is_basic_block_end_instruction},
     CoreMachine, DefaultMachineBuilder, Error, InstructionCycleFunc, Machine, Memory, Register,
-    SparseMemory, SupportMachine, Syscalls, RISCV_GENERAL_REGISTER_NUMBER,
+    SparseMemory, SupportMachine, Syscalls,
 };
 use fnv::FnvHashMap;
 use libc::{c_int, uint64_t};
@@ -31,7 +31,6 @@ struct AsmData {
 
 impl AsmData {
     fn new(rust_data: &RustData) -> Self {
-        debug_assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
         AsmData {
             registers: [0; ASM_DATA_REGISTERS_SLOTS],
             rust_data: ptr::NonNull::from(rust_data),
@@ -199,7 +198,8 @@ impl<'a> BaselineJitMachine<'a> {
         for syscall in data.syscalls {
             builder = builder.syscall(syscall);
         }
-        let mut machine = builder.build().load_program(program, args)?;
+        let mut machine = builder.build();
+        machine.load_program(program, args)?;
         let mut emitter = Emitter::new()?;
         let decoder = build_imac_decoder::<u64>();
         machine.set_running(true);
@@ -399,7 +399,6 @@ struct JitCompilingMachine {
 
 impl JitCompilingMachine {
     fn new(pc: usize) -> Self {
-        debug_assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
         let registers = [
             Value::Register(0),
             Value::Register(1),
@@ -723,5 +722,15 @@ extern "C" fn ckb_vm_jit_ffi_load64(
             0
         }
         None => -1,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RISCV_GENERAL_REGISTER_NUMBER;
+
+    #[test]
+    fn test_jit_constant_rules() {
+        assert!(RISCV_GENERAL_REGISTER_NUMBER == 32);
     }
 }

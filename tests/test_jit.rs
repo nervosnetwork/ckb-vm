@@ -1,8 +1,10 @@
 #![cfg(feature = "jit")]
 
 use ckb_vm::{
-    default_jit_machine, BaselineJitMachine, BaselineJitRunData, Error, Instruction, Register,
-    SupportMachine, Syscalls, TcgTracer, A0, A1, A2, A3, A4, A5, A7,
+    default_jit_machine,
+    registers::{A0, A1, A2, A3, A4, A5, A7},
+    BaselineJitMachine, BaselineJitRunData, Error, Instruction, Register, SupportMachine, Syscalls,
+    TcgTracer,
 };
 use std::fs::File;
 use std::io::Read;

@@ -4,7 +4,7 @@ use super::utils::{
 };
 use super::Register;
 use super::{blank_instruction, Instruction, Itype, Rtype, Stype, Utype};
-use crate::instructions as insts;
+use ckb_vm_definitions::instructions as insts;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.

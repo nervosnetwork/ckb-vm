@@ -1,8 +1,9 @@
 extern crate ckb_vm;
 
 use ckb_vm::{
+    registers::{A0, A1, A2, A3, A4, A5, A7},
     run, DefaultCoreMachine, DefaultMachineBuilder, Error, Register, SparseMemory, SupportMachine,
-    Syscalls, A0, A1, A2, A3, A4, A5, A7,
+    Syscalls,
 };
 use std::fs::File;
 use std::io::Read;
@@ -62,10 +63,10 @@ pub fn test_custom_syscall() {
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
             .syscall(Box::new(CustomSyscall {}))
             .build();
-    machine = machine
+    machine
         .load_program(&buffer, &vec![b"syscall".to_vec()])
         .unwrap();
-    let result = machine.interpret();
+    let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 39);
 }

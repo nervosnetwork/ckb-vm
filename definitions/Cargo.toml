@@ -1,0 +1,11 @@
+[package]
+name = "ckb-vm-definitions"
+version = "0.1.0"
+license = "MIT"
+authors = ["Nervos Core Dev <dev@nervos.org>"]
+edition = "2018"
+autobins = false
+
+[[bin]]
+name = "generate_asm_constants"
+path = "src/generate_asm_constants.rs"

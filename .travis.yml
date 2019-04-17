@@ -34,14 +34,14 @@ matrix:
           packages:
             - git
             - build-essential
-      env: SUITE=ci-asm
+      env: SUITE=ci-generated
     - rust: 1.33.0
       addons:
         apt:
           packages:
             - git
             - build-essential
-      env: SUITE=ci-jit
+      env: SUITE=ci-all-features
     - os: osx
       rust: 1.33.0
       addons:
@@ -49,7 +49,7 @@ matrix:
           packages:
             - git
             - build-essential
-      env: SUITE=ci-jit
+      env: SUITE=ci-all-features
 
 script:
 - make "$SUITE"
