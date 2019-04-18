@@ -106,8 +106,13 @@ fn main() {
     println!();
 
     println!("#ifdef CKB_VM_ASM_GENERATE_LABEL_TABLES");
+    println!("#ifdef __APPLE__");
+    println!(".global _ckb_vm_asm_labels");
+    println!("_ckb_vm_asm_labels:");
+    println!("#else");
     println!(".global ckb_vm_asm_labels");
     println!("ckb_vm_asm_labels:");
+    println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
     for name in INSTRUCTION_OPCODE_NAMES.iter() {
         println!(

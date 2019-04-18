@@ -131,8 +131,13 @@
 #define CKB_VM_ASM_OP_CUSTOM_TRACE_END 105
 
 #ifdef CKB_VM_ASM_GENERATE_LABEL_TABLES
+#ifdef __APPLE__
+.global _ckb_vm_asm_labels
+_ckb_vm_asm_labels:
+#else
 .global ckb_vm_asm_labels
 ckb_vm_asm_labels:
+#endif
 .CKB_VM_ASM_LABEL_TABLE:
 	.long	.CKB_VM_ASM_LABEL_OP_UNLOADED - .CKB_VM_ASM_LABEL_TABLE
 	.long	.CKB_VM_ASM_LABEL_OP_ADD - .CKB_VM_ASM_LABEL_TABLE
