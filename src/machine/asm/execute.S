@@ -139,13 +139,15 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
   jne .exit_trace
+  movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
+  cmp $0, %rdx
+  je .exit_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
   cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
-  movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %eax
-  addq %rax, PC_ADDRESS
+  addq %rdx, PC_ADDRESS
   lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
   NEXT_INST

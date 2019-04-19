@@ -123,3 +123,18 @@ pub fn test_asm_trace() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 7);
 }
+
+#[test]
+pub fn test_asm_jump0() {
+    let mut file = File::open("tests/programs/jump0_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec![b"jump0_64".to_vec()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::InvalidInstruction(0)));
+}
