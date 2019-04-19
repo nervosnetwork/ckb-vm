@@ -65,7 +65,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         }
         // This is essentially memset call
         unsafe {
-            let slice_ptr = self[..size].as_mut_ptr();
+            let slice_ptr = self[addr..addr + size].as_mut_ptr();
             ptr::write_bytes(slice_ptr, b'0', size);
         }
         Ok(())
@@ -182,7 +182,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         }
         // This is essentially memset call
         unsafe {
-            let slice_ptr = self[..size].as_mut_ptr();
+            let slice_ptr = self[addr..addr + size].as_mut_ptr();
             ptr::write_bytes(slice_ptr, value, size);
         }
         Ok(())
