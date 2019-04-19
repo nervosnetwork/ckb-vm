@@ -545,7 +545,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         while self.running() {
             let pc = self.pc().to_usize();
             let slot = calculate_slot(pc);
-            if pc != self.traces[slot].address {
+            if pc != self.traces[slot].address || self.traces[slot].instruction_count == 0 {
                 self.traces[slot] = Trace::default();
                 let mut current_pc = pc;
                 let mut i = 0;
