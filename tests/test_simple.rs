@@ -55,10 +55,10 @@ pub fn test_simple_cycles() {
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
-    machine = machine
+    machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
-    let result = machine.interpret();
+    let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
@@ -77,10 +77,10 @@ pub fn test_simple_max_cycles_reached() {
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
-    machine = machine
+    machine
         .load_program(&buffer, &vec![b"simple".to_vec()])
         .unwrap();
-    let result = machine.interpret();
+    let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
 }

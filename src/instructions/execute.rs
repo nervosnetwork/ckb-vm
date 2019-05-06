@@ -1,10 +1,10 @@
 use super::{
-    super::{machine::Machine, Error, SP},
-    common, extract_opcode,
+    super::{machine::Machine, registers::SP, Error},
+    common, extract_opcode, instruction_length,
     utils::update_register,
-    Instruction, Itype, Register, Rtype, Stype, Utype, MAXIMUM_NORMAL_OPCODE,
+    Instruction, Itype, Register, Rtype, Stype, Utype,
 };
-use crate::instructions as insts;
+use ckb_vm_definitions::instructions as insts;
 
 pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
     let op = extract_opcode(inst);
@@ -672,9 +672,15 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             machine.ebreak()?;
             None
         }
+        insts::OP_CUSTOM_LOAD_IMM => {
+            let i = Utype(inst);
+            let value = Mac::REG::from_i32(i.immediate_s());
+            update_register(machine, i.rd(), value);
+            None
+        }
         _ => return Err(Error::InvalidOp(op as u8)),
     };
-    let default_instruction_size = if op <= MAXIMUM_NORMAL_OPCODE { 4 } else { 2 };
+    let default_instruction_size = instruction_length(inst);
     let default_next_pc = machine
         .pc()
         .overflowing_add(&Mac::REG::from_usize(default_instruction_size));

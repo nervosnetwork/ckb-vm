@@ -1,7 +1,7 @@
 use super::register::Register;
 use super::utils::{funct3, funct7, opcode, rd, rs1, rs2};
 use super::{Instruction, Rtype};
-use crate::instructions as insts;
+use ckb_vm_definitions::instructions as insts;
 
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let bit_length = R::BITS;

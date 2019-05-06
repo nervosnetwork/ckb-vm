@@ -2,7 +2,7 @@ use super::{
     machine::{MemorySize, Write, REGISTER_PC},
     value::{ActionOp1, ActionOp2, SignActionOp2, Value},
 };
-use crate::{Error, A0, RISCV_GENERAL_REGISTER_NUMBER};
+use crate::{registers::A0, Error, RISCV_GENERAL_REGISTER_NUMBER};
 use libc::{c_int, c_void, size_t, uint32_t};
 // use std::rc::Rc;
 

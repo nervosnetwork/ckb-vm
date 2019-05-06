@@ -224,7 +224,7 @@ impl<R: Register> Memory<R> for Mmu<R> {
         if addr & (RISCV_PAGESIZE - 1) != 0 || size & (RISCV_PAGESIZE - 1) != 0 {
             return Err(Error::Unaligned);
         }
-        let position = self.vms.iter().position(|vm| vm.is_none());
+        let position = self.vms.iter().position(Option::is_none);
         if let Some(i) = position {
             debug_assert!(i < MAX_VIRTUAL_MEMORY_ENTRIES);
             // This one is for extra caution, even though right now
