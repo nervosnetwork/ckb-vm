@@ -1,7 +1,7 @@
 use ckb_vm_definitions::{
     asm::{
-        AsmCoreMachine, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        TRACE_ITEM_LENGTH,
+        AsmCoreMachine, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED,
+        RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
     registers::SP,
@@ -17,10 +17,7 @@ use std::mem::{size_of, zeroed};
 // of this as a workaround to the problem that build.rs cannot depend on any
 // of its crate contents.
 fn main() {
-    println!(
-        "#define CKB_VM_ASM_RISCV_MAX_MEMORY {}",
-        RISCV_MAX_MEMORY,
-    );
+    println!("#define CKB_VM_ASM_RISCV_MAX_MEMORY {}", RISCV_MAX_MEMORY,);
     println!();
 
     println!(
