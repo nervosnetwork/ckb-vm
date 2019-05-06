@@ -402,6 +402,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movsbq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -410,6 +412,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movzbq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -419,6 +423,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -427,6 +433,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movswq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -435,6 +443,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movzwq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -452,6 +462,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movslq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -460,6 +472,8 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   mov CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1d
   WRITE_RD(RS1)
   NEXT_INST
@@ -656,6 +670,8 @@ ckb_vm_x64_execute:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sb, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
   mov $1, TEMP1d
@@ -666,6 +682,8 @@ ckb_vm_x64_execute:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq REGISTER_ADDRESS(RS2s), RS2s
   movq RS2s, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
   mov $8, TEMP1d
@@ -675,6 +693,8 @@ ckb_vm_x64_execute:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sh, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
   mov $2, TEMP1d
@@ -848,6 +868,8 @@ ckb_vm_x64_execute:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
   mov $4, TEMP1d
@@ -942,6 +964,8 @@ ckb_vm_x64_execute:
   DECODE_U
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -950,6 +974,8 @@ ckb_vm_x64_execute:
   DECODE_U
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movslq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -964,6 +990,8 @@ ckb_vm_x64_execute:
   DECODE_S
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq REGISTER_ADDRESS(RS2s), RS2s
   movq RS2s, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
   mov $8, TEMP1d
@@ -973,6 +1001,8 @@ ckb_vm_x64_execute:
   DECODE_S
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  jae .exit_out_of_bound
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
   mov $4, TEMP1d
@@ -1035,6 +1065,10 @@ ckb_vm_x64_execute:
   addq %rcx, %rax
   movq %rax, PC_ADDRESS
   jmp .prepare_trace
+.p2align 3
+.exit_out_of_bound:
+  mov $CKB_VM_ASM_RET_OUT_OF_BOUND, %eax
+  jmp .exit
 .p2align 3
 .exit_max_cycles_exceeded:
   mov $CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED, %eax

@@ -138,3 +138,18 @@ pub fn test_asm_jump0() {
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidInstruction(0)));
 }
+
+#[test]
+pub fn test_asm_write_large_address() {
+    let mut file = File::open("tests/programs/write_large_address64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec![b"write_large_address64".to_vec()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
