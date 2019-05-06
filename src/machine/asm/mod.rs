@@ -8,8 +8,8 @@ use crate::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use ckb_vm_definitions::{
     asm::{
-        calculate_slot, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        TRACE_ITEM_LENGTH,
+        calculate_slot, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED,
+        RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
 };
