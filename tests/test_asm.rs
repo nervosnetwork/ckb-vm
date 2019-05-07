@@ -153,3 +153,17 @@ pub fn test_asm_write_large_address() {
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_misaligned_jump64() {
+    let mut file = File::open("tests/programs/misaligned_jump64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec![b"write_large_address64".to_vec()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+}
