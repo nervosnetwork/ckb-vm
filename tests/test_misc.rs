@@ -92,3 +92,13 @@ pub fn test_jump0() {
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidInstruction(0)));
 }
+
+#[test]
+pub fn test_misaligned_jump64() {
+    let mut file = File::open("tests/programs/misaligned_jump64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec![b"misaligned_jump64".to_vec()]);
+    assert!(result.is_ok());
+}

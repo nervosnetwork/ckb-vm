@@ -649,13 +649,17 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_RVC_JR => {
             let i = Stype(inst);
-            Some(machine.registers()[i.rs1()].clone())
+            let mut next_pc = machine.registers()[i.rs1()].clone();
+            next_pc = next_pc & (!Mac::REG::one());
+            Some(next_pc)
         }
         insts::OP_RVC_JALR => {
             let i = Stype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
+            let mut next_pc = machine.registers()[i.rs1()].clone();
+            next_pc = next_pc & (!Mac::REG::one());
             update_register(machine, 1, link);
-            Some(machine.registers()[i.rs1()].clone())
+            Some(next_pc)
         }
         insts::OP_RVC_ADDI16SP => {
             let i = Itype(inst);
