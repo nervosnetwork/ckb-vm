@@ -263,7 +263,7 @@ impl<'a> AsmMachine<'a> {
                             .machine
                             .instruction_cycle_func()
                             .as_ref()
-                            .map(|f| f(&instruction))
+                            .map(|f| f(instruction))
                             .unwrap_or(0);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading

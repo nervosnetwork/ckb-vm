@@ -77,7 +77,7 @@ pub fn test_jit_with_custom_syscall() {
     assert_eq!(result.unwrap().0, 39);
 }
 
-fn dummy_cycle_func(_i: &Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction) -> u64 {
     1
 }
 

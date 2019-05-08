@@ -67,7 +67,7 @@ pub fn test_asm_with_custom_syscall() {
     assert_eq!(result.unwrap(), 39);
 }
 
-fn dummy_cycle_func(_i: &Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction) -> u64 {
     1
 }
 

@@ -247,7 +247,7 @@ impl BaselineJitMachine {
                     block_cycles += machine
                         .instruction_cycle_func()
                         .as_ref()
-                        .map(|f| f(&instruction))
+                        .map(|f| f(instruction))
                         .unwrap_or(0);
                     instructions.push(instruction);
                 }
