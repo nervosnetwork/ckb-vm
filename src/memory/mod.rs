@@ -1,5 +1,5 @@
 use super::{Error, Register, RISCV_PAGESIZE};
-use std::rc::Rc;
+use bytes::Bytes;
 
 pub mod flat;
 pub mod mmu;
@@ -27,13 +27,7 @@ pub trait Memory<R: Register> {
         addr: usize,
         size: usize,
         prot: u32,
-        // TODO: we know using Rc and Box here is less optimal since we are adding
-        // dynamic calls. The reason we are sticking with it, is that it would require
-        // changing a whole lot of files if we add lifetime parameters here. Also in the
-        // future, we might want to refactor this into a virtual file system style API,
-        // or even remove Memory trait and merge everything into Machine trait, so
-        // we are sticking with the simpler solution for now.
-        source: Option<Rc<Box<[u8]>>>,
+        source: Option<Bytes>,
         offset: usize,
     ) -> Result<(), Error>;
     fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error>;

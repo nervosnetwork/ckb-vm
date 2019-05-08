@@ -11,11 +11,11 @@ use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
+use bytes::Bytes;
 use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
 use std::cmp::max;
 use std::fmt::{self, Display};
-use std::rc::Rc;
 
 fn elf_bits(header: &Header) -> Option<usize> {
     // This is documented in ELF specification, we are exacting ELF file
@@ -95,13 +95,12 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
-    fn load_elf(&mut self, program: &[u8]) -> Result<(), Error> {
+    fn load_elf(&mut self, program: &Bytes) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         let bits = elf_bits(&elf.header).ok_or(Error::InvalidElfBits)?;
         if bits != Self::REG::BITS {
             return Err(Error::InvalidElfBits);
         }
-        let program_slice = Rc::new(program.to_vec().into_boxed_slice());
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
@@ -114,7 +113,7 @@ pub trait SupportMachine: CoreMachine {
                     aligned_start,
                     size,
                     convert_flags(program_header.p_flags),
-                    Some(Rc::clone(&program_slice)),
+                    Some(program.clone()),
                     program_header.p_offset as usize - padding_start,
                 )?;
                 self.memory_mut()
@@ -127,7 +126,7 @@ pub trait SupportMachine: CoreMachine {
 
     fn initialize_stack(
         &mut self,
-        args: &[Vec<u8>],
+        args: &[Bytes],
         stack_start: usize,
         stack_size: usize,
     ) -> Result<(), Error> {
@@ -138,13 +137,12 @@ pub trait SupportMachine: CoreMachine {
         // of each argv object.
         let mut values = vec![Self::REG::from_usize(args.len())];
         for arg in args {
-            let bytes = arg.as_slice();
-            let len = Self::REG::from_usize(bytes.len() + 1);
+            let len = Self::REG::from_usize(arg.len() + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
-            self.memory_mut().store_bytes(address.to_usize(), bytes)?;
+            self.memory_mut().store_bytes(address.to_usize(), arg)?;
             self.memory_mut()
-                .store_byte(address.to_usize() + bytes.len(), 1, 0)?;
+                .store_byte(address.to_usize() + arg.len(), 1, 0)?;
 
             values.push(address.clone());
             self.set_register(SP, address);
@@ -249,7 +247,7 @@ pub struct DefaultMachine<'a, Inner> {
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
     syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
     running: bool,
-    exit_code: u8,
+    exit_code: i8,
 }
 
 impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
@@ -309,7 +307,7 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
         match code {
             93 => {
                 // exit
-                self.exit_code = self.registers()[A0].to_u8();
+                self.exit_code = self.registers()[A0].to_i8();
                 self.running = false;
                 Ok(())
             }
@@ -347,7 +345,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
 }
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
-    pub fn load_program(&mut self, program: &[u8], args: &[Vec<u8>]) -> Result<(), Error> {
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
         self.load_elf(program)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
@@ -372,7 +370,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         self.running = running;
     }
 
-    pub fn exit_code(&self) -> u8 {
+    pub fn exit_code(&self) -> i8 {
         self.exit_code
     }
 
@@ -388,7 +386,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     // instruction and run it, no optimization is performed here. It might
     // not be practical in production, but it serves as a baseline and
     // reference implementation
-    pub fn run(&mut self) -> Result<u8, Error> {
+    pub fn run(&mut self) -> Result<i8, Error> {
         let decoder = build_imac_decoder::<Inner::REG>();
         self.set_running(true);
         while self.running() {

@@ -1,10 +1,10 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{round_page, Memory, Page, PROT_EXEC, PROT_READ, PROT_WRITE};
 
+use bytes::Bytes;
 use std::cmp::min;
 use std::marker::PhantomData;
 use std::ptr;
-use std::rc::Rc;
 
 pub const MAX_VIRTUAL_MEMORY_ENTRIES: usize = 64;
 
@@ -19,7 +19,7 @@ pub struct VirtualMemoryEntry {
     addr: usize,
     size: usize,
     prot: u32,
-    source: Option<Rc<Box<[u8]>>>,
+    source: Option<Bytes>,
     offset: usize,
     /// This reference count value is used to implement a handy trick:
     /// a virtual memory entry can store multiple pages, and it should only
@@ -218,7 +218,7 @@ impl<R: Register> Memory<R> for Mmu<R> {
         addr: usize,
         size: usize,
         prot: u32,
-        source: Option<Rc<Box<[u8]>>>,
+        source: Option<Bytes>,
         offset: usize,
     ) -> Result<(), Error> {
         if addr & (RISCV_PAGESIZE - 1) != 0 || size & (RISCV_PAGESIZE - 1) != 0 {

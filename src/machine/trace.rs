@@ -9,8 +9,8 @@ use super::{
     },
     CoreMachine, DefaultMachine, Machine, SupportMachine,
 };
+use bytes::Bytes;
 use std::cmp::min;
-use std::rc::Rc;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -78,7 +78,7 @@ impl<Inner: SupportMachine> Memory<<Inner as CoreMachine>::REG> for TraceMachine
         addr: usize,
         size: usize,
         prot: u32,
-        source: Option<Rc<Box<[u8]>>>,
+        source: Option<Bytes>,
         offset: usize,
     ) -> Result<(), Error> {
         self.machine
@@ -203,12 +203,12 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
         }
     }
 
-    pub fn load_program(&mut self, program: &[u8], args: &[Vec<u8>]) -> Result<(), Error> {
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
         self.machine.load_program(program, args)?;
         Ok(())
     }
 
-    pub fn run(&mut self) -> Result<u8, Error> {
+    pub fn run(&mut self) -> Result<i8, Error> {
         let decoder = build_imac_decoder::<Inner::REG>();
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
