@@ -5,6 +5,7 @@ use crate::{
     CoreMachine, DefaultMachineBuilder, Error, InstructionCycleFunc, Machine, Memory, Register,
     SparseMemory, SupportMachine, Syscalls,
 };
+use bytes::Bytes;
 use fnv::FnvHashMap;
 use libc::{c_int, uint64_t};
 use memmap::{Mmap, MmapMut};
@@ -113,13 +114,13 @@ impl RustData {
 }
 
 #[derive(Default)]
-pub struct BaselineJitRunData<'a, 'b> {
+pub struct BaselineJitRunData<'b> {
     max_cycles: Option<u64>,
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
-    syscalls: Vec<Box<dyn Syscalls<BaselineJitMachine<'a>> + 'b>>,
+    syscalls: Vec<Box<dyn Syscalls<BaselineJitMachine> + 'b>>,
 }
 
-impl<'a, 'b> BaselineJitRunData<'a, 'b> {
+impl<'b> BaselineJitRunData<'b> {
     pub fn max_cycles(mut self, max_cycles: u64) -> Self {
         self.max_cycles = Some(max_cycles);
         self
@@ -133,7 +134,7 @@ impl<'a, 'b> BaselineJitRunData<'a, 'b> {
         self
     }
 
-    pub fn syscall(mut self, syscall: Box<dyn Syscalls<BaselineJitMachine<'a>> + 'b>) -> Self {
+    pub fn syscall(mut self, syscall: Box<dyn Syscalls<BaselineJitMachine> + 'b>) -> Self {
         self.syscalls.push(syscall);
         self
     }
@@ -158,17 +159,17 @@ impl<'a, 'b> BaselineJitRunData<'a, 'b> {
 /// the above baseline JIT, this path still has many uncertainties which is more
 /// likely to change. Also this will has much lower priority if baseline JIT
 /// is proved to be enough for CKB use.
-pub struct BaselineJitMachine<'a> {
+pub struct BaselineJitMachine {
     asm_data: AsmData,
     rust_data: Pin<Box<RustData>>,
     // In fact program should not belong here, however we are putting it here
     // so as to shape the API in a way that one instance here only works on
     // one program
-    program: &'a [u8],
+    program: Bytes,
 }
 
-impl<'a> BaselineJitMachine<'a> {
-    pub fn new(program: &'a [u8], tracer: Box<Tracer>) -> Self {
+impl BaselineJitMachine {
+    pub fn new(program: Bytes, tracer: Box<Tracer>) -> Self {
         let rust_data = Box::pin(RustData::new(tracer));
         let asm_data = AsmData::new(rust_data.as_ref().get_ref());
 
@@ -179,18 +180,18 @@ impl<'a> BaselineJitMachine<'a> {
         }
     }
 
-    pub fn run(self, args: &[Vec<u8>]) -> Result<(u8, Self), Error> {
+    pub fn run(self, args: &[Bytes]) -> Result<(i8, Self), Error> {
         self.run_with_data(args, BaselineJitRunData::default())
     }
 
     pub fn run_with_data<'b>(
         mut self,
-        args: &[Vec<u8>],
-        data: BaselineJitRunData<'a, 'b>,
-    ) -> Result<(u8, Self), Error> {
+        args: &[Bytes],
+        data: BaselineJitRunData<'b>,
+    ) -> Result<(i8, Self), Error> {
         self.reset();
         self.rust_data.max_cycles = data.max_cycles;
-        let program = self.program;
+        let program = self.program.clone();
         let mut builder = DefaultMachineBuilder::<Self>::new(self);
         if let Some(instruction_cycle_func) = data.instruction_cycle_func {
             builder = builder.instruction_cycle_func(instruction_cycle_func);
@@ -199,7 +200,7 @@ impl<'a> BaselineJitMachine<'a> {
             builder = builder.syscall(syscall);
         }
         let mut machine = builder.build();
-        machine.load_program(program, args)?;
+        machine.load_program(&program, args)?;
         let mut emitter = Emitter::new()?;
         let decoder = build_imac_decoder::<u64>();
         machine.set_running(true);
@@ -246,7 +247,7 @@ impl<'a> BaselineJitMachine<'a> {
                     block_cycles += machine
                         .instruction_cycle_func()
                         .as_ref()
-                        .map(|f| f(&instruction))
+                        .map(|f| f(instruction))
                         .unwrap_or(0);
                     instructions.push(instruction);
                 }
@@ -317,7 +318,7 @@ impl<'a> BaselineJitMachine<'a> {
     }
 }
 
-impl<'a> CoreMachine for BaselineJitMachine<'a> {
+impl CoreMachine for BaselineJitMachine {
     type REG = u64;
     type MEM = SparseMemory<u64>;
 
@@ -346,7 +347,7 @@ impl<'a> CoreMachine for BaselineJitMachine<'a> {
     }
 }
 
-impl<'a> SupportMachine for BaselineJitMachine<'a> {
+impl SupportMachine for BaselineJitMachine {
     fn elf_end(&self) -> usize {
         self.rust_data.elf_end
     }
@@ -521,7 +522,7 @@ impl Memory<Value> for JitCompilingMachine {
         _addr: usize,
         _size: usize,
         _prot: u32,
-        _source: Option<Rc<Box<[u8]>>>,
+        _source: Option<Bytes>,
         _offset: usize,
     ) -> Result<(), Error> {
         Err(Error::Unimplemented)

@@ -15,6 +15,7 @@ jit = ["fnv", "memmap", "libc"]
 
 [dependencies]
 byteorder = "1"
+bytes = "0.4.12"
 goblin = "0.0.22"
 fnv = { version = "1.0.6", optional = true }
 memmap = { version = "0.7.0", optional = true }

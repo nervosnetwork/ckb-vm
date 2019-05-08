@@ -6,6 +6,7 @@ use crate::{
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use bytes::Bytes;
 use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED,
@@ -17,7 +18,6 @@ use libc::c_uchar;
 use std::cmp::min;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::ptr;
-use std::rc::Rc;
 
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 
@@ -56,7 +56,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         addr: usize,
         size: usize,
         _prot: u32,
-        source: Option<Rc<Box<[u8]>>>,
+        source: Option<Bytes>,
         offset: usize,
     ) -> Result<(), Error> {
         if let Some(source) = source {
@@ -232,12 +232,12 @@ impl<'a> AsmMachine<'a> {
         Self { machine }
     }
 
-    pub fn load_program(&mut self, program: &[u8], args: &[Vec<u8>]) -> Result<(), Error> {
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
         self.machine.load_program(program, args)?;
         Ok(())
     }
 
-    pub fn run(&mut self) -> Result<u8, Error> {
+    pub fn run(&mut self) -> Result<i8, Error> {
         let decoder = build_imac_decoder::<u64>();
         self.machine.set_running(true);
         while self.machine.running() {
@@ -263,7 +263,7 @@ impl<'a> AsmMachine<'a> {
                             .machine
                             .instruction_cycle_func()
                             .as_ref()
-                            .map(|f| f(&instruction))
+                            .map(|f| f(instruction))
                             .unwrap_or(0);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading

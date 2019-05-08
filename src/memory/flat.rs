@@ -2,12 +2,12 @@ use super::super::{Error, Register, RISCV_MAX_MEMORY};
 use super::Memory;
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use bytes::Bytes;
 use std::cmp::min;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
-use std::rc::Rc;
 
 pub struct FlatMemory<R> {
     data: Vec<u8>,
@@ -45,7 +45,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         addr: usize,
         size: usize,
         _prot: u32,
-        source: Option<Rc<Box<[u8]>>>,
+        source: Option<Bytes>,
         offset: usize,
     ) -> Result<(), Error> {
         if addr + size > self.len() {

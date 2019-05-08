@@ -17,6 +17,7 @@ pub use crate::{
     memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
     syscalls::Syscalls,
 };
+use bytes::Bytes;
 use std::io::{Error as IOError, ErrorKind};
 
 #[cfg(feature = "jit")]
@@ -53,9 +54,9 @@ impl From<IOError> for Error {
 }
 
 pub fn run<R: Register, M: Memory<R> + Default>(
-    program: &[u8],
-    args: &[Vec<u8>],
-) -> Result<u8, Error> {
+    program: &Bytes,
+    args: &[Bytes],
+) -> Result<i8, Error> {
     let mut machine = TraceMachine::new(DefaultMachine::<DefaultCoreMachine<R, M>>::default());
     machine.load_program(program, args)?;
     machine.run()

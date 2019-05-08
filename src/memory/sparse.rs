@@ -1,10 +1,10 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{round_page, Memory, Page};
 
+use bytes::Bytes;
 use std::cmp::min;
 use std::marker::PhantomData;
 use std::ptr;
-use std::rc::Rc;
 
 const MAX_PAGES: usize = RISCV_MAX_MEMORY / RISCV_PAGESIZE;
 const INVALID_PAGE_INDEX: u16 = 0xFFFF;
@@ -73,7 +73,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         addr: usize,
         size: usize,
         _prot: u32,
-        source: Option<Rc<Box<[u8]>>>,
+        source: Option<Bytes>,
         offset: usize,
     ) -> Result<(), Error> {
         // For simplicity, we implement this using store_bytes for now. Later
