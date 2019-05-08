@@ -167,3 +167,18 @@ pub fn test_misaligned_jump64() {
     let result = machine.run();
     assert!(result.is_ok());
 }
+
+#[test]
+pub fn test_mulw64() {
+    let mut file = File::open("tests/programs/mulw64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec![b"mulw64".to_vec()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}

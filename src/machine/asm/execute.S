@@ -549,6 +549,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
   imul RS2rd, RS1d
+  movsx RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
