@@ -102,3 +102,13 @@ pub fn test_misaligned_jump64() {
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec![b"misaligned_jump64".to_vec()]);
     assert!(result.is_ok());
 }
+
+#[test]
+pub fn test_mulw64() {
+    let mut file = File::open("tests/programs/mulw64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec![b"mulw64".to_vec()]);
+    assert!(result.is_ok());
+}
