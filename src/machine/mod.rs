@@ -2,10 +2,10 @@
 pub mod asm;
 pub mod trace;
 
-use super::bits::rounddown;
+use super::bits::{rounddown, roundup};
 use super::decoder::build_imac_decoder;
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{Memory, PROT_EXEC, PROT_READ, PROT_WRITE};
+use super::memory::{Memory, FLAG_EXECUTABLE, FLAG_FREEZED};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
@@ -14,7 +14,6 @@ use super::{
 use bytes::Bytes;
 use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
-use std::cmp::max;
 use std::fmt::{self, Display};
 
 fn elf_bits(header: &Header) -> Option<usize> {
@@ -30,18 +29,18 @@ fn elf_bits(header: &Header) -> Option<usize> {
 }
 
 // Converts goblin's ELF flags into RISC-V flags
-fn convert_flags(p_flags: u32) -> u32 {
-    let mut flags = 0;
-    if p_flags & PF_R != 0 {
-        flags |= PROT_READ;
+fn convert_flags(p_flags: u32) -> Result<u8, Error> {
+    let readable = p_flags & PF_R != 0;
+    let writable = p_flags & PF_W != 0;
+    let executable = p_flags & PF_X != 0;
+    if (!readable) || (writable && executable) {
+        return Err(Error::InvalidPermission);
     }
-    if p_flags & PF_W != 0 {
-        flags |= PROT_WRITE;
+    if executable {
+        Ok(FLAG_EXECUTABLE | FLAG_FREEZED)
+    } else {
+        Ok(FLAG_FREEZED)
     }
-    if p_flags & PF_X != 0 {
-        flags |= PROT_EXEC;
-    }
-    flags
 }
 
 /// This is the core part of RISC-V that only deals with data part, it
@@ -70,9 +69,6 @@ pub trait Machine: CoreMachine {
 /// such as ELF range, cycles which might be needed on Rust side of the logic,
 /// such as runner or syscall implementations.
 pub trait SupportMachine: CoreMachine {
-    // End address of elf segment
-    fn elf_end(&self) -> usize;
-    fn set_elf_end(&mut self, elf_end: usize);
     // Current execution cycles, it's up to the actual implementation to
     // call add_cycles for each instruction/operation to provide cycles.
     // The implementation might also choose not to do this to ignore this
@@ -105,16 +101,19 @@ pub trait SupportMachine: CoreMachine {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
                 let padding_start = program_header.p_vaddr as usize - aligned_start;
-                // Like a normal mmap, we will align size to pages internally
-                let size = program_header.p_filesz as usize + padding_start;
-                let current_elf_end = self.elf_end();
-                self.set_elf_end(max(aligned_start + size, current_elf_end));
-                self.memory_mut().mmap(
+                let size = roundup(
+                    program_header.p_memsz as usize + padding_start,
+                    RISCV_PAGESIZE,
+                );
+                self.memory_mut().init_pages(
                     aligned_start,
                     size,
-                    convert_flags(program_header.p_flags),
-                    Some(program.clone()),
-                    program_header.p_offset as usize - padding_start,
+                    convert_flags(program_header.p_flags)?,
+                    Some(program.slice(
+                        program_header.p_offset as usize,
+                        (program_header.p_offset + program_header.p_filesz) as usize,
+                    )),
+                    padding_start,
                 )?;
                 self.memory_mut()
                     .store_byte(aligned_start, padding_start, 0)?;
@@ -131,7 +130,7 @@ pub trait SupportMachine: CoreMachine {
         stack_size: usize,
     ) -> Result<(), Error> {
         self.memory_mut()
-            .mmap(stack_start, stack_size, PROT_READ | PROT_WRITE, None, 0)?;
+            .init_pages(stack_start, stack_size, 0, None, 0)?;
         self.set_register(SP, Self::REG::from_usize(stack_start + stack_size));
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.
@@ -158,7 +157,6 @@ pub trait SupportMachine: CoreMachine {
         }
         if self.registers()[SP].to_usize() < stack_start {
             // args exceed stack size
-            self.memory_mut().munmap(stack_start, stack_size)?;
             return Err(Error::OutOfBound);
         }
         Ok(())
@@ -170,7 +168,6 @@ pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pc: R,
     memory: M,
-    elf_end: usize,
     cycles: u64,
     max_cycles: Option<u64>,
 }
@@ -204,14 +201,6 @@ impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
 }
 
 impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
-    fn elf_end(&self) -> usize {
-        self.elf_end
-    }
-
-    fn set_elf_end(&mut self, elf_end: usize) {
-        self.elf_end = elf_end;
-    }
-
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -280,14 +269,6 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 }
 
 impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
-    fn elf_end(&self) -> usize {
-        self.inner.elf_end()
-    }
-
-    fn set_elf_end(&mut self, elf_end: usize) {
-        self.inner.set_elf_end(elf_end)
-    }
-
     fn cycles(&self) -> u64 {
         self.inner.cycles()
     }

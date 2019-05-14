@@ -4,13 +4,12 @@ use super::{
         instructions::{
             execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
         },
-        memory::Memory,
+        memory::{wxorx::WXorXMemory, Memory},
         Error,
     },
     CoreMachine, DefaultMachine, Machine, SupportMachine,
 };
 use bytes::Bytes;
-use std::cmp::min;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -18,7 +17,6 @@ const TRACE_SIZE: usize = 8192;
 const TRACE_MASK: usize = (TRACE_SIZE - 1);
 // The maximum number of instructions to cache in a trace item
 const TRACE_ITEM_LENGTH: usize = 16;
-const TRACE_ITEM_MAXIMAL_ADDRESS_LENGTH: usize = 4 * TRACE_ITEM_LENGTH;
 // Shifts to truncate a value so 2 traces has the minimal chance of sharing code.
 const TRACE_ADDRESS_SHIFTS: usize = 5;
 
@@ -39,13 +37,13 @@ pub struct TraceMachine<'a, Inner> {
     pub machine: DefaultMachine<'a, Inner>,
 
     traces: Vec<Trace>,
-    running_trace_slot: usize,
-    running_trace_cleared: bool,
 }
 
-impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
+impl<R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory<R, M>>> CoreMachine
+    for TraceMachine<'_, Inner>
+{
     type REG = <Inner as CoreMachine>::REG;
-    type MEM = Self;
+    type MEM = <Inner as CoreMachine>::MEM;
 
     fn pc(&self) -> &Self::REG {
         &self.machine.pc()
@@ -55,12 +53,12 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.set_pc(next_pc)
     }
 
-    fn memory(&self) -> &Self {
-        &self
+    fn memory(&self) -> &Self::MEM {
+        self.machine.memory()
     }
 
-    fn memory_mut(&mut self) -> &mut Self {
-        self
+    fn memory_mut(&mut self) -> &mut Self::MEM {
+        self.machine.memory_mut()
     }
 
     fn registers(&self) -> &[Self::REG] {
@@ -72,118 +70,9 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Memory<<Inner as CoreMachine>::REG> for TraceMachine<'_, Inner> {
-    fn mmap(
-        &mut self,
-        addr: usize,
-        size: usize,
-        prot: u32,
-        source: Option<Bytes>,
-        offset: usize,
-    ) -> Result<(), Error> {
-        self.machine
-            .memory_mut()
-            .mmap(addr, size, prot, source, offset)?;
-        self.clear_traces(addr, size);
-        Ok(())
-    }
-
-    fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error> {
-        self.machine.memory_mut().munmap(addr, size)?;
-        self.clear_traces(addr, size);
-        Ok(())
-    }
-
-    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
-        self.machine.memory_mut().store_byte(addr, size, value)?;
-        self.clear_traces(addr, size);
-        Ok(())
-    }
-
-    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
-        self.machine.memory_mut().store_bytes(addr, value)?;
-        self.clear_traces(addr, value.len());
-        Ok(())
-    }
-
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
-        self.machine.memory_mut().execute_load16(addr)
-    }
-
-    fn load8(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-    ) -> Result<<Inner as CoreMachine>::REG, Error> {
-        self.machine.memory_mut().load8(addr)
-    }
-
-    fn load16(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-    ) -> Result<<Inner as CoreMachine>::REG, Error> {
-        self.machine.memory_mut().load16(addr)
-    }
-
-    fn load32(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-    ) -> Result<<Inner as CoreMachine>::REG, Error> {
-        self.machine.memory_mut().load32(addr)
-    }
-
-    fn load64(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-    ) -> Result<<Inner as CoreMachine>::REG, Error> {
-        self.machine.memory_mut().load64(addr)
-    }
-
-    fn store8(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-        value: &<Inner as CoreMachine>::REG,
-    ) -> Result<(), Error> {
-        self.machine.memory_mut().store8(addr, value)?;
-        self.clear_traces(addr.to_usize(), 1);
-        Ok(())
-    }
-
-    fn store16(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-        value: &<Inner as CoreMachine>::REG,
-    ) -> Result<(), Error> {
-        self.machine.memory_mut().store16(addr, value)?;
-        self.clear_traces(addr.to_usize(), 2);
-        Ok(())
-    }
-
-    fn store32(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-        value: &<Inner as CoreMachine>::REG,
-    ) -> Result<(), Error> {
-        self.machine.memory_mut().store32(addr, value)?;
-        self.clear_traces(addr.to_usize(), 4);
-        Ok(())
-    }
-
-    fn store64(
-        &mut self,
-        addr: &<Inner as CoreMachine>::REG,
-        value: &<Inner as CoreMachine>::REG,
-    ) -> Result<(), Error> {
-        self.machine.memory_mut().store64(addr, value)?;
-        self.clear_traces(addr.to_usize(), 8);
-        Ok(())
-    }
-}
-
-// NOTE: this might look redundant, but what we need is the execute method
-// below works on TraceMachine instead of DefaultMachine, so we can leverage
-// CoreMachine and Memory trait implementations above to clear related cached
-// traces in case of a memory write.
-impl<Inner: SupportMachine> Machine for TraceMachine<'_, Inner> {
+impl<R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory<R, M>>> Machine
+    for TraceMachine<'_, Inner>
+{
     fn ecall(&mut self) -> Result<(), Error> {
         self.machine.ecall()
     }
@@ -193,13 +82,13 @@ impl<Inner: SupportMachine> Machine for TraceMachine<'_, Inner> {
     }
 }
 
-impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
+impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory<R, M>>>
+    TraceMachine<'a, Inner>
+{
     pub fn new(machine: DefaultMachine<'a, Inner>) -> Self {
         Self {
             machine,
             traces: vec![],
-            running_trace_slot: 0,
-            running_trace_cleared: false,
         }
     }
 
@@ -216,14 +105,14 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
         // larger trace item length.
         self.traces.resize_with(TRACE_SIZE, Trace::default);
         while self.machine.running() {
-            let pc = self.pc().to_usize();
+            let pc = self.machine.pc().to_usize();
             let slot = calculate_slot(pc);
             if pc != self.traces[slot].address || self.traces[slot].instruction_count == 0 {
                 self.traces[slot] = Trace::default();
                 let mut current_pc = pc;
                 let mut i = 0;
                 while i < TRACE_ITEM_LENGTH {
-                    let instruction = decoder.decode(self.memory_mut(), current_pc)?;
+                    let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                     let end_instruction = is_basic_block_end_instruction(instruction);
                     current_pc += instruction_length(instruction);
                     self.traces[slot].instructions[i] = instruction;
@@ -236,8 +125,6 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
                 self.traces[slot].length = current_pc - pc;
                 self.traces[slot].instruction_count = i as u8;
             }
-            self.running_trace_slot = slot;
-            self.running_trace_cleared = false;
             for i in 0..self.traces[slot].instruction_count {
                 let i = self.traces[slot].instructions[i as usize];
                 execute(i, self)?;
@@ -248,29 +135,9 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
                     .map(|f| f(i))
                     .unwrap_or(0);
                 self.machine.add_cycles(cycles)?;
-                if self.running_trace_cleared {
-                    break;
-                }
             }
         }
         Ok(self.machine.exit_code())
-    }
-
-    fn clear_traces(&mut self, address: usize, length: usize) {
-        let end = address + length;
-        let minimal_slot =
-            calculate_slot(address.saturating_sub(TRACE_ITEM_MAXIMAL_ADDRESS_LENGTH));
-        let maximal_slot = calculate_slot(end);
-        for slot in minimal_slot..=min(maximal_slot, self.traces.len()) {
-            let slot_address = self.traces[slot].address;
-            let slot_end = slot_address + self.traces[slot].length;
-            if !((end <= slot_address) || (slot_end <= address)) {
-                self.traces[slot] = Trace::default();
-                if self.running_trace_slot == slot {
-                    self.running_trace_cleared = true;
-                }
-            }
-        }
     }
 }
 

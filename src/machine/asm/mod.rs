@@ -1,21 +1,23 @@
 use crate::{
+    bits::{rounddown, roundup},
     decoder::build_imac_decoder,
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine,
+    memory::{fill_page_data, FLAG_FREEZED},
+    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, RISCV_MAX_MEMORY,
+    RISCV_PAGESIZE,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use ckb_vm_definitions::{
     asm::{
-        calculate_slot, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED,
-        RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
+        calculate_slot, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION,
+        RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
 };
 use libc::c_uchar;
-use std::cmp::min;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::ptr;
 
@@ -51,25 +53,32 @@ impl CoreMachine for Box<AsmCoreMachine> {
 }
 
 impl Memory<u64> for Box<AsmCoreMachine> {
-    fn mmap(
+    fn init_pages(
         &mut self,
         addr: usize,
         size: usize,
-        _prot: u32,
+        flags: u8,
         source: Option<Bytes>,
-        offset: usize,
+        offset_from_addr: usize,
     ) -> Result<(), Error> {
-        if let Some(source) = source {
-            let real_size = min(size, source.len() - offset);
-            let value = &source[offset..offset + real_size];
-            return self.store_bytes(addr, value);
+        if rounddown(addr, RISCV_PAGESIZE) != addr || roundup(size, RISCV_PAGESIZE) != size {
+            return Err(Error::Unaligned);
         }
-        self.clear_traces(addr as u64, size as u64);
-        Ok(())
-    }
-
-    fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error> {
-        self.store_byte(addr, size, 0)
+        if addr > RISCV_MAX_MEMORY
+            || size > RISCV_MAX_MEMORY
+            || addr + size > RISCV_MAX_MEMORY
+            || offset_from_addr > size
+        {
+            return Err(Error::OutOfBound);
+        }
+        for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
+            let page = page_addr / RISCV_PAGESIZE;
+            if self.flags[page] & FLAG_FREEZED != 0 {
+                return Err(Error::InvalidPermission);
+            }
+            self.flags[page] = flags;
+        }
+        fill_page_data(self, addr, size, source, offset_from_addr)
     }
 
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
@@ -89,7 +98,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         }
         // This is essentially memset call
         unsafe {
-            let slice_ptr = self.memory[..size].as_mut_ptr();
+            let slice_ptr = self.memory[addr..addr + size].as_mut_ptr();
             ptr::write_bytes(slice_ptr, value, size);
         }
         self.clear_traces(addr as u64, size as u64);
@@ -194,14 +203,6 @@ impl Memory<u64> for Box<AsmCoreMachine> {
 }
 
 impl SupportMachine for Box<AsmCoreMachine> {
-    fn elf_end(&self) -> usize {
-        self.elf_end
-    }
-
-    fn set_elf_end(&mut self, elf_end: usize) {
-        self.elf_end = elf_end;
-    }
-
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -291,6 +292,7 @@ impl<'a> AsmMachine<'a> {
                 RET_EBREAK => self.machine.ebreak()?,
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
                 RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
+                RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
                 _ => return Err(Error::Asm(result)),
             }
         }
