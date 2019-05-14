@@ -1,4 +1,6 @@
-use crate::{instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY};
+use crate::{
+    instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+};
 use std::alloc::{alloc_zeroed, Layout};
 use std::cmp::min;
 
@@ -11,6 +13,7 @@ pub const RET_ECALL: u8 = 2;
 pub const RET_EBREAK: u8 = 3;
 pub const RET_MAX_CYCLES_EXCEEDED: u8 = 4;
 pub const RET_OUT_OF_BOUND: u8 = 5;
+pub const RET_INVALID_PERMISSION: u8 = 6;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
@@ -35,7 +38,7 @@ pub struct AsmCoreMachine {
     pub pc: u64,
     pub cycles: u64,
     pub max_cycles: u64,
-    pub elf_end: usize,
+    pub flags: [u8; RISCV_MAX_MEMORY / RISCV_PAGESIZE],
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub traces: [Trace; TRACE_SIZE],
 }

@@ -14,7 +14,7 @@ pub use crate::{
         trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
         DefaultMachineBuilder, InstructionCycleFunc, Machine, SupportMachine,
     },
-    memory::{flat::FlatMemory, mmu::Mmu, sparse::SparseMemory, Memory},
+    memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,
 };
 use bytes::Bytes;
@@ -57,7 +57,24 @@ pub fn run<R: Register, M: Memory<R> + Default>(
     program: &Bytes,
     args: &[Bytes],
 ) -> Result<i8, Error> {
-    let mut machine = TraceMachine::new(DefaultMachine::<DefaultCoreMachine<R, M>>::default());
+    let mut machine =
+        TraceMachine::new(DefaultMachine::<DefaultCoreMachine<R, WXorXMemory<R, M>>>::default());
     machine.load_program(program, args)?;
     machine.run()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bits::power_of_2;
+    use super::*;
+
+    #[test]
+    fn test_max_memory_must_be_multiple_of_pages() {
+        assert_eq!(RISCV_MAX_MEMORY % RISCV_PAGESIZE, 0);
+    }
+
+    #[test]
+    fn test_page_size_be_power_of_2() {
+        assert!(power_of_2(RISCV_PAGESIZE));
+    }
 }
