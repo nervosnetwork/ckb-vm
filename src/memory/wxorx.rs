@@ -2,7 +2,7 @@ use super::super::{
     bits::{rounddown, roundup},
     Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
-use super::{Memory, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORR_BIT};
+use super::{Memory, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT};
 
 use bytes::Bytes;
 use std::marker::PhantomData;
@@ -33,7 +33,7 @@ impl<R: Register, M: Memory<R>> WXorXMemory<R, M> {
                 .get(page)
                 .ok_or(Error::OutOfBound)
                 .and_then(|page_flag| {
-                    if (page_flag & FLAG_WXORR_BIT) == (flag & FLAG_WXORR_BIT) {
+                    if (page_flag & FLAG_WXORX_BIT) == (flag & FLAG_WXORX_BIT) {
                         Ok(())
                     } else {
                         Err(Error::InvalidPermission)

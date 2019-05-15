@@ -4,7 +4,7 @@ use ckb_vm_definitions::{
         RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
-    memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORR_BIT},
+    memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::SP,
     RISCV_MAX_MEMORY, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
@@ -57,8 +57,8 @@ fn main() {
         FLAG_EXECUTABLE
     );
     println!(
-        "#define CKB_VM_ASM_MEMORY_FLAG_WXORR_BIT {}",
-        FLAG_WXORR_BIT
+        "#define CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT {}",
+        FLAG_WXORX_BIT
     );
     println!("#define CKB_VM_ASM_MEMORY_FLAG_WRITABLE {}", FLAG_WRITABLE);
     println!();
