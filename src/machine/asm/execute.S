@@ -90,7 +90,7 @@
   cmp $CKB_VM_ASM_RISCV_PAGES, temp_reg1; \
   jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, temp_reg1), temp_reg2d; \
-  and $CKB_VM_ASM_MEMORY_FLAG_WXORR_BIT, temp_reg2d; \
+  and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_reg2d; \
   cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_reg2d; \
   jne .exit_invalid_permission; \
   addq $1, temp_reg1; \
@@ -103,7 +103,7 @@
   cmp $CKB_VM_ASM_RISCV_PAGES, temp_reg1; \
   jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, temp_reg1), temp_reg2d; \
-  and $CKB_VM_ASM_MEMORY_FLAG_WXORR_BIT, temp_reg2d; \
+  and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_reg2d; \
   cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_reg2d; \
   jne .exit_invalid_permission; \
 1:
