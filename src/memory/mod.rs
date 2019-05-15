@@ -1,13 +1,14 @@
 use super::{Error, Register, RISCV_PAGESIZE};
 use bytes::Bytes;
+use std::cmp::min;
 
 pub mod flat;
-pub mod mmu;
 pub mod sparse;
+pub mod wxorx;
 
-pub const PROT_READ: u32 = 0b0001;
-pub const PROT_WRITE: u32 = 0b0010;
-pub const PROT_EXEC: u32 = 0b0100;
+pub use ckb_vm_definitions::memory::{
+    FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+};
 
 #[inline(always)]
 pub fn round_page(x: usize) -> usize {
@@ -17,20 +18,14 @@ pub fn round_page(x: usize) -> usize {
 pub type Page = [u8; RISCV_PAGESIZE];
 
 pub trait Memory<R: Register> {
-    // Note this mmap only handles the very low level memory mapping logic.
-    // It only takes an aligned address and size, then maps either existing
-    // bytes or empty bytes to this range. It doesn't allocate addresses when
-    // given 0 as address value. Instead, higher level machine should be leveraged
-    // to manage code, heap(brk), mmap and stack regions.
-    fn mmap(
+    fn init_pages(
         &mut self,
         addr: usize,
         size: usize,
-        prot: u32,
+        flags: u8,
         source: Option<Bytes>,
-        offset: usize,
+        offset_from_addr: usize,
     ) -> Result<(), Error>;
-    fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error>;
     // This is in fact just memset
     fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
@@ -48,4 +43,31 @@ pub trait Memory<R: Register> {
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error>;
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error>;
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+}
+
+#[inline(always)]
+pub fn fill_page_data<R: Register>(
+    memory: &mut Memory<R>,
+    addr: usize,
+    size: usize,
+    source: Option<Bytes>,
+    offset_from_addr: usize,
+) -> Result<(), Error> {
+    let mut written_size = 0;
+    if offset_from_addr > 0 {
+        let real_size = min(size, offset_from_addr);
+        memory.store_byte(addr, real_size, 0)?;
+        written_size += real_size;
+    }
+    if let Some(source) = source {
+        let real_size = min(size - written_size, source.len());
+        if real_size > 0 {
+            memory.store_bytes(addr + written_size, &source[0..real_size])?;
+            written_size += real_size;
+        }
+    }
+    if written_size < size {
+        memory.store_byte(addr + written_size, size - written_size, 0)?;
+    }
+    Ok(())
 }

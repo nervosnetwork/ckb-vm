@@ -126,8 +126,8 @@ pub fn test_asm_trace() {
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
     let result = machine.run();
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 7);
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]

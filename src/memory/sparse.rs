@@ -1,5 +1,5 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
-use super::{round_page, Memory, Page};
+use super::{fill_page_data, round_page, Memory, Page};
 
 use bytes::Bytes;
 use std::cmp::min;
@@ -68,40 +68,15 @@ impl<R> SparseMemory<R> {
 }
 
 impl<R: Register> Memory<R> for SparseMemory<R> {
-    fn mmap(
+    fn init_pages(
         &mut self,
         addr: usize,
         size: usize,
-        _prot: u32,
+        _flags: u8,
         source: Option<Bytes>,
-        offset: usize,
+        offset_from_addr: usize,
     ) -> Result<(), Error> {
-        // For simplicity, we implement this using store_bytes for now. Later
-        // if needed, we can change this to load page from source on demand.
-        if let Some(source) = source {
-            let real_size = min(size, source.len() - offset);
-            let value = &source[offset..offset + real_size];
-            return self.store_bytes(addr, value);
-        }
-        Ok(())
-    }
-
-    fn munmap(&mut self, addr: usize, size: usize) -> Result<(), Error> {
-        let mut current_page_addr = round_page(addr);
-        let mut current_page_offset = addr - current_page_addr;
-        let mut erased_size = 0;
-        while erased_size < size {
-            let page = self.fetch_page(current_page_addr)?;
-            let bytes = min(RISCV_PAGESIZE - current_page_offset, size - erased_size);
-            unsafe {
-                let slice_ptr = page[current_page_offset..current_page_offset + bytes].as_mut_ptr();
-                ptr::write_bytes(slice_ptr, b'0', bytes);
-            }
-            current_page_addr += RISCV_PAGESIZE;
-            current_page_offset = 0;
-            erased_size += bytes;
-        }
-        Ok(())
+        fill_page_data(self, addr, size, source, offset_from_addr)
     }
 
     fn load8(&mut self, addr: &R) -> Result<R, Error> {

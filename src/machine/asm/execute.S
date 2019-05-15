@@ -84,6 +84,30 @@
 #define MOV_RS2r_TO_RDX movq RS2r, %rdx
 #define MOV_RDX_TO_RS2r movq %rdx, RS2r
 
+#define CHECK_WRITE_PERMISSION(address_reg, temp_reg1, temp_reg2, temp_reg2d, length) \
+  movq address_reg, temp_reg1; \
+  shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, temp_reg1; \
+  cmp $CKB_VM_ASM_RISCV_PAGES, temp_reg1; \
+  jae .exit_out_of_bound; \
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, temp_reg1), temp_reg2d; \
+  and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_reg2d; \
+  cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_reg2d; \
+  jne .exit_invalid_permission; \
+  addq $1, temp_reg1; \
+  shl $CKB_VM_ASM_RISCV_PAGE_SHIFTS, temp_reg1; \
+  movq address_reg, temp_reg2; \
+  addq $length, temp_reg2; \
+  cmp temp_reg1, temp_reg2; \
+  jbe 1f; \
+  shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, temp_reg1; \
+  cmp $CKB_VM_ASM_RISCV_PAGES, temp_reg1; \
+  jae .exit_out_of_bound; \
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, temp_reg1), temp_reg2d; \
+  and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_reg2d; \
+  cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_reg2d; \
+  jne .exit_invalid_permission; \
+1:
+
 #define ADDRESS_TO_SLOT_ADDRESS(r) \
   shr $5, r; \
   andq $8191, r; \
@@ -402,7 +426,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movsbq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -412,7 +438,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movzbq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -423,7 +451,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $8, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -433,7 +463,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $2, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movswq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -443,7 +475,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $2, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movzwq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -462,7 +496,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $4, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movslq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -472,7 +508,9 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $4, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   mov CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1d
   WRITE_RD(RS1)
@@ -671,35 +709,29 @@ ckb_vm_x64_execute:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
-  jae .exit_out_of_bound
+  CHECK_WRITE_PERMISSION(RS1, TEMP1, RS2r, RS2rd, 1)
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sb, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
-  mov $1, TEMP1d
-  jmp .clear_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SD:
 .CKB_VM_ASM_LABEL_OP_RVC_SD:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
-  jae .exit_out_of_bound
+  CHECK_WRITE_PERMISSION(RS1, TEMP1, RS2r, RS2rd, 8)
   movq REGISTER_ADDRESS(RS2s), RS2s
   movq RS2s, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
-  mov $8, TEMP1d
-  jmp .clear_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SH:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
-  jae .exit_out_of_bound
+  CHECK_WRITE_PERMISSION(RS1, TEMP1, RS2r, RS2rd, 2)
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sh, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
-  mov $2, TEMP1d
-  jmp .clear_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SLL:
   DECODE_R
@@ -869,12 +901,10 @@ ckb_vm_x64_execute:
   DECODE_S
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
-  jae .exit_out_of_bound
+  CHECK_WRITE_PERMISSION(RS1, TEMP1, RS2r, RS2rd, 4)
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
-  mov $4, TEMP1d
-  jmp .clear_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_XOR:
 .CKB_VM_ASM_LABEL_OP_RVC_XOR:
@@ -965,7 +995,9 @@ ckb_vm_x64_execute:
   DECODE_U
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $8, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -975,7 +1007,9 @@ ckb_vm_x64_execute:
   DECODE_U
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
+  movq RS1, TEMP1
+  addq $4, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
   movslq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
@@ -991,81 +1025,19 @@ ckb_vm_x64_execute:
   DECODE_S
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
-  jae .exit_out_of_bound
+  CHECK_WRITE_PERMISSION(RS1, TEMP1, RS2r, RS2rd, 8)
   movq REGISTER_ADDRESS(RS2s), RS2s
   movq RS2s, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
-  mov $8, TEMP1d
-  jmp .clear_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_RVC_SWSP:
   DECODE_S
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, RS1
-  jae .exit_out_of_bound
+  CHECK_WRITE_PERMISSION(RS1, TEMP1, RS2r, RS2rd, 4)
   movq REGISTER_ADDRESS(RS2s), RS2s
   mov RS2sd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1)
-  mov $4, TEMP1d
-  jmp .clear_trace
-.p2align 3
-.clear_trace:
-  push INST_PC
-  /*
-   * This tail function takes memory address in RS1, and length in TEMP1.
-   *
-   * When running:
-   * * INST_PC(originally value saved) contains the start memory address
-   * that is written
-   * * RS2r contains the end of the memory address that is written
-   * * RS1 contains address of current slot
-   * * RD contains address of last slot to process
-   * * IMMEDIATE contains a flag if current slot is affected
-   * * TEMP1 is a free variable
-   */
-  movq RS1, INST_PC
-  addq RS1, TEMP1
-  movq TEMP1, RS2r
-  movq TEMP1, RD
-  subq $CKB_VM_ASM_MAXIMUM_TRACE_ADDRESS_LENGTH, RS1
-  xor IMMEDIATEd, IMMEDIATEd
-  cmovl IMMEDIATEd, RS1d
-  ADDRESS_TO_SLOT_ADDRESS(RS1)
-  ADDRESS_TO_SLOT_ADDRESS(RD)
-.clear_trace_loop:
-  cmp RD, RS1
-  ja .clear_trace_finish
-  movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(RS1), TEMP1
-  cmp RS2r, TEMP1
-  jnb .clear_trace_loop_body_end
-  addq CKB_VM_ASM_TRACE_OFFSET_LENGTH(RS1), TEMP1
-  cmp TEMP1, INST_PC
-  jnb .clear_trace_loop_body_end
-  cmp RS1, TRACE
-  sete TEMP1b
-  or TEMP1b, IMMEDIATEb
-  movq $0, CKB_VM_ASM_TRACE_OFFSET_ADDRESS(RS1)
-.clear_trace_loop_body_end:
-  addq $CKB_VM_ASM_TRACE_STRUCT_SIZE, RS1
-  jmp .clear_trace_loop
-.clear_trace_finish:
-  pop INST_PC
-  cmp $0, IMMEDIATEb
-  jne .clear_trace_current_cleared
   NEXT_INST
-.clear_trace_current_cleared:
-  /*
-   * Current trace is cleared, restore original PC_ADDRESS then exit
-   * current trace loop
-  */
-  movq PC_ADDRESS, %rax
-  movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %ecx
-  subq %rcx, %rax
-  movq -8(INST_ARGS), %rcx
-  shr $24, %ecx
-  addq %rcx, %rax
-  movq %rax, PC_ADDRESS
-  jmp .prepare_trace
 .p2align 3
 .exit_out_of_bound:
   mov $CKB_VM_ASM_RET_OUT_OF_BOUND, %eax
@@ -1073,6 +1045,9 @@ ckb_vm_x64_execute:
 .p2align 3
 .exit_max_cycles_exceeded:
   mov $CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED, %eax
+  jmp .exit
+.exit_invalid_permission:
+  mov $CKB_VM_ASM_RET_INVALID_PERMISSION, %eax
   jmp .exit
 .p2align 3
 .exit_trace:

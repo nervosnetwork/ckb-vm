@@ -45,7 +45,6 @@ impl AsmData {
 struct RustData {
     // Machine related data, should be cleared before each run
     memory: SparseMemory<u64>,
-    elf_end: usize,
     cycles: u64,
     max_cycles: Option<u64>,
 
@@ -73,7 +72,6 @@ impl RustData {
     fn new(tracer: Box<Tracer>) -> Self {
         Self {
             memory: SparseMemory::default(),
-            elf_end: 0,
             cycles: 0,
             max_cycles: None,
             buffer: None,
@@ -308,7 +306,6 @@ impl BaselineJitMachine {
     fn reset(&mut self) {
         self.asm_data.registers = [0; ASM_DATA_REGISTERS_SLOTS];
         self.rust_data.memory = SparseMemory::<u64>::default();
-        self.rust_data.elf_end = 0;
         self.rust_data.cycles = 0;
         self.rust_data.max_cycles = None;
     }
@@ -348,14 +345,6 @@ impl CoreMachine for BaselineJitMachine {
 }
 
 impl SupportMachine for BaselineJitMachine {
-    fn elf_end(&self) -> usize {
-        self.rust_data.elf_end
-    }
-
-    fn set_elf_end(&mut self, elf_end: usize) {
-        self.rust_data.elf_end = elf_end;
-    }
-
     fn cycles(&self) -> u64 {
         self.rust_data.cycles
     }
@@ -517,18 +506,14 @@ impl Machine for JitCompilingMachine {
 }
 
 impl Memory<Value> for JitCompilingMachine {
-    fn mmap(
+    fn init_pages(
         &mut self,
         _addr: usize,
         _size: usize,
-        _prot: u32,
+        _flags: u8,
         _source: Option<Bytes>,
-        _offset: usize,
+        _offset_from_addr: usize,
     ) -> Result<(), Error> {
-        Err(Error::Unimplemented)
-    }
-
-    fn munmap(&mut self, _addr: usize, _size: usize) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
 

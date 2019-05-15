@@ -1,11 +1,12 @@
 use ckb_vm_definitions::{
     asm::{
-        AsmCoreMachine, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_MAX_CYCLES_EXCEEDED,
-        RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
+        AsmCoreMachine, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION,
+        RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
+    memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::SP,
-    RISCV_MAX_MEMORY,
+    RISCV_MAX_MEMORY, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
 use std::mem::{size_of, zeroed};
 
@@ -17,7 +18,14 @@ use std::mem::{size_of, zeroed};
 // of this as a workaround to the problem that build.rs cannot depend on any
 // of its crate contents.
 fn main() {
-    println!("#define CKB_VM_ASM_RISCV_MAX_MEMORY {}", RISCV_MAX_MEMORY,);
+    println!("#define CKB_VM_ASM_RISCV_MAX_MEMORY {}", RISCV_MAX_MEMORY);
+    println!("#define CKB_VM_ASM_RISCV_PAGE_SHIFTS {}", RISCV_PAGE_SHIFTS);
+    println!("#define CKB_VM_ASM_RISCV_PAGE_SIZE {}", RISCV_PAGESIZE);
+    println!("#define CKB_VM_ASM_RISCV_PAGE_MASK {}", RISCV_PAGESIZE - 1);
+    println!(
+        "#define CKB_VM_ASM_RISCV_PAGES {}",
+        RISCV_MAX_MEMORY / RISCV_PAGESIZE
+    );
     println!();
 
     println!(
@@ -34,9 +42,25 @@ fn main() {
         RET_MAX_CYCLES_EXCEEDED
     );
     println!("#define CKB_VM_ASM_RET_OUT_OF_BOUND {}", RET_OUT_OF_BOUND);
+    println!(
+        "#define CKB_VM_ASM_RET_INVALID_PERMISSION {}",
+        RET_INVALID_PERMISSION
+    );
     println!();
 
     println!("#define CKB_VM_ASM_REGISTER_SP {}", SP);
+    println!();
+
+    println!("#define CKB_VM_ASM_MEMORY_FLAG_FREEZED {}", FLAG_FREEZED);
+    println!(
+        "#define CKB_VM_ASM_MEMORY_FLAG_EXECUTABLE {}",
+        FLAG_EXECUTABLE
+    );
+    println!(
+        "#define CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT {}",
+        FLAG_WXORX_BIT
+    );
+    println!("#define CKB_VM_ASM_MEMORY_FLAG_WRITABLE {}", FLAG_WRITABLE);
     println!();
 
     println!(
@@ -92,8 +116,8 @@ fn main() {
         (&m.max_cycles as *const u64 as usize) - m_address
     );
     println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELF_END {}",
-        (&m.elf_end as *const usize as usize) - m_address
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
+        (&m.flags as *const u8 as usize) - m_address
     );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY {}",

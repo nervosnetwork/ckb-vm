@@ -83,8 +83,8 @@ pub fn test_trace() {
     let buffer: Bytes = buffer.into();
 
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["trace64".into()]);
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 7);
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
@@ -96,7 +96,7 @@ pub fn test_jump0() {
 
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["jump0_64".into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidInstruction(0)));
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
