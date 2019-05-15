@@ -4,9 +4,7 @@ use crate::{
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
-    memory::{
-        check_permission, fill_page_data, memset, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
-    },
+    memory::{fill_page_data, FLAG_FREEZED, FLAG_INITIALIZED, check_permission, memset, FLAG_WRITABLE, FLAG_EXECUTABLE},
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, RISCV_MAX_MEMORY,
     RISCV_PAGES, RISCV_PAGESIZE,
 };
@@ -52,6 +50,21 @@ impl CoreMachine for Box<AsmCoreMachine> {
     }
 }
 
+pub fn lazy_initialize_pages(machine: &mut Box<AsmCoreMachine>, addr: usize, size: usize) -> Result<(), Error> {
+    let e = addr + size;
+    let mut current_addr = rounddown(addr, RISCV_PAGESIZE);
+    while current_addr < e {
+        let page = current_addr / RISCV_PAGESIZE;
+        if machine.flags[page] & FLAG_INITIALIZED == 0 {
+            machine.flags[page] |= FLAG_INITIALIZED;
+            memset(&mut machine.memory[current_addr..current_addr + RISCV_PAGESIZE], 0);
+        }
+        current_addr += RISCV_PAGESIZE;
+    }
+    Ok(())
+}
+
+
 impl Memory<u64> for Box<AsmCoreMachine> {
     fn init_pages(
         &mut self,
@@ -86,7 +99,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         current_addr = addr;
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE;
-            self.flags[page] = flags;
+            self.flags[page] = flags | FLAG_INITIALIZED;
             current_addr += RISCV_PAGESIZE;
         }
         Ok(())
@@ -103,6 +116,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
         // Out of bound check is already performed in check_permission
         check_permission(self, addr, value.len(), FLAG_WRITABLE)?;
+        lazy_initialize_pages(self, addr, value.len())?;
         let slice = &mut self.memory[addr..addr + value.len()];
         slice.copy_from_slice(value);
         Ok(())
@@ -110,12 +124,14 @@ impl Memory<u64> for Box<AsmCoreMachine> {
 
     fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
         check_permission(self, addr, size, FLAG_WRITABLE)?;
+        lazy_initialize_pages(self, addr, size)?;
         memset(&mut self.memory[addr..addr + size], value);
         Ok(())
     }
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
         check_permission(self, addr, 2, FLAG_EXECUTABLE)?;
+        lazy_initialize_pages(self, addr, 2)?;
         self.load16(&(addr as u64)).map(|v| v as u16)
     }
 
@@ -124,6 +140,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 1 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
+        lazy_initialize_pages(self, addr, 1)?;
         Ok(u64::from(self.memory[addr]))
     }
 
@@ -132,6 +149,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 2 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
+        lazy_initialize_pages(self, addr, 2)?;
         Ok(u64::from(LittleEndian::read_u16(
             &self.memory[addr..addr + 2],
         )))
@@ -142,6 +160,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 4 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
+        lazy_initialize_pages(self, addr, 4)?;
         Ok(u64::from(LittleEndian::read_u32(
             &self.memory[addr..addr + 4],
         )))
@@ -152,12 +171,14 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 8 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
+        lazy_initialize_pages(self, addr, 8)?;
         Ok(LittleEndian::read_u64(&self.memory[addr..addr + 8]))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr as usize;
         check_permission(self, addr, 1, FLAG_WRITABLE)?;
+        lazy_initialize_pages(self, addr, 1)?;
         self.memory[addr] = (*value) as u8;
         Ok(())
     }
@@ -165,6 +186,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr as usize;
         check_permission(self, addr, 2, FLAG_WRITABLE)?;
+        lazy_initialize_pages(self, addr, 2)?;
         LittleEndian::write_u16(&mut self.memory[addr..(addr + 2)], *value as u16);
         Ok(())
     }
@@ -172,6 +194,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr as usize;
         check_permission(self, addr, 4, FLAG_WRITABLE)?;
+        lazy_initialize_pages(self, addr, 4)?;
         LittleEndian::write_u32(&mut self.memory[addr..(addr + 4)], *value as u32);
         Ok(())
     }
@@ -179,6 +202,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr as usize;
         check_permission(self, addr, 8, FLAG_WRITABLE)?;
+        lazy_initialize_pages(self, addr, 8)?;
         LittleEndian::write_u64(&mut self.memory[addr..(addr + 8)], *value);
         Ok(())
     }
@@ -285,9 +309,15 @@ impl<'a> AsmMachine<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::mem;
 
     #[test]
     fn test_asm_constant_rules() {
         assert!(TRACE_ITEM_LENGTH * 4 < 256);
+    }
+
+    #[test]
+    fn test_asm_machine_alignment() {
+        assert_eq!(mem::align_of::<AsmCoreMachine>(), 8);
     }
 }

@@ -8,7 +8,7 @@ pub mod sparse;
 pub mod wxorx;
 
 pub use ckb_vm_definitions::memory::{
-    FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+    FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_INITIALIZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
 };
 
 #[inline(always)]

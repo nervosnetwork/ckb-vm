@@ -4,7 +4,7 @@ use ckb_vm_definitions::{
         RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
-    memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
+    memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_INITIALIZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::SP,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
@@ -58,6 +58,10 @@ fn main() {
         FLAG_WXORX_BIT
     );
     println!("#define CKB_VM_ASM_MEMORY_FLAG_WRITABLE {}", FLAG_WRITABLE);
+    println!(
+        "#define CKB_VM_ASM_MEMORY_FLAG_INITIALIZED {}",
+        FLAG_INITIALIZED
+    );
     println!();
 
     println!(
@@ -116,6 +120,10 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );
+    let memory_offset = (&m.memory as *const u8 as usize) - m_address;
+    if memory_offset % 8 != 0 {
+        panic!("Memory is not aligned to 8 bytes in Machine!");
+    }
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY {}",
         (&m.memory as *const u8 as usize) - m_address

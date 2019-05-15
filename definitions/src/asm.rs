@@ -1,7 +1,8 @@
 use crate::{
     instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
 };
-use std::alloc::{alloc_zeroed, Layout};
+use std::alloc::{alloc, Layout};
+use std::ptr;
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -55,15 +56,19 @@ impl AsmCoreMachine {
     pub fn new_with_max_cycles(max_cycles: u64) -> Box<AsmCoreMachine> {
         let mut machine = unsafe {
             let layout = Layout::new::<AsmCoreMachine>();
+            let p = alloc(layout);
             #[allow(clippy::cast_ptr_alignment)]
-            // TODO: change this to alloc so we are using malloc instead of
-            // calloc, then do lazy zero filling when necessary. That might
-            // save us some time in case a script doesn't use all the memory.
-            // Right now this calloc phase here takes around 1ms.
-            let raw_allocation = alloc_zeroed(layout) as *mut AsmCoreMachine;
-            Box::from_raw(raw_allocation)
+            let m = Box::from_raw(p as *mut AsmCoreMachine);
+            let memory_offset =
+                (&m.memory as *const u8 as usize) - (&*m as *const AsmCoreMachine as usize);
+            // This zeros all fields before memory field
+            ptr::write_bytes(p, 0, memory_offset);
+            m
         };
         machine.max_cycles = max_cycles;
+        for trace in machine.traces.iter_mut() {
+            trace.length = 0;
+        }
         machine
     }
 }
