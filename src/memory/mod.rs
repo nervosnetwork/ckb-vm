@@ -1,6 +1,7 @@
-use super::{Error, Register, RISCV_PAGESIZE};
+use super::{bits::rounddown, Error, Register, RISCV_PAGESIZE};
 use bytes::Bytes;
 use std::cmp::min;
+use std::ptr;
 
 pub mod flat;
 pub mod sparse;
@@ -26,6 +27,7 @@ pub trait Memory<R: Register> {
         source: Option<Bytes>,
         offset_from_addr: usize,
     ) -> Result<(), Error>;
+    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error>;
     // This is in fact just memset
     fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
@@ -46,7 +48,7 @@ pub trait Memory<R: Register> {
 }
 
 #[inline(always)]
-pub fn fill_page_data<R: Register>(
+pub(crate) fn fill_page_data<R: Register>(
     memory: &mut Memory<R>,
     addr: usize,
     size: usize,
@@ -70,4 +72,32 @@ pub fn fill_page_data<R: Register>(
         memory.store_byte(addr + written_size, size - written_size, 0)?;
     }
     Ok(())
+}
+
+pub fn check_permission<R: Register>(
+    memory: &mut Memory<R>,
+    addr: usize,
+    size: usize,
+    flag: u8,
+) -> Result<(), Error> {
+    let e = addr + size;
+    let mut current_addr = rounddown(addr, RISCV_PAGESIZE);
+    while current_addr < e {
+        let page = current_addr / RISCV_PAGESIZE;
+        let page_flag = memory.fetch_flag(page)?;
+        if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
+            return Err(Error::InvalidPermission);
+        }
+        current_addr += RISCV_PAGESIZE;
+    }
+    Ok(())
+}
+
+// Keep this in a central place to allow for future optimization
+#[inline(always)]
+pub fn memset(slice: &mut [u8], value: u8) {
+    let p = slice.as_mut_ptr();
+    unsafe {
+        ptr::write_bytes(p, value, slice.len());
+    }
 }

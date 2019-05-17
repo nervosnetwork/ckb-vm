@@ -1,10 +1,9 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
-use super::{fill_page_data, round_page, Memory, Page};
+use super::{fill_page_data, round_page, Memory, Page, memset};
 
 use bytes::Bytes;
 use std::cmp::min;
 use std::marker::PhantomData;
-use std::ptr;
 
 const MAX_PAGES: usize = RISCV_MAX_MEMORY / RISCV_PAGESIZE;
 const INVALID_PAGE_INDEX: u16 = 0xFFFF;
@@ -79,6 +78,14 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         fill_page_data(self, addr, size, source, offset_from_addr)
     }
 
+    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
+        if page < RISCV_MAX_MEMORY / RISCV_PAGESIZE {
+            Ok(0)
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
     fn load8(&mut self, addr: &R) -> Result<R, Error> {
         let v = self.load(addr.to_usize(), 1).map(|v| v as u8)?;
         Ok(R::from_u8(v))
@@ -127,10 +134,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         while remaining_size > 0 {
             let page = self.fetch_page(current_page_addr)?;
             let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_size);
-            unsafe {
-                let slice_ptr = page[current_page_offset..current_page_offset + bytes].as_mut_ptr();
-                ptr::write_bytes(slice_ptr, value, bytes);
-            }
+            memset(&mut page[current_page_offset..current_page_offset + bytes], value);
             remaining_size -= bytes;
             current_page_addr += RISCV_PAGESIZE;
             current_page_offset = 0;

@@ -2,7 +2,6 @@ use crate::{
     instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
 use std::alloc::{alloc_zeroed, Layout};
-use std::cmp::min;
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -66,18 +65,5 @@ impl AsmCoreMachine {
         };
         machine.max_cycles = max_cycles;
         machine
-    }
-
-    pub fn clear_traces(&mut self, address: u64, length: u64) {
-        let end = address + length;
-        let minimal_slot = calculate_slot(address.saturating_sub(TRACE_ITEM_LENGTH as u64 * 4));
-        let maximal_slot = calculate_slot(end);
-        for slot in minimal_slot..=min(maximal_slot, self.traces.len()) {
-            let slot_address = self.traces[slot].address;
-            let slot_end = slot_address + u64::from(self.traces[slot].length);
-            if !((end <= slot_address) || (slot_end <= address)) {
-                self.traces[slot] = Trace::default();
-            }
-        }
     }
 }
