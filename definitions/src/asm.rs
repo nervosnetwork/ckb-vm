@@ -1,5 +1,5 @@
 use crate::{
-    instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
 };
 use std::alloc::{alloc_zeroed, Layout};
 
@@ -37,7 +37,7 @@ pub struct AsmCoreMachine {
     pub pc: u64,
     pub cycles: u64,
     pub max_cycles: u64,
-    pub flags: [u8; RISCV_MAX_MEMORY / RISCV_PAGESIZE],
+    pub flags: [u8; RISCV_PAGES],
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub traces: [Trace; TRACE_SIZE],
 }

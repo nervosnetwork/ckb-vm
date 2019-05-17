@@ -8,7 +8,7 @@ use crate::{
         check_permission, fill_page_data, memset, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, RISCV_MAX_MEMORY,
-    RISCV_PAGESIZE,
+    RISCV_PAGES, RISCV_PAGESIZE,
 };
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
@@ -86,7 +86,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     }
 
     fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_MAX_MEMORY / RISCV_PAGESIZE {
+        if page < RISCV_PAGES {
             Ok(self.flags[page])
         } else {
             Err(Error::OutOfBound)
