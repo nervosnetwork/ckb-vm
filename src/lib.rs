@@ -25,7 +25,8 @@ pub use crate::jit::{
     default_jit_machine, BaselineJitMachine, BaselineJitRunData, DefaultTracer, TcgTracer,
 };
 pub use ckb_vm_definitions::{
-    registers, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    registers, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
+    RISCV_PAGESIZE,
 };
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]

@@ -1,11 +1,10 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_PAGES, RISCV_PAGESIZE};
 use super::{fill_page_data, memset, round_page, Memory, Page};
 
 use bytes::Bytes;
 use std::cmp::min;
 use std::marker::PhantomData;
 
-const MAX_PAGES: usize = RISCV_MAX_MEMORY / RISCV_PAGESIZE;
 const INVALID_PAGE_INDEX: u16 = 0xFFFF;
 
 /// A sparse flat memory implementation, it allocates pages only when requested,
@@ -15,16 +14,16 @@ pub struct SparseMemory<R> {
     // been initialized, the corresponding position will be filled with
     // INVALID_PAGE_INDEX. Considering u16 takes 2 bytes, this add an additional
     // of 64KB extra storage cost assuming we have 128MB memory.
-    indices: [u16; MAX_PAGES],
+    indices: [u16; RISCV_PAGES],
     pages: Vec<Page>,
     _inner: PhantomData<R>,
 }
 
 impl<R> SparseMemory<R> {
     pub fn new() -> Self {
-        debug_assert!(MAX_PAGES < INVALID_PAGE_INDEX as usize);
+        debug_assert!(RISCV_PAGES < INVALID_PAGE_INDEX as usize);
         Self {
-            indices: [INVALID_PAGE_INDEX; MAX_PAGES],
+            indices: [INVALID_PAGE_INDEX; RISCV_PAGES],
             pages: Vec::new(),
             _inner: PhantomData,
         }
@@ -79,7 +78,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
     }
 
     fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_MAX_MEMORY / RISCV_PAGESIZE {
+        if page < RISCV_PAGES {
             Ok(0)
         } else {
             Err(Error::OutOfBound)

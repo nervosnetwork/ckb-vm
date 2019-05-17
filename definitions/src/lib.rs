@@ -10,3 +10,4 @@ pub const RISCV_GENERAL_REGISTER_NUMBER: usize = 32;
 pub const RISCV_MAX_MEMORY: usize = 4 << 20;
 // 1 MB
 pub const DEFAULT_STACK_SIZE: usize = 1 << 20;
+pub const RISCV_PAGES: usize = RISCV_MAX_MEMORY / RISCV_PAGESIZE;

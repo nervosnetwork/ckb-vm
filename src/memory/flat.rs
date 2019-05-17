@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES};
 use super::{fill_page_data, memset, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -50,7 +50,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_MAX_MEMORY / RISCV_PAGESIZE {
+        if page < RISCV_PAGES {
             Ok(0)
         } else {
             Err(Error::OutOfBound)

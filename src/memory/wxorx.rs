@@ -1,6 +1,6 @@
 use super::super::{
     bits::{rounddown, roundup},
-    Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 use super::{check_permission, Memory, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE};
 
@@ -17,7 +17,7 @@ impl<R: Register, M: Memory<R> + Default> Default for WXorXMemory<R, M> {
     fn default() -> Self {
         Self {
             inner: M::default(),
-            flags: vec![0; RISCV_MAX_MEMORY / RISCV_PAGESIZE],
+            flags: vec![0; RISCV_PAGES],
             _inner: PhantomData,
         }
     }
@@ -54,7 +54,7 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
     }
 
     fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_MAX_MEMORY / RISCV_PAGESIZE {
+        if page < RISCV_PAGES {
             Ok(self.flags[page])
         } else {
             Err(Error::OutOfBound)
