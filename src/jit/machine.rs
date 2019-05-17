@@ -517,6 +517,10 @@ impl Memory<Value> for JitCompilingMachine {
         Err(Error::Unimplemented)
     }
 
+    fn fetch_flag(&mut self, _page: usize) -> Result<u8, Error> {
+        Err(Error::Unimplemented)
+    }
+
     fn store_byte(&mut self, _addr: usize, _size: usize, _value: u8) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }

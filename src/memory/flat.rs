@@ -1,12 +1,11 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY};
-use super::{fill_page_data, Memory};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::{fill_page_data, Memory, memset};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::ptr;
 
 pub struct FlatMemory<R> {
     data: Vec<u8>,
@@ -48,6 +47,14 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         offset_from_addr: usize,
     ) -> Result<(), Error> {
         fill_page_data(self, addr, size, source, offset_from_addr)
+    }
+
+    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
+        if page < RISCV_MAX_MEMORY / RISCV_PAGESIZE {
+            Ok(0)
+        } else {
+            Err(Error::OutOfBound)
+        }
     }
 
     fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
@@ -159,11 +166,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         if addr + size > self.len() {
             return Err(Error::OutOfBound);
         }
-        // This is essentially memset call
-        unsafe {
-            let slice_ptr = self[addr..addr + size].as_mut_ptr();
-            ptr::write_bytes(slice_ptr, value, size);
-        }
+        memset(&mut self[addr..addr + size], value);
         Ok(())
     }
 }
