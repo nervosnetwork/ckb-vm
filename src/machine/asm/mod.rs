@@ -71,16 +71,23 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         {
             return Err(Error::OutOfBound);
         }
-        for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
-            let page = page_addr / RISCV_PAGESIZE;
+        // We benchmarked the code piece here, using while loop this way is
+        // actually faster than a for..in solution. The difference is roughly
+        // 3% so we are keeping this version.
+        let mut current_addr = addr;
+        while current_addr < addr + size {
+            let page = current_addr / RISCV_PAGESIZE;
             if self.flags[page] & FLAG_FREEZED != 0 {
                 return Err(Error::InvalidPermission);
             }
+            current_addr += RISCV_PAGESIZE;
         }
         fill_page_data(self, addr, size, source, offset_from_addr)?;
-        for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
-            let page = page_addr / RISCV_PAGESIZE;
+        current_addr = addr;
+        while current_addr < addr + size {
+            let page = current_addr / RISCV_PAGESIZE;
             self.flags[page] = flags;
+            current_addr += RISCV_PAGESIZE;
         }
         Ok(())
     }
