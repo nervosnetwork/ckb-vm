@@ -129,8 +129,8 @@ pub trait SupportMachine: CoreMachine {
         stack_start: usize,
         stack_size: usize,
     ) -> Result<(), Error> {
-        self.memory_mut()
-            .init_pages(stack_start, stack_size, 0, None, 0)?;
+        // We are enforcing WXorX now, there's no need to call init_pages here
+        // since all the required bits are already set.
         self.set_register(SP, Self::REG::from_usize(stack_start + stack_size));
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.

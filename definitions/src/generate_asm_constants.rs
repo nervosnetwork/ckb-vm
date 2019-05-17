@@ -6,7 +6,7 @@ use ckb_vm_definitions::{
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
     memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::SP,
-    RISCV_MAX_MEMORY, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
 use std::mem::{size_of, zeroed};
 
@@ -22,10 +22,7 @@ fn main() {
     println!("#define CKB_VM_ASM_RISCV_PAGE_SHIFTS {}", RISCV_PAGE_SHIFTS);
     println!("#define CKB_VM_ASM_RISCV_PAGE_SIZE {}", RISCV_PAGESIZE);
     println!("#define CKB_VM_ASM_RISCV_PAGE_MASK {}", RISCV_PAGESIZE - 1);
-    println!(
-        "#define CKB_VM_ASM_RISCV_PAGES {}",
-        RISCV_MAX_MEMORY / RISCV_PAGESIZE
-    );
+    println!("#define CKB_VM_ASM_RISCV_PAGES {}", RISCV_PAGES);
     println!();
 
     println!(
