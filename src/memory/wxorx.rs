@@ -2,9 +2,7 @@ use super::super::{
     bits::{rounddown, roundup},
     Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
-use super::{
-    check_permission, Memory, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE
-};
+use super::{check_permission, Memory, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE};
 
 use bytes::Bytes;
 use std::marker::PhantomData;
