@@ -143,7 +143,7 @@ pub fn test_asm_jump0() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidInstruction(0)));
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]

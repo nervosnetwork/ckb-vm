@@ -1,5 +1,5 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
-use super::{fill_page_data, round_page, Memory, Page, memset};
+use super::{fill_page_data, memset, round_page, Memory, Page};
 
 use bytes::Bytes;
 use std::cmp::min;
@@ -134,7 +134,10 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         while remaining_size > 0 {
             let page = self.fetch_page(current_page_addr)?;
             let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_size);
-            memset(&mut page[current_page_offset..current_page_offset + bytes], value);
+            memset(
+                &mut page[current_page_offset..current_page_offset + bytes],
+                value,
+            );
             remaining_size -= bytes;
             current_page_addr += RISCV_PAGESIZE;
             current_page_offset = 0;

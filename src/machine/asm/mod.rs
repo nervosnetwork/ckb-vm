@@ -4,11 +4,13 @@ use crate::{
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
-    memory::{FLAG_FREEZED, check_permission, FLAG_EXECUTABLE, FLAG_WRITABLE, memset, fill_page_data},
+    memory::{
+        check_permission, fill_page_data, memset, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
+    },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, RISCV_MAX_MEMORY,
     RISCV_PAGESIZE,
 };
-use byteorder::{LittleEndian, ByteOrder};
+use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 use ckb_vm_definitions::{
     asm::{
@@ -115,7 +117,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 1 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
-        Ok(self.memory[addr] as u64)
+        Ok(u64::from(self.memory[addr]))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
@@ -123,7 +125,9 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 2 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
-        Ok(LittleEndian::read_u16(&self.memory[addr..addr + 2]) as u64)
+        Ok(u64::from(LittleEndian::read_u16(
+            &self.memory[addr..addr + 2],
+        )))
     }
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
@@ -131,7 +135,9 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         if addr + 4 > self.memory.len() {
             return Err(Error::OutOfBound);
         }
-        Ok(LittleEndian::read_u32(&self.memory[addr..addr + 4]) as u64)
+        Ok(u64::from(LittleEndian::read_u32(
+            &self.memory[addr..addr + 4],
+        )))
     }
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
