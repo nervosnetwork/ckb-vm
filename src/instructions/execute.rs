@@ -257,69 +257,75 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_BEQ => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.eq(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(4).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&offset))
+            Some(new_pc)
         }
         insts::OP_BNE => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.ne(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(4).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&offset))
+            Some(new_pc)
         }
         insts::OP_BLT => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.lt_s(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(4).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&offset))
+            Some(new_pc)
         }
         insts::OP_BGE => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.ge_s(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(4).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&offset))
+            Some(new_pc)
         }
         insts::OP_BLTU => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.lt(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(4).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&offset))
+            Some(new_pc)
         }
         insts::OP_BGEU => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let condition = rs1_value.ge(&rs2_value);
-            let offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(4),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(4).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&offset))
+            Some(new_pc)
         }
         insts::OP_LUI => {
             let i = Utype(inst);
@@ -611,23 +617,25 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_RVC_BEQZ => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let condition = machine.registers()[i.rs1()].eq(&Mac::REG::zero());
-            let next_pc_offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(2),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(2).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&next_pc_offset))
+            Some(new_pc)
         }
         insts::OP_RVC_BNEZ => {
             let i = Stype(inst);
+            let pc = machine.pc();
             let condition = machine.registers()[i.rs1()]
                 .eq(&Mac::REG::zero())
                 .logical_not();
-            let next_pc_offset = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()),
-                &Mac::REG::from_usize(2),
+            let new_pc = condition.cond(
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_usize(2).overflowing_add(&pc),
             );
-            Some(machine.pc().overflowing_add(&next_pc_offset))
+            Some(new_pc)
         }
         insts::OP_RVC_MV => {
             let i = Rtype(inst);
