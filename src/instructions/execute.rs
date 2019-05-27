@@ -639,8 +639,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_RVC_MV => {
             let i = Rtype(inst);
-            let value = &machine.registers()[i.rs2()];
-            update_register(machine, i.rd(), value.clone());
+            let value = machine.registers()[i.rs2()].clone();
+            update_register(machine, i.rd(), value);
             None
         }
         insts::OP_RVC_JAL => {
