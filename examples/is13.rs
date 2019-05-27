@@ -13,14 +13,14 @@
 //
 // On my ubuntu machine, it takes 1 hours. Sad.
 //
-// Then, you can some c codes like is13.c, and build it by "riscv32-unknown-elf-gcc"
+// Then, you can build "is13.c" by "riscv32-unknown-elf-gcc"
 //
 //   $ riscv32-unknown-elf-gcc -o is13 is13.c
 //
 // Where can you find the "riscv32-unknown-elf-gcc", depending on the previous "../configure --prefix=xxxx"
 //
-// Now, you have the "is13" binary! Try call it with ckb-vm, as shown in the Rust code below. And feel free to
-// run this example by command "cargo":
+// Now, you have the "is13" binary! Copy the file to this directory, call it by ckb-vm, as shown in the Rust
+// code below. And feel free to run this example by command "cargo":
 //
 //     $ cargo run --example is13 13
 //  or $ cargo run --example is13 0xd
