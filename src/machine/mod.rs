@@ -105,14 +105,16 @@ pub trait SupportMachine: CoreMachine {
                     program_header.p_memsz as usize + padding_start,
                     RISCV_PAGESIZE,
                 );
+                let slice_start = program_header.p_offset as usize;
+                let slice_end = (program_header.p_offset + program_header.p_filesz) as usize;
+                if slice_start > slice_end || slice_end > program.len() {
+                    return Err(Error::OutOfBound);
+                }
                 self.memory_mut().init_pages(
                     aligned_start,
                     size,
                     convert_flags(program_header.p_flags)?,
-                    Some(program.slice(
-                        program_header.p_offset as usize,
-                        (program_header.p_offset + program_header.p_filesz) as usize,
-                    )),
+                    Some(program.slice(slice_start, slice_end)),
                     padding_start,
                 )?;
                 self.memory_mut()
