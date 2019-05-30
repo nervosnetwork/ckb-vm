@@ -120,3 +120,14 @@ pub fn test_mulw64() {
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["mulw64".into()]);
     assert!(result.is_ok());
 }
+
+#[test]
+pub fn test_invalid_file_offset64() {
+    let mut file = File::open("tests/programs/invalid_file_offset64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
