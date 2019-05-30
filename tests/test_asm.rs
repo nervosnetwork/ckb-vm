@@ -192,3 +192,19 @@ pub fn test_mulw64() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
+
+#[test]
+pub fn test_invalid_read64() {
+    let mut file = File::open("tests/programs/invalid_read64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec!["invalid_read64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}

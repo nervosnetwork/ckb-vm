@@ -427,6 +427,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $1, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -439,6 +441,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $1, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -452,6 +456,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $8, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -464,6 +470,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $2, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -476,6 +484,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $2, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -497,6 +507,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $4, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -509,6 +521,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $4, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -996,6 +1010,8 @@ ckb_vm_x64_execute:
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $8, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
@@ -1008,6 +1024,8 @@ ckb_vm_x64_execute:
   movq SP_ADDRESS, RS1
   addq IMMEDIATE, RS1
   movq RS1, TEMP1
+  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
+  jae .exit_out_of_bound
   addq $4, TEMP1
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1
   jae .exit_out_of_bound
