@@ -1,12 +1,24 @@
+/*
+ * TODO: change macros to assembly directives due to MSVC compatibility issues
+ */
 #define CKB_VM_ASM_GENERATE_LABEL_TABLES 1
 #include "cdefinitions_generated.h"
+
+#ifdef _WIN32
+#define IS_WINDOWS 1
+#endif
 
 #define INT64_MIN 0x8000000000000000
 #define UINT64_MAX 0xffffffffffffffff
 
-/*
- * TODO: clear trace in case of memory write
- */
+#ifdef IS_WINDOWS
+#define ARG1 %rcx
+#else
+#define ARG1 %rdi
+#endif
+
+/* rax is used both in Microsoft x64 and System V AMD64 ABI */
+#define ARG_RETd %eax
 
 #define MACHINE %rsi
 #define TRACE %rbx
@@ -148,9 +160,13 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
+#ifdef IS_WINDOWS
+  push %rsi
+  push %rdi
+#endif
   push %rbp
   push %rbx
-  mov %rdi, MACHINE
+  mov ARG1, MACHINE
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
 .prepare_trace:
@@ -386,12 +402,12 @@ ckb_vm_x64_execute:
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_EBREAK:
   DECODE_U
-  mov $CKB_VM_ASM_RET_EBREAK, %eax
+  mov $CKB_VM_ASM_RET_EBREAK, ARG_RETd
   jmp .exit
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ECALL:
   DECODE_U
-  mov $CKB_VM_ASM_RET_ECALL, %eax
+  mov $CKB_VM_ASM_RET_ECALL, ARG_RETd
   jmp .exit
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_FENCE:
@@ -969,7 +985,7 @@ ckb_vm_x64_execute:
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_RVC_EBREAK:
   DECODE_U
-  mov $CKB_VM_ASM_RET_EBREAK, %eax
+  mov $CKB_VM_ASM_RET_EBREAK, ARG_RETd
   jmp .exit
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_RVC_J:
@@ -1058,22 +1074,26 @@ ckb_vm_x64_execute:
   NEXT_INST
 .p2align 3
 .exit_out_of_bound:
-  mov $CKB_VM_ASM_RET_OUT_OF_BOUND, %eax
+  mov $CKB_VM_ASM_RET_OUT_OF_BOUND, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_max_cycles_exceeded:
-  mov $CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED, %eax
+  mov $CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED, ARG_RETd
   jmp .exit
 .exit_invalid_permission:
-  mov $CKB_VM_ASM_RET_INVALID_PERMISSION, %eax
+  mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_trace:
 .CKB_VM_ASM_LABEL_OP_UNLOADED:
   DECODE_U
-  mov $CKB_VM_ASM_RET_DECODE_TRACE, %eax
+  mov $CKB_VM_ASM_RET_DECODE_TRACE, ARG_RETd
   jmp .exit
 .exit:
   pop %rbx
   pop %rbp
+#ifdef IS_WINDOWS
+  pop %rdi
+  pop %rsi
+#endif
   retq

@@ -1,4 +1,4 @@
-#[cfg(feature = "asm")]
+#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
 pub mod asm;
 pub mod trace;
 
