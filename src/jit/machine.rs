@@ -600,11 +600,7 @@ extern "C" fn ckb_vm_jit_ffi_store8(data: *mut RustData, addr: u64, value: u64) 
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_store16(
-    data: *mut RustData,
-    addr: u64,
-    value: u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_store16(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
             data.mark_write(addr as usize, 2)
@@ -616,11 +612,7 @@ extern "C" fn ckb_vm_jit_ffi_store16(
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_store32(
-    data: *mut RustData,
-    addr: u64,
-    value: u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_store32(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
             data.mark_write(addr as usize, 4)
@@ -632,11 +624,7 @@ extern "C" fn ckb_vm_jit_ffi_store32(
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_store64(
-    data: *mut RustData,
-    addr: u64,
-    value: u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_store64(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
             data.mark_write(addr as usize, 8)
@@ -648,11 +636,7 @@ extern "C" fn ckb_vm_jit_ffi_store64(
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_load8(
-    data: *mut RustData,
-    addr: u64,
-    value: *mut u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_load8(data: *mut RustData, addr: u64, value: *mut u64) -> c_int {
     match unsafe { data.as_mut() }.and_then(|data| data.memory.load8(&addr).ok()) {
         Some(v) => {
             if let Some(p) = unsafe { value.as_mut() } {
@@ -665,11 +649,7 @@ extern "C" fn ckb_vm_jit_ffi_load8(
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_load16(
-    data: *mut RustData,
-    addr: u64,
-    value: *mut u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_load16(data: *mut RustData, addr: u64, value: *mut u64) -> c_int {
     match unsafe { data.as_mut() }.and_then(|data| data.memory.load16(&addr).ok()) {
         Some(v) => {
             if let Some(p) = unsafe { value.as_mut() } {
@@ -682,11 +662,7 @@ extern "C" fn ckb_vm_jit_ffi_load16(
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_load32(
-    data: *mut RustData,
-    addr: u64,
-    value: *mut u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_load32(data: *mut RustData, addr: u64, value: *mut u64) -> c_int {
     match unsafe { data.as_mut() }.and_then(|data| data.memory.load32(&addr).ok()) {
         Some(v) => {
             if let Some(p) = unsafe { value.as_mut() } {
@@ -699,11 +675,7 @@ extern "C" fn ckb_vm_jit_ffi_load32(
 }
 
 #[no_mangle]
-extern "C" fn ckb_vm_jit_ffi_load64(
-    data: *mut RustData,
-    addr: u64,
-    value: *mut u64,
-) -> c_int {
+extern "C" fn ckb_vm_jit_ffi_load64(data: *mut RustData, addr: u64, value: *mut u64) -> c_int {
     match unsafe { data.as_mut() }.and_then(|data| data.memory.load64(&addr).ok()) {
         Some(v) => {
             if let Some(p) = unsafe { value.as_mut() } {

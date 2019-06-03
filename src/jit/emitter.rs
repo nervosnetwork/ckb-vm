@@ -74,13 +74,8 @@ extern "C" {
         is_signed: c_int,
     ) -> c_int;
     fn asm_eq(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_lt(
-        c: *mut AsmContext,
-        target: u32,
-        a: AsmValue,
-        b: AsmValue,
-        is_signed: c_int,
-    ) -> c_int;
+    fn asm_lt(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue, is_signed: c_int)
+        -> c_int;
     fn asm_cond(
         c: *mut AsmContext,
         target: u32,
@@ -99,12 +94,7 @@ extern "C" {
     fn asm_push(c: *mut AsmContext, reg: u32) -> c_int;
     fn asm_pop(c: *mut AsmContext, reg: u32) -> c_int;
 
-    fn asm_memory_read(
-        c: *mut AsmContext,
-        target: u32,
-        addr: AsmValue,
-        size: u32,
-    ) -> c_int;
+    fn asm_memory_read(c: *mut AsmContext, target: u32, addr: AsmValue, size: u32) -> c_int;
     fn asm_memory_write(c: *mut AsmContext, addr: AsmValue, v: AsmValue, size: u32) -> c_int;
 }
 
