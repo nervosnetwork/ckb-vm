@@ -1,5 +1,6 @@
 [package]
 name = "ckb-vm-definitions"
+description = "Common definition files for CKB VM"
 version = "0.13.0"
 license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
