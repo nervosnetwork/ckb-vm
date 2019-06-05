@@ -1,19 +1,13 @@
-// Source: https://en.wikipedia.org/wiki/Bit_manipulation#Example_of_bit_manipulation
-#[inline(always)]
-pub fn power_of_2(x: usize) -> bool {
-    x > 0 && ((x & (x - 1)) == 0)
-}
-
 #[inline(always)]
 pub fn roundup(x: usize, round: usize) -> usize {
-    debug_assert!(power_of_2(round));
+    debug_assert!(round.is_power_of_two());
     // x + (((!x) + 1) & (round - 1))
     x + ((!x).wrapping_add(1) & (round.wrapping_sub(1)))
 }
 
 #[inline(always)]
 pub fn rounddown(x: usize, round: usize) -> usize {
-    debug_assert!(power_of_2(round));
+    debug_assert!(round.is_power_of_two());
     // x & !(round - 1)
     x & !(round.wrapping_sub(1))
 }
@@ -22,21 +16,6 @@ pub fn rounddown(x: usize, round: usize) -> usize {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-
-    #[test]
-    fn test_power_of_2() {
-        let test_cases = [
-            (0, false),
-            (1, true),
-            (2, true),
-            (3, false),
-            (4, true),
-            (5, false),
-        ];
-        for test_case in test_cases.iter() {
-            assert_eq!(test_case.1, power_of_2(test_case.0))
-        }
-    }
 
     #[test]
     fn test_roundup() {

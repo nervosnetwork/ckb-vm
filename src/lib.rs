@@ -66,7 +66,6 @@ pub fn run<R: Register, M: Memory<R> + Default>(
 
 #[cfg(test)]
 mod tests {
-    use super::bits::power_of_2;
     use super::*;
 
     #[test]
@@ -76,6 +75,6 @@ mod tests {
 
     #[test]
     fn test_page_size_be_power_of_2() {
-        assert!(power_of_2(RISCV_PAGESIZE));
+        assert!(RISCV_PAGESIZE.is_power_of_two());
     }
 }
