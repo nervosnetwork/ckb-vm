@@ -20,7 +20,7 @@ goblin = "0.0.22"
 fnv = { version = "1.0.6", optional = true }
 memmap = { version = "0.7.0", optional = true }
 libc = { version = "0.2.47", optional = true }
-ckb-vm-definitions = { path = "definitions" }
+ckb-vm-definitions = { path = "definitions", version = "0.13.0" }
 
 [build-dependencies]
 cc = "1.0"
