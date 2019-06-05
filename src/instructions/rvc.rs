@@ -87,7 +87,7 @@ fn b_immediate(instruction_bits: u32) -> i32 {
         | xs(instruction_bits, 12, 1, 8)) as i32
 }
 
-#[allow(clippy::cyclomatic_complexity)]
+#[allow(clippy::cognitive_complexity)]
 pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {

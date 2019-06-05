@@ -3,8 +3,7 @@ use super::{
     value::{ActionOp1, ActionOp2, SignActionOp2, Value},
 };
 use crate::{registers::A0, Error, RISCV_GENERAL_REGISTER_NUMBER};
-use libc::{c_int, c_void, size_t, uint32_t};
-// use std::rc::Rc;
+use libc::{c_int, c_void, size_t};
 
 // This is a C struct type
 #[repr(C)]
@@ -36,77 +35,67 @@ extern "C" {
     fn asm_link(c: *mut AsmContext, szp: *mut size_t) -> c_int;
     fn asm_encode(c: *mut AsmContext, buffer: *mut c_void) -> c_int;
 
-    fn asm_mov(c: *mut AsmContext, target: uint32_t, value: AsmValue) -> c_int;
-    fn asm_add(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_sub(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_mul(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_mov(c: *mut AsmContext, target: u32, value: AsmValue) -> c_int;
+    fn asm_add(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_sub(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_mul(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
     fn asm_mulh(
         c: *mut AsmContext,
-        target: uint32_t,
+        target: u32,
         a: AsmValue,
         b: AsmValue,
         is_signed: c_int,
     ) -> c_int;
-    fn asm_mulhsu(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_mulhsu(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
     fn asm_div(
         c: *mut AsmContext,
-        target: uint32_t,
+        target: u32,
         a: AsmValue,
         b: AsmValue,
         is_signed: c_int,
     ) -> c_int;
     fn asm_rem(
         c: *mut AsmContext,
-        target: uint32_t,
+        target: u32,
         a: AsmValue,
         b: AsmValue,
         is_signed: c_int,
     ) -> c_int;
-    fn asm_and(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_or(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_not(c: *mut AsmContext, target: uint32_t, a: AsmValue, is_signed: c_int) -> c_int;
-    fn asm_xor(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_shl(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_and(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_or(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_not(c: *mut AsmContext, target: u32, a: AsmValue, is_signed: c_int) -> c_int;
+    fn asm_xor(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_shl(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
     fn asm_shr(
         c: *mut AsmContext,
-        target: uint32_t,
+        target: u32,
         a: AsmValue,
         b: AsmValue,
         is_signed: c_int,
     ) -> c_int;
-    fn asm_eq(c: *mut AsmContext, target: uint32_t, a: AsmValue, b: AsmValue) -> c_int;
-    fn asm_lt(
-        c: *mut AsmContext,
-        target: uint32_t,
-        a: AsmValue,
-        b: AsmValue,
-        is_signed: c_int,
-    ) -> c_int;
+    fn asm_eq(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue) -> c_int;
+    fn asm_lt(c: *mut AsmContext, target: u32, a: AsmValue, b: AsmValue, is_signed: c_int)
+        -> c_int;
     fn asm_cond(
         c: *mut AsmContext,
-        target: uint32_t,
+        target: u32,
         condition: AsmValue,
         true_value: AsmValue,
         false_value: AsmValue,
     ) -> c_int;
     fn asm_extend(
         c: *mut AsmContext,
-        target: uint32_t,
+        target: u32,
         a: AsmValue,
         b: AsmValue,
         is_signed: c_int,
     ) -> c_int;
 
-    fn asm_push(c: *mut AsmContext, reg: uint32_t) -> c_int;
-    fn asm_pop(c: *mut AsmContext, reg: uint32_t) -> c_int;
+    fn asm_push(c: *mut AsmContext, reg: u32) -> c_int;
+    fn asm_pop(c: *mut AsmContext, reg: u32) -> c_int;
 
-    fn asm_memory_read(
-        c: *mut AsmContext,
-        target: uint32_t,
-        addr: AsmValue,
-        size: uint32_t,
-    ) -> c_int;
-    fn asm_memory_write(c: *mut AsmContext, addr: AsmValue, v: AsmValue, size: uint32_t) -> c_int;
+    fn asm_memory_read(c: *mut AsmContext, target: u32, addr: AsmValue, size: u32) -> c_int;
+    fn asm_memory_write(c: *mut AsmContext, addr: AsmValue, v: AsmValue, size: u32) -> c_int;
 }
 
 fn immediate_to_asm_value(imm: u64) -> AsmValue {

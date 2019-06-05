@@ -5,7 +5,7 @@ pub mod machine;
 pub mod memory;
 pub mod syscalls;
 
-#[cfg(feature = "jit")]
+#[cfg(all(unix, target_pointer_width = "64", feature = "jit"))]
 mod jit;
 
 pub use crate::{
@@ -20,7 +20,7 @@ pub use crate::{
 use bytes::Bytes;
 use std::io::{Error as IOError, ErrorKind};
 
-#[cfg(feature = "jit")]
+#[cfg(all(unix, target_pointer_width = "64", feature = "jit"))]
 pub use crate::jit::{
     default_jit_machine, BaselineJitMachine, BaselineJitRunData, DefaultTracer, TcgTracer,
 };

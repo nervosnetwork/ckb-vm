@@ -1,4 +1,4 @@
-#![cfg(feature = "jit")]
+#![cfg(all(unix, target_pointer_width = "64", feature = "jit"))]
 
 use bytes::Bytes;
 use ckb_vm::{
