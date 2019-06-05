@@ -4,6 +4,9 @@ test:
 test-all-features:
 	cargo test --all --features=jit,asm -- --nocapture
 
+cov: test-all-features
+	for file in `find target/debug/ -maxdepth 1 -executable -type f`; do mkdir -p "target/cov/$$(basename $$file)"; RUST_BACKTRACE=full kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$$(basename $$file)" "$$file"; done
+
 fmt:
 	cargo fmt --all -- --check
 	cd definitions && cargo fmt ${VERBOSE} --all -- --check
