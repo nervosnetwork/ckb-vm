@@ -50,6 +50,36 @@ matrix:
             - git
             - build-essential
       env: SUITE=ci-all-features
+    - name: Code Coverage
+      rust: 1.33.0
+      sudo: true
+      before_install:
+        - sudo apt-get update
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+            - libcurl4-openssl-dev
+            - libelf-dev
+            - libdw-dev
+            - cmake
+            - gcc
+            - binutils-dev
+      script:
+        wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz &&
+        tar xzf v36.tar.gz &&
+        cd kcov-36 &&
+        mkdir build &&
+        cd build &&
+        cmake .. &&
+        make &&
+        sudo make install &&
+        cd ../.. &&
+        rm -rf kcov-36 v36.tar.gz &&
+        make cov &&
+        bash <(curl -s https://codecov.io/bash) &&
+        echo "Uploaded code coverage"
 
 script:
 - make "$SUITE"

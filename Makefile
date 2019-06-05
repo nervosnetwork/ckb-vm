@@ -4,6 +4,10 @@ test:
 test-all-features:
 	cargo test --all --features=jit,asm -- --nocapture
 
+cov: test-all-features
+	for file in target/debug/test_*-*[^\.d]; do mkdir -p "target/cov/$$(basename $$file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$$(basename $$file)" "$$file"; done
+	for file in target/debug/ckb_vm*-*[^\.d]; do mkdir -p "target/cov/$$(basename $$file)"; kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$$(basename $$file)" "$$file"; done
+
 fmt:
 	cargo fmt --all -- --check
 	cd definitions && cargo fmt ${VERBOSE} --all -- --check
