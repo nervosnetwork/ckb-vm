@@ -143,14 +143,13 @@ impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMe
 
 #[cfg(test)]
 mod tests {
-    use super::super::super::bits::power_of_2;
     use super::*;
 
     #[test]
     fn test_trace_constant_rules() {
-        assert!(power_of_2(TRACE_SIZE));
+        assert!(TRACE_SIZE.is_power_of_two());
         assert_eq!(TRACE_MASK, TRACE_SIZE - 1);
-        assert!(power_of_2(TRACE_ITEM_LENGTH));
+        assert!(TRACE_ITEM_LENGTH.is_power_of_two());
         assert!(TRACE_ITEM_LENGTH <= 255);
     }
 }
