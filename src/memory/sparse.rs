@@ -1,5 +1,5 @@
 use super::super::{Error, Register, RISCV_PAGES, RISCV_PAGESIZE};
-use super::{fill_page_data, memset, round_page, Memory, Page};
+use super::{fill_page_data, memset, round_page_down, Memory, Page};
 
 use bytes::Bytes;
 use std::cmp::min;
@@ -45,7 +45,7 @@ impl<R> SparseMemory<R> {
 
     fn load(&mut self, addr: u64, bytes: u64) -> Result<u64, Error> {
         debug_assert!(bytes == 1 || bytes == 2 || bytes == 4 || bytes == 8);
-        let page_addr = round_page(addr);
+        let page_addr = round_page_down(addr);
         let first_page_bytes = min(bytes, RISCV_PAGESIZE as u64 - (addr - page_addr));
         let mut shift = 0;
         let mut value: u64 = 0;
@@ -118,7 +118,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let mut remaining_data = value;
-        let mut current_page_addr = round_page(addr);
+        let mut current_page_addr = round_page_down(addr);
         let mut current_page_offset = addr - current_page_addr;
         while !remaining_data.is_empty() {
             let page = self.fetch_page(current_page_addr)?;
@@ -138,7 +138,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
-        let mut current_page_addr = round_page(addr);
+        let mut current_page_addr = round_page_down(addr);
         let mut current_page_offset = addr - current_page_addr;
         let mut remaining_size = size;
         while remaining_size > 0 {

@@ -1,11 +1,11 @@
 use crate::{
-    bits::{rounddown, roundup},
     decoder::build_imac_decoder,
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
     memory::{
-        check_permission, fill_page_data, memset, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
+        check_permission, fill_page_data, memset, round_page_down, round_page_up, FLAG_EXECUTABLE,
+        FLAG_FREEZED, FLAG_WRITABLE,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, RISCV_MAX_MEMORY,
     RISCV_PAGES, RISCV_PAGESIZE,
@@ -61,9 +61,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         source: Option<Bytes>,
         offset_from_addr: u64,
     ) -> Result<(), Error> {
-        if rounddown(addr, RISCV_PAGESIZE as u64) != addr
-            || roundup(size, RISCV_PAGESIZE as u64) != size
-        {
+        if round_page_down(addr) != addr || round_page_up(size) != size {
             return Err(Error::Unaligned);
         }
         if addr > RISCV_MAX_MEMORY as u64

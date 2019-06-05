@@ -1,4 +1,7 @@
-use super::{bits::rounddown, Error, Register, RISCV_PAGESIZE};
+use super::{
+    bits::{rounddown, roundup},
+    Error, Register, RISCV_PAGESIZE,
+};
 use bytes::Bytes;
 use std::cmp::min;
 use std::ptr;
@@ -12,8 +15,13 @@ pub use ckb_vm_definitions::memory::{
 };
 
 #[inline(always)]
-pub fn round_page(x: u64) -> u64 {
-    x & (!(RISCV_PAGESIZE as u64 - 1))
+pub fn round_page_down(x: u64) -> u64 {
+    rounddown(x, RISCV_PAGESIZE as u64)
+}
+
+#[inline(always)]
+pub fn round_page_up(x: u64) -> u64 {
+    roundup(x, RISCV_PAGESIZE as u64)
 }
 
 pub type Page = [u8; RISCV_PAGESIZE];
@@ -81,7 +89,7 @@ pub fn check_permission<R: Register>(
     flag: u8,
 ) -> Result<(), Error> {
     let e = addr + size;
-    let mut current_addr = rounddown(addr, RISCV_PAGESIZE as u64);
+    let mut current_addr = round_page_down(addr);
     while current_addr < e {
         let page = current_addr / RISCV_PAGESIZE as u64;
         let page_flag = memory.fetch_flag(page)?;
