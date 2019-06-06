@@ -17,6 +17,8 @@ pub fn test_tcg_simple64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
+    println!("bb: {:?}", buffer);
+
     let machine = BaselineJitMachine::new(buffer, Box::new(TcgTracer::default()));
     let result = machine.run(&vec!["simple".into()]);
     assert!(result.is_ok());
