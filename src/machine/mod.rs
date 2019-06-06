@@ -91,7 +91,7 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
-    fn load_elf(&mut self, program: &Bytes) -> Result<(), Error> {
+    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<(), Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         let bits = elf_bits(&elf.header).ok_or(Error::InvalidElfBits)?;
         if bits != Self::REG::BITS {
@@ -121,7 +121,9 @@ pub trait SupportMachine: CoreMachine {
                     .store_byte(aligned_start, padding_start, 0)?;
             }
         }
-        self.set_pc(Self::REG::from_u64(elf.header.e_entry));
+        if update_pc {
+            self.set_pc(Self::REG::from_u64(elf.header.e_entry));
+        }
         Ok(())
     }
 
@@ -329,7 +331,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
-        self.load_elf(program)?;
+        self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
         }
