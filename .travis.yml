@@ -88,6 +88,7 @@ matrix:
         ln -snf .. ckb-vm-test-suite/ckb-vm &&
         sudo docker run --rm -v `pwd`:/code xxuejie/riscv-gnu-toolchain-rv64imac:xenial-20190606 cp -r /riscv /code/riscv &&
         RISCV=`pwd`/riscv ./ckb-vm-test-suite/test.sh --coverage &&
+        make cov &&
         bash <(curl -s https://codecov.io/bash) &&
         echo "Uploaded code coverage"
 script:
