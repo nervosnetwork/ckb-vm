@@ -50,6 +50,30 @@ matrix:
             - git
             - build-essential
       env: SUITE=ci-all-features
+    - name: Test Suite
+      rust: 1.35.0
+      dist: xenial
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+            - autoconf
+            - automake
+            - autotools-dev
+            - libmpc-dev
+            - libmpfr-dev
+            - libgmp-dev
+            - gawk
+            - libtool
+            - patchutils
+            - libexpat-dev
+            - zlib1g-dev
+      script:
+        git clone --recursive https://github.com/nervosnetwork/ckb-vm-test-suite &&
+        ln -snf .. ckb-vm-test-suite/ckb-vm &&
+        sudo docker run --rm -v `pwd`:/code xxuejie/riscv-gnu-toolchain-rv64imac:xenial-20190606 cp -r /riscv /code/riscv &&
+        RISCV=`pwd`/riscv ./ckb-vm-test-suite/test.sh
     - name: Code Coverage
       rust: 1.35.0
       dist: xenial
