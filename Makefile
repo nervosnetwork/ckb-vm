@@ -9,7 +9,7 @@ test-all-features:
 cov:
 	cargo clean
 	cargo test --all --features=asm -- --nocapture
-	for file in `find target/debug/ -maxdepth 1 -executable -type f`; do mkdir -p "target/cov/$$(basename $$file)"; kcov --exclude-pattern=/.cargo,/usr/lib "target/cov/$$(basename $$file)" "$$file"; done
+	for file in `find target/debug/ -maxdepth 1 -executable -type f`; do mkdir -p "target/cov/$$(basename $$file)"; kcov --exclude-pattern=/.cargo,/usr/lib,tests "target/cov/$$(basename $$file)" "$$file"; done
 
 fmt:
 	cargo fmt --all -- --check
