@@ -239,7 +239,7 @@ impl BaselineJitMachine {
                 let end_instruction = (!jitable) || is_basic_block_end_instruction(instruction);
                 // Unjitable instruction will be its own basic block
                 if instructions.is_empty() || jitable {
-                    let length = instruction_length(instruction) as u64;
+                    let length = u64::from(instruction_length(instruction));
                     current_pc += length;
                     block_length += length;
                     block_cycles += machine

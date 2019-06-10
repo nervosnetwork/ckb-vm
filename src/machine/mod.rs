@@ -16,7 +16,7 @@ use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
 use std::fmt::{self, Display};
 
-fn elf_bits(header: &Header) -> Option<usize> {
+fn elf_bits(header: &Header) -> Option<u8> {
     // This is documented in ELF specification, we are exacting ELF file
     // class part here.
     // Right now we are only supporting 32 and 64 bits, in the future we
@@ -130,17 +130,17 @@ pub trait SupportMachine: CoreMachine {
     fn initialize_stack(
         &mut self,
         args: &[Bytes],
-        stack_start: usize,
-        stack_size: usize,
+        stack_start: u64,
+        stack_size: u64,
     ) -> Result<(), Error> {
         // We are enforcing WXorX now, there's no need to call init_pages here
         // since all the required bits are already set.
-        self.set_register(SP, Self::REG::from_usize(stack_start + stack_size));
+        self.set_register(SP, Self::REG::from_u64(stack_start + stack_size));
         // First value in this array is argc, then it contains the address(pointer)
         // of each argv object.
-        let mut values = vec![Self::REG::from_usize(args.len())];
+        let mut values = vec![Self::REG::from_u64(args.len() as u64)];
         for arg in args {
-            let len = Self::REG::from_usize(arg.len() + 1);
+            let len = Self::REG::from_u64(arg.len() as u64 + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
             self.memory_mut().store_bytes(address.to_u64(), arg)?;
@@ -154,12 +154,12 @@ pub trait SupportMachine: CoreMachine {
         // order
         for value in values.iter().rev() {
             let address =
-                self.registers()[SP].overflowing_sub(&Self::REG::from_usize(Self::REG::BITS / 8));
+                self.registers()[SP].overflowing_sub(&Self::REG::from_u8(Self::REG::BITS / 8));
 
             self.memory_mut().store32(&address, value)?;
             self.set_register(SP, address);
         }
-        if self.registers()[SP].to_usize() < stack_start {
+        if self.registers()[SP].to_u64() < stack_start {
             // args exceed stack size
             return Err(Error::OutOfBound);
         }
@@ -316,9 +316,9 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
 
 impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "pc  : 0x{:16X}", self.pc().to_usize())?;
+        writeln!(f, "pc  : 0x{:16X}", self.pc().to_u64())?;
         for (i, name) in REGISTER_ABI_NAMES.iter().enumerate() {
-            write!(f, "{:4}: 0x{:16X}", name, self.registers()[i].to_usize())?;
+            write!(f, "{:4}: 0x{:16X}", name, self.registers()[i].to_u64())?;
             if (i + 1) % 4 == 0 {
                 writeln!(f)?;
             } else {
@@ -337,8 +337,8 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         }
         self.initialize_stack(
             args,
-            RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE,
-            DEFAULT_STACK_SIZE,
+            (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
+            DEFAULT_STACK_SIZE as u64,
         )?;
         Ok(())
     }

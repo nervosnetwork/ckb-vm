@@ -220,7 +220,7 @@ pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
 }
 
 #[inline(always)]
-pub fn instruction_length(i: Instruction) -> usize {
+pub fn instruction_length(i: Instruction) -> u8 {
     let o = extract_opcode(i);
     if o >= MINIMAL_RVC_OPCODE && o <= MAXIMUM_RVC_OPCODE {
         2

@@ -47,61 +47,49 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         insts::OP_SLL => {
             let i = Rtype(inst);
             let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = machine.registers()[i.rs1()].clone() << shift_value;
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SLLW => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
             let value = machine.registers()[i.rs1()].clone() << shift_value;
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_SRL => {
             let i = Rtype(inst);
             let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = machine.registers()[i.rs1()].clone() >> shift_value;
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SRLW => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
             let value =
-                machine.registers()[i.rs1()].zero_extend(&Mac::REG::from_usize(32)) >> shift_value;
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+                machine.registers()[i.rs1()].zero_extend(&Mac::REG::from_u8(32)) >> shift_value;
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_SRA => {
             let i = Rtype(inst);
             let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(Mac::REG::SHIFT_MASK);
+                machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = machine.registers()[i.rs1()].signed_shr(&shift_value);
             update_register(machine, i.rd(), value);
             None
         }
         insts::OP_SRAW => {
             let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_usize(0x1F);
+            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
             let value = machine.registers()[i.rs1()]
-                .sign_extend(&Mac::REG::from_usize(32))
+                .sign_extend(&Mac::REG::from_u8(32))
                 .signed_shr(&shift_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_SLT => {
@@ -198,7 +186,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_JALR => {
             let i = Itype(inst);
-            let link = machine.pc().overflowing_add(&Mac::REG::from_usize(4));
+            let link = machine.pc().overflowing_add(&Mac::REG::from_u8(4));
             let mut next_pc =
                 machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
             next_pc = next_pc & (!Mac::REG::one());
@@ -263,7 +251,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = rs1_value.eq(&rs2_value);
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(4).overflowing_add(&pc),
+                &Mac::REG::from_u8(4).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -275,7 +263,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = rs1_value.ne(&rs2_value);
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(4).overflowing_add(&pc),
+                &Mac::REG::from_u8(4).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -287,7 +275,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = rs1_value.lt_s(&rs2_value);
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(4).overflowing_add(&pc),
+                &Mac::REG::from_u8(4).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -299,7 +287,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = rs1_value.ge_s(&rs2_value);
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(4).overflowing_add(&pc),
+                &Mac::REG::from_u8(4).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -311,7 +299,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = rs1_value.lt(&rs2_value);
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(4).overflowing_add(&pc),
+                &Mac::REG::from_u8(4).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -323,7 +311,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = rs1_value.ge(&rs2_value);
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(4).overflowing_add(&pc),
+                &Mac::REG::from_u8(4).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -371,13 +359,9 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
             let value = rs1_value
-                .zero_extend(&Mac::REG::from_usize(32))
-                .overflowing_mul(&rs2_value.zero_extend(&Mac::REG::from_usize(32)));
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+                .zero_extend(&Mac::REG::from_u8(32))
+                .overflowing_mul(&rs2_value.zero_extend(&Mac::REG::from_u8(32)));
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_MULH => {
@@ -416,14 +400,10 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_usize(32));
+            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_u8(32));
+            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_u8(32));
             let value = rs1_value.overflowing_div_signed(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_DIVU => {
@@ -438,14 +418,10 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_usize(32));
+            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_u8(32));
+            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_u8(32));
             let value = rs1_value.overflowing_div(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_REM => {
@@ -460,14 +436,10 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_usize(32));
+            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_u8(32));
+            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_u8(32));
             let value = rs1_value.overflowing_rem_signed(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_REMU => {
@@ -482,14 +454,10 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_usize(32));
-            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_usize(32));
+            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_u8(32));
+            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_u8(32));
             let value = rs1_value.overflowing_rem(&rs2_value);
-            update_register(
-                machine,
-                i.rd(),
-                value.sign_extend(&Mac::REG::from_usize(32)),
-            );
+            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
             None
         }
         insts::OP_RVC_SUB => {
@@ -621,7 +589,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             let condition = machine.registers()[i.rs1()].eq(&Mac::REG::zero());
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(2).overflowing_add(&pc),
+                &Mac::REG::from_u8(2).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -633,7 +601,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
                 .logical_not();
             let new_pc = condition.cond(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_usize(2).overflowing_add(&pc),
+                &Mac::REG::from_u8(2).overflowing_add(&pc),
             );
             Some(new_pc)
         }
@@ -663,7 +631,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         }
         insts::OP_RVC_JALR => {
             let i = Stype(inst);
-            let link = machine.pc().overflowing_add(&Mac::REG::from_usize(2));
+            let link = machine.pc().overflowing_add(&Mac::REG::from_u8(2));
             let mut next_pc = machine.registers()[i.rs1()].clone();
             next_pc = next_pc & (!Mac::REG::one());
             update_register(machine, 1, link);
@@ -695,7 +663,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
     let default_instruction_size = instruction_length(inst);
     let default_next_pc = machine
         .pc()
-        .overflowing_add(&Mac::REG::from_usize(default_instruction_size));
+        .overflowing_add(&Mac::REG::from_u8(default_instruction_size));
     machine.set_pc(next_pc.unwrap_or(default_next_pc));
     Ok(())
 }

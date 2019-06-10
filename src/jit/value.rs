@@ -106,8 +106,8 @@ impl Shr<Value> for Value {
 
 impl Register for Value {
     // For now we only support JIT on 64 bit RISC-V machine
-    const BITS: usize = 64;
-    const SHIFT_MASK: usize = 0x3F;
+    const BITS: u8 = 64;
+    const SHIFT_MASK: u8 = 0x3F;
 
     fn zero() -> Value {
         Value::Imm(0)
@@ -291,10 +291,6 @@ impl Register for Value {
         0
     }
 
-    fn to_isize(&self) -> isize {
-        0
-    }
-
     fn to_u8(&self) -> u8 {
         0
     }
@@ -308,10 +304,6 @@ impl Register for Value {
     }
 
     fn to_u64(&self) -> u64 {
-        0
-    }
-
-    fn to_usize(&self) -> usize {
         0
     }
 
@@ -331,10 +323,6 @@ impl Register for Value {
         Value::Imm(v as u64)
     }
 
-    fn from_isize(v: isize) -> Value {
-        Value::Imm((v as i64) as u64)
-    }
-
     fn from_u8(v: u8) -> Value {
         Value::Imm(u64::from(v))
     }
@@ -349,9 +337,5 @@ impl Register for Value {
 
     fn from_u64(v: u64) -> Value {
         Value::Imm(v)
-    }
-
-    fn from_usize(v: usize) -> Value {
-        Value::Imm(v as u64)
     }
 }

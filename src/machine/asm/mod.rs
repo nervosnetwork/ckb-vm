@@ -249,7 +249,7 @@ impl<'a> AsmMachine<'a> {
                         let mut instruction =
                             decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
-                        current_pc += instruction_length(instruction) as u64;
+                        current_pc += u64::from(instruction_length(instruction));
                         // We are storing the offset after current instruction in unused
                         // space of the instruction, so as to allow easy access of this data
                         // within assembly loops.

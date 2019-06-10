@@ -122,7 +122,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                             inst,
                             rd(instruction_bits),
                             rs1(instruction_bits),
-                            itype_immediate(instruction_bits) & R::SHIFT_MASK as i32,
+                            itype_immediate(instruction_bits) & i32::from(R::SHIFT_MASK),
                         )
                         .0
                     });

@@ -114,7 +114,7 @@ impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMe
                 while i < TRACE_ITEM_LENGTH {
                     let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                     let end_instruction = is_basic_block_end_instruction(instruction);
-                    current_pc += instruction_length(instruction) as u64;
+                    current_pc += u64::from(instruction_length(instruction));
                     self.traces[slot].instructions[i] = instruction;
                     i += 1;
                     if end_instruction {

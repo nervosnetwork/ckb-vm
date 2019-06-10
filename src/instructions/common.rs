@@ -30,7 +30,7 @@ pub fn addw<Mac: Machine>(
     let rs1_value = &machine.registers()[rs1 as usize];
     let rs2_value = &machine.registers()[rs2 as usize];
     let value = rs1_value.overflowing_add(&rs2_value);
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
 pub fn sub<Mac: Machine>(
@@ -54,7 +54,7 @@ pub fn subw<Mac: Machine>(
     let rs1_value = &machine.registers()[rs1 as usize];
     let rs2_value = &machine.registers()[rs2 as usize];
     let value = rs1_value.overflowing_sub(&rs2_value);
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
 pub fn addi<Mac: Machine>(
@@ -74,7 +74,7 @@ pub fn addiw<Mac: Machine>(
     imm: Immediate,
 ) {
     let value = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
 // =======================
@@ -89,7 +89,7 @@ pub fn lb<Mac: Machine>(
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
     let value = machine.memory_mut().load8(&address)?;
     // sign-extened
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(8)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(8)));
     Ok(())
 }
 
@@ -102,7 +102,7 @@ pub fn lh<Mac: Machine>(
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
     let value = machine.memory_mut().load16(&address)?;
     // sign-extened
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(16)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(16)));
     Ok(())
 }
 
@@ -114,7 +114,7 @@ pub fn lw<Mac: Machine>(
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
     let value = machine.memory_mut().load32(&address)?;
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
     Ok(())
 }
 
@@ -126,7 +126,7 @@ pub fn ld<Mac: Machine>(
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
     let value = machine.memory_mut().load64(&address)?;
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(64)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(64)));
     Ok(())
 }
 
@@ -318,7 +318,7 @@ pub fn slliw<Mac: Machine>(
     shamt: UImmediate,
 ) {
     let value = machine.registers()[rs1 as usize].clone() << Mac::REG::from_u32(shamt);
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
 pub fn srliw<Mac: Machine>(
@@ -327,9 +327,9 @@ pub fn srliw<Mac: Machine>(
     rs1: RegisterIndex,
     shamt: UImmediate,
 ) {
-    let value = machine.registers()[rs1 as usize].zero_extend(&Mac::REG::from_usize(32))
+    let value = machine.registers()[rs1 as usize].zero_extend(&Mac::REG::from_u8(32))
         >> Mac::REG::from_u32(shamt);
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
 pub fn sraiw<Mac: Machine>(
@@ -339,9 +339,9 @@ pub fn sraiw<Mac: Machine>(
     shamt: UImmediate,
 ) {
     let value = machine.registers()[rs1 as usize]
-        .sign_extend(&Mac::REG::from_usize(32))
+        .sign_extend(&Mac::REG::from_u8(32))
         .signed_shr(&Mac::REG::from_u32(shamt));
-    update_register(machine, rd, value.sign_extend(&Mac::REG::from_usize(32)));
+    update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
 // =======================
@@ -351,9 +351,9 @@ pub fn jal<Mac: Machine>(
     machine: &mut Mac,
     rd: RegisterIndex,
     imm: Immediate,
-    xbytes: usize,
+    xbytes: u8,
 ) -> Option<Mac::REG> {
-    let link = machine.pc().overflowing_add(&Mac::REG::from_usize(xbytes));
+    let link = machine.pc().overflowing_add(&Mac::REG::from_u8(xbytes));
     update_register(machine, rd, link);
     Some(machine.pc().overflowing_add(&Mac::REG::from_i32(imm)))
 }
