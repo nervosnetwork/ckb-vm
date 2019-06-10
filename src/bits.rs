@@ -1,12 +1,12 @@
 #[inline(always)]
-pub fn roundup(x: usize, round: usize) -> usize {
+pub fn roundup(x: u64, round: u64) -> u64 {
     debug_assert!(round.is_power_of_two());
     // x + (((!x) + 1) & (round - 1))
     x + ((!x).wrapping_add(1) & (round.wrapping_sub(1)))
 }
 
 #[inline(always)]
-pub fn rounddown(x: usize, round: usize) -> usize {
+pub fn rounddown(x: u64, round: u64) -> u64 {
     debug_assert!(round.is_power_of_two());
     // x & !(round - 1)
     x & !(round.wrapping_sub(1))
@@ -24,10 +24,7 @@ mod tests {
         assert_eq!(16, roundup(15, 16));
         assert_eq!(16, roundup(16, 16));
         assert_eq!(32, roundup(17, 16));
-        assert_eq!(
-            usize::max_value() - 15,
-            roundup(usize::max_value() - 15, 16)
-        );
+        assert_eq!(u64::max_value() - 15, roundup(u64::max_value() - 15, 16));
     }
 
     #[test]
@@ -37,12 +34,12 @@ mod tests {
         assert_eq!(0, rounddown(15, 16));
         assert_eq!(16, rounddown(16, 16));
         assert_eq!(16, rounddown(17, 16));
-        assert_eq!(usize::max_value() - 15, rounddown(usize::max_value(), 16));
+        assert_eq!(u64::max_value() - 15, rounddown(u64::max_value(), 16));
     }
 
     proptest! {
         #[test]
-        fn roundup_proptest(x: usize, round in (0u32..16).prop_map(|d| 2usize.pow(d))) {
+        fn roundup_proptest(x: u64, round in (0u32..16).prop_map(|d| 2u64.pow(d))) {
             prop_assume!(x.checked_add(round).is_some(), "avoid integer overflow");
             let result = roundup(x, round);
 
@@ -57,7 +54,7 @@ mod tests {
         }
 
         #[test]
-        fn rounddown_proptest(x: usize, round in (0u32..16).prop_map(|d| 2usize.pow(d))) {
+        fn rounddown_proptest(x: u64, round in (0u32..16).prop_map(|d| 2u64.pow(d))) {
             let result = rounddown(x, round);
 
             // multiple of round

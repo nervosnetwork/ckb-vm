@@ -26,24 +26,26 @@ impl<R: Register, M: Memory<R> + Default> Default for WXorXMemory<R, M> {
 impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
     fn init_pages(
         &mut self,
-        addr: usize,
-        size: usize,
+        addr: u64,
+        size: u64,
         flags: u8,
         source: Option<Bytes>,
-        offset_from_addr: usize,
+        offset_from_addr: u64,
     ) -> Result<(), Error> {
-        if rounddown(addr, RISCV_PAGESIZE) != addr || roundup(size, RISCV_PAGESIZE) != size {
+        if rounddown(addr, RISCV_PAGESIZE as u64) != addr
+            || roundup(size, RISCV_PAGESIZE as u64) != size
+        {
             return Err(Error::Unaligned);
         }
-        if addr > RISCV_MAX_MEMORY
-            || size > RISCV_MAX_MEMORY
-            || addr + size > RISCV_MAX_MEMORY
+        if addr > RISCV_MAX_MEMORY as u64
+            || size > RISCV_MAX_MEMORY as u64
+            || addr + size > RISCV_MAX_MEMORY as u64
             || offset_from_addr > size
         {
             return Err(Error::OutOfBound);
         }
         for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
-            let page = page_addr / RISCV_PAGESIZE;
+            let page = page_addr as usize / RISCV_PAGESIZE;
             if self.flags[page] & FLAG_FREEZED != 0 {
                 return Err(Error::InvalidPermission);
             }
@@ -53,15 +55,15 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
             .init_pages(addr, size, flags, source, offset_from_addr)
     }
 
-    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_PAGES {
-            Ok(self.flags[page])
+    fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
+        if page < RISCV_PAGES as u64 {
+            Ok(self.flags[page as usize])
         } else {
             Err(Error::OutOfBound)
         }
     }
 
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
+    fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_permission(self, addr, 2, FLAG_EXECUTABLE)?;
         self.inner.execute_load16(addr)
     }
@@ -83,31 +85,31 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
     }
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_usize(), 1, FLAG_WRITABLE)?;
+        check_permission(self, addr.to_u64(), 1, FLAG_WRITABLE)?;
         self.inner.store8(addr, value)
     }
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_usize(), 2, FLAG_WRITABLE)?;
+        check_permission(self, addr.to_u64(), 2, FLAG_WRITABLE)?;
         self.inner.store16(addr, value)
     }
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_usize(), 4, FLAG_WRITABLE)?;
+        check_permission(self, addr.to_u64(), 4, FLAG_WRITABLE)?;
         self.inner.store32(addr, value)
     }
 
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_usize(), 8, FLAG_WRITABLE)?;
+        check_permission(self, addr.to_u64(), 8, FLAG_WRITABLE)?;
         self.inner.store64(addr, value)
     }
 
-    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
-        check_permission(self, addr, value.len(), FLAG_WRITABLE)?;
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
+        check_permission(self, addr, value.len() as u64, FLAG_WRITABLE)?;
         self.inner.store_bytes(addr, value)
     }
 
-    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
         check_permission(self, addr, size, FLAG_WRITABLE)?;
         self.inner.store_byte(addr, size, value)
     }

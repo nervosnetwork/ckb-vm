@@ -54,14 +54,14 @@ struct RustData {
     freezed: bool,
     // First item in the value tuple is starting address of jitted basic block,
     // second item in the tuple is current cycle count of basic block.
-    jitted_blocks: FnvHashMap<usize, (usize, u64)>,
+    jitted_blocks: FnvHashMap<u64, (u64, u64)>,
     // This records the start address(first item) and length(second item) of all
     // jitted basic block, so when a memory write happens within a jitted block,
     // we can use this as a hint to clear those jitted blocks since they will be
     // incorrect afther the memory write. Notice this vec is also sorted based on
     // the start address(first item) to allow for binary search operations for speed
     // considerations.
-    jitted_segments: Vec<(usize, usize)>,
+    jitted_segments: Vec<(u64, u64)>,
     // We cannot use generics here since the FFI functions at the end of this
     // file need to stay unmangled, but Rust requires mangled names for
     // functions with generic types.
@@ -83,7 +83,7 @@ impl RustData {
         }
     }
 
-    fn mark_write(&mut self, offset: usize, length: usize) -> Result<&mut Self, Error> {
+    fn mark_write(&mut self, offset: u64, length: u64) -> Result<&mut Self, Error> {
         while !self.jitted_segments.is_empty() {
             match self
                 .jitted_segments
@@ -203,7 +203,7 @@ impl BaselineJitMachine {
         let decoder = build_imac_decoder::<u64>();
         machine.set_running(true);
         while machine.running() {
-            let pc = machine.pc().to_usize();
+            let pc = machine.pc().to_u64();
             let jitted_data = {
                 let rust_data = &mut machine.inner_mut().rust_data;
                 rust_data.tracer.trace(pc)?;
@@ -219,7 +219,7 @@ impl BaselineJitMachine {
                 let rust_data = &mut core.rust_data;
                 if let Some(buffer) = &rust_data.buffer {
                     let f = unsafe {
-                        mem::transmute::<&u8, fn(&mut AsmData)>(&buffer.as_ref()[address])
+                        mem::transmute::<&u8, fn(&mut AsmData)>(&buffer.as_ref()[address as usize])
                     };
                     f(core.asm_data_mut());
                     continue;
@@ -239,7 +239,7 @@ impl BaselineJitMachine {
                 let end_instruction = (!jitable) || is_basic_block_end_instruction(instruction);
                 // Unjitable instruction will be its own basic block
                 if instructions.is_empty() || jitable {
-                    let length = instruction_length(instruction);
+                    let length = instruction_length(instruction) as u64;
                     current_pc += length;
                     block_length += length;
                     block_cycles += machine
@@ -284,7 +284,7 @@ impl BaselineJitMachine {
                 } else {
                     // TODO: check if dynasm handles alignments here.
                     emitter.encode(&mut buffer_mut[rust_data.used..])?;
-                    let offset = rust_data.used;
+                    let offset = rust_data.used as u64;
                     rust_data.used += encode_size;
                     rust_data.jitted_blocks.insert(pc, (offset, block_cycles));
                     match rust_data
@@ -388,7 +388,7 @@ struct JitCompilingMachine {
 }
 
 impl JitCompilingMachine {
-    fn new(pc: usize) -> Self {
+    fn new(pc: u64) -> Self {
         let registers = [
             Value::Register(0),
             Value::Register(1),
@@ -422,7 +422,7 @@ impl JitCompilingMachine {
             Value::Register(29),
             Value::Register(30),
             Value::Register(31),
-            Value::from_usize(pc),
+            Value::from_u64(pc),
         ];
         Self {
             registers,
@@ -508,28 +508,28 @@ impl Machine for JitCompilingMachine {
 impl Memory<Value> for JitCompilingMachine {
     fn init_pages(
         &mut self,
-        _addr: usize,
-        _size: usize,
+        _addr: u64,
+        _size: u64,
         _flags: u8,
         _source: Option<Bytes>,
-        _offset_from_addr: usize,
+        _offset_from_addr: u64,
     ) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
 
-    fn fetch_flag(&mut self, _page: usize) -> Result<u8, Error> {
+    fn fetch_flag(&mut self, _page: u64) -> Result<u8, Error> {
         Err(Error::Unimplemented)
     }
 
-    fn store_byte(&mut self, _addr: usize, _size: usize, _value: u8) -> Result<(), Error> {
+    fn store_byte(&mut self, _addr: u64, _size: u64, _value: u8) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
 
-    fn store_bytes(&mut self, _addr: usize, _value: &[u8]) -> Result<(), Error> {
+    fn store_bytes(&mut self, _addr: u64, _value: &[u8]) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
 
-    fn execute_load16(&mut self, _addr: usize) -> Result<u16, Error> {
+    fn execute_load16(&mut self, _addr: u64) -> Result<u16, Error> {
         Err(Error::Unimplemented)
     }
 
@@ -591,7 +591,7 @@ impl Memory<Value> for JitCompilingMachine {
 extern "C" fn ckb_vm_jit_ffi_store8(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
-            data.mark_write(addr as usize, 1)
+            data.mark_write(addr, 1)
                 .and_then(|data| data.memory.store8(&addr, &value))
                 .ok()
         })
@@ -603,7 +603,7 @@ extern "C" fn ckb_vm_jit_ffi_store8(data: *mut RustData, addr: u64, value: u64) 
 extern "C" fn ckb_vm_jit_ffi_store16(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
-            data.mark_write(addr as usize, 2)
+            data.mark_write(addr, 2)
                 .and_then(|data| data.memory.store16(&addr, &value))
                 .ok()
         })
@@ -615,7 +615,7 @@ extern "C" fn ckb_vm_jit_ffi_store16(data: *mut RustData, addr: u64, value: u64)
 extern "C" fn ckb_vm_jit_ffi_store32(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
-            data.mark_write(addr as usize, 4)
+            data.mark_write(addr, 4)
                 .and_then(|data| data.memory.store32(&addr, &value))
                 .ok()
         })
@@ -627,7 +627,7 @@ extern "C" fn ckb_vm_jit_ffi_store32(data: *mut RustData, addr: u64, value: u64)
 extern "C" fn ckb_vm_jit_ffi_store64(data: *mut RustData, addr: u64, value: u64) -> c_int {
     unsafe { data.as_mut() }
         .and_then(|data| {
-            data.mark_write(addr as usize, 8)
+            data.mark_write(addr, 8)
                 .and_then(|data| data.memory.store64(&addr, &value))
                 .ok()
         })

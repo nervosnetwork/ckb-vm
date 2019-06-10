@@ -55,18 +55,20 @@ impl CoreMachine for Box<AsmCoreMachine> {
 impl Memory<u64> for Box<AsmCoreMachine> {
     fn init_pages(
         &mut self,
-        addr: usize,
-        size: usize,
+        addr: u64,
+        size: u64,
         flags: u8,
         source: Option<Bytes>,
-        offset_from_addr: usize,
+        offset_from_addr: u64,
     ) -> Result<(), Error> {
-        if rounddown(addr, RISCV_PAGESIZE) != addr || roundup(size, RISCV_PAGESIZE) != size {
+        if rounddown(addr, RISCV_PAGESIZE as u64) != addr
+            || roundup(size, RISCV_PAGESIZE as u64) != size
+        {
             return Err(Error::Unaligned);
         }
-        if addr > RISCV_MAX_MEMORY
-            || size > RISCV_MAX_MEMORY
-            || addr + size > RISCV_MAX_MEMORY
+        if addr > RISCV_MAX_MEMORY as u64
+            || size > RISCV_MAX_MEMORY as u64
+            || addr + size > RISCV_MAX_MEMORY as u64
             || offset_from_addr > size
         {
             return Err(Error::OutOfBound);
@@ -76,110 +78,121 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         // 3% so we are keeping this version.
         let mut current_addr = addr;
         while current_addr < addr + size {
-            let page = current_addr / RISCV_PAGESIZE;
-            if self.flags[page] & FLAG_FREEZED != 0 {
+            let page = current_addr / RISCV_PAGESIZE as u64;
+            if self.flags[page as usize] & FLAG_FREEZED != 0 {
                 return Err(Error::InvalidPermission);
             }
-            current_addr += RISCV_PAGESIZE;
+            current_addr += RISCV_PAGESIZE as u64;
         }
         fill_page_data(self, addr, size, source, offset_from_addr)?;
         current_addr = addr;
         while current_addr < addr + size {
-            let page = current_addr / RISCV_PAGESIZE;
-            self.flags[page] = flags;
-            current_addr += RISCV_PAGESIZE;
+            let page = current_addr / RISCV_PAGESIZE as u64;
+            self.flags[page as usize] = flags;
+            current_addr += RISCV_PAGESIZE as u64;
         }
         Ok(())
     }
 
-    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_PAGES {
-            Ok(self.flags[page])
+    fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
+        if page < RISCV_PAGES as u64 {
+            Ok(self.flags[page as usize])
         } else {
             Err(Error::OutOfBound)
         }
     }
 
-    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         // Out of bound check is already performed in check_permission
-        check_permission(self, addr, value.len(), FLAG_WRITABLE)?;
-        let slice = &mut self.memory[addr..addr + value.len()];
+        check_permission(self, addr, value.len() as u64, FLAG_WRITABLE)?;
+        let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
         slice.copy_from_slice(value);
         Ok(())
     }
 
-    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
         check_permission(self, addr, size, FLAG_WRITABLE)?;
-        memset(&mut self.memory[addr..addr + size], value);
+        memset(
+            &mut self.memory[addr as usize..(addr + size) as usize],
+            value,
+        );
         Ok(())
     }
 
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
+    fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_permission(self, addr, 2, FLAG_EXECUTABLE)?;
         self.load16(&(addr as u64)).map(|v| v as u16)
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
-        let addr = *addr as usize;
-        if addr + 1 > self.memory.len() {
+        let addr = *addr as u64;
+        if addr + 1 > self.memory.len() as u64 {
             return Err(Error::OutOfBound);
         }
-        Ok(u64::from(self.memory[addr]))
+        Ok(u64::from(self.memory[addr as usize]))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
-        let addr = *addr as usize;
-        if addr + 2 > self.memory.len() {
+        let addr = *addr as u64;
+        if addr + 2 > self.memory.len() as u64 {
             return Err(Error::OutOfBound);
         }
         Ok(u64::from(LittleEndian::read_u16(
-            &self.memory[addr..addr + 2],
+            &self.memory[addr as usize..addr as usize + 2],
         )))
     }
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
-        let addr = *addr as usize;
-        if addr + 4 > self.memory.len() {
+        let addr = *addr as u64;
+        if addr + 4 > self.memory.len() as u64 {
             return Err(Error::OutOfBound);
         }
         Ok(u64::from(LittleEndian::read_u32(
-            &self.memory[addr..addr + 4],
+            &self.memory[addr as usize..addr as usize + 4],
         )))
     }
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
-        let addr = *addr as usize;
-        if addr + 8 > self.memory.len() {
+        let addr = *addr as u64;
+        if addr + 8 > self.memory.len() as u64 {
             return Err(Error::OutOfBound);
         }
-        Ok(LittleEndian::read_u64(&self.memory[addr..addr + 8]))
+        Ok(LittleEndian::read_u64(
+            &self.memory[addr as usize..addr as usize + 8],
+        ))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
-        let addr = *addr as usize;
+        let addr = *addr as u64;
         check_permission(self, addr, 1, FLAG_WRITABLE)?;
-        self.memory[addr] = (*value) as u8;
+        self.memory[addr as usize] = (*value) as u8;
         Ok(())
     }
 
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
-        let addr = *addr as usize;
+        let addr = *addr as u64;
         check_permission(self, addr, 2, FLAG_WRITABLE)?;
-        LittleEndian::write_u16(&mut self.memory[addr..(addr + 2)], *value as u16);
+        LittleEndian::write_u16(
+            &mut self.memory[addr as usize..(addr + 2) as usize],
+            *value as u16,
+        );
         Ok(())
     }
 
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
-        let addr = *addr as usize;
+        let addr = *addr as u64;
         check_permission(self, addr, 4, FLAG_WRITABLE)?;
-        LittleEndian::write_u32(&mut self.memory[addr..(addr + 4)], *value as u32);
+        LittleEndian::write_u32(
+            &mut self.memory[addr as usize..(addr + 4) as usize],
+            *value as u32,
+        );
         Ok(())
     }
 
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
-        let addr = *addr as usize;
+        let addr = *addr as u64;
         check_permission(self, addr, 8, FLAG_WRITABLE)?;
-        LittleEndian::write_u64(&mut self.memory[addr..(addr + 8)], *value);
+        LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
         Ok(())
     }
 }
@@ -234,7 +247,7 @@ impl<'a> AsmMachine<'a> {
                     let mut i = 0;
                     while i < TRACE_ITEM_LENGTH {
                         let mut instruction =
-                            decoder.decode(self.machine.memory_mut(), current_pc as usize)?;
+                            decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += instruction_length(instruction) as u64;
                         // We are storing the offset after current instruction in unused

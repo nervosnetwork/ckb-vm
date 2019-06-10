@@ -99,22 +99,22 @@ pub trait SupportMachine: CoreMachine {
         }
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
-                let aligned_start = rounddown(program_header.p_vaddr as usize, RISCV_PAGESIZE);
-                let padding_start = program_header.p_vaddr as usize - aligned_start;
+                let aligned_start = rounddown(program_header.p_vaddr, RISCV_PAGESIZE as u64);
+                let padding_start = program_header.p_vaddr - aligned_start;
                 let size = roundup(
-                    program_header.p_memsz as usize + padding_start,
-                    RISCV_PAGESIZE,
+                    program_header.p_memsz + padding_start,
+                    RISCV_PAGESIZE as u64,
                 );
-                let slice_start = program_header.p_offset as usize;
-                let slice_end = (program_header.p_offset + program_header.p_filesz) as usize;
-                if slice_start > slice_end || slice_end > program.len() {
+                let slice_start = program_header.p_offset;
+                let slice_end = program_header.p_offset + program_header.p_filesz;
+                if slice_start > slice_end || slice_end > program.len() as u64 {
                     return Err(Error::OutOfBound);
                 }
                 self.memory_mut().init_pages(
                     aligned_start,
                     size,
                     convert_flags(program_header.p_flags)?,
-                    Some(program.slice(slice_start, slice_end)),
+                    Some(program.slice(slice_start as usize, slice_end as usize)),
                     padding_start,
                 )?;
                 self.memory_mut()
@@ -143,9 +143,9 @@ pub trait SupportMachine: CoreMachine {
             let len = Self::REG::from_usize(arg.len() + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
-            self.memory_mut().store_bytes(address.to_usize(), arg)?;
+            self.memory_mut().store_bytes(address.to_u64(), arg)?;
             self.memory_mut()
-                .store_byte(address.to_usize() + arg.len(), 1, 0)?;
+                .store_byte(address.to_u64() + arg.len() as u64, 1, 0)?;
 
             values.push(address.clone());
             self.set_register(SP, address);
@@ -376,7 +376,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         self.set_running(true);
         while self.running() {
             let instruction = {
-                let pc = self.pc().to_usize();
+                let pc = self.pc().to_u64();
                 let memory = self.memory_mut();
                 decoder.decode(memory, pc)?
             };
