@@ -1,4 +1,3 @@
-use super::machine::MemorySize;
 use crate::Register;
 use std::fmt::{self, Display};
 use std::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
@@ -41,7 +40,7 @@ pub enum Value {
     Op2(ActionOp2, Rc<Value>, Rc<Value>),
     SignOp2(SignActionOp2, Rc<Value>, Rc<Value>, bool),
     Cond(Rc<Value>, Rc<Value>, Rc<Value>),
-    Load(Rc<Value>, MemorySize),
+    Load(Rc<Value>, u8),
 }
 
 impl Default for Value {
@@ -60,6 +59,9 @@ impl Not for Value {
     type Output = Self;
 
     fn not(self) -> Value {
+        if let Value::Imm(imm) = self {
+            return Value::Imm(!imm);
+        }
         Value::Op1(ActionOp1::Not, Rc::new(self))
     }
 }
@@ -68,6 +70,9 @@ impl BitAnd for Value {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(imm1 & imm2);
+        }
         Value::Op2(ActionOp2::Bitand, Rc::new(self), Rc::new(rhs))
     }
 }
@@ -76,6 +81,9 @@ impl BitOr for Value {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(imm1 | imm2);
+        }
         Value::Op2(ActionOp2::Bitor, Rc::new(self), Rc::new(rhs))
     }
 }
@@ -84,6 +92,9 @@ impl BitXor for Value {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(imm1 ^ imm2);
+        }
         Value::Op2(ActionOp2::Bitxor, Rc::new(self), Rc::new(rhs))
     }
 }
@@ -92,6 +103,10 @@ impl Shl<Value> for Value {
     type Output = Self;
 
     fn shl(self, rhs: Self) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            // By default immediates are unsigned
+            return Value::Imm(imm1 << imm2);
+        }
         Value::Op2(ActionOp2::Shl, Rc::new(self), Rc::new(rhs))
     }
 }
@@ -100,6 +115,10 @@ impl Shr<Value> for Value {
     type Output = Self;
 
     fn shr(self, rhs: Self) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            // By default immediates are unsigned
+            return Value::Imm(imm1 >> imm2);
+        }
         Value::SignOp2(SignActionOp2::Shr, Rc::new(self), Rc::new(rhs), false)
     }
 }
@@ -160,8 +179,6 @@ impl Register for Value {
     }
 
     fn overflowing_add(&self, rhs: &Value) -> Value {
-        // This is a very naive constant elimination optimization
-        // served as a PoC purpose
         if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
             let imm = (*imm1).overflowing_add(*imm2).0;
             return Value::Imm(imm);
@@ -249,6 +266,10 @@ impl Register for Value {
     }
 
     fn signed_shr(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
+            // By default immediates are unsigned
+            return Value::Imm(((*imm1 as i64) >> imm2) as u64);
+        }
         Value::SignOp2(
             SignActionOp2::Shr,
             Rc::new(self.clone()),

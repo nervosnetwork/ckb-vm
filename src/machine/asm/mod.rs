@@ -4,6 +4,7 @@ use crate::{
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
+    machine::aot::AotCode,
     memory::{
         check_permission, fill_page_data, memset, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
     },
@@ -14,12 +15,13 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 use ckb_vm_definitions::{
     asm::{
-        calculate_slot, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION,
-        RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
+        calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
 };
 use libc::c_uchar;
+use std::mem::transmute;
 
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 
@@ -214,6 +216,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
 #[derive(Default)]
 pub struct AsmMachine<'a> {
     pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
+    pub aot_code: Option<&'a AotCode>,
 }
 
 extern "C" {
@@ -224,8 +227,18 @@ extern "C" {
 }
 
 impl<'a> AsmMachine<'a> {
-    pub fn new(machine: DefaultMachine<'a, Box<AsmCoreMachine>>) -> Self {
-        Self { machine }
+    pub fn new(
+        machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
+        aot_code: Option<&'a AotCode>,
+    ) -> Self {
+        Self { machine, aot_code }
+    }
+
+    pub fn default_with_aot_code(aot_code: &'a AotCode) -> Self {
+        Self {
+            machine: DefaultMachine::<'a, Box<AsmCoreMachine>>::default(),
+            aot_code: Some(aot_code),
+        }
     }
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
@@ -237,7 +250,20 @@ impl<'a> AsmMachine<'a> {
         let decoder = build_imac_decoder::<u64>();
         self.machine.set_running(true);
         while self.machine.running() {
-            let result = unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) };
+            let result = if let Some(aot_code) = &self.aot_code {
+                if let Some(offset) = aot_code.labels.get(self.machine.pc()) {
+                    let base_address = aot_code.base_address();
+                    let offset_address = base_address + u64::from(*offset);
+                    let f = unsafe {
+                        transmute::<u64, fn(*mut AsmCoreMachine, u64) -> u8>(base_address)
+                    };
+                    f(&mut (**self.machine.inner_mut()), offset_address)
+                } else {
+                    unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                }
+            } else {
+                unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+            };
             match result {
                 RET_DECODE_TRACE => {
                     let pc = *self.machine.pc();
@@ -285,6 +311,7 @@ impl<'a> AsmMachine<'a> {
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
+                RET_DYNAMIC_JUMP => (),
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
                 RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),

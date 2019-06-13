@@ -2,10 +2,8 @@ test:
 	cargo test --all -- --nocapture
 
 test-all-features:
-	cargo test --all --features=jit,asm -- --nocapture
+	cargo test --all --features=asm -- --nocapture
 
-# JIT code is considered experimental right now, hence coverage
-# would skip it.
 cov:
 	cargo clean
 	cargo test --all --features=asm -- --nocapture
@@ -16,7 +14,7 @@ fmt:
 	cd definitions && cargo fmt ${VERBOSE} --all -- --check
 
 clippy:
-	cargo clippy --all --features=jit,asm -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
+	cargo clippy --all --features=asm -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
 	cd definitions && cargo clippy --all -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
 
 ci: fmt clippy test
@@ -28,8 +26,8 @@ ci-quick: test
 ci-all-features: test-all-features
 	git diff --exit-code Cargo.lock
 
-ci-generated: src/jit/asm.x64.compiled.c update-cdefinitions
-	git diff --exit-code src/jit/asm.x64.compiled.c src/machine/asm/cdefinitions_generated.h
+ci-generated: src/machine/aot/aot.x64.compiled.c update-cdefinitions
+	git diff --exit-code src/machine/aot/aot.x64.compiled.c src/machine/asm/cdefinitions_generated.h
 
 # For counting lines of code
 stats:
@@ -46,7 +44,7 @@ update-cdefinitions:
 	cargo run --manifest-path=definitions/Cargo.toml --bin generate_asm_constants > src/machine/asm/cdefinitions_generated.h
 
 # Following rules are used to update dynasm compiled files
-src/jit/asm.x64.compiled.c: src/jit/asm.x64.c .deps/luajit/src/host/minilua
+src/machine/aot/aot.x64.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/src/host/minilua
 	.deps/luajit/src/host/minilua .deps/luajit/dynasm/dynasm.lua -o $@ $<
 
 .deps/luajit/src/host/minilua:
@@ -56,6 +54,6 @@ src/jit/asm.x64.compiled.c: src/jit/asm.x64.c .deps/luajit/src/host/minilua
 		make
 
 .PHONY: test clippy fmt
-.PHONY: ci ci-quick ci-jit ci-asm ci-cdefinitions
+.PHONY: ci ci-quick ci-all-features ci-cdefinitions
 .PHONY: stats security-audit
 .PHONY: update-cdefinitions
