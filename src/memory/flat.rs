@@ -40,30 +40,30 @@ impl<R> DerefMut for FlatMemory<R> {
 impl<R: Register> Memory<R> for FlatMemory<R> {
     fn init_pages(
         &mut self,
-        addr: usize,
-        size: usize,
+        addr: u64,
+        size: u64,
         _flags: u8,
         source: Option<Bytes>,
-        offset_from_addr: usize,
+        offset_from_addr: u64,
     ) -> Result<(), Error> {
         fill_page_data(self, addr, size, source, offset_from_addr)
     }
 
-    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_PAGES {
+    fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
+        if page < RISCV_PAGES as u64 {
             Ok(0)
         } else {
             Err(Error::OutOfBound)
         }
     }
 
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
-        self.load16(&R::from_usize(addr)).map(|v| v.to_u16())
+    fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
+        self.load16(&R::from_u64(addr)).map(|v| v.to_u16())
     }
 
     fn load8(&mut self, addr: &R) -> Result<R, Error> {
-        let addr = addr.to_usize();
-        if addr + 1 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 1 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -73,8 +73,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn load16(&mut self, addr: &R) -> Result<R, Error> {
-        let addr = addr.to_usize();
-        if addr + 2 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 2 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -85,8 +85,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn load32(&mut self, addr: &R) -> Result<R, Error> {
-        let addr = addr.to_usize();
-        if addr + 4 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 4 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -97,8 +97,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn load64(&mut self, addr: &R) -> Result<R, Error> {
-        let addr = addr.to_usize();
-        if addr + 8 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 8 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -109,8 +109,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        let addr = addr.to_usize();
-        if addr + 1 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 1 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -120,8 +120,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        let addr = addr.to_usize();
-        if addr + 2 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 2 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -131,8 +131,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        let addr = addr.to_usize();
-        if addr + 4 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 4 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -142,8 +142,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        let addr = addr.to_usize();
-        if addr + 8 > self.len() {
+        let addr = addr.to_u64();
+        if addr + 8 > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -152,21 +152,21 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         Ok(())
     }
 
-    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
-        let size = value.len();
-        if addr + size > self.len() {
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
+        let size = value.len() as u64;
+        if addr + size > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
-        let slice = &mut self[addr..addr + size];
+        let slice = &mut self[addr as usize..(addr + size) as usize];
         slice.copy_from_slice(value);
         Ok(())
     }
 
-    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
-        if addr + size > self.len() {
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
+        if addr + size > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
-        memset(&mut self[addr..addr + size], value);
+        memset(&mut self[addr as usize..(addr + size) as usize], value);
         Ok(())
     }
 }

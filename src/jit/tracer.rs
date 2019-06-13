@@ -4,27 +4,27 @@ use fnv::FnvHashMap;
 use std::collections::hash_map::Entry::Occupied;
 
 pub trait Tracer {
-    fn trace(&mut self, pc: usize) -> Result<(), Error>;
+    fn trace(&mut self, pc: u64) -> Result<(), Error>;
     fn should_jit(
         &mut self,
-        pc: usize,
-        block_length: usize,
+        pc: u64,
+        block_length: u64,
         instructions: &[Instruction],
     ) -> Result<bool, Error>;
-    fn clear(&mut self, pc: usize) -> Result<(), Error>;
+    fn clear(&mut self, pc: u64) -> Result<(), Error>;
 }
 
 // Default JIT tracer with a basic block execution counter
 #[derive(Default)]
 pub struct DefaultTracer {
     // Fast path
-    last_trace_pc: usize,
-    last_trace_measure: usize,
-    measures: FnvHashMap<usize, usize>,
+    last_trace_pc: u64,
+    last_trace_measure: u64,
+    measures: FnvHashMap<u64, u64>,
 }
 
 impl Tracer for DefaultTracer {
-    fn trace(&mut self, pc: usize) -> Result<(), Error> {
+    fn trace(&mut self, pc: u64) -> Result<(), Error> {
         let entry = self.measures.entry(pc).or_insert(0);
         *entry += 1;
         self.last_trace_pc = pc;
@@ -34,8 +34,8 @@ impl Tracer for DefaultTracer {
 
     fn should_jit(
         &mut self,
-        pc: usize,
-        _block_length: usize,
+        pc: u64,
+        _block_length: u64,
         instructions: &[Instruction],
     ) -> Result<bool, Error> {
         let measure = if self.last_trace_pc == pc {
@@ -48,7 +48,7 @@ impl Tracer for DefaultTracer {
         Ok(measure >= 10 && instructions.len() > 10)
     }
 
-    fn clear(&mut self, pc: usize) -> Result<(), Error> {
+    fn clear(&mut self, pc: u64) -> Result<(), Error> {
         if let Occupied(mut e) = self.measures.entry(pc) {
             *e.get_mut() = 0;
         }
@@ -65,20 +65,20 @@ impl Tracer for DefaultTracer {
 pub struct TcgTracer {}
 
 impl Tracer for TcgTracer {
-    fn trace(&mut self, _pc: usize) -> Result<(), Error> {
+    fn trace(&mut self, _pc: u64) -> Result<(), Error> {
         Ok(())
     }
 
     fn should_jit(
         &mut self,
-        _pc: usize,
-        _block_length: usize,
+        _pc: u64,
+        _block_length: u64,
         instructions: &[Instruction],
     ) -> Result<bool, Error> {
         Ok(instructions.iter().all(|i| is_jitable_instruction(*i)))
     }
 
-    fn clear(&mut self, _pc: usize) -> Result<(), Error> {
+    fn clear(&mut self, _pc: u64) -> Result<(), Error> {
         Ok(())
     }
 }

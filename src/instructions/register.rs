@@ -14,8 +14,8 @@ pub trait Register:
     + Shl<Self, Output = Self>
     + Shr<Self, Output = Self>
 {
-    const BITS: usize;
-    const SHIFT_MASK: usize;
+    const BITS: u8;
+    const SHIFT_MASK: u8;
 
     fn zero() -> Self;
     fn one() -> Self;
@@ -79,23 +79,19 @@ pub trait Register:
     fn to_i16(&self) -> i16;
     fn to_i32(&self) -> i32;
     fn to_i64(&self) -> i64;
-    fn to_isize(&self) -> isize;
     fn to_u8(&self) -> u8;
     fn to_u16(&self) -> u16;
     fn to_u32(&self) -> u32;
     fn to_u64(&self) -> u64;
-    fn to_usize(&self) -> usize;
 
     fn from_i8(v: i8) -> Self;
     fn from_i16(v: i16) -> Self;
     fn from_i32(v: i32) -> Self;
     fn from_i64(v: i64) -> Self;
-    fn from_isize(v: isize) -> Self;
     fn from_u8(v: u8) -> Self;
     fn from_u16(v: u16) -> Self;
     fn from_u32(v: u32) -> Self;
     fn from_u64(v: u64) -> Self;
-    fn from_usize(v: usize) -> Self;
 
     fn ne(&self, rhs: &Self) -> Self {
         self.eq(rhs).logical_not()
@@ -111,8 +107,8 @@ pub trait Register:
 }
 
 impl Register for u32 {
-    const BITS: usize = 32;
-    const SHIFT_MASK: usize = 0x1F;
+    const BITS: u8 = 32;
+    const SHIFT_MASK: u8 = 0x1F;
 
     fn zero() -> u32 {
         0
@@ -266,10 +262,6 @@ impl Register for u32 {
         i64::from(*self as i32)
     }
 
-    fn to_isize(&self) -> isize {
-        i64::from(*self as i32) as isize
-    }
-
     fn to_u8(&self) -> u8 {
         *self as u8
     }
@@ -284,10 +276,6 @@ impl Register for u32 {
 
     fn to_u64(&self) -> u64 {
         u64::from(*self)
-    }
-
-    fn to_usize(&self) -> usize {
-        *self as usize
     }
 
     fn from_i8(v: i8) -> u32 {
@@ -306,10 +294,6 @@ impl Register for u32 {
         (v as i32) as u32
     }
 
-    fn from_isize(v: isize) -> u32 {
-        (v as i32) as u32
-    }
-
     fn from_u8(v: u8) -> u32 {
         u32::from(v)
     }
@@ -325,15 +309,11 @@ impl Register for u32 {
     fn from_u64(v: u64) -> u32 {
         v as u32
     }
-
-    fn from_usize(v: usize) -> u32 {
-        v as u32
-    }
 }
 
 impl Register for u64 {
-    const BITS: usize = 64;
-    const SHIFT_MASK: usize = 0x3F;
+    const BITS: u8 = 64;
+    const SHIFT_MASK: u8 = 0x3F;
 
     fn zero() -> u64 {
         0
@@ -487,10 +467,6 @@ impl Register for u64 {
         *self as i64
     }
 
-    fn to_isize(&self) -> isize {
-        (*self as i64) as isize
-    }
-
     fn to_u8(&self) -> u8 {
         *self as u8
     }
@@ -505,10 +481,6 @@ impl Register for u64 {
 
     fn to_u64(&self) -> u64 {
         *self
-    }
-
-    fn to_usize(&self) -> usize {
-        *self as usize
     }
 
     fn from_i8(v: i8) -> u64 {
@@ -527,10 +499,6 @@ impl Register for u64 {
         v as u64
     }
 
-    fn from_isize(v: isize) -> u64 {
-        (v as i64) as u64
-    }
-
     fn from_u8(v: u8) -> u64 {
         u64::from(v)
     }
@@ -545,9 +513,5 @@ impl Register for u64 {
 
     fn from_u64(v: u64) -> u64 {
         v
-    }
-
-    fn from_usize(v: usize) -> u64 {
-        v as u64
     }
 }

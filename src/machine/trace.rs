@@ -22,15 +22,15 @@ const TRACE_ADDRESS_SHIFTS: usize = 5;
 
 #[derive(Default)]
 struct Trace {
-    address: usize,
+    address: u64,
     length: usize,
     instruction_count: u8,
     instructions: [Instruction; TRACE_ITEM_LENGTH],
 }
 
 #[inline(always)]
-fn calculate_slot(addr: usize) -> usize {
-    (addr >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
+fn calculate_slot(addr: u64) -> usize {
+    (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
 pub struct TraceMachine<'a, Inner> {
@@ -105,7 +105,7 @@ impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMe
         // larger trace item length.
         self.traces.resize_with(TRACE_SIZE, Trace::default);
         while self.machine.running() {
-            let pc = self.machine.pc().to_usize();
+            let pc = self.machine.pc().to_u64();
             let slot = calculate_slot(pc);
             if pc != self.traces[slot].address || self.traces[slot].instruction_count == 0 {
                 self.traces[slot] = Trace::default();
@@ -114,7 +114,7 @@ impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMe
                 while i < TRACE_ITEM_LENGTH {
                     let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                     let end_instruction = is_basic_block_end_instruction(instruction);
-                    current_pc += instruction_length(instruction);
+                    current_pc += u64::from(instruction_length(instruction));
                     self.traces[slot].instructions[i] = instruction;
                     i += 1;
                     if end_instruction {
@@ -122,7 +122,7 @@ impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMe
                     }
                 }
                 self.traces[slot].address = pc;
-                self.traces[slot].length = current_pc - pc;
+                self.traces[slot].length = (current_pc - pc) as usize;
                 self.traces[slot].instruction_count = i as u8;
             }
             for i in 0..self.traces[slot].instruction_count {

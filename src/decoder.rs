@@ -49,7 +49,7 @@ impl Decoder {
     fn decode_bits<R: Register, M: Memory<R>>(
         &self,
         memory: &mut M,
-        pc: usize,
+        pc: u64,
     ) -> Result<u32, Error> {
         let mut instruction_bits = u32::from(memory.execute_load16(pc)?);
         if instruction_bits & 0x3 == 0x3 {
@@ -61,7 +61,7 @@ impl Decoder {
     pub fn decode<R: Register, M: Memory<R>>(
         &self,
         memory: &mut M,
-        pc: usize,
+        pc: u64,
     ) -> Result<Instruction, Error> {
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {

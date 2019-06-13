@@ -12,8 +12,8 @@ pub use ckb_vm_definitions::memory::{
 };
 
 #[inline(always)]
-pub fn round_page(x: usize) -> usize {
-    x & (!(RISCV_PAGESIZE - 1))
+pub fn round_page(x: u64) -> u64 {
+    x & (!(RISCV_PAGESIZE as u64 - 1))
 }
 
 pub type Page = [u8; RISCV_PAGESIZE];
@@ -21,17 +21,17 @@ pub type Page = [u8; RISCV_PAGESIZE];
 pub trait Memory<R: Register> {
     fn init_pages(
         &mut self,
-        addr: usize,
-        size: usize,
+        addr: u64,
+        size: u64,
         flags: u8,
         source: Option<Bytes>,
-        offset_from_addr: usize,
+        offset_from_addr: u64,
     ) -> Result<(), Error>;
-    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error>;
+    fn fetch_flag(&mut self, page: u64) -> Result<u8, Error>;
     // This is in fact just memset
-    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error>;
-    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error>;
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error>;
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error>;
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error>;
+    fn execute_load16(&mut self, addr: u64) -> Result<u16, Error>;
 
     // Methods below are used to implement RISC-V instructions, to make JIT
     // possible, we need to use register type here so as to pass enough
@@ -50,10 +50,10 @@ pub trait Memory<R: Register> {
 #[inline(always)]
 pub(crate) fn fill_page_data<R: Register>(
     memory: &mut Memory<R>,
-    addr: usize,
-    size: usize,
+    addr: u64,
+    size: u64,
     source: Option<Bytes>,
-    offset_from_addr: usize,
+    offset_from_addr: u64,
 ) -> Result<(), Error> {
     let mut written_size = 0;
     if offset_from_addr > 0 {
@@ -62,9 +62,9 @@ pub(crate) fn fill_page_data<R: Register>(
         written_size += real_size;
     }
     if let Some(source) = source {
-        let real_size = min(size - written_size, source.len());
+        let real_size = min(size - written_size, source.len() as u64);
         if real_size > 0 {
-            memory.store_bytes(addr + written_size, &source[0..real_size])?;
+            memory.store_bytes(addr + written_size, &source[0..real_size as usize])?;
             written_size += real_size;
         }
     }
@@ -76,19 +76,19 @@ pub(crate) fn fill_page_data<R: Register>(
 
 pub fn check_permission<R: Register>(
     memory: &mut Memory<R>,
-    addr: usize,
-    size: usize,
+    addr: u64,
+    size: u64,
     flag: u8,
 ) -> Result<(), Error> {
     let e = addr + size;
-    let mut current_addr = rounddown(addr, RISCV_PAGESIZE);
+    let mut current_addr = rounddown(addr, RISCV_PAGESIZE as u64);
     while current_addr < e {
-        let page = current_addr / RISCV_PAGESIZE;
+        let page = current_addr / RISCV_PAGESIZE as u64;
         let page_flag = memory.fetch_flag(page)?;
         if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
             return Err(Error::InvalidPermission);
         }
-        current_addr += RISCV_PAGESIZE;
+        current_addr += RISCV_PAGESIZE as u64;
     }
     Ok(())
 }

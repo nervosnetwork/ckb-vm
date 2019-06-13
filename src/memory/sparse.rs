@@ -29,34 +29,41 @@ impl<R> SparseMemory<R> {
         }
     }
 
-    fn fetch_page(&mut self, aligned_addr: usize) -> Result<&mut Page, Error> {
-        let page = aligned_addr / RISCV_PAGESIZE;
-        let mut index = *(self.indices.get(page).ok_or(Error::OutOfBound)?);
+    fn fetch_page(&mut self, aligned_addr: u64) -> Result<&mut Page, Error> {
+        let page = aligned_addr / RISCV_PAGESIZE as u64;
+        if page >= RISCV_PAGES as u64 {
+            return Err(Error::OutOfBound);
+        }
+        let mut index = self.indices[page as usize];
         if index == INVALID_PAGE_INDEX {
             self.pages.push([0; RISCV_PAGESIZE]);
             index = (self.pages.len() - 1) as u16;
-            self.indices[page] = index;
+            self.indices[page as usize] = index;
         }
         Ok(&mut self.pages[index as usize])
     }
 
-    fn load(&mut self, addr: usize, bytes: usize) -> Result<u64, Error> {
+    fn load(&mut self, addr: u64, bytes: u64) -> Result<u64, Error> {
         debug_assert!(bytes == 1 || bytes == 2 || bytes == 4 || bytes == 8);
         let page_addr = round_page(addr);
-        let first_page_bytes = min(bytes, RISCV_PAGESIZE - (addr - page_addr));
+        let first_page_bytes = min(bytes, RISCV_PAGESIZE as u64 - (addr - page_addr));
         let mut shift = 0;
         let mut value: u64 = 0;
         {
             let page = self.fetch_page(page_addr)?;
-            for &byte in page.iter().skip(addr - page_addr).take(first_page_bytes) {
+            for &byte in page
+                .iter()
+                .skip((addr - page_addr) as usize)
+                .take(first_page_bytes as usize)
+            {
                 value |= u64::from(byte) << shift;
                 shift += 8;
             }
         }
         let second_page_bytes = bytes - first_page_bytes;
         if second_page_bytes > 0 {
-            let second_page = self.fetch_page(page_addr + RISCV_PAGESIZE)?;
-            for &byte in second_page.iter().take(second_page_bytes) {
+            let second_page = self.fetch_page(page_addr + RISCV_PAGESIZE as u64)?;
+            for &byte in second_page.iter().take(second_page_bytes as usize) {
                 value |= u64::from(byte) << shift;
                 shift += 8;
             }
@@ -68,17 +75,17 @@ impl<R> SparseMemory<R> {
 impl<R: Register> Memory<R> for SparseMemory<R> {
     fn init_pages(
         &mut self,
-        addr: usize,
-        size: usize,
+        addr: u64,
+        size: u64,
         _flags: u8,
         source: Option<Bytes>,
-        offset_from_addr: usize,
+        offset_from_addr: u64,
     ) -> Result<(), Error> {
         fill_page_data(self, addr, size, source, offset_from_addr)
     }
 
-    fn fetch_flag(&mut self, page: usize) -> Result<u8, Error> {
-        if page < RISCV_PAGES {
+    fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
+        if page < RISCV_PAGES as u64 {
             Ok(0)
         } else {
             Err(Error::OutOfBound)
@@ -86,79 +93,83 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
     }
 
     fn load8(&mut self, addr: &R) -> Result<R, Error> {
-        let v = self.load(addr.to_usize(), 1).map(|v| v as u8)?;
+        let v = self.load(addr.to_u64(), 1).map(|v| v as u8)?;
         Ok(R::from_u8(v))
     }
 
     fn load16(&mut self, addr: &R) -> Result<R, Error> {
-        let v = self.load(addr.to_usize(), 2).map(|v| v as u16)?;
+        let v = self.load(addr.to_u64(), 2).map(|v| v as u16)?;
         Ok(R::from_u16(v))
     }
 
     fn load32(&mut self, addr: &R) -> Result<R, Error> {
-        let v = self.load(addr.to_usize(), 4).map(|v| v as u32)?;
+        let v = self.load(addr.to_u64(), 4).map(|v| v as u32)?;
         Ok(R::from_u32(v))
     }
 
     fn load64(&mut self, addr: &R) -> Result<R, Error> {
-        let v = self.load(addr.to_usize(), 8)?;
+        let v = self.load(addr.to_u64(), 8)?;
         Ok(R::from_u64(v))
     }
 
-    fn execute_load16(&mut self, addr: usize) -> Result<u16, Error> {
+    fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         self.load(addr, 2).map(|v| v as u16)
     }
 
-    fn store_bytes(&mut self, addr: usize, value: &[u8]) -> Result<(), Error> {
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let mut remaining_data = value;
         let mut current_page_addr = round_page(addr);
         let mut current_page_offset = addr - current_page_addr;
         while !remaining_data.is_empty() {
             let page = self.fetch_page(current_page_addr)?;
-            let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_data.len());
-            let slice = &mut page[current_page_offset..current_page_offset + bytes];
-            slice.copy_from_slice(&remaining_data[..bytes]);
+            let bytes = min(
+                RISCV_PAGESIZE as u64 - current_page_offset,
+                remaining_data.len() as u64,
+            );
+            let slice =
+                &mut page[current_page_offset as usize..(current_page_offset + bytes) as usize];
+            slice.copy_from_slice(&remaining_data[..bytes as usize]);
 
-            remaining_data = &remaining_data[bytes..];
-            current_page_addr += RISCV_PAGESIZE;
+            remaining_data = &remaining_data[bytes as usize..];
+            current_page_addr += RISCV_PAGESIZE as u64;
             current_page_offset = 0;
         }
         Ok(())
     }
 
-    fn store_byte(&mut self, addr: usize, size: usize, value: u8) -> Result<(), Error> {
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
         let mut current_page_addr = round_page(addr);
         let mut current_page_offset = addr - current_page_addr;
         let mut remaining_size = size;
         while remaining_size > 0 {
             let page = self.fetch_page(current_page_addr)?;
-            let bytes = min(RISCV_PAGESIZE - current_page_offset, remaining_size);
+            let bytes = min(RISCV_PAGESIZE as u64 - current_page_offset, remaining_size);
             memset(
-                &mut page[current_page_offset..current_page_offset + bytes],
+                &mut page[current_page_offset as usize..(current_page_offset + bytes) as usize],
                 value,
             );
             remaining_size -= bytes;
-            current_page_addr += RISCV_PAGESIZE;
+            current_page_addr += RISCV_PAGESIZE as u64;
             current_page_offset = 0;
         }
         Ok(())
     }
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        self.store_bytes(addr.to_usize(), &[value.to_u8()])
+        self.store_bytes(addr.to_u64(), &[value.to_u8()])
     }
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let value = value.to_u16();
         // RISC-V is little-endian by specification
-        self.store_bytes(addr.to_usize(), &[(value & 0xFF) as u8, (value >> 8) as u8])
+        self.store_bytes(addr.to_u64(), &[(value & 0xFF) as u8, (value >> 8) as u8])
     }
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let value = value.to_u32();
         // RISC-V is little-endian by specification
         self.store_bytes(
-            addr.to_usize(),
+            addr.to_u64(),
             &[
                 (value & 0xFF) as u8,
                 ((value >> 8) & 0xFF) as u8,
@@ -172,7 +183,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         let value = value.to_u64();
         // RISC-V is little-endian by specification
         self.store_bytes(
-            addr.to_usize(),
+            addr.to_u64(),
             &[
                 (value & 0xFF) as u8,
                 ((value >> 8) & 0xFF) as u8,

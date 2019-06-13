@@ -75,6 +75,7 @@ matrix:
         docker run --rm -v `pwd`:/code xxuejie/riscv-gnu-toolchain-rv64imac:xenial-20190606 cp -r /riscv /code/riscv &&
         RISCV=`pwd`/riscv ./ckb-vm-test-suite/test.sh
     - name: Code Coverage
+      if: 'tag IS NOT present AND (branch = develop OR branch = master)'
       rust: 1.35.0
       dist: xenial
       addons:
