@@ -2,14 +2,13 @@
 pub mod asm;
 pub mod trace;
 
-use super::bits::{rounddown, roundup};
 use super::decoder::build_imac_decoder;
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{Memory, FLAG_EXECUTABLE, FLAG_FREEZED};
+use super::memory::{round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
 };
 use bytes::Bytes;
 use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
@@ -99,12 +98,9 @@ pub trait SupportMachine: CoreMachine {
         }
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
-                let aligned_start = rounddown(program_header.p_vaddr, RISCV_PAGESIZE as u64);
+                let aligned_start = round_page_down(program_header.p_vaddr);
                 let padding_start = program_header.p_vaddr - aligned_start;
-                let size = roundup(
-                    program_header.p_memsz + padding_start,
-                    RISCV_PAGESIZE as u64,
-                );
+                let size = round_page_up(program_header.p_memsz + padding_start);
                 let slice_start = program_header.p_offset;
                 let slice_end = program_header.p_offset + program_header.p_filesz;
                 if slice_start > slice_end || slice_end > program.len() as u64 {

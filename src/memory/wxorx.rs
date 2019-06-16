@@ -1,8 +1,8 @@
-use super::super::{
-    bits::{rounddown, roundup},
-    Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE};
+use super::{
+    check_permission, round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED,
+    FLAG_WRITABLE,
 };
-use super::{check_permission, Memory, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE};
 
 use bytes::Bytes;
 use std::marker::PhantomData;
@@ -32,9 +32,7 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
         source: Option<Bytes>,
         offset_from_addr: u64,
     ) -> Result<(), Error> {
-        if rounddown(addr, RISCV_PAGESIZE as u64) != addr
-            || roundup(size, RISCV_PAGESIZE as u64) != size
-        {
+        if round_page_down(addr) != addr || round_page_up(size) != size {
             return Err(Error::Unaligned);
         }
         if addr > RISCV_MAX_MEMORY as u64
