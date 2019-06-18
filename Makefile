@@ -8,8 +8,8 @@ test-all-features:
 # would skip it.
 cov:
 	cargo clean
-	cargo test --all --features=asm -- --nocapture
-	for file in `find target/debug/ -maxdepth 1 -executable -type f`; do mkdir -p "target/cov/$$(basename $$file)"; kcov --exclude-pattern=/.cargo,/usr/lib,tests "target/cov/$$(basename $$file)" "$$file"; done
+	cargo build --tests --all --features=asm
+	for file in `find target/debug/ -maxdepth 1 -executable -type f`; do mkdir -p "target/cov/$$(basename $$file)"; kcov --exclude-pattern=/.cargo,/usr/lib,tests --verify "target/cov/$$(basename $$file)" "$$file"; done
 
 fmt:
 	cargo fmt --all -- --check
