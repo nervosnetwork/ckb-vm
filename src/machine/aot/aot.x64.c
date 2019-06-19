@@ -508,7 +508,6 @@ int aot_mulhsu(AotContext* context, riscv_register_t target, AotValue a, AotValu
       | mul Rq(b.value.x64_reg)
       break;
   }
-  /* calculate ~res and store it in rcx */
   | mov rax, rdx
   |2:
   | op2_r_x mov, target, rax
@@ -1219,10 +1218,10 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   | lea rdx, machine->memory
   switch (size) {
     case 1:
-      | movzx rcx, byte [rdx+rax]
+      | movzx ecx, byte [rdx+rax]
       break;
     case 2:
-      | movzx rcx, word [rdx+rax]
+      | movzx ecx, word [rdx+rax]
       break;
     case 4:
       | mov ecx, dword [rdx+rax]

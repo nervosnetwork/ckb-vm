@@ -97,7 +97,7 @@ impl LabelGatheringMachine {
         if elf.section_headers.len() > MAXIMUM_SECTIONS {
             return Err(Error::LimitReached);
         }
-        let sections: Vec<(u64, u64)> = elf
+        let mut sections: Vec<(u64, u64)> = elf
             .section_headers
             .iter()
             .filter_map(|section_header| {
@@ -112,19 +112,16 @@ impl LabelGatheringMachine {
             })
             .rev()
             .collect();
-        // Test no section overlaps with one another.
-        // TODO: find a faster algorithm if this proves to be a bottleneck
-        for (i, (start_a, end_a)) in sections.iter().enumerate() {
-            for (j, (start_b, end_b)) in sections.iter().enumerate() {
-                if i == j {
-                    continue;
-                }
-                if ((start_a >= start_b) && (start_a < end_b))
-                    || ((start_b >= start_a) && (start_b < end_a))
-                {
-                    return Err(Error::OutOfBound);
-                }
-            }
+        // Test there's no empty section
+        if sections.iter().any(|(s, e)| s >= e) {
+            return Err(Error::OutOfBound);
+        }
+        // Test no section overlaps with one another. We first sort section
+        // list by start, then we test if each end is equal or less than
+        // the next start.
+        sections.sort_by_key(|section| section.0);
+        if sections.windows(2).any(|w| w[0].1 > w[1].0) {
+            return Err(Error::OutOfBound);
         }
         // DefaultCoreMachine is only used here for loading ELF binaries
         // into memory.
@@ -153,32 +150,26 @@ impl LabelGatheringMachine {
         let decoder = build_imac_decoder::<u64>();
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
-            self.labels.insert(section_start);
             self.pc = Value::from_u64(section_start);
             let mut start_of_basic_block = true;
-            loop {
+            while self.read_pc()? < section_end {
                 let pc = self.read_pc()?;
-                if pc >= section_end {
-                    break;
+                if start_of_basic_block {
+                    self.labels.insert(pc);
                 }
                 match decoder.decode(&mut self.memory, pc) {
                     Ok(instruction) => {
                         start_of_basic_block = is_basic_block_end_instruction(instruction);
                         let next_pc = pc + u64::from(instruction_length(instruction));
                         execute(instruction, self)?;
-                        if is_basic_block_end_instruction(instruction) && next_pc < section_end {
-                            self.labels.insert(next_pc);
-                        }
-                        for label in &self.labels_to_test {
-                            if *label != next_pc && *label < section_end && *label >= section_start
-                            {
-                                self.labels.insert(*label);
+                        for label in self.labels_to_test.drain(..) {
+                            if label != next_pc && label < section_end && label >= section_start {
+                                self.labels.insert(label);
                             }
                         }
                         if self.labels.len() > MAXIMUM_LABELS {
                             return Err(Error::LimitReached);
                         }
-                        self.labels_to_test.clear();
                         self.pc = Value::from_u64(next_pc);
                     }
                     Err(Error::InvalidInstruction(i)) if i == 0 => {
