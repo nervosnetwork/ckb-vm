@@ -70,7 +70,7 @@ extern "C" {
     ) -> c_int;
     fn aot_and(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_or(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
-    fn aot_not(c: *mut AotContext, target: u32, a: AotValue, is_signed: c_int) -> c_int;
+    fn aot_not(c: *mut AotContext, target: u32, a: AotValue, logical: c_int) -> c_int;
     fn aot_xor(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_shl(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_shr(
