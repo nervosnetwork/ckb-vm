@@ -3,6 +3,7 @@ mod execute;
 mod register;
 mod utils;
 
+pub mod ast;
 pub mod i;
 pub mod m;
 pub mod rvc;
@@ -10,7 +11,8 @@ pub mod rvc;
 pub use self::register::Register;
 use super::Error;
 pub use ckb_vm_definitions::instructions::{
-    self as insts, Instruction, InstructionOpcode, MAXIMUM_RVC_OPCODE, MINIMAL_RVC_OPCODE,
+    self as insts, Instruction, InstructionOpcode, INSTRUCTION_OPCODE_NAMES, MAXIMUM_RVC_OPCODE,
+    MINIMAL_RVC_OPCODE,
 };
 pub use execute::execute;
 

@@ -2,7 +2,10 @@
 
 use bytes::Bytes;
 use ckb_vm::{
-    machine::asm::{AsmCoreMachine, AsmMachine},
+    machine::{
+        aot::AotCompilingMachine,
+        asm::{AsmCoreMachine, AsmMachine},
+    },
     registers::{A0, A1, A2, A3, A4, A5, A7},
     DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
 };
@@ -10,13 +13,15 @@ use std::fs::File;
 use std::io::Read;
 
 #[test]
-pub fn test_asm_simple64() {
+pub fn test_aot_simple64() {
     let mut file = File::open("tests/programs/simple64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
@@ -49,7 +54,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 }
 
 #[test]
-pub fn test_asm_with_custom_syscall() {
+pub fn test_aot_with_custom_syscall() {
     let mut file = File::open("tests/programs/syscall64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
@@ -58,7 +63,9 @@ pub fn test_asm_with_custom_syscall() {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
@@ -72,7 +79,7 @@ fn dummy_cycle_func(_i: Instruction) -> u64 {
 }
 
 #[test]
-pub fn test_asm_simple_cycles() {
+pub fn test_aot_simple_cycles() {
     let mut file = File::open("tests/programs/simple64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
@@ -82,7 +89,10 @@ pub fn test_asm_simple_cycles() {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut aot_machine =
+        AotCompilingMachine::load(&buffer.clone(), Some(Box::new(dummy_cycle_func))).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
@@ -94,7 +104,7 @@ pub fn test_asm_simple_cycles() {
 }
 
 #[test]
-pub fn test_asm_simple_max_cycles_reached() {
+pub fn test_aot_simple_max_cycles_reached() {
     let mut file = File::open("tests/programs/simple64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
@@ -105,7 +115,10 @@ pub fn test_asm_simple_max_cycles_reached() {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut aot_machine =
+        AotCompilingMachine::load(&buffer.clone(), Some(Box::new(dummy_cycle_func))).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
@@ -115,13 +128,15 @@ pub fn test_asm_simple_max_cycles_reached() {
 }
 
 #[test]
-pub fn test_asm_trace() {
+pub fn test_aot_trace() {
     let mut file = File::open("tests/programs/trace64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
@@ -131,13 +146,15 @@ pub fn test_asm_trace() {
 }
 
 #[test]
-pub fn test_asm_jump0() {
+pub fn test_aot_jump0() {
     let mut file = File::open("tests/programs/jump0_64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["jump0_64".into()])
         .unwrap();
@@ -147,13 +164,15 @@ pub fn test_asm_jump0() {
 }
 
 #[test]
-pub fn test_asm_write_large_address() {
+pub fn test_aot_write_large_address() {
     let mut file = File::open("tests/programs/write_large_address64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
@@ -163,13 +182,15 @@ pub fn test_asm_write_large_address() {
 }
 
 #[test]
-pub fn test_misaligned_jump64() {
+pub fn test_aot_misaligned_jump64() {
     let mut file = File::open("tests/programs/misaligned_jump64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
@@ -178,13 +199,15 @@ pub fn test_misaligned_jump64() {
 }
 
 #[test]
-pub fn test_mulw64() {
+pub fn test_aot_mulw64() {
     let mut file = File::open("tests/programs/mulw64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["mulw64".into()])
         .unwrap();
@@ -194,13 +217,15 @@ pub fn test_mulw64() {
 }
 
 #[test]
-pub fn test_invalid_read64() {
+pub fn test_aot_invalid_read64() {
     let mut file = File::open("tests/programs/invalid_read64").unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut machine = AsmMachine::default();
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
         .load_program(&buffer, &vec!["invalid_read64".into()])
         .unwrap();

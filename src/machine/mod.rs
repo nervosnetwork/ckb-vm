@@ -1,4 +1,6 @@
 #[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+pub mod aot;
+#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
 pub mod asm;
 pub mod trace;
 
@@ -220,6 +222,10 @@ impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
             max_cycles: Some(max_cycles),
             ..Default::default()
         }
+    }
+
+    pub fn take_memory(self) -> M {
+        self.memory
     }
 }
 

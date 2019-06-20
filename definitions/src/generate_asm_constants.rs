@@ -1,7 +1,7 @@
 use ckb_vm_definitions::{
     asm::{
-        AsmCoreMachine, Trace, RET_DECODE_TRACE, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION,
-        RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
+        AsmCoreMachine, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
     memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
@@ -34,6 +34,7 @@ fn main() {
     println!("#define CKB_VM_ASM_RET_DECODE_TRACE {}", RET_DECODE_TRACE);
     println!("#define CKB_VM_ASM_RET_ECALL {}", RET_ECALL);
     println!("#define CKB_VM_ASM_RET_EBREAK {}", RET_EBREAK);
+    println!("#define CKB_VM_ASM_RET_DYNAMIC_JUMP {}", RET_DYNAMIC_JUMP);
     println!(
         "#define CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED {}",
         RET_MAX_CYCLES_EXCEEDED

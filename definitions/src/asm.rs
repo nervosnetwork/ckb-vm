@@ -10,9 +10,10 @@ pub const TRACE_ITEM_LENGTH: usize = 16;
 pub const RET_DECODE_TRACE: u8 = 1;
 pub const RET_ECALL: u8 = 2;
 pub const RET_EBREAK: u8 = 3;
-pub const RET_MAX_CYCLES_EXCEEDED: u8 = 4;
-pub const RET_OUT_OF_BOUND: u8 = 5;
-pub const RET_INVALID_PERMISSION: u8 = 6;
+pub const RET_DYNAMIC_JUMP: u8 = 4;
+pub const RET_MAX_CYCLES_EXCEEDED: u8 = 5;
+pub const RET_OUT_OF_BOUND: u8 = 6;
+pub const RET_INVALID_PERMISSION: u8 = 7;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
