@@ -154,11 +154,11 @@ impl LabelGatheringMachine {
             let mut start_of_basic_block = true;
             while self.read_pc()? < section_end {
                 let pc = self.read_pc()?;
-                if start_of_basic_block {
-                    self.labels.insert(pc);
-                }
                 match decoder.decode(&mut self.memory, pc) {
                     Ok(instruction) => {
+                        if start_of_basic_block {
+                            self.labels.insert(pc);
+                        }
                         start_of_basic_block = is_basic_block_end_instruction(instruction);
                         let next_pc = pc + u64::from(instruction_length(instruction));
                         execute(instruction, self)?;
