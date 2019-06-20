@@ -219,21 +219,10 @@ impl LabelGatheringMachine {
         }
         // Remove all labels pointed to dummy sections, since we won't generate
         // code for dummy sections
-        self.labels = self.dummy_sections.iter().fold(
-            self.labels.clone(),
-            |labels, (dummy_start, dummy_end)| {
-                labels
-                    .iter()
-                    .filter_map(|label| {
-                        if label >= dummy_start && label < dummy_end {
-                            None
-                        } else {
-                            Some(*label)
-                        }
-                    })
-                    .collect()
-            },
-        );
+        for (dummy_start, dummy_end) in &self.dummy_sections {
+            self.labels
+                .retain(|label| *label < *dummy_start || *label >= *dummy_end);
+        }
         Ok(())
     }
 }
