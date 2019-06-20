@@ -255,23 +255,21 @@ impl Emitter {
     }
 
     fn emit_memory_write(&mut self, address: &Value, size: u8, value: &Value) -> Result<(), Error> {
+        let saved = self.allocator.save();
         let address_value = self.emit_value(address)?;
         let value_value = self.emit_value(value)?;
         check_aot_result(unsafe {
             aot_memory_write(self.aot, address_value, value_value, u32::from(size))
         })?;
+        self.allocator.restore(saved);
         Ok(())
     }
 
     fn emit_pc_write(&mut self, value: &Value) -> Result<(), Error> {
         let saved = self.allocator.save();
         match value {
-            Value::Register(reg) => {
-                check_aot_result(unsafe { aot_mov_pc(self.aot, register_to_aot_value(*reg)) })
-            }
-            Value::Imm(imm) => {
-                check_aot_result(unsafe { aot_mov_pc(self.aot, immediate_to_aot_value(*imm)) })
-            }
+            // emit_value below will handle the case when we are dealing with
+            // a register or an immediate.
             Value::Cond(condition, true_value, false_value) => {
                 let condition_value = self.emit_value(condition)?;
                 let true_value = self.emit_value(true_value)?;
