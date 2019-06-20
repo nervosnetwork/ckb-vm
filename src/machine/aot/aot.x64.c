@@ -231,8 +231,18 @@ AotContext* aot_new(uint32_t npc)
   dasm_growpc(&context->d, context->npc);
   Dst = &context->d;
   /*
+   * The function we are generating has the following prototype:
+   *
+   * uint8_t execute_aot_code(AsmMachine* machine, uint64_t offset);
+   *
+   * +machine+ here contains the actual data used by the VM, offset specify
+   * the location in the x64 assembly to jump to so as to start execution, it
+   * should be derived from a label associated with the binary.
    * In System V AMD64 ABI, the first argument is already kept in rdi, so we
-   * don't need any tweak on AsmMachine variable
+   * don't need any tweak on AsmMachine variable, the second argument is kept
+   * in rsi, since we would keep RISC-V register RA in rsi, we first copy rsi
+   * to rax for latter jumps.
+   * As shown in aot_exit, the return result is kept in rax.
    */
   |.code
   | push r12
