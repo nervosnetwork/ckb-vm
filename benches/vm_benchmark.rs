@@ -82,7 +82,10 @@ fn aot_compiling_benchmark(c: &mut Criterion) {
         let buffer = Bytes::from(buffer);
 
         b.iter(|| {
-            AotCompilingMachine::load(&buffer.clone(), None).unwrap().compile().unwrap()
+            AotCompilingMachine::load(&buffer.clone(), None)
+                .unwrap()
+                .compile()
+                .unwrap()
         });
     });
 }
