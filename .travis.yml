@@ -41,6 +41,13 @@ matrix:
           packages:
             - git
             - build-essential
+      env: SUITE=check
+    - rust: 1.35.0
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
       env: SUITE=ci-all-features
     - os: osx
       rust: 1.35.0
