@@ -4,6 +4,9 @@ test:
 test-all-features:
 	cargo test --all --features=asm -- --nocapture
 
+check:
+	cargo check --all --all-targets --all-features
+
 cov:
 	cargo clean
 	cargo build --tests --all --features=asm

@@ -5,7 +5,7 @@ use ckb_vm::bits;
 use criterion::Criterion;
 
 #[inline(always)]
-pub fn roundup_via_remainder(x: usize, round: usize) -> usize {
+pub fn roundup_via_remainder(x: u64, round: u64) -> u64 {
     let remainder = x % round;
     if remainder > 0 {
         x - remainder + round
@@ -15,13 +15,13 @@ pub fn roundup_via_remainder(x: usize, round: usize) -> usize {
 }
 
 #[inline(always)]
-pub fn rounddown_via_remainder(x: usize, round: usize) -> usize {
+pub fn rounddown_via_remainder(x: u64, round: u64) -> u64 {
     let remainder = x % round;
     x - remainder
 }
 
 #[inline(always)]
-pub fn roundup_via_multiplication(x: usize, round: usize) -> usize {
+pub fn roundup_via_multiplication(x: u64, round: u64) -> u64 {
     if x == 0 {
         0
     } else {
@@ -30,11 +30,11 @@ pub fn roundup_via_multiplication(x: usize, round: usize) -> usize {
 }
 
 #[inline(always)]
-pub fn rounddown_via_multiplication(x: usize, round: usize) -> usize {
+pub fn rounddown_via_multiplication(x: u64, round: u64) -> u64 {
     x / round * round
 }
 
-const ROUNDS: &[usize] = &[1, 2, 4, 8, 16, 32];
+const ROUNDS: &[u64] = &[1, 2, 4, 8, 16, 32];
 
 macro_rules! round_bench {
     ($f:expr) => {
