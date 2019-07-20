@@ -2,8 +2,7 @@
 pub fn roundup(x: u64, round: u64) -> u64 {
     debug_assert!(round.is_power_of_two());
     // x + (((!x) + 1) & (round - 1))
-    x.overflowing_add((!x).wrapping_add(1) & (round.wrapping_sub(1)))
-        .0
+    x.wrapping_add((!x).wrapping_add(1) & (round.wrapping_sub(1)))
 }
 
 #[inline(always)]

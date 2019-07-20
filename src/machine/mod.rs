@@ -101,13 +101,12 @@ pub trait SupportMachine: CoreMachine {
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = round_page_down(program_header.p_vaddr);
-                let padding_start = program_header.p_vaddr.overflowing_sub(aligned_start).0;
-                let size = round_page_up(program_header.p_memsz.overflowing_add(padding_start).0);
+                let padding_start = program_header.p_vaddr.wrapping_sub(aligned_start);
+                let size = round_page_up(program_header.p_memsz.wrapping_add(padding_start));
                 let slice_start = program_header.p_offset;
                 let slice_end = program_header
                     .p_offset
-                    .overflowing_add(program_header.p_filesz)
-                    .0;
+                    .wrapping_add(program_header.p_filesz);
                 if slice_start > slice_end || slice_end > program.len() as u64 {
                     return Err(Error::OutOfBound);
                 }
