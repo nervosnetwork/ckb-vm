@@ -88,7 +88,12 @@ pub fn check_permission<R: Register>(
     size: u64,
     flag: u8,
 ) -> Result<(), Error> {
-    let e = addr + size;
+    // fetch_flag below will check if requested memory is within bound. Here
+    // we only need to test for overflow first
+    let (e, overflowed) = addr.overflowing_add(size);
+    if overflowed {
+        return Err(Error::OutOfBound);
+    }
     let mut current_addr = round_page_down(addr);
     while current_addr < e {
         let page = current_addr / RISCV_PAGESIZE as u64;

@@ -233,3 +233,37 @@ pub fn test_aot_invalid_read64() {
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_aot_load_elf_crash_64() {
+    let mut file = File::open("tests/programs/load_elf_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
+    machine
+        .load_program(&buffer, &vec!["load_elf_crash_64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
+}
+
+#[test]
+pub fn test_aot_wxorx_crash_64() {
+    let mut file = File::open("tests/programs/wxorx_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
+    machine
+        .load_program(&buffer, &vec!["wxorx_crash_64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}

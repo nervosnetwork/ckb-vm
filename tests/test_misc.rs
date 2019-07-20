@@ -131,3 +131,58 @@ pub fn test_invalid_file_offset64() {
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_op_rvc_srli_crash_32() {
+    let mut file = File::open("tests/programs/op_rvc_srli_crash_32").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srli_crash_32".into()]);
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
+}
+
+#[test]
+pub fn test_op_rvc_srai_crash_32() {
+    let mut file = File::open("tests/programs/op_rvc_srai_crash_32").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srai_crash_32".into()]);
+    assert!(result.is_ok());
+}
+
+#[test]
+pub fn test_op_rvc_slli_crash_32() {
+    let mut file = File::open("tests/programs/op_rvc_slli_crash_32").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_slli_crash_32".into()]);
+    assert!(result.is_ok());
+}
+
+#[test]
+pub fn test_load_elf_crash_64() {
+    let mut file = File::open("tests/programs/load_elf_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["load_elf_crash_64".into()]);
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
+}
+
+#[test]
+pub fn test_wxorx_crash_64() {
+    let mut file = File::open("tests/programs/wxorx_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}

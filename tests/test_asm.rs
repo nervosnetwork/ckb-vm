@@ -208,3 +208,33 @@ pub fn test_invalid_read64() {
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_asm_load_elf_crash_64() {
+    let mut file = File::open("tests/programs/load_elf_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec!["load_elf_crash_64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
+}
+
+#[test]
+pub fn test_asm_wxorx_crash_64() {
+    let mut file = File::open("tests/programs/wxorx_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec!["wxorx_crash_64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}

@@ -308,15 +308,17 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         // Invalid instruction
                         (0b_00_000_00000_00, 0) => None,
                         // SRLI
-                        (0b_00_000_00000_00, uimm) => {
-                            Some(Itype::new(insts::OP_RVC_SRLI, rd, rd, uimm).0)
-                        }
+                        (0b_00_000_00000_00, uimm) => Some(
+                            Itype::new(insts::OP_RVC_SRLI, rd, rd, uimm & u32::from(R::SHIFT_MASK))
+                                .0,
+                        ),
                         // Invalid instruction
                         (0b_01_000_00000_00, 0) => None,
                         // SRAI
-                        (0b_01_000_00000_00, uimm) => {
-                            Some(Itype::new(insts::OP_RVC_SRAI, rd, rd, uimm).0)
-                        }
+                        (0b_01_000_00000_00, uimm) => Some(
+                            Itype::new(insts::OP_RVC_SRAI, rd, rd, uimm & u32::from(R::SHIFT_MASK))
+                                .0,
+                        ),
                         // ANDI
                         (0b_10_000_00000_00, _) => Some(
                             Itype::new_s(insts::OP_RVC_ANDI, rd, rd, immediate(instruction_bits)).0,
@@ -355,7 +357,7 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 // Reserved
                 None
             } else if uimm != 0 {
-                Some(Itype::new(insts::OP_RVC_SLLI, rd, rd, uimm).0)
+                Some(Itype::new(insts::OP_RVC_SLLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0)
             } else {
                 Some(blank_instruction(insts::OP_RVC_SLLI64))
             }
