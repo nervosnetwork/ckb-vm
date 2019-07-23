@@ -11,8 +11,8 @@ use super::super::{
 use bytes::Bytes;
 use emitter::Emitter;
 use goblin::elf::{section_header::SHF_EXECINSTR, Elf};
-use hashbrown::{HashMap, HashSet};
 use memmap::{Mmap, MmapMut};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 const MAXIMUM_INSTRUCTIONS_PER_BLOCK: usize = 1024;
