@@ -267,3 +267,25 @@ pub fn test_aot_wxorx_crash_64() {
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_aot_load_elf_section_crash_64() {
+    let mut file = File::open("tests/programs/load_elf_section_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = AotCompilingMachine::load(&buffer.clone(), None);
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+#[test]
+pub fn test_aot_load_malformed_elf_crash_64() {
+    let mut file = File::open("tests/programs/load_malformed_elf_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = AotCompilingMachine::load(&buffer.clone(), None);
+    assert_eq!(result.err(), Some(Error::ParseError));
+}

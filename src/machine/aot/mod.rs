@@ -93,7 +93,7 @@ struct LabelGatheringMachine {
 
 impl LabelGatheringMachine {
     pub fn load(program: &Bytes) -> Result<Self, Error> {
-        let elf = Elf::parse(&program).unwrap();
+        let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         if elf.section_headers.len() > MAXIMUM_SECTIONS {
             return Err(Error::LimitReached);
         }
@@ -104,7 +104,7 @@ impl LabelGatheringMachine {
                 if section_header.sh_flags & u64::from(SHF_EXECINSTR) != 0 {
                     Some((
                         section_header.sh_addr,
-                        section_header.sh_addr + section_header.sh_size,
+                        section_header.sh_addr.wrapping_add(section_header.sh_size),
                     ))
                 } else {
                     None
