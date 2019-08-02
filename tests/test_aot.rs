@@ -19,7 +19,7 @@ pub fn test_aot_simple64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -63,7 +63,7 @@ pub fn test_aot_with_custom_syscall() {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
@@ -90,7 +90,7 @@ pub fn test_aot_simple_cycles() {
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer.clone(), Some(Box::new(dummy_cycle_func))).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func))).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
@@ -116,7 +116,7 @@ pub fn test_aot_simple_max_cycles_reached() {
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer.clone(), Some(Box::new(dummy_cycle_func))).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func))).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
@@ -134,7 +134,7 @@ pub fn test_aot_trace() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -152,7 +152,7 @@ pub fn test_aot_jump0() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -170,7 +170,7 @@ pub fn test_aot_write_large_address() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -188,7 +188,7 @@ pub fn test_aot_misaligned_jump64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -205,7 +205,7 @@ pub fn test_aot_mulw64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -223,7 +223,7 @@ pub fn test_aot_invalid_read64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -241,7 +241,7 @@ pub fn test_aot_load_elf_crash_64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -258,7 +258,7 @@ pub fn test_aot_wxorx_crash_64() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -266,4 +266,26 @@ pub fn test_aot_wxorx_crash_64() {
         .unwrap();
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+#[test]
+pub fn test_aot_load_elf_section_crash_64() {
+    let mut file = File::open("tests/programs/load_elf_section_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = AotCompilingMachine::load(&buffer, None);
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+#[test]
+pub fn test_aot_load_malformed_elf_crash_64() {
+    let mut file = File::open("tests/programs/load_malformed_elf_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = AotCompilingMachine::load(&buffer, None);
+    assert_eq!(result.err(), Some(Error::ParseError));
 }
