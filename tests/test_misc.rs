@@ -3,8 +3,8 @@ extern crate ckb_vm;
 use bytes::Bytes;
 use ckb_vm::{
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    run, DefaultCoreMachine, DefaultMachineBuilder, Error, Register, SparseMemory, SupportMachine,
-    Syscalls,
+    run, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory, Register,
+    SparseMemory, SupportMachine, Syscalls,
 };
 use std::fs::File;
 use std::io::Read;
@@ -184,5 +184,17 @@ pub fn test_wxorx_crash_64() {
     let buffer: Bytes = buffer.into();
 
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+#[test]
+pub fn test_flat_crash_64() {
+    let mut file = File::open("tests/programs/flat_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
+    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }

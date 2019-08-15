@@ -289,3 +289,14 @@ pub fn test_aot_load_malformed_elf_crash_64() {
     let result = AotCompilingMachine::load(&buffer, None);
     assert_eq!(result.err(), Some(Error::ParseError));
 }
+
+#[test]
+pub fn test_aot_flat_crash_64() {
+    let mut file = File::open("tests/programs/flat_crash_64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let result = AotCompilingMachine::load(&buffer, None);
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
