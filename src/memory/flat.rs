@@ -63,7 +63,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn load8(&mut self, addr: &R) -> Result<R, Error> {
         let addr = addr.to_u64();
-        if addr + 1 > self.len() as u64 {
+        if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -74,7 +74,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn load16(&mut self, addr: &R) -> Result<R, Error> {
         let addr = addr.to_u64();
-        if addr + 2 > self.len() as u64 {
+        if addr.checked_add(2).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -86,7 +86,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn load32(&mut self, addr: &R) -> Result<R, Error> {
         let addr = addr.to_u64();
-        if addr + 4 > self.len() as u64 {
+        if addr.checked_add(4).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -98,7 +98,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn load64(&mut self, addr: &R) -> Result<R, Error> {
         let addr = addr.to_u64();
-        if addr + 8 > self.len() as u64 {
+        if addr.checked_add(8).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
@@ -110,7 +110,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr + 1 > self.len() as u64 {
+        if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -121,7 +121,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr + 2 > self.len() as u64 {
+        if addr.checked_add(2).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -132,7 +132,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr + 4 > self.len() as u64 {
+        if addr.checked_add(4).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -143,7 +143,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr + 8 > self.len() as u64 {
+        if addr.checked_add(8).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let mut writer = Cursor::new(&mut self.data);
@@ -154,7 +154,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let size = value.len() as u64;
-        if addr + size > self.len() as u64 {
+        if addr.checked_add(size).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         let slice = &mut self[addr as usize..(addr + size) as usize];
@@ -163,7 +163,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
-        if addr + size > self.len() as u64 {
+        if addr.checked_add(size).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
         }
         memset(&mut self[addr as usize..(addr + size) as usize], value);
