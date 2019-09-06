@@ -4,6 +4,7 @@ pub mod aot;
 pub mod asm;
 pub mod trace;
 
+use super::debugger::Debugger;
 use super::decoder::build_imac_decoder;
 use super::instructions::{execute, Instruction, Register};
 use super::memory::{round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED};
@@ -231,7 +232,7 @@ impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
     }
 }
 
-pub type InstructionCycleFunc = Fn(Instruction) -> u64;
+pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64;
 
 #[derive(Default)]
 pub struct DefaultMachine<'a, Inner> {
@@ -242,6 +243,7 @@ pub struct DefaultMachine<'a, Inner> {
     // with Box solution for simplicity now. Later if this becomes an issue,
     // we can change to static dispatch.
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+    debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
     syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
     running: bool,
     exit_code: i8,
@@ -312,9 +314,14 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
         }
     }
 
-    // TODO
     fn ebreak(&mut self) -> Result<(), Error> {
-        Ok(())
+        if let Some(debugger) = &mut self.debugger {
+            debugger.ebreak(&mut self.inner)
+        } else {
+            // Unlike ecall, the default behavior of an EBREAK operation is
+            // a dummy one.
+            Ok(())
+        }
     }
 }
 
@@ -338,6 +345,9 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
+        }
+        if let Some(debugger) = &mut self.debugger {
+            debugger.initialize(&mut self.inner)?;
         }
         self.initialize_stack(
             args,
@@ -400,6 +410,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
 pub struct DefaultMachineBuilder<'a, Inner> {
     inner: Inner,
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+    debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
     syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
 }
 
@@ -408,6 +419,7 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
         Self {
             inner,
             instruction_cycle_func: None,
+            debugger: None,
             syscalls: vec![],
         }
     }
@@ -425,10 +437,16 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
         self
     }
 
+    pub fn debugger(mut self, debugger: Box<dyn Debugger<Inner> + 'a>) -> Self {
+        self.debugger = Some(debugger);
+        self
+    }
+
     pub fn build(self) -> DefaultMachine<'a, Inner> {
         DefaultMachine {
             inner: self.inner,
             instruction_cycle_func: self.instruction_cycle_func,
+            debugger: self.debugger,
             syscalls: self.syscalls,
             running: false,
             exit_code: 0,

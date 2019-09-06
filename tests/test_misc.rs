@@ -3,11 +3,13 @@ extern crate ckb_vm;
 use bytes::Bytes;
 use ckb_vm::{
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    run, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory, Register,
-    SparseMemory, SupportMachine, Syscalls,
+    run, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory,
+    Register, SparseMemory, SupportMachine, Syscalls,
 };
 use std::fs::File;
 use std::io::Read;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 
 #[test]
 pub fn test_andi() {
@@ -73,6 +75,45 @@ pub fn test_custom_syscall() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 39);
+}
+
+pub struct CustomDebugger {
+    pub value: Arc<AtomicU8>,
+}
+
+impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
+    fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
+        self.value.store(1, Ordering::Relaxed);
+        Ok(())
+    }
+
+    fn ebreak(&mut self, _machine: &mut Mac) -> Result<(), Error> {
+        self.value.store(2, Ordering::Relaxed);
+        Ok(())
+    }
+}
+
+#[test]
+pub fn test_ebreak() {
+    let mut file = File::open("tests/programs/ebreak64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let value = Arc::new(AtomicU8::new(0));
+    let mut machine =
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
+            .debugger(Box::new(CustomDebugger {
+                value: Arc::clone(&value),
+            }))
+            .build();
+    machine
+        .load_program(&buffer, &vec!["ebreak".into()])
+        .unwrap();
+    assert_eq!(value.load(Ordering::Relaxed), 1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
 #[test]

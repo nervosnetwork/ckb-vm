@@ -12,12 +12,12 @@ env:
 matrix:
   include:
     - os: osx
-      rust: 1.36.0
+      rust: 1.37.0
       install:
         - cargo fmt --version || rustup component add rustfmt-preview
         - cargo clippy --version || rustup component add clippy-preview
       env: SUITE=ci
-    - rust: 1.36.0
+    - rust: 1.37.0
       addons:
         apt:
           packages:
@@ -28,21 +28,21 @@ matrix:
             - texinfo
             - libtool
       env: SUITE=ci-quick
-    - rust: 1.36.0
+    - rust: 1.37.0
       addons:
         apt:
           packages:
             - git
             - build-essential
       env: SUITE=ci-generated
-    - rust: 1.36.0
+    - rust: 1.37.0
       addons:
         apt:
           packages:
             - git
             - build-essential
       env: SUITE=check
-    - rust: 1.36.0
+    - rust: 1.37.0
       addons:
         apt:
           packages:
@@ -50,7 +50,7 @@ matrix:
             - build-essential
       env: SUITE=ci-all-features
     - os: osx
-      rust: 1.36.0
+      rust: 1.37.0
       addons:
         apt:
           packages:
@@ -58,7 +58,7 @@ matrix:
             - build-essential
       env: SUITE=ci-all-features
     - name: Test Suite
-      rust: 1.36.0
+      rust: 1.37.0
       dist: xenial
       addons:
         apt:
@@ -83,7 +83,7 @@ matrix:
         RISCV=`pwd`/riscv ./ckb-vm-test-suite/test.sh
     - name: Code Coverage
       if: 'tag IS NOT present AND type != pull_request AND (branch = develop OR branch = master)'
-      rust: 1.36.0
+      rust: 1.37.0
       dist: xenial
       addons:
         apt:
