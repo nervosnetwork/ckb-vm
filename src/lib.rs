@@ -1,4 +1,5 @@
 pub mod bits;
+pub mod debugger;
 pub mod decoder;
 pub mod instructions;
 pub mod machine;
@@ -6,6 +7,7 @@ pub mod memory;
 pub mod syscalls;
 
 pub use crate::{
+    debugger::Debugger,
     instructions::{Instruction, Register},
     machine::{
         trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,

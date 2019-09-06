@@ -7,10 +7,12 @@ use ckb_vm::{
         asm::{AsmCoreMachine, AsmMachine},
     },
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
+    Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
 };
 use std::fs::File;
 use std::io::Read;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 
 #[test]
 pub fn test_aot_simple64() {
@@ -72,6 +74,47 @@ pub fn test_aot_with_custom_syscall() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 39);
+}
+
+pub struct CustomDebugger {
+    pub value: Arc<AtomicU8>,
+}
+
+impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
+    fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
+        self.value.store(1, Ordering::Relaxed);
+        Ok(())
+    }
+
+    fn ebreak(&mut self, _machine: &mut Mac) -> Result<(), Error> {
+        self.value.store(2, Ordering::Relaxed);
+        Ok(())
+    }
+}
+
+#[test]
+pub fn test_aot_ebreak() {
+    let mut file = File::open("tests/programs/ebreak64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let value = Arc::new(AtomicU8::new(0));
+    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
+        .debugger(Box::new(CustomDebugger {
+            value: Arc::clone(&value),
+        }))
+        .build();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::new(core, Some(&code));
+    machine
+        .load_program(&buffer, &vec!["ebreak".into()])
+        .unwrap();
+    assert_eq!(value.load(Ordering::Relaxed), 1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
 fn dummy_cycle_func(_i: Instruction) -> u64 {
