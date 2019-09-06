@@ -57,7 +57,7 @@ pub trait Memory<R: Register> {
 
 #[inline(always)]
 pub(crate) fn fill_page_data<R: Register>(
-    memory: &mut Memory<R>,
+    memory: &mut dyn Memory<R>,
     addr: u64,
     size: u64,
     source: Option<Bytes>,
@@ -83,7 +83,7 @@ pub(crate) fn fill_page_data<R: Register>(
 }
 
 pub fn check_permission<R: Register>(
-    memory: &mut Memory<R>,
+    memory: &mut dyn Memory<R>,
     addr: u64,
     size: u64,
     flag: u8,
