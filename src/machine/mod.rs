@@ -1,6 +1,6 @@
-#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+#[cfg(all(target_pointer_width = "64", feature = "asm"))]
 pub mod aot;
-#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+#[cfg(all(target_pointer_width = "64", feature = "asm"))]
 pub mod asm;
 pub mod trace;
 

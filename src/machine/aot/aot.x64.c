@@ -6,6 +6,10 @@
 
 #include "cdefinitions_generated.h"
 
+||#if (defined(_WIN32) != WIN)
+#error "Wrong DynASM flags used: pass -D WIN to dynasm.lua to generate windows specific file"
+#endif
+
 #define ERROR_INVALID_MEMORY_SIZE 0xFFFFFF00
 #define ERROR_NOT_ENOUGH_LABELS 0xFFFFFF01
 #define ERROR_INVALID_VALUE 0xFFFFFF02
@@ -251,7 +255,14 @@ AotContext* aot_new(uint32_t npc)
   | push r15
   | push rbx
   | push rbp
-  | mov rax, rsi
+  |.if WIN
+    | push rdi
+    | push rsi
+    | mov rdi, rcx
+    | mov rax, rdx
+  |.else
+    | mov rax, rsi
+  |.endif
   | mov rsi, machine->registers[REGISTER_RA]
   | mov r8, machine->registers[REGISTER_SP]
   | mov r9, machine->registers[REGISTER_A0]
@@ -273,6 +284,10 @@ int aot_link(AotContext* context, size_t *szp)
   | mov machine->registers[REGISTER_RA], rsi
   | mov machine->registers[REGISTER_SP], r8
   | mov machine->registers[REGISTER_A0], r9
+  |.if WIN
+    | pop rsi
+    | pop rdi
+  |.endif
   | pop rbp
   | pop rbx
   | pop r15
