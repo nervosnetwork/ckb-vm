@@ -2,7 +2,7 @@
 extern crate criterion;
 
 use bytes::Bytes;
-#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+#[cfg(all(target_pointer_width = "64", feature = "asm"))]
 use ckb_vm::machine::{aot::AotCompilingMachine, asm::AsmMachine};
 use ckb_vm::{run, SparseMemory};
 use criterion::Criterion;
@@ -26,7 +26,7 @@ fn interpret_benchmark(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+#[cfg(all(target_pointer_width = "64", feature = "asm"))]
 fn asm_benchmark(c: &mut Criterion) {
     c.bench_function("interpret secp256k1_bench via assembly", |b| {
         let mut file = File::open("benches/data/secp256k1_bench").unwrap();
@@ -48,7 +48,7 @@ fn asm_benchmark(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+#[cfg(all(target_pointer_width = "64", feature = "asm"))]
 fn aot_benchmark(c: &mut Criterion) {
     c.bench_function("aot secp256k1_bench", |b| {
         let mut file = File::open("benches/data/secp256k1_bench").unwrap();
@@ -72,7 +72,7 @@ fn aot_benchmark(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(unix, target_pointer_width = "64", feature = "asm"))]
+#[cfg(all(target_pointer_width = "64", feature = "asm"))]
 fn aot_compiling_benchmark(c: &mut Criterion) {
     c.bench_function("compiling secp256k1_bench for aot", |b| {
         let mut file = File::open("benches/data/secp256k1_bench").unwrap();
