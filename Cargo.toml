@@ -9,16 +9,18 @@ build = "build.rs"
 
 [features]
 default = []
-
-asm = ["libc", "memmap"]
+asm = []
 
 [dependencies]
 byteorder = "1"
 bytes = "0.4.12"
 goblin = "0.0.24"
-memmap = { version = "0.7.0", optional = true }
-libc = { version = "0.2.47", optional = true }
 ckb-vm-definitions = { path = "definitions", version = "0.15.0" }
+
+# Feature detection won't work here
+[target.'cfg(any(windows, unix))'.dependencies]
+libc = "0.2.47"
+memmap = "0.7.0"
 
 [build-dependencies]
 cc = "1.0"
