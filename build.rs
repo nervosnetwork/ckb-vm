@@ -37,7 +37,11 @@ fn main() {
         if is_windows {
             let root_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
             let out_dir = env::var("OUT_DIR").unwrap();
-            let source_path = Path::new(&root_dir).join("src/machine/asm/execute.S");
+            let source_path = Path::new(&root_dir)
+                .join("src")
+                .join("machine")
+                .join("asm")
+                .join("execute.S");
             let expand_path = Path::new(&out_dir).join("execute-expanded.S");
             let mut expand_command = Command::new("clang");
             expand_command
