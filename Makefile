@@ -29,8 +29,8 @@ ci-quick: test
 ci-all-features: test-all-features
 	git diff --exit-code Cargo.lock
 
-ci-generated: src/machine/aot/aot.x64.compiled.c update-cdefinitions
-	git diff --exit-code src/machine/aot/aot.x64.compiled.c src/machine/asm/cdefinitions_generated.h
+ci-generated: src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c update-cdefinitions
+	git diff --exit-code src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c src/machine/asm/cdefinitions_generated.h
 
 # For counting lines of code
 stats:
@@ -49,6 +49,9 @@ update-cdefinitions:
 # Following rules are used to update dynasm compiled files
 src/machine/aot/aot.x64.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/src/host/minilua
 	.deps/luajit/src/host/minilua .deps/luajit/dynasm/dynasm.lua -o $@ $<
+
+src/machine/aot/aot.x64.win.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/src/host/minilua
+	.deps/luajit/src/host/minilua .deps/luajit/dynasm/dynasm.lua -D WIN -o $@ $<
 
 .deps/luajit/src/host/minilua:
 	rm -rf .deps/luajit && mkdir -p .deps && \

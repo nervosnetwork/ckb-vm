@@ -126,6 +126,11 @@
   imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, r; \
   lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, r), r
 
+#define WRITE_RD_VALUE(v, temp_reg) \
+  movq v, temp_reg; \
+  movq temp_reg, REGISTER_ADDRESS(RD); \
+  movq $0, ZERO_ADDRESS
+
 #define WRITE_RD(v) \
   movq v, REGISTER_ADDRESS(RD); \
   movq $0, ZERO_ADDRESS
@@ -213,7 +218,7 @@ ckb_vm_x64_execute:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
   addq IMMEDIATE, RS1
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -222,7 +227,7 @@ ckb_vm_x64_execute:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
   addq REGISTER_ADDRESS(RS2r), RS1
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -335,7 +340,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS2r), RS2r
   cmp $0, RS2r
   jne .divu_branch2
-  WRITE_RD($UINT64_MAX)
+  WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
 .divu_branch2:
   PUSH_RD_IF_RAX
@@ -355,7 +360,7 @@ ckb_vm_x64_execute:
   mov RS2rd, RS2rd
   cmp $0, RS2r
   jne .divuw_branch2
-  WRITE_RD($UINT64_MAX)
+  WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
 .divuw_branch2:
   PUSH_RD_IF_RAX
@@ -367,7 +372,7 @@ ckb_vm_x64_execute:
   mov %rax, RS2r
   POP_RD_IF_RDX
   POP_RD_IF_RAX
-  movsx RS2rd, RS2r
+  movslq RS2rd, RS2r
   WRITE_RD(RS2r)
   NEXT_INST
 .p2align 3
@@ -376,9 +381,9 @@ ckb_vm_x64_execute:
   push RD
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
-  movsx RS2rd, RS2r
+  movslq RS2rd, RS2r
   cmp RD, RS1
   jne .divw_branch1
   cmp $-1, RS2r
@@ -396,7 +401,7 @@ ckb_vm_x64_execute:
   MOV_RAX_TO_RS1
 .divw_branch3:
   pop RD
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -617,7 +622,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
   imul RS2rd, RS1d
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -689,7 +694,7 @@ ckb_vm_x64_execute:
   cmp $0, RS2r
   jne .remuw_branch2
   movq REGISTER_ADDRESS(RS1), RS1
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .remuw_branch2:
@@ -702,7 +707,7 @@ ckb_vm_x64_execute:
   mov %rdx, RS2r
   POP_RD_IF_RDX
   POP_RD_IF_RAX
-  movsx RS2rd, RS2r
+  movslq RS2rd, RS2r
   WRITE_RD(RS2r)
   NEXT_INST
 .p2align 3
@@ -711,9 +716,9 @@ ckb_vm_x64_execute:
   push RD
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
-  movsx RS2rd, RS2r
+  movslq RS2rd, RS2r
   cmp RD, RS1
   jne .remw_branch1
   cmp $-1, RS2r
@@ -731,7 +736,7 @@ ckb_vm_x64_execute:
   MOV_RDX_TO_RS1
 .remw_branch3:
   pop RD
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -785,7 +790,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), TEMP1
   movq IMMEDIATE, %rcx
   shl %cl, TEMP1
-  movsx TEMP1d, TEMP1
+  movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
 .p2align 3
@@ -795,7 +800,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS2r), %rcx
   and $0x1F, %ecx
   shl %cl, TEMP1
-  movsx TEMP1d, TEMP1
+  movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
 .p2align 3
@@ -859,7 +864,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), TEMP1
   movq IMMEDIATE, %rcx
   sar %cl, TEMP1d
-  movsx TEMP1d, TEMP1
+  movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
 .p2align 3
@@ -869,7 +874,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS2r), %rcx
   and $0x1F, %ecx
   sar %cl, TEMP1d
-  movsx TEMP1d, TEMP1
+  movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
 .p2align 3
@@ -895,7 +900,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), TEMP1
   movq IMMEDIATE, %rcx
   shr %cl, TEMP1d
-  movsx TEMP1d, TEMP1
+  movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
 .p2align 3
@@ -905,7 +910,7 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS2r), %rcx
   and $0x1F, %ecx
   shr %cl, TEMP1d
-  movsx TEMP1d, TEMP1
+  movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
 .p2align 3
@@ -922,7 +927,7 @@ ckb_vm_x64_execute:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
   subq REGISTER_ADDRESS(RS2r), RS1
-  movsx RS1d, RS1
+  movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
