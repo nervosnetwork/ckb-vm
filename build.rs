@@ -12,7 +12,7 @@ fn main() {
     let is_unix = target_family == "unix";
 
     if cfg!(feature = "asm") && (!((target_pointer_width == "64") && (is_windows || is_unix))) {
-        panic!("asm feature can only enabled on 64-bit Linux, macOS and Windows platforms!");
+        panic!("asm feature can only be enabled on 64-bit Linux, macOS and Windows platforms!");
     }
 
     if cfg!(feature = "asm") {
@@ -35,12 +35,14 @@ fn main() {
         let mut build = Build::new();
 
         if is_windows {
+            let root_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
             let out_dir = env::var("OUT_DIR").unwrap();
+            let source_path = Path::new(&root_dir).join("src/machine/asm/execute.S");
             let expand_path = Path::new(&out_dir).join("execute-expanded.S");
             let mut expand_command = Command::new("clang");
             expand_command
                 .arg("-E")
-                .arg("src/machine/asm/execute.S")
+                .arg(&source_path)
                 .arg("-o")
                 .arg(&expand_path);
             run_command(expand_command);
