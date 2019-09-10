@@ -10,12 +10,13 @@ fn main() {
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
     let is_windows = target_family == "windows";
     let is_unix = target_family == "unix";
+    let can_enable_asm = (target_pointer_width == "64") && (is_windows || is_unix);
 
-    if cfg!(feature = "asm") && (!((target_pointer_width == "64") && (is_windows || is_unix))) {
+    if cfg!(feature = "asm") && (!can_enable_asm) {
         panic!("asm feature can only be enabled on 64-bit Linux, macOS and Windows platforms!");
     }
 
-    if cfg!(feature = "asm") {
+    if cfg!(any(feature = "asm", feature = "detect-asm")) && can_enable_asm {
         use cc::Build;
         use std::path::Path;
         use std::process::Command;
@@ -78,5 +79,7 @@ fn main() {
             .include("dynasm")
             .include("src/machine/asm")
             .compile("asm");
+
+        println!("cargo:rustc-cfg=has_asm")
     }
 }

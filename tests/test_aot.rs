@@ -1,4 +1,4 @@
-#![cfg(all(target_pointer_width = "64", feature = "asm"))]
+#![cfg(has_asm)]
 
 use bytes::Bytes;
 use ckb_vm::{
