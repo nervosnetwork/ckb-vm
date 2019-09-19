@@ -47,25 +47,25 @@ macro_rules! round_bench {
 }
 
 fn roundup_benchmark(c: &mut Criterion) {
-    c.bench_function("rounup via remainder", |b| {
+    c.bench_function("roundup via remainder", |b| {
         b.iter(|| round_bench!(roundup_via_remainder))
     });
-    c.bench_function("rounup via bit ops", |b| {
+    c.bench_function("roundup via bit ops", |b| {
         b.iter(|| round_bench!(bits::roundup))
     });
-    c.bench_function("rounup via multication", |b| {
+    c.bench_function("roundup via multication", |b| {
         b.iter(|| round_bench!(roundup_via_multiplication))
     });
 }
 
 fn rounddown_benchmark(c: &mut Criterion) {
-    c.bench_function("rounup via remainder", |b| {
+    c.bench_function("roundup via remainder", |b| {
         b.iter(|| round_bench!(rounddown_via_remainder))
     });
-    c.bench_function("rounup via bit ops", |b| {
+    c.bench_function("roundup via bit ops", |b| {
         b.iter(|| round_bench!(bits::rounddown))
     });
-    c.bench_function("rounup via multication", |b| {
+    c.bench_function("roundup via multication", |b| {
         b.iter(|| round_bench!(rounddown_via_multiplication))
     });
 }
