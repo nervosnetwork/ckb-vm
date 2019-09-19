@@ -90,6 +90,10 @@ fn aot_compiling_benchmark(c: &mut Criterion) {
     });
 }
 
+#[cfg(not(has_asm))]
+criterion_group!(benches, interpret_benchmark,);
+
+#[cfg(has_asm)]
 criterion_group!(
     benches,
     interpret_benchmark,
