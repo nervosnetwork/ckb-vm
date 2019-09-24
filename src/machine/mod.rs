@@ -93,12 +93,13 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
-    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<(), Error> {
+    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         let bits = elf_bits(&elf.header).ok_or(Error::InvalidElfBits)?;
         if bits != Self::REG::BITS {
             return Err(Error::InvalidElfBits);
         }
+        let mut bytes: u64 = 0;
         for program_header in &elf.program_headers {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = round_page_down(program_header.p_vaddr);
@@ -120,12 +121,15 @@ pub trait SupportMachine: CoreMachine {
                 )?;
                 self.memory_mut()
                     .store_byte(aligned_start, padding_start, 0)?;
+                bytes = bytes
+                    .checked_add(slice_end - slice_start)
+                    .ok_or(Error::Unexpected)?;
             }
         }
         if update_pc {
             self.set_pc(Self::REG::from_u64(elf.header.e_entry));
         }
-        Ok(())
+        Ok(bytes)
     }
 
     fn initialize_stack(
@@ -133,7 +137,7 @@ pub trait SupportMachine: CoreMachine {
         args: &[Bytes],
         stack_start: u64,
         stack_size: u64,
-    ) -> Result<(), Error> {
+    ) -> Result<u64, Error> {
         // We are enforcing WXorX now, there's no need to call init_pages here
         // since all the required bits are already set.
         self.set_register(SP, Self::REG::from_u64(stack_start + stack_size));
@@ -164,7 +168,7 @@ pub trait SupportMachine: CoreMachine {
             // args exceed stack size
             return Err(Error::OutOfBound);
         }
-        Ok(())
+        Ok(stack_start + stack_size - self.registers()[SP].to_u64())
     }
 }
 
@@ -341,20 +345,23 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
 }
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
-    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
-        self.load_elf(program, true)?;
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+        let elf_bytes = self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
         }
         if let Some(debugger) = &mut self.debugger {
             debugger.initialize(&mut self.inner)?;
         }
-        self.initialize_stack(
+        let stack_bytes = self.initialize_stack(
             args,
             (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
             DEFAULT_STACK_SIZE as u64,
         )?;
-        Ok(())
+        let bytes = elf_bytes
+            .checked_add(stack_bytes)
+            .ok_or(Error::Unexpected)?;
+        Ok(bytes)
     }
 
     pub fn take_inner(self) -> Inner {
