@@ -239,9 +239,8 @@ impl<'a> AsmMachine<'a> {
         }
     }
 
-    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<(), Error> {
-        self.machine.load_program(program, args)?;
-        Ok(())
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+        self.machine.load_program(program, args)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {

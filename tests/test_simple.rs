@@ -2,8 +2,8 @@ extern crate ckb_vm;
 
 use bytes::Bytes;
 use ckb_vm::{
-    run, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction, SparseMemory,
-    SupportMachine,
+    run, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction,
+    SparseMemory, SupportMachine,
 };
 use std::fs::File;
 use std::io::Read;
@@ -101,4 +101,18 @@ pub fn test_simple_invalid_bits() {
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["simple".into()]);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidElfBits);
+}
+
+#[test]
+pub fn test_simple_loaded_bytes() {
+    let mut file = File::open("tests/programs/simple64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default();
+    let bytes = machine
+        .load_program(&buffer, &vec!["simple".into()])
+        .unwrap();
+    assert_eq!(bytes, 4055);
 }
