@@ -19,6 +19,7 @@ byteorder = "1"
 bytes = "0.4.12"
 goblin = "0.0.24"
 ckb-vm-definitions = { path = "definitions", version = "0.17.0" }
+derive_more = "0.15.0"
 
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]

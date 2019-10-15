@@ -1,6 +1,10 @@
+#[macro_use]
+extern crate derive_more;
+
 pub mod bits;
 pub mod debugger;
 pub mod decoder;
+pub mod error;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
@@ -17,37 +21,13 @@ pub use crate::{
     syscalls::Syscalls,
 };
 use bytes::Bytes;
-use std::io::{Error as IOError, ErrorKind};
 
 pub use ckb_vm_definitions::{
     registers, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
     RISCV_PAGESIZE,
 };
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq)]
-pub enum Error {
-    ParseError,
-    Unaligned,
-    OutOfBound,
-    InvalidCycles,
-    InvalidInstruction(u32),
-    InvalidEcall(u64),
-    InvalidElfBits,
-    InvalidOp(u8),
-    IO(ErrorKind),
-    Dynasm(i32),
-    Asm(u8),
-    LimitReached,
-    InvalidPermission,
-    Unexpected,
-    Unimplemented,
-}
-
-impl From<IOError> for Error {
-    fn from(error: IOError) -> Self {
-        Error::IO(error.kind())
-    }
-}
+pub use error::Error;
 
 pub fn run<R: Register, M: Memory<R> + Default>(
     program: &Bytes,
