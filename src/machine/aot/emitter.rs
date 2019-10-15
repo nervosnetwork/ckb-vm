@@ -22,8 +22,8 @@ union AotValueContent {
 const AOT_TAG_REGISTER: u32 = 0x1;
 const AOT_TAG_IMMEDIATE: u32 = 0x2;
 
-const MINIMAL_TEMP_REGISTER: usize = 33;
-const MAXIMAL_TEMP_REGISTER: usize = 35;
+const MINIMAL_TEMP_REGISTER: usize = 32;
+const MAXIMAL_TEMP_REGISTER: usize = 34;
 
 #[repr(C)]
 struct AotValue {
