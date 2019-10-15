@@ -94,6 +94,7 @@ typedef struct {
 typedef struct {
   uint64_t registers[32];
   uint64_t pc;
+  uint8_t running;
   uint64_t cycles;
   uint64_t max_cycles;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
@@ -101,7 +102,6 @@ typedef struct {
   /* We won't access traces here */
   uint8_t _traces[CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE -
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
-  uint8_t running;
 } AsmMachine;
 
 #define AOT_TAG_REGISTER 0x1
