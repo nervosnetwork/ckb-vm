@@ -23,6 +23,12 @@ impl<R: Register, M: Memory<R> + Default> Default for WXorXMemory<R, M> {
     }
 }
 
+impl<R: Register, M: Memory<R>> WXorXMemory<R, M> {
+    pub fn inner_mut(&mut self) -> &mut dyn Memory<R> {
+        &mut self.inner
+    }
+}
+
 impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
     fn init_pages(
         &mut self,

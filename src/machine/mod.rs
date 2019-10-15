@@ -5,7 +5,7 @@ pub mod asm;
 pub mod trace;
 
 use super::debugger::Debugger;
-use super::decoder::build_imac_decoder;
+use super::decoder::{build_imac_decoder, Decoder};
 use super::instructions::{execute, Instruction, Register};
 use super::memory::{round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED};
 use super::syscalls::Syscalls;
@@ -78,6 +78,9 @@ pub trait SupportMachine: CoreMachine {
     fn cycles(&self) -> u64;
     fn set_cycles(&mut self, cycles: u64);
     fn max_cycles(&self) -> Option<u64>;
+
+    fn running(&self) -> bool;
+    fn set_running(&mut self, running: bool);
 
     fn add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
         let new_cycles = self
@@ -179,6 +182,7 @@ pub struct DefaultCoreMachine<R, M> {
     memory: M,
     cycles: u64,
     max_cycles: Option<u64>,
+    running: bool,
 }
 
 impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -221,6 +225,14 @@ impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
     fn max_cycles(&self) -> Option<u64> {
         self.max_cycles
     }
+
+    fn running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
+    }
 }
 
 impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
@@ -249,7 +261,6 @@ pub struct DefaultMachine<'a, Inner> {
     instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
     debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
     syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
-    running: bool,
     exit_code: i8,
 }
 
@@ -294,6 +305,14 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
     fn max_cycles(&self) -> Option<u64> {
         self.inner.max_cycles()
     }
+
+    fn running(&self) -> bool {
+        self.inner.running()
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.inner.set_running(running);
+    }
 }
 
 impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
@@ -303,7 +322,7 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
             93 => {
                 // exit
                 self.exit_code = self.registers()[A0].to_i8();
-                self.running = false;
+                self.set_running(false);
                 Ok(())
             }
             _ => {
@@ -368,14 +387,6 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         self.inner
     }
 
-    pub fn running(&self) -> bool {
-        self.running
-    }
-
-    pub fn set_running(&mut self, running: bool) {
-        self.running = running;
-    }
-
     pub fn exit_code(&self) -> i8 {
         self.exit_code
     }
@@ -396,20 +407,24 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         let decoder = build_imac_decoder::<Inner::REG>();
         self.set_running(true);
         while self.running() {
-            let instruction = {
-                let pc = self.pc().to_u64();
-                let memory = self.memory_mut();
-                decoder.decode(memory, pc)?
-            };
-            execute(instruction, self)?;
-            let cycles = self
-                .instruction_cycle_func()
-                .as_ref()
-                .map(|f| f(instruction))
-                .unwrap_or(0);
-            self.add_cycles(cycles)?;
+            self.step(&decoder)?;
         }
         Ok(self.exit_code())
+    }
+
+    pub fn step(&mut self, decoder: &Decoder) -> Result<(), Error> {
+        let instruction = {
+            let pc = self.pc().to_u64();
+            let memory = self.memory_mut();
+            decoder.decode(memory, pc)?
+        };
+        execute(instruction, self)?;
+        let cycles = self
+            .instruction_cycle_func()
+            .as_ref()
+            .map(|f| f(instruction))
+            .unwrap_or(0);
+        self.add_cycles(cycles)
     }
 }
 
@@ -455,7 +470,6 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
             instruction_cycle_func: self.instruction_cycle_func,
             debugger: self.debugger,
             syscalls: self.syscalls,
-            running: false,
             exit_code: 0,
         }
     }

@@ -101,6 +101,7 @@ typedef struct {
   /* We won't access traces here */
   uint8_t _traces[CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE -
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
+  uint8_t running;
 } AsmMachine;
 
 #define AOT_TAG_REGISTER 0x1
