@@ -35,7 +35,7 @@ pub enum Error {
     Unimplemented,
 }
 
-impl StdError for Error { }
+impl StdError for Error {}
 
 impl From<IOError> for Error {
     fn from(error: IOError) -> Self {
