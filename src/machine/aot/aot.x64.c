@@ -94,6 +94,7 @@ typedef struct {
 typedef struct {
   uint64_t registers[32];
   uint64_t pc;
+  uint8_t running;
   uint64_t cycles;
   uint64_t max_cycles;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];

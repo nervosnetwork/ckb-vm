@@ -36,6 +36,7 @@ pub struct Trace {
 pub struct AsmCoreMachine {
     pub registers: [u64; RISCV_GENERAL_REGISTER_NUMBER],
     pub pc: u64,
+    pub running: u8,
     pub cycles: u64,
     pub max_cycles: u64,
     pub flags: [u8; RISCV_PAGES],

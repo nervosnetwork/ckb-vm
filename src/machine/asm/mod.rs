@@ -209,6 +209,14 @@ impl SupportMachine for Box<AsmCoreMachine> {
     fn max_cycles(&self) -> Option<u64> {
         Some(self.max_cycles)
     }
+
+    fn running(&self) -> bool {
+        self.running == 1
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = if running { 1 } else { 0 }
+    }
 }
 
 #[derive(Default)]
