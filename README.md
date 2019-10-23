@@ -19,7 +19,7 @@ Nervos CKB is released under the terms of the MIT license. See [COPYING](COPYING
 
 This project is still in development, it's NOT in production ready status.
 
-The `master` branch is regularly built and tested, but is not guaranteed to be completely stable.
+The `develop` branch is regularly built and tested, but is not guaranteed to be completely stable. CKB will use released versions of CKB VM which are tested and more stable.
 
 The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md), and security policy is described in [SECURITY.md](SECURITY.md). To propose new protocol or standard for Nervos, see [Nervos RFC](https://github.com/nervosnetwork/rfcs).
 
@@ -27,7 +27,7 @@ The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md), an
 
 ## How to build
 
-CKB VM is currently tested mainly with `stable-1.32.0` on Linux and macOS.
+CKB VM is currently tested mainly with `stable` Rust version on 64-bit Linux, macOS, and Windows.
 
 ```bash
 # download CKB VM
