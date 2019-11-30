@@ -1,7 +1,7 @@
 [package]
 name = "ckb-vm"
 description = "CKB's Virtual machine"
-version = "0.18.0"
+version = "0.18.1"
 license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
 edition = "2018"
@@ -18,7 +18,7 @@ detect-asm = []
 byteorder = "1"
 bytes = "0.4.12"
 goblin = "0.0.24"
-ckb-vm-definitions = { path = "definitions", version = "0.18.0" }
+ckb-vm-definitions = { path = "definitions", version = "0.18.1" }
 derive_more = "0.15.0"
 
 # Feature detection won't work here
