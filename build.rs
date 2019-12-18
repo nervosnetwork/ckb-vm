@@ -50,7 +50,7 @@ fn main() {
             let mut compile_command = Command::new("yasm");
             compile_command
                 .arg("-p")
-                .arg("gnu")
+                .arg("gas")
                 .arg("-f")
                 .arg("x64")
                 .arg("-m")
