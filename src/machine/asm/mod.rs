@@ -1,5 +1,5 @@
 use crate::{
-    decoder::build_imac_decoder,
+    decoder::{build_imac_decoder, Decoder},
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
@@ -324,6 +324,49 @@ impl<'a> AsmMachine<'a> {
             }
         }
         Ok(self.machine.exit_code())
+    }
+
+    pub fn step(&mut self, decoder: &Decoder) -> Result<(), Error> {
+        // Decode only one instruction into a trace
+        let pc = *self.machine.pc();
+        let slot = calculate_slot(pc);
+        let mut trace = Trace::default();
+        let mut instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+        let len = instruction_length(instruction) as u8;
+        instruction |= u64::from(len) << 24;
+        trace.instructions[0] = instruction;
+        trace.cycles += self
+            .machine
+            .instruction_cycle_func()
+            .as_ref()
+            .map(|f| f(instruction))
+            .unwrap_or(0);
+        let opcode = extract_opcode(instruction);
+        trace.thread[0] = unsafe {
+            u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))
+                + (ckb_vm_asm_labels as *const u32 as u64)
+        };
+        trace.instructions[1] = blank_instruction(OP_CUSTOM_TRACE_END);
+        trace.thread[1] = unsafe {
+            u64::from(*(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize))
+                + (ckb_vm_asm_labels as *const u32 as u64)
+        };
+        trace.address = pc;
+        trace.length = len;
+        self.machine.inner_mut().traces[slot] = trace;
+
+        let result = unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) };
+        match result {
+            RET_DECODE_TRACE => (),
+            RET_ECALL => self.machine.ecall()?,
+            RET_EBREAK => self.machine.ebreak()?,
+            RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
+            RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
+            RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
+            _ => return Err(Error::Asm(result)),
+        }
+        self.machine.inner_mut().traces[slot] = Trace::default();
+        Ok(())
     }
 }
 
