@@ -16,10 +16,10 @@ detect-asm = []
 
 [dependencies]
 byteorder = "1"
-bytes = "0.4.12"
-goblin = "0.0.24"
+bytes = "0.5.4"
+goblin = "0.2.0"
 ckb-vm-definitions = { path = "definitions", version = "0.18.2" }
-derive_more = "0.15.0"
+derive_more = "0.99.2"
 
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]
