@@ -119,7 +119,7 @@ pub trait SupportMachine: CoreMachine {
                     aligned_start,
                     size,
                     convert_flags(program_header.p_flags)?,
-                    Some(program.slice(slice_start as usize, slice_end as usize)),
+                    Some(program.slice(slice_start as usize..slice_end as usize)),
                     padding_start,
                 )?;
                 self.memory_mut()

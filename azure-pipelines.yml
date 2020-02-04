@@ -13,7 +13,7 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.37.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
       - script: make test
         displayName: Run unit tests
 
@@ -23,6 +23,6 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.37.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
       - script: make test-all-features
         displayName: Run unit tests with all features
