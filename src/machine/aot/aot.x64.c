@@ -280,6 +280,53 @@ void aot_finalize(AotContext* context)
 int aot_link(AotContext* context, size_t *szp)
 {
   dasm_State** Dst = &context->d;
+  |->check_write:
+  | push rsi
+  | mov rsi, rdx
+  | mov rcx, rax
+  | shr rcx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
+   /*
+    * Test if the page stored in rcx is out of bound, and if the page has
+    * correct write permissions
+    */
+  | cmp rcx, CKB_VM_ASM_RISCV_PAGES
+  | jae >2
+  | lea rdx, machine->flags
+  | movzx edx, byte [rdx+rcx]
+  | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
+  | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
+  | jne >3
+  /* Check if the write spans to a second memory page */
+  | mov rdx, rax
+  | add rdx, rsi
+  | sub rdx, 1
+  | shr rdx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
+  | add rcx, 1
+  | cmp rcx, rdx
+  | jne >1
+   /*
+    * Test if the page stored in rcx is out of bound, and if the page has
+    * correct write permissions
+    */
+  | cmp rcx, CKB_VM_ASM_RISCV_PAGES
+  | jae >2
+  | lea rdx, machine->flags
+  | movzx edx, byte [rdx+rcx]
+  | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
+  | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
+  | jne >3
+  |1:
+  | mov rdx, 0
+  | pop rsi
+  | ret
+  |2:
+  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
+  | pop rsi
+  | ret
+  |3:
+  | mov rdx, CKB_VM_ASM_RET_INVALID_PERMISSION
+  | pop rsi
+  | ret
   /* rax should store the return value here */
   |->exit:
   | mov machine->registers[REGISTER_RA], rsi
@@ -1162,39 +1209,10 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
   ret = aot_mov_x64(context, X64_RAX, address);
   if (ret != DASM_S_OK) { return ret; }
 
-  | mov rcx, rax
-  | shr rcx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
-   /*
-    * Test if the page stored in rcx is out of bound, and if the page has
-    * correct write permissions
-    */
-  | cmp rcx, CKB_VM_ASM_RISCV_PAGES
-  | jae >2
-  | lea rdx, machine->flags
-  | movzx edx, byte [rdx+rcx]
-  | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
-  | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >3
-  /* Check if the write spans to a second memory page */
-  | mov rdx, rax
-  | add rdx, size
-  | sub rdx, 1
-  | shr rdx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
-  | add rcx, 1
-  | cmp rcx, rdx
+  | mov rdx, size
+  | call ->check_write
+  | cmp rdx, 0
   | jne >1
-   /*
-    * Test if the page stored in rcx is out of bound, and if the page has
-    * correct write permissions
-    */
-  | cmp rcx, CKB_VM_ASM_RISCV_PAGES
-  | jae >2
-  | lea rdx, machine->flags
-  | movzx edx, byte [rdx+rcx]
-  | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
-  | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >3
-  |1:
   | lea rdx, machine->memory
   ret = aot_mov_x64(context, X64_RCX, v);
   if (ret != DASM_S_OK) { return ret; }
@@ -1214,14 +1232,11 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
     default:
       return ERROR_INVALID_MEMORY_SIZE;
   }
-  | jmp >4
+  | jmp >2
+  |1:
+  | mov rax, rdx
+  | jmp ->exit
   |2:
-  ret = aot_exit(context, CKB_VM_ASM_RET_OUT_OF_BOUND);
-  if (ret != DASM_S_OK) { return ret; }
-  |3:
-  ret = aot_exit(context, CKB_VM_ASM_RET_INVALID_PERMISSION);
-  if (ret != DASM_S_OK) { return ret; }
-  |4:
 
   return DASM_S_OK;
 }
@@ -1236,9 +1251,8 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   if (ret != DASM_S_OK) { return ret; }
 
   | mov rdx, rax
-  | cmp rdx, CKB_VM_ASM_RISCV_MAX_MEMORY
-  | jae >1
   | add rdx, size
+  | jc >1
   | cmp rdx, CKB_VM_ASM_RISCV_MAX_MEMORY
   | jae >1
   | lea rdx, machine->memory
