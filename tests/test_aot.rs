@@ -343,3 +343,39 @@ pub fn test_aot_flat_crash_64() {
     let result = AotCompilingMachine::load(&buffer, None);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_aot_write_at_boundary64() {
+    let mut file = File::open("tests/programs/write_at_boundary64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
+    machine
+        .load_program(&buffer, &vec!["write_at_boundary64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_aot_read_at_boundary64() {
+    let mut file = File::open("tests/programs/read_at_boundary64").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
+    machine
+        .load_program(&buffer, &vec!["read_at_boundary64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}

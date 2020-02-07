@@ -1254,7 +1254,7 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   | add rdx, size
   | jc >1
   | cmp rdx, CKB_VM_ASM_RISCV_MAX_MEMORY
-  | jae >1
+  | ja >1
   | lea rdx, machine->memory
   switch (size) {
     case 1:
