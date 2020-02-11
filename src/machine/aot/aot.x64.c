@@ -280,6 +280,20 @@ void aot_finalize(AotContext* context)
 int aot_link(AotContext* context, size_t *szp)
 {
   dasm_State** Dst = &context->d;
+  /*
+   * Check memory write permissions. Note this pseudo function does not use
+   * C's standard calling convention, since the AOT code here has its own
+   * register allocations for maximum performance. Required arguments to this
+   * pseudo function include:
+   *
+   * rax: the memory address to check for permissions
+   * rdx: length of memory to write
+   *
+   * The return value is kept in rdx, 0 means success, while non-zero values
+   * mean permission check fails.
+   *
+   * Note the free register rcx might also be modified in this pseudo function.
+   */
   |->check_write:
   | push rsi
   | mov rsi, rdx
