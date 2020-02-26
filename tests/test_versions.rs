@@ -1,3 +1,5 @@
+#![cfg(has_asm)]
+
 extern crate ckb_vm;
 
 use bytes::Bytes;
