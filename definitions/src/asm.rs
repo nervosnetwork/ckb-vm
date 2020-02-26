@@ -40,6 +40,7 @@ pub struct AsmCoreMachine {
     pub running: u8,
     pub cycles: u64,
     pub max_cycles: u64,
+    pub version: u32,
     pub flags: [u8; RISCV_PAGES],
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub frames: [u8; MEMORY_FRAMES],
@@ -56,6 +57,12 @@ impl Default for Box<AsmCoreMachine> {
 }
 
 impl AsmCoreMachine {
+    pub fn new(version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
+        let mut machine = Self::new_with_max_cycles(max_cycles);
+        machine.version = version;
+        machine
+    }
+
     pub fn new_with_max_cycles(max_cycles: u64) -> Box<AsmCoreMachine> {
         let mut machine = unsafe {
             let layout = Layout::new::<AsmCoreMachine>();

@@ -18,6 +18,15 @@ use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
 use std::fmt::{self, Display};
 
+// Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
+pub const VERSION0: u32 = 0;
+// Version 1 fixes known bugs discovered in version 0:
+// * It's not possible to read the last byte in the VM memory;
+// * https://github.com/nervosnetwork/ckb-vm/issues/92
+// * https://github.com/nervosnetwork/ckb-vm/issues/97
+// * https://github.com/nervosnetwork/ckb-vm/issues/98
+pub const VERSION1: u32 = 1;
+
 fn elf_bits(header: &Header) -> Option<u8> {
     // This is documented in ELF specification, we are exacting ELF file
     // class part here.
@@ -58,6 +67,10 @@ pub trait CoreMachine {
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
     fn set_register(&mut self, idx: usize, value: Self::REG);
+
+    // Current running machine version, used to support compatible behavior
+    // in case of bug fixes.
+    fn version(&self) -> u32;
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
@@ -183,6 +196,7 @@ pub struct DefaultCoreMachine<R, M> {
     cycles: u64,
     max_cycles: Option<u64>,
     running: bool,
+    version: u32,
 }
 
 impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -211,6 +225,10 @@ impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
     }
+
+    fn version(&self) -> u32 {
+        self.version
+    }
 }
 
 impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
@@ -236,6 +254,14 @@ impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
 }
 
 impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
+    pub fn new(version: u32, max_cycles: u64) -> Self {
+        Self {
+            version,
+            max_cycles: Some(max_cycles),
+            ..Default::default()
+        }
+    }
+
     pub fn new_with_max_cycles(max_cycles: u64) -> Self {
         Self {
             max_cycles: Some(max_cycles),
@@ -290,6 +316,10 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.inner.set_register(idx, value)
+    }
+
+    fn version(&self) -> u32 {
+        self.inner.version()
     }
 }
 
@@ -404,7 +434,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     // not be practical in production, but it serves as a baseline and
     // reference implementation
     pub fn run(&mut self) -> Result<i8, Error> {
-        let decoder = build_imac_decoder::<Inner::REG>();
+        let decoder = build_imac_decoder::<Inner::REG>(self.version());
         self.set_running(true);
         while self.running() {
             self.step(&decoder)?;

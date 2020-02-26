@@ -83,6 +83,7 @@ struct LabelGatheringMachine {
     registers: [Value; 32],
     pc: Value,
     labels_to_test: Vec<u64>,
+    version: u32,
 
     // A memory segment which contains code loaded from ELF
     memory: FlatMemory<u64>,
@@ -92,7 +93,7 @@ struct LabelGatheringMachine {
 }
 
 impl LabelGatheringMachine {
-    pub fn load(program: &Bytes) -> Result<Self, Error> {
+    pub fn load(program: &Bytes, version: u32) -> Result<Self, Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         if elf.section_headers.len() > MAXIMUM_SECTIONS {
             return Err(Error::LimitReached);
@@ -129,6 +130,7 @@ impl LabelGatheringMachine {
         inner.load_elf(&program, false)?;
 
         Ok(Self {
+            version,
             registers: init_registers(),
             pc: Value::from_u64(0),
             labels: HashSet::default(),
@@ -147,7 +149,7 @@ impl LabelGatheringMachine {
     }
 
     pub fn gather(&mut self) -> Result<(), Error> {
-        let decoder = build_imac_decoder::<u64>();
+        let decoder = build_imac_decoder::<u64>(self.version);
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
             self.pc = Value::from_u64(section_start);
@@ -263,6 +265,10 @@ impl CoreMachine for LabelGatheringMachine {
     fn set_register(&mut self, _idx: usize, _value: Value) {
         // This is a NOP since we only care about PC writes
     }
+
+    fn version(&self) -> u32 {
+        self.version
+    }
 }
 
 impl Machine for LabelGatheringMachine {
@@ -355,6 +361,7 @@ impl AotCode {
 }
 
 pub struct AotCompilingMachine {
+    version: u32,
     registers: [Value; 32],
     pc: Value,
     emitter: Emitter,
@@ -371,9 +378,10 @@ impl AotCompilingMachine {
     pub fn load(
         program: &Bytes,
         instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+        version: u32,
     ) -> Result<Self, Error> {
         // First we need to gather labels
-        let mut label_gathering_machine = LabelGatheringMachine::load(&program)?;
+        let mut label_gathering_machine = LabelGatheringMachine::load(&program, version)?;
         label_gathering_machine.gather()?;
 
         let mut labels: Vec<u64> = label_gathering_machine.labels.iter().cloned().collect();
@@ -385,6 +393,7 @@ impl AotCompilingMachine {
             .collect();
 
         Ok(Self {
+            version,
             registers: init_registers(),
             pc: Value::from_u64(0),
             emitter: Emitter::new(labels.len())?,
@@ -440,7 +449,7 @@ impl AotCompilingMachine {
     }
 
     pub fn compile(&mut self) -> Result<AotCode, Error> {
-        let decoder = build_imac_decoder::<u64>();
+        let decoder = build_imac_decoder::<u64>(self.version);
         let mut instructions = [Instruction::default(); MAXIMUM_INSTRUCTIONS_PER_BLOCK];
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
@@ -542,6 +551,10 @@ impl CoreMachine for AotCompilingMachine {
 
     fn set_register(&mut self, index: usize, value: Value) {
         self.writes.push(Write::Register { index, value });
+    }
+
+    fn version(&self) -> u32 {
+        self.version
     }
 }
 

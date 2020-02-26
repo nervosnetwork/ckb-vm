@@ -43,3 +43,13 @@ make test
 ```
 
 CKB VM has already included RISC-V binaries used in tests, so you don't need a RISC-V compiler to build binaries. However if you do want to play with your own binaries, a RISC-V compiler might be needed. [riscv-tools](https://github.com/riscv/riscv-tools) can be a good starting point here, or if you are an expert on GNU toolchain, you might also compile upstream GCC from source with RISC-V support, [here](./examples/is13.rs) is an example. CKB VM is using standard RISC-V instructions and ELF binary format, so theoretically any RISC-V compatible compilers are able to produce contracts used in CKB VM(tho bug reports are very welcome if you find breakage).
+
+## Notes on Different Modes
+
+Right now CKB VM has 3 different modes:
+
+* Rust interpreter mode
+* Assembly based interpreter mode(ASM mode)
+* Ahead-of-time compilation mode(AOT mode)
+
+For consistent behavior, you should only use ASM or AOT mode, and it's best if you stick with either ASM or AOT mode depending on your use case. The Rust mode is developed more to assist development, and never used in production by us. In case of bugs, there might be inconsistent behaviors between Rust mode and ASM/AOT mode.
