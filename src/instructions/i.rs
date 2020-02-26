@@ -64,7 +64,11 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits) {
                 // I-type jump instructions
-                0b_000 => Some(if version >= VERSION1 { insts::OP_VERSION1_JALR } else { insts::OP_JALR }),
+                0b_000 => Some(if version >= VERSION1 {
+                    insts::OP_VERSION1_JALR
+                } else {
+                    insts::OP_JALR
+                }),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -78,16 +82,29 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             })
         }
         0b_0000011 => {
-            let inst_opt = match funct3(instruction_bits) {
-                // I-type load instructions
-                0b_000 => Some(insts::OP_LB),
-                0b_001 => Some(insts::OP_LH),
-                0b_010 => Some(insts::OP_LW),
-                0b_100 => Some(insts::OP_LBU),
-                0b_101 => Some(insts::OP_LHU),
-                0b_110 if rv64 => Some(insts::OP_LWU),
-                0b_011 if rv64 => Some(insts::OP_LD),
-                _ => None,
+            // I-type load instructions
+            let inst_opt = if version >= VERSION1 {
+                match funct3(instruction_bits) {
+                    0b_000 => Some(insts::OP_VERSION1_LB),
+                    0b_001 => Some(insts::OP_VERSION1_LH),
+                    0b_010 => Some(insts::OP_VERSION1_LW),
+                    0b_100 => Some(insts::OP_VERSION1_LBU),
+                    0b_101 => Some(insts::OP_VERSION1_LHU),
+                    0b_110 if rv64 => Some(insts::OP_VERSION1_LWU),
+                    0b_011 if rv64 => Some(insts::OP_VERSION1_LD),
+                    _ => None,
+                }
+            } else {
+                match funct3(instruction_bits) {
+                    0b_000 => Some(insts::OP_LB),
+                    0b_001 => Some(insts::OP_LH),
+                    0b_010 => Some(insts::OP_LW),
+                    0b_100 => Some(insts::OP_LBU),
+                    0b_101 => Some(insts::OP_LHU),
+                    0b_110 if rv64 => Some(insts::OP_LWU),
+                    0b_011 if rv64 => Some(insts::OP_LD),
+                    _ => None,
+                }
             };
             inst_opt.map(|inst| {
                 Itype::new_s(

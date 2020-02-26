@@ -88,48 +88,59 @@ pub const OP_SUB: InstructionOpcode = 62;
 pub const OP_SUBW: InstructionOpcode = 63;
 pub const OP_SW: InstructionOpcode = 64;
 pub const OP_VERSION1_JALR: InstructionOpcode = 65;
-pub const OP_XOR: InstructionOpcode = 66;
-pub const OP_XORI: InstructionOpcode = 67;
-pub const OP_RVC_ADD: InstructionOpcode = 68;
-pub const OP_RVC_ADDI: InstructionOpcode = 69;
-pub const OP_RVC_ADDI16SP: InstructionOpcode = 70;
-pub const OP_RVC_ADDI4SPN: InstructionOpcode = 71;
-pub const OP_RVC_ADDIW: InstructionOpcode = 72;
-pub const OP_RVC_ADDW: InstructionOpcode = 73;
-pub const OP_RVC_AND: InstructionOpcode = 74;
-pub const OP_RVC_ANDI: InstructionOpcode = 75;
-pub const OP_RVC_BEQZ: InstructionOpcode = 76;
-pub const OP_RVC_BNEZ: InstructionOpcode = 77;
-pub const OP_RVC_EBREAK: InstructionOpcode = 78;
-pub const OP_RVC_J: InstructionOpcode = 79;
-pub const OP_RVC_JAL: InstructionOpcode = 80;
-pub const OP_RVC_JALR: InstructionOpcode = 81;
-pub const OP_RVC_JR: InstructionOpcode = 82;
-pub const OP_RVC_LD: InstructionOpcode = 83;
-pub const OP_RVC_LDSP: InstructionOpcode = 84;
-pub const OP_RVC_LI: InstructionOpcode = 85;
-pub const OP_RVC_LUI: InstructionOpcode = 86;
-pub const OP_RVC_LW: InstructionOpcode = 87;
-pub const OP_RVC_LWSP: InstructionOpcode = 88;
-pub const OP_RVC_MV: InstructionOpcode = 89;
-pub const OP_RVC_NOP: InstructionOpcode = 90;
-pub const OP_RVC_OR: InstructionOpcode = 91;
-pub const OP_RVC_SD: InstructionOpcode = 92;
-pub const OP_RVC_SDSP: InstructionOpcode = 93;
-pub const OP_RVC_SLLI: InstructionOpcode = 94;
-pub const OP_RVC_SLLI64: InstructionOpcode = 95;
-pub const OP_RVC_SRAI: InstructionOpcode = 96;
-pub const OP_RVC_SRAI64: InstructionOpcode = 97;
-pub const OP_RVC_SRLI: InstructionOpcode = 98;
-pub const OP_RVC_SRLI64: InstructionOpcode = 99;
-pub const OP_RVC_SUB: InstructionOpcode = 100;
-pub const OP_RVC_SUBW: InstructionOpcode = 101;
-pub const OP_RVC_SW: InstructionOpcode = 102;
-pub const OP_RVC_SWSP: InstructionOpcode = 103;
-pub const OP_RVC_XOR: InstructionOpcode = 104;
-pub const OP_VERSION1_RVC_JALR: InstructionOpcode = 105;
-pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 106;
-pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 107;
+pub const OP_VERSION1_LB: InstructionOpcode = 66;
+pub const OP_VERSION1_LBU: InstructionOpcode = 67;
+pub const OP_VERSION1_LD: InstructionOpcode = 68;
+pub const OP_VERSION1_LH: InstructionOpcode = 69;
+pub const OP_VERSION1_LHU: InstructionOpcode = 70;
+pub const OP_VERSION1_LW: InstructionOpcode = 71;
+pub const OP_VERSION1_LWU: InstructionOpcode = 72;
+pub const OP_XOR: InstructionOpcode = 73;
+pub const OP_XORI: InstructionOpcode = 74;
+pub const OP_RVC_ADD: InstructionOpcode = 75;
+pub const OP_RVC_ADDI: InstructionOpcode = 76;
+pub const OP_RVC_ADDI16SP: InstructionOpcode = 77;
+pub const OP_RVC_ADDI4SPN: InstructionOpcode = 78;
+pub const OP_RVC_ADDIW: InstructionOpcode = 79;
+pub const OP_RVC_ADDW: InstructionOpcode = 80;
+pub const OP_RVC_AND: InstructionOpcode = 81;
+pub const OP_RVC_ANDI: InstructionOpcode = 82;
+pub const OP_RVC_BEQZ: InstructionOpcode = 83;
+pub const OP_RVC_BNEZ: InstructionOpcode = 84;
+pub const OP_RVC_EBREAK: InstructionOpcode = 85;
+pub const OP_RVC_J: InstructionOpcode = 86;
+pub const OP_RVC_JAL: InstructionOpcode = 87;
+pub const OP_RVC_JALR: InstructionOpcode = 88;
+pub const OP_RVC_JR: InstructionOpcode = 89;
+pub const OP_RVC_LD: InstructionOpcode = 90;
+pub const OP_RVC_LDSP: InstructionOpcode = 91;
+pub const OP_RVC_LI: InstructionOpcode = 92;
+pub const OP_RVC_LUI: InstructionOpcode = 93;
+pub const OP_RVC_LW: InstructionOpcode = 94;
+pub const OP_RVC_LWSP: InstructionOpcode = 95;
+pub const OP_RVC_MV: InstructionOpcode = 96;
+pub const OP_RVC_NOP: InstructionOpcode = 97;
+pub const OP_RVC_OR: InstructionOpcode = 98;
+pub const OP_RVC_SD: InstructionOpcode = 99;
+pub const OP_RVC_SDSP: InstructionOpcode = 100;
+pub const OP_RVC_SLLI: InstructionOpcode = 101;
+pub const OP_RVC_SLLI64: InstructionOpcode = 102;
+pub const OP_RVC_SRAI: InstructionOpcode = 103;
+pub const OP_RVC_SRAI64: InstructionOpcode = 104;
+pub const OP_RVC_SRLI: InstructionOpcode = 105;
+pub const OP_RVC_SRLI64: InstructionOpcode = 106;
+pub const OP_RVC_SUB: InstructionOpcode = 107;
+pub const OP_RVC_SUBW: InstructionOpcode = 108;
+pub const OP_RVC_SW: InstructionOpcode = 109;
+pub const OP_RVC_SWSP: InstructionOpcode = 110;
+pub const OP_RVC_XOR: InstructionOpcode = 111;
+pub const OP_VERSION1_RVC_JALR: InstructionOpcode = 112;
+pub const OP_VERSION1_RVC_LD: InstructionOpcode = 113;
+pub const OP_VERSION1_RVC_LDSP: InstructionOpcode = 114;
+pub const OP_VERSION1_RVC_LW: InstructionOpcode = 115;
+pub const OP_VERSION1_RVC_LWSP: InstructionOpcode = 116;
+pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 117;
+pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 118;
 
 // Maximum opcode for instructions consuming 4 bytes. Any opcode
 // larger than this one is treated as RVC instructions(which consume
@@ -137,7 +148,7 @@ pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 107;
 pub const MAXIMUM_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
 
 pub const MINIMAL_RVC_OPCODE: InstructionOpcode = OP_RVC_ADD;
-pub const MAXIMUM_RVC_OPCODE: InstructionOpcode = OP_VERSION1_RVC_JALR;
+pub const MAXIMUM_RVC_OPCODE: InstructionOpcode = OP_VERSION1_RVC_LWSP;
 
 pub const INSTRUCTION_OPCODE_NAMES: [&str; MAXIMUM_OPCODE as usize + 1] = [
     "UNLOADED",
@@ -206,6 +217,13 @@ pub const INSTRUCTION_OPCODE_NAMES: [&str; MAXIMUM_OPCODE as usize + 1] = [
     "SUBW",
     "SW",
     "VERSION1_JALR",
+    "VERSION1_LB",
+    "VERSION1_LBU",
+    "VERSION1_LD",
+    "VERSION1_LH",
+    "VERSION1_LHU",
+    "VERSION1_LW",
+    "VERSION1_LWU",
     "XOR",
     "XORI",
     "RVC_ADD",
@@ -246,6 +264,10 @@ pub const INSTRUCTION_OPCODE_NAMES: [&str; MAXIMUM_OPCODE as usize + 1] = [
     "RVC_SWSP",
     "RVC_XOR",
     "VERSION1_RVC_JALR",
+    "VERSION1_RVC_LD",
+    "VERSION1_RVC_LDSP",
+    "VERSION1_RVC_LW",
+    "VERSION1_RVC_LWSP",
     "CUSTOM_LOAD_IMM",
     "CUSTOM_TRACE_END",
 ];

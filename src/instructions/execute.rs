@@ -108,37 +108,37 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        insts::OP_LB => {
+        insts::OP_LB | insts::OP_VERSION1_LB => {
             let i = Itype(inst);
             common::lb(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_LH => {
+        insts::OP_LH | insts::OP_VERSION1_LH => {
             let i = Itype(inst);
             common::lh(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_LW => {
+        insts::OP_LW | insts::OP_VERSION1_LW => {
             let i = Itype(inst);
             common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_LD => {
+        insts::OP_LD | insts::OP_VERSION1_LD => {
             let i = Itype(inst);
             common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_LBU => {
+        insts::OP_LBU | insts::OP_VERSION1_LBU => {
             let i = Itype(inst);
             common::lbu(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_LHU => {
+        insts::OP_LHU | insts::OP_VERSION1_LHU => {
             let i = Itype(inst);
             common::lhu(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_LWU => {
+        insts::OP_LWU | insts::OP_VERSION1_LWU => {
             let i = Itype(inst);
             common::lwu(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
@@ -527,12 +527,12 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             common::srai(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        insts::OP_RVC_LW => {
+        insts::OP_RVC_LW | insts::OP_VERSION1_RVC_LW => {
             let i = Itype(inst);
             common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
         }
-        insts::OP_RVC_LD => {
+        insts::OP_RVC_LD | insts::OP_VERSION1_RVC_LD => {
             let i = Itype(inst);
             common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
             None
@@ -563,12 +563,12 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        insts::OP_RVC_LWSP => {
+        insts::OP_RVC_LWSP | insts::OP_VERSION1_RVC_LWSP => {
             let i = Utype(inst);
             common::lw(machine, i.rd(), SP, i.immediate_s())?;
             None
         }
-        insts::OP_RVC_LDSP => {
+        insts::OP_RVC_LDSP | insts::OP_VERSION1_RVC_LDSP => {
             let i = Utype(inst);
             common::ld(machine, i.rd(), SP, i.immediate_s())?;
             None

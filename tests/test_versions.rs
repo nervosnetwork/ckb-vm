@@ -153,7 +153,6 @@ pub fn test_asm_version1_jalr_bug() {
 pub fn test_asm_version1_jalr_bug_noc() {
     let mut machine = create_asm_machine("jalr_bug_noc".to_string(), VERSION1);
     let result = machine.run();
-    println!("Result: {:?}", result);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }

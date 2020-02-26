@@ -119,7 +119,11 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         }
         0b_010_00000000000_00 => Some(
             Itype::new(
-                insts::OP_RVC_LW,
+                if version >= VERSION1 {
+                    insts::OP_VERSION1_RVC_LW
+                } else {
+                    insts::OP_RVC_LW
+                },
                 compact_register_number(instruction_bits, 2),
                 compact_register_number(instruction_bits, 7),
                 sw_uimmediate(instruction_bits),
@@ -132,7 +136,11 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             } else {
                 Some(
                     Itype::new(
-                        insts::OP_RVC_LD,
+                        if version >= VERSION1 {
+                            insts::OP_VERSION1_RVC_LD
+                        } else {
+                            insts::OP_RVC_LD
+                        },
                         compact_register_number(instruction_bits, 2),
                         compact_register_number(instruction_bits, 7),
                         fld_uimmediate(instruction_bits),
@@ -366,7 +374,12 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_010_00000000000_10 => {
             let rd = rd(instruction_bits);
             if rd != 0 {
-                Some(Utype::new(insts::OP_RVC_LWSP, rd, lwsp_uimmediate(instruction_bits)).0)
+                let op = if version >= VERSION1 {
+                    insts::OP_VERSION1_RVC_LWSP
+                } else {
+                    insts::OP_RVC_LWSP
+                };
+                Some(Utype::new(op, rd, lwsp_uimmediate(instruction_bits)).0)
             } else {
                 // Reserved
                 None
@@ -378,7 +391,12 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             } else {
                 let rd = rd(instruction_bits);
                 if rd != 0 {
-                    Some(Utype::new(insts::OP_RVC_LDSP, rd, fldsp_uimmediate(instruction_bits)).0)
+                    let op = if version >= VERSION1 {
+                        insts::OP_VERSION1_RVC_LDSP
+                    } else {
+                        insts::OP_RVC_LDSP
+                    };
+                    Some(Utype::new(op, rd, fldsp_uimmediate(instruction_bits)).0)
                 } else {
                     // Reserved
                     None
@@ -403,7 +421,19 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                     let rs2 = c_rs2(instruction_bits);
                     match (rd, rs2) {
                         (0, 0) => Some(blank_instruction(insts::OP_RVC_EBREAK)),
-                        (rs1, 0) => Some(Stype::new(if version >= VERSION1 { insts::OP_VERSION1_RVC_JALR } else { insts::OP_RVC_JALR }, 0, rs1, 0).0),
+                        (rs1, 0) => Some(
+                            Stype::new(
+                                if version >= VERSION1 {
+                                    insts::OP_VERSION1_RVC_JALR
+                                } else {
+                                    insts::OP_RVC_JALR
+                                },
+                                0,
+                                rs1,
+                                0,
+                            )
+                            .0,
+                        ),
                         (rd, rs2) if rd != 0 => Some(Rtype::new(insts::OP_RVC_ADD, rd, rd, rs2).0),
                         // Invalid instruction
                         _ => None,
