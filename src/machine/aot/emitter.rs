@@ -4,6 +4,7 @@ use super::{
 };
 use crate::Error;
 use libc::{c_int, c_void, size_t};
+use std::collections::HashMap;
 
 // This is a C struct type
 #[repr(C)]
@@ -32,7 +33,7 @@ struct AotValue {
 }
 
 extern "C" {
-    fn aot_new(npc: u32) -> *mut AotContext;
+    fn aot_new(npc: u32, version: u32) -> *mut AotContext;
     fn aot_finalize(c: *mut AotContext);
     fn aot_link(c: *mut AotContext, szp: *mut size_t) -> c_int;
     fn aot_encode(c: *mut AotContext, buffer: *mut c_void) -> c_int;
@@ -183,8 +184,8 @@ impl Drop for Emitter {
 }
 
 impl Emitter {
-    pub fn new(labels: usize) -> Result<Emitter, Error> {
-        let aot = unsafe { aot_new(labels as u32) };
+    pub fn new(labels: usize, version: u32) -> Result<Emitter, Error> {
+        let aot = unsafe { aot_new(labels as u32, version) };
         if aot.is_null() {
             Err(Error::Dynasm(-1))
         } else {
@@ -235,6 +236,38 @@ impl Emitter {
         if result != 0 {
             return Err(Error::Dynasm(result));
         }
+        Ok(())
+    }
+
+    // Emit a series of writes atomically
+    pub fn emit_writes(&mut self, writes: &[Write]) -> Result<(), Error> {
+        let saved = self.allocator.save();
+        let mut register_writes: HashMap<usize, usize> = HashMap::default();
+        let mut pc_write: Option<AotValue> = None;
+        for write in writes {
+            match write {
+                Write::Register { index, value } => {
+                    let register = self.allocator.next()?;
+                    self.emit_register_write(register, value)?;
+                    register_writes.insert(*index, register);
+                }
+                Write::Pc { value } => {
+                    pc_write = Some(self.emit_value(value)?);
+                }
+                _ => {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        for (target, source) in register_writes {
+            check_aot_result(unsafe {
+                aot_mov(self.aot, target as u32, register_to_aot_value(source))
+            })?;
+        }
+        if let Some(pc_value) = pc_write {
+            check_aot_result(unsafe { aot_mov_pc(self.aot, pc_value) })?;
+        }
+        self.allocator.restore(saved);
         Ok(())
     }
 
