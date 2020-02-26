@@ -184,7 +184,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        insts::OP_JALR => {
+        insts::OP_JALR | insts::OP_VERSION1_JALR => {
             let i = Itype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(4));
             let mut next_pc =
@@ -629,7 +629,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             next_pc = next_pc & (!Mac::REG::one());
             Some(next_pc)
         }
-        insts::OP_RVC_JALR => {
+        insts::OP_RVC_JALR | insts::OP_VERSION1_RVC_JALR => {
             let i = Stype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(2));
             let mut next_pc = machine.registers()[i.rs1()].clone();
@@ -658,7 +658,9 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        _ => return Err(Error::InvalidOp(op as u8)),
+        insts::OP_UNLOADED | insts::OP_CUSTOM_TRACE_END..=255 => {
+            return Err(Error::InvalidOp(op as u8))
+        }
     };
     let default_instruction_size = instruction_length(inst);
     let default_next_pc = machine

@@ -1,3 +1,4 @@
+use super::super::machine::VERSION1;
 use super::super::registers::SP;
 use super::register::Register;
 use super::utils::{rd, x, xs};
@@ -402,7 +403,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                     let rs2 = c_rs2(instruction_bits);
                     match (rd, rs2) {
                         (0, 0) => Some(blank_instruction(insts::OP_RVC_EBREAK)),
-                        (rs1, 0) => Some(Stype::new(insts::OP_RVC_JALR, 0, rs1, 0).0),
+                        (rs1, 0) => Some(Stype::new(if version >= VERSION1 { insts::OP_VERSION1_RVC_JALR } else { insts::OP_RVC_JALR }, 0, rs1, 0).0),
                         (rd, rs2) if rd != 0 => Some(Rtype::new(insts::OP_RVC_ADD, rd, rd, rs2).0),
                         // Invalid instruction
                         _ => None,

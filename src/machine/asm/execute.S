@@ -553,6 +553,17 @@ ckb_vm_x64_execute:
   movq TEMP1, PC_ADDRESS
   jmp .prepare_trace
 .p2align 3
+/* RS2r is used as a temporary register here */
+.CKB_VM_ASM_LABEL_OP_VERSION1_JALR:
+  DECODE_I
+  movq REGISTER_ADDRESS(RS1), RS2r
+  movq PC_ADDRESS, TEMP1
+  WRITE_RD(TEMP1)
+  addq IMMEDIATE, RS2r
+  andq $-2, RS2r
+  movq RS2r, PC_ADDRESS
+  jmp .prepare_trace
+.p2align 3
 .CKB_VM_ASM_LABEL_OP_LB:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
@@ -1134,6 +1145,15 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), %rcx
   andq $-2, %rcx
   movq %rcx, PC_ADDRESS
+  jmp .prepare_trace
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_VERSION1_RVC_JALR:
+  DECODE_S
+  movq REGISTER_ADDRESS(RS1), TEMP1
+  movq PC_ADDRESS, %rcx
+  movq %rcx, (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + 1 * 8)(MACHINE)
+  andq $-2, TEMP1
+  movq TEMP1, PC_ADDRESS
   jmp .prepare_trace
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_RVC_JR:

@@ -217,6 +217,8 @@ pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
         insts::OP_RVC_JAL => true,
         insts::OP_RVC_JALR => true,
         insts::OP_RVC_JR => true,
+        insts::OP_VERSION1_JALR => true,
+        insts::OP_VERSION1_RVC_JALR => true,
         _ => false,
     }
 }

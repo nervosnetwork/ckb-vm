@@ -1,3 +1,4 @@
+use super::super::machine::VERSION1;
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
     stype_immediate, utype_immediate,
@@ -63,7 +64,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits) {
                 // I-type jump instructions
-                0b_000 => Some(insts::OP_JALR),
+                0b_000 => Some(if version >= VERSION1 { insts::OP_VERSION1_JALR } else { insts::OP_JALR }),
                 _ => None,
             };
             inst_opt.map(|inst| {
