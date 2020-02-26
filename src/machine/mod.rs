@@ -171,6 +171,25 @@ pub trait SupportMachine: CoreMachine {
             values.push(address.clone());
             self.set_register(SP, address);
         }
+        if self.version() >= VERSION1 {
+            // There are 2 standard requirements of the initialized stack:
+            // 1. argv[argc] should contain a null pointer here, hence we are
+            // pushing another 0 to the values array;
+            values.push(Self::REG::zero());
+            // 2. SP must be aligned to 16-byte boundary, also considering _start
+            // will read argc from SP and argv from SP + 8, we have to factor in
+            // alignment here first, then push the values.
+            let values_bytes =
+                Self::REG::from_u64(Self::REG::BITS as u64 / 8 * values.len() as u64);
+            let unaligned_sp_address = self.registers()[SP].overflowing_sub(&values_bytes).to_u64();
+            // Perform alignment at 16-byte boundary towards lower address
+            let aligned_sp_address = unaligned_sp_address & (!15);
+            let aligned_bytes = unaligned_sp_address - aligned_sp_address;
+            self.set_register(
+                SP,
+                self.registers()[SP].overflowing_sub(&Self::REG::from_u64(aligned_bytes)),
+            );
+        }
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
