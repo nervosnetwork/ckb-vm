@@ -18,6 +18,7 @@ const TRACE_MASK: usize = (TRACE_SIZE - 1);
 // The maximum number of instructions to cache in a trace item
 const TRACE_ITEM_LENGTH: usize = 16;
 // Shifts to truncate a value so 2 traces has the minimal chance of sharing code.
+const TRACE_ADDRESS_SHIFTS: usize = 5;
 
 #[derive(Default)]
 struct Trace {
@@ -29,7 +30,7 @@ struct Trace {
 
 #[inline(always)]
 fn calculate_slot(addr: u64) -> usize {
-    (((addr >> 9).wrapping_add(addr) >> 1) & (TRACE_MASK as u64)) as usize
+    (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
 pub struct TraceMachine<'a, Inner> {

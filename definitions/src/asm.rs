@@ -17,7 +17,7 @@ pub const RET_INVALID_PERMISSION: u8 = 7;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
-    (((addr >> 9).wrapping_add(addr) >> 1) & (TRACE_SIZE as u64 - 1)) as usize
+    (addr as usize >> 5) & (TRACE_SIZE - 1)
 }
 
 #[derive(Default)]
