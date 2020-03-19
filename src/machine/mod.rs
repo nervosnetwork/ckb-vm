@@ -135,8 +135,10 @@ pub trait SupportMachine: CoreMachine {
                     Some(program.slice(slice_start as usize..slice_end as usize)),
                     padding_start,
                 )?;
-                self.memory_mut()
-                    .store_byte(aligned_start, padding_start, 0)?;
+                if self.version() < VERSION1 {
+                    self.memory_mut()
+                        .store_byte(aligned_start, padding_start, 0)?;
+                }
                 bytes = bytes
                     .checked_add(slice_end - slice_start)
                     .ok_or(Error::Unexpected)?;
