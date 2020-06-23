@@ -283,6 +283,13 @@ impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
         }
     }
 
+    pub fn latest() -> Self {
+        Self {
+            version: VERSION1,
+            ..Default::default()
+        }
+    }
+
     pub fn new_with_max_cycles(max_cycles: u64) -> Self {
         Self {
             max_cycles: Some(max_cycles),
