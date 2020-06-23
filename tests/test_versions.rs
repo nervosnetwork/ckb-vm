@@ -9,24 +9,25 @@ use ckb_vm::{
         asm::{AsmCoreMachine, AsmMachine},
         VERSION0, VERSION1,
     },
-    DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, SparseMemory,
+    DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, SparseMemory, WXorXMemory,
 };
 use std::fs::File;
 use std::io::Read;
 
+type Mem = WXorXMemory<u64, SparseMemory<u64>>;
+
 fn create_rust_machine<'a>(
     program: String,
     version: u32,
-) -> DefaultMachine<'a, DefaultCoreMachine<u64, SparseMemory<u64>>> {
+) -> DefaultMachine<'a, DefaultCoreMachine<u64, Mem>> {
     let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(version, u64::max_value());
+    let core_machine = DefaultCoreMachine::<u64, Mem>::new(version, u64::max_value());
     let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
-            .build();
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     machine
         .load_program(&buffer, &vec![program.into()])
         .unwrap();
@@ -368,6 +369,30 @@ pub fn test_aot_version1_read_at_boundary() {
 pub fn test_aot_version1_write_at_boundary() {
     let code = compile_aot_code("write_at_boundary64".to_string(), VERSION1);
     let mut machine = create_aot_machine("write_at_boundary64".to_string(), &code, VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_rust_version0_unaligned64() {
+    let program = "unaligned64";
+    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let core_machine = DefaultCoreMachine::<u64, Mem>::new(VERSION0, u64::max_value());
+    let mut machine =
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
+    let result = machine.load_program(&buffer, &vec![program.into()]);
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::InvalidPermission));
+}
+
+#[test]
+pub fn test_rust_version1_unaligned64() {
+    let mut machine = create_rust_machine("unaligned64".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
