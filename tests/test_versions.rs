@@ -90,6 +90,38 @@ pub fn test_rust_version0_sp_alignment() {
 }
 
 #[test]
+pub fn test_rust_version0_jalr_bug() {
+    let mut machine = create_rust_machine("jalr_bug".to_string(), VERSION0);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), -1);
+}
+
+#[test]
+pub fn test_rust_version0_jalr_bug_noc() {
+    let mut machine = create_rust_machine("jalr_bug_noc".to_string(), VERSION0);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), -1);
+}
+
+#[test]
+pub fn test_rust_version0_read_at_boundary() {
+    let mut machine = create_rust_machine("read_at_boundary64".to_string(), VERSION0);
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+#[test]
+pub fn test_rust_version0_write_at_boundary() {
+    let mut machine = create_rust_machine("write_at_boundary64".to_string(), VERSION0);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
 pub fn test_rust_version1_argv_null() {
     let mut machine = create_rust_machine("argv_null_test".to_string(), VERSION1);
     let result = machine.run();
@@ -100,6 +132,38 @@ pub fn test_rust_version1_argv_null() {
 #[test]
 pub fn test_rust_version1_sp_alignment() {
     let mut machine = create_rust_machine("sp_alignment_test".to_string(), VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_rust_version1_jalr_bug() {
+    let mut machine = create_rust_machine("jalr_bug".to_string(), VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_rust_version1_jalr_bug_noc() {
+    let mut machine = create_rust_machine("jalr_bug_noc".to_string(), VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_rust_version1_read_at_boundary() {
+    let mut machine = create_rust_machine("read_at_boundary64".to_string(), VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_rust_version1_write_at_boundary() {
+    let mut machine = create_rust_machine("write_at_boundary64".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
