@@ -11,3 +11,7 @@ pub const RISCV_MAX_MEMORY: usize = 4 << 20;
 // 1 MB
 pub const DEFAULT_STACK_SIZE: usize = 1 << 20;
 pub const RISCV_PAGES: usize = RISCV_MAX_MEMORY / RISCV_PAGESIZE;
+// 256 KB
+pub const MEMORY_FRAME_SHIFTS: usize = 18;
+pub const MEMORY_FRAMESIZE: usize = 1 << MEMORY_FRAME_SHIFTS;
+pub const MEMORY_FRAMES: usize = RISCV_MAX_MEMORY / MEMORY_FRAMESIZE;

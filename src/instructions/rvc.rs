@@ -28,7 +28,7 @@ fn immediate(instruction_bits: u32) -> i32 {
 // [12]  => imm[5]
 // [6:2] => imm[4:0]
 fn uimmediate(instruction_bits: u32) -> u32 {
-    (x(instruction_bits, 2, 5, 0) | x(instruction_bits, 12, 1, 5))
+    x(instruction_bits, 2, 5, 0) | x(instruction_bits, 12, 1, 5)
 }
 
 // [12:2] => imm[11|4|9:8|10|6|7|3:1|5]

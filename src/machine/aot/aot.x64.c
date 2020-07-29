@@ -102,6 +102,7 @@ typedef struct {
   /* We won't access traces here */
   uint8_t _traces[CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE -
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
+  uint8_t frames[CKB_VM_ASM_MEMORY_FRAMES];
 } AsmMachine;
 
 #define AOT_TAG_REGISTER 0x1
@@ -339,6 +340,72 @@ int aot_link(AotContext* context, size_t *szp)
   | ret
   |3:
   | mov rdx, CKB_VM_ASM_RET_INVALID_PERMISSION
+  | pop rsi
+  | ret
+  /*
+   * Fill the specified frame with zeros. Required arguments to this
+   * pseudo function include:
+   *
+   * rax: index of the frame, no overflow check.
+   */
+  |->zeroed_memory:
+  | push rdi
+  | mov rdi, rax
+  | shl rdi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea rcx, machine->memory
+  | add rdi, rcx
+  | xor eax, eax
+  | mov ecx, CKB_VM_ASM_MEMORY_FRAMESIZE
+  | shr ecx, 2
+  | cld
+  | rep
+  | stosd
+  | pop rdi
+  /*
+   * Zeroed frame by memory address and length.
+   *
+   * rax: the memory address to read/write
+   * rdx: length of memory to read/write
+   */
+  |->inited_memory:
+  | push rsi
+  | mov rsi, rdx
+  | mov rcx, rax
+  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
+  | jae >2
+  | lea rdx, machine->frames
+  | movzx edx, byte [rdx+rcx]
+  | cmp edx, 1
+  | je >1
+  | lea rdx, machine->frames
+  | mov byte [rdx+rcx], 1
+  | push rax
+  | mov rax, rcx
+  | call ->zeroed_memory
+  | pop rax
+  | mov rcx, rax
+  | add rcx, rsi
+  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
+  | jae >2
+  | lea rdx, machine->frames
+  | movzx edx, byte [rdx+rcx]
+  | cmp edx, 1
+  | je >1
+  | lea rdx, machine->frames
+  | mov byte [rdx+rcx], 1
+  | push rax
+  | mov rax, rcx
+  | call ->zeroed_memory
+  | pop rax
+  | je >1
+  |1:
+  | mov rdx, 0
+  | pop rsi
+  | ret
+  |2:
+  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
   | pop rsi
   | ret
   /* rax should store the return value here */
@@ -1224,6 +1291,8 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
   if (ret != DASM_S_OK) { return ret; }
 
   | mov rdx, size
+  | call ->inited_memory
+  | mov rdx, size
   | call ->check_write
   | cmp rdx, 0
   | jne >1
@@ -1264,6 +1333,8 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   ret = aot_mov_x64(context, X64_RAX, address);
   if (ret != DASM_S_OK) { return ret; }
 
+  | mov rdx, size
+  | call ->inited_memory
   | mov rdx, rax
   | add rdx, size
   | jc >1

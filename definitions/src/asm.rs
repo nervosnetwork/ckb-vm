@@ -1,7 +1,8 @@
 use crate::{
-    instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
+    instructions::Instruction, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    RISCV_PAGES,
 };
-use std::alloc::{alloc_zeroed, Layout};
+use std::alloc::{alloc, Layout};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -42,6 +43,7 @@ pub struct AsmCoreMachine {
     pub flags: [u8; RISCV_PAGES],
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub traces: [Trace; TRACE_SIZE],
+    pub frames: [u8; MEMORY_FRAMES],
 }
 
 impl Default for Box<AsmCoreMachine> {
@@ -58,14 +60,22 @@ impl AsmCoreMachine {
         let mut machine = unsafe {
             let layout = Layout::new::<AsmCoreMachine>();
             #[allow(clippy::cast_ptr_alignment)]
-            // TODO: change this to alloc so we are using malloc instead of
+            // Use alloc so we are using malloc instead of
             // calloc, then do lazy zero filling when necessary. That might
             // save us some time in case a script doesn't use all the memory.
-            // Right now this calloc phase here takes around 1ms.
-            let raw_allocation = alloc_zeroed(layout) as *mut AsmCoreMachine;
+            let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };
+        machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+        machine.pc = 0;
+        machine.running = 0;
+        machine.cycles = 0;
         machine.max_cycles = max_cycles;
+        machine.flags = [0; RISCV_PAGES];
+        for i in 0..TRACE_SIZE {
+            machine.traces[i] = Trace::default();
+        }
+        machine.frames = [0; MEMORY_FRAMES];
         machine
     }
 }
