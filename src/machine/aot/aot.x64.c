@@ -358,8 +358,7 @@ int aot_link(AotContext* context, size_t *szp)
   | mov ecx, CKB_VM_ASM_MEMORY_FRAMESIZE
   | shr ecx, 2
   | cld
-  | rep
-  | stosd
+  | rep; stosd
   | pop rdi
   | ret
   /*
