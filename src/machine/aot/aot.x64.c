@@ -361,8 +361,9 @@ int aot_link(AotContext* context, size_t *szp)
   | rep
   | stosd
   | pop rdi
+  | ret
   /*
-   * Zeroed frame by memory address and length.
+   * Zeroed frame by memory address and length if it's necessary.
    *
    * rax: the memory address to read/write
    * rdx: length of memory to read/write
@@ -386,6 +387,7 @@ int aot_link(AotContext* context, size_t *szp)
   | pop rax
   | mov rcx, rax
   | add rcx, rsi
+  | sub rcx, 1
   | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
   | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
   | jae >2
@@ -399,7 +401,7 @@ int aot_link(AotContext* context, size_t *szp)
   | mov rax, rcx
   | call ->zeroed_memory
   | pop rax
-  | je >1
+  | jmp >1
   |1:
   | mov rdx, 0
   | pop rsi

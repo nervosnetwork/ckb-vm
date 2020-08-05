@@ -104,7 +104,7 @@
   xor %eax, %eax; \
   movl $CKB_VM_ASM_MEMORY_FRAMESIZE, %ecx; \
   shr $2, %ecx; \
-  cld; rep; stosl; \
+  cld; rep; stosl;
 
 #define INITED_MEMORY(address_reg, temp_reg1, temp_reg2, temp_reg2d, length) \
   movq address_reg, temp_reg1; \
@@ -118,6 +118,7 @@
   ZEROED_MEMORY(temp_reg1); \
   movq address_reg, temp_reg2; \
   addq $length, temp_reg2; \
+  subq $1, temp_reg2; \
   shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, temp_reg2; \
   cmp $CKB_VM_ASM_MEMORY_FRAMES, temp_reg2; \
   jae .exit_out_of_bound; \

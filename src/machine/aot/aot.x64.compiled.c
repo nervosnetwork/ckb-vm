@@ -41,7 +41,7 @@ enum {
 };
 #line 20 "src/machine/aot/aot.x64.c"
 //|.actionlist bf_actions
-static const unsigned char bf_actions[1369] = {
+static const unsigned char bf_actions[1375] = {
   254,0,65,84,65,85,65,86,65,87,83,85,72,137,252,240,72,139,183,233,76,139,
   135,233,76,139,143,233,252,255,224,255,248,10,86,72,137,214,72,137,193,72,
   193,252,233,235,255,72,129,252,249,239,15,131,244,248,72,141,151,233,15,182,
@@ -51,65 +51,65 @@ static const unsigned char bf_actions[1369] = {
   226,239,129,252,250,239,15,133,244,249,248,1,72,199,194,0,0,0,0,94,195,248,
   2,72,199,194,237,94,195,248,3,72,199,194,237,94,195,255,248,11,87,72,137,
   199,72,193,231,235,72,141,143,233,72,1,207,49,192,185,237,193,252,233,2,252,
-  252,252,243,171,95,255,248,12,86,72,137,214,72,137,193,72,193,252,233,235,
-  72,129,252,249,239,15,131,244,248,72,141,151,233,15,182,20,10,131,252,250,
-  1,15,132,244,247,72,141,151,233,198,4,10,1,80,72,137,200,232,244,11,88,72,
-  137,193,72,1,252,241,72,193,252,233,235,72,129,252,249,239,15,131,244,248,
-  72,141,151,233,15,182,20,10,131,252,250,1,15,132,244,247,72,141,151,233,255,
-  198,4,10,1,80,72,137,200,232,244,11,88,15,132,244,247,248,1,72,199,194,0,
-  0,0,0,94,195,248,2,72,199,194,237,94,195,255,248,13,72,137,183,233,76,137,
-  135,233,76,137,143,233,93,91,65,95,65,94,65,93,65,92,195,255,72,1,192,240,
-  131,240,35,255,72,3,135,253,240,131,233,255,72,1,135,253,240,131,233,255,
-  72,139,135,233,72,1,135,233,255,72,199,192,237,72,193,224,32,72,129,200,239,
-  255,72,1,192,240,35,255,72,129,192,240,35,239,255,72,129,135,233,239,255,
-  72,41,192,240,131,240,35,255,72,43,135,253,240,131,233,255,72,41,135,253,
-  240,131,233,255,72,139,135,233,72,41,135,233,255,72,41,192,240,35,255,72,
-  129,232,240,35,239,255,72,129,175,233,239,255,72,15,175,192,240,36,255,72,
-  15,175,135,233,255,72,199,193,237,72,193,225,32,72,129,201,239,255,72,199,
-  193,237,255,72,15,175,193,255,72,137,192,240,35,255,72,137,135,233,255,72,
-  252,247,232,240,35,255,72,252,247,175,233,255,72,252,247,224,240,35,255,72,
-  252,247,167,233,255,72,252,247,252,233,255,72,252,247,225,255,72,137,208,
-  240,35,255,72,137,151,233,255,72,133,192,15,137,244,247,255,72,252,247,216,
-  255,72,131,252,242,252,255,72,137,209,255,72,199,194,237,72,193,226,32,72,
-  129,202,239,255,72,199,194,237,255,72,15,175,194,255,72,133,192,15,148,208,
-  72,15,182,192,255,72,1,200,252,233,244,248,255,248,1,255,72,137,208,248,2,
-  255,72,184,237,237,255,72,57,200,15,133,244,247,72,199,192,252,255,252,255,
-  252,255,252,255,255,72,57,200,15,133,244,247,255,252,233,244,249,255,248,
-  1,72,199,192,0,0,0,0,255,72,57,200,15,133,244,248,255,72,199,192,240,35,237,
-  255,72,199,135,233,237,255,252,233,244,249,248,2,255,72,153,255,72,252,247,
-  252,248,240,35,255,72,252,247,191,233,255,72,49,210,255,72,252,247,252,240,
-  240,35,255,72,252,247,183,233,255,72,153,72,252,247,252,249,255,72,49,210,
-  72,252,247,252,241,255,72,153,72,252,247,252,248,240,35,255,72,49,210,72,
-  252,247,252,240,240,35,255,248,3,255,72,33,192,240,131,240,35,255,72,35,135,
-  253,240,131,233,255,72,33,135,253,240,131,233,255,72,139,135,233,72,33,135,
-  233,255,72,33,192,240,35,255,72,129,224,240,35,239,255,72,129,167,233,239,
-  255,72,9,192,240,131,240,35,255,72,11,135,253,240,131,233,255,72,9,135,253,
-  240,131,233,255,72,139,135,233,72,9,135,233,255,72,9,192,240,35,255,72,129,
-  200,240,35,239,255,72,129,143,233,239,255,72,252,247,208,240,35,255,72,252,
-  247,151,233,255,72,49,192,240,131,240,35,255,72,51,135,253,240,131,233,255,
-  72,49,135,253,240,131,233,255,72,139,135,233,72,49,135,233,255,72,49,192,
-  240,35,255,72,129,252,240,240,35,239,255,72,129,183,233,239,255,72,137,193,
-  240,131,255,72,139,143,233,255,185,237,255,72,211,224,240,35,255,72,211,167,
-  233,255,72,211,252,248,240,35,255,72,211,191,233,255,72,211,232,240,35,255,
-  72,211,175,233,255,72,57,193,240,131,255,72,59,143,233,255,72,199,192,237,
-  255,72,57,193,255,15,148,209,72,15,182,201,255,72,137,200,240,35,255,72,137,
-  143,233,255,15,156,209,255,15,146,209,255,72,57,192,240,35,255,72,57,135,
-  233,255,72,129,252,248,240,35,239,255,72,129,191,233,239,255,252,233,244,
-  248,248,1,255,72,131,252,248,240,35,1,15,133,244,247,255,72,99,192,255,137,
-  192,255,185,64,0,0,0,131,226,63,41,209,72,211,224,137,209,255,72,211,252,
-  248,255,72,211,232,255,72,193,224,235,255,72,193,252,248,235,255,72,193,232,
-  235,255,72,137,194,240,131,185,64,0,0,0,131,226,63,41,209,72,211,224,137,
-  209,255,72,199,192,237,252,233,244,13,255,72,1,135,233,72,139,135,233,72,
-  57,135,233,15,134,244,247,255,72,199,135,233,237,252,233,245,255,72,137,135,
-  253,240,131,233,255,72,199,194,237,232,244,12,72,199,194,237,232,244,10,72,
-  131,252,250,0,15,133,244,247,72,141,151,233,255,136,12,2,255,102,137,12,2,
-  255,72,137,12,2,255,252,233,244,248,248,1,72,137,208,252,233,244,13,248,2,
-  255,72,199,194,237,232,244,12,72,137,194,72,129,194,239,15,130,244,247,72,
-  129,252,250,239,15,135,244,247,72,141,151,233,255,15,182,12,2,255,15,183,
-  12,2,255,139,12,2,255,72,139,12,2,255,72,137,192,240,131,240,35,255,72,139,
-  135,253,240,131,233,255,72,139,135,253,240,131,233,72,137,135,253,240,131,
-  233,255,72,199,192,240,35,237,72,193,224,240,35,32,72,129,200,240,35,239,
-  255
+  252,252,243,171,95,195,255,248,12,86,72,137,214,72,137,193,72,193,252,233,
+  235,72,129,252,249,239,15,131,244,248,72,141,151,233,15,182,20,10,131,252,
+  250,1,15,132,244,247,72,141,151,233,198,4,10,1,80,72,137,200,232,244,11,88,
+  72,137,193,72,1,252,241,72,131,252,233,1,72,193,252,233,235,72,129,252,249,
+  239,15,131,244,248,72,141,151,233,15,182,20,10,131,252,250,1,15,132,244,247,
+  72,141,151,233,255,198,4,10,1,80,72,137,200,232,244,11,88,252,233,244,247,
+  248,1,72,199,194,0,0,0,0,94,195,248,2,72,199,194,237,94,195,255,248,13,72,
+  137,183,233,76,137,135,233,76,137,143,233,93,91,65,95,65,94,65,93,65,92,195,
+  255,72,1,192,240,131,240,35,255,72,3,135,253,240,131,233,255,72,1,135,253,
+  240,131,233,255,72,139,135,233,72,1,135,233,255,72,199,192,237,72,193,224,
+  32,72,129,200,239,255,72,1,192,240,35,255,72,129,192,240,35,239,255,72,129,
+  135,233,239,255,72,41,192,240,131,240,35,255,72,43,135,253,240,131,233,255,
+  72,41,135,253,240,131,233,255,72,139,135,233,72,41,135,233,255,72,41,192,
+  240,35,255,72,129,232,240,35,239,255,72,129,175,233,239,255,72,15,175,192,
+  240,36,255,72,15,175,135,233,255,72,199,193,237,72,193,225,32,72,129,201,
+  239,255,72,199,193,237,255,72,15,175,193,255,72,137,192,240,35,255,72,137,
+  135,233,255,72,252,247,232,240,35,255,72,252,247,175,233,255,72,252,247,224,
+  240,35,255,72,252,247,167,233,255,72,252,247,252,233,255,72,252,247,225,255,
+  72,137,208,240,35,255,72,137,151,233,255,72,133,192,15,137,244,247,255,72,
+  252,247,216,255,72,131,252,242,252,255,72,137,209,255,72,199,194,237,72,193,
+  226,32,72,129,202,239,255,72,199,194,237,255,72,15,175,194,255,72,133,192,
+  15,148,208,72,15,182,192,255,72,1,200,252,233,244,248,255,248,1,255,72,137,
+  208,248,2,255,72,184,237,237,255,72,57,200,15,133,244,247,72,199,192,252,
+  255,252,255,252,255,252,255,255,72,57,200,15,133,244,247,255,252,233,244,
+  249,255,248,1,72,199,192,0,0,0,0,255,72,57,200,15,133,244,248,255,72,199,
+  192,240,35,237,255,72,199,135,233,237,255,252,233,244,249,248,2,255,72,153,
+  255,72,252,247,252,248,240,35,255,72,252,247,191,233,255,72,49,210,255,72,
+  252,247,252,240,240,35,255,72,252,247,183,233,255,72,153,72,252,247,252,249,
+  255,72,49,210,72,252,247,252,241,255,72,153,72,252,247,252,248,240,35,255,
+  72,49,210,72,252,247,252,240,240,35,255,248,3,255,72,33,192,240,131,240,35,
+  255,72,35,135,253,240,131,233,255,72,33,135,253,240,131,233,255,72,139,135,
+  233,72,33,135,233,255,72,33,192,240,35,255,72,129,224,240,35,239,255,72,129,
+  167,233,239,255,72,9,192,240,131,240,35,255,72,11,135,253,240,131,233,255,
+  72,9,135,253,240,131,233,255,72,139,135,233,72,9,135,233,255,72,9,192,240,
+  35,255,72,129,200,240,35,239,255,72,129,143,233,239,255,72,252,247,208,240,
+  35,255,72,252,247,151,233,255,72,49,192,240,131,240,35,255,72,51,135,253,
+  240,131,233,255,72,49,135,253,240,131,233,255,72,139,135,233,72,49,135,233,
+  255,72,49,192,240,35,255,72,129,252,240,240,35,239,255,72,129,183,233,239,
+  255,72,137,193,240,131,255,72,139,143,233,255,185,237,255,72,211,224,240,
+  35,255,72,211,167,233,255,72,211,252,248,240,35,255,72,211,191,233,255,72,
+  211,232,240,35,255,72,211,175,233,255,72,57,193,240,131,255,72,59,143,233,
+  255,72,199,192,237,255,72,57,193,255,15,148,209,72,15,182,201,255,72,137,
+  200,240,35,255,72,137,143,233,255,15,156,209,255,15,146,209,255,72,57,192,
+  240,35,255,72,57,135,233,255,72,129,252,248,240,35,239,255,72,129,191,233,
+  239,255,252,233,244,248,248,1,255,72,131,252,248,240,35,1,15,133,244,247,
+  255,72,99,192,255,137,192,255,185,64,0,0,0,131,226,63,41,209,72,211,224,137,
+  209,255,72,211,252,248,255,72,211,232,255,72,193,224,235,255,72,193,252,248,
+  235,255,72,193,232,235,255,72,137,194,240,131,185,64,0,0,0,131,226,63,41,
+  209,72,211,224,137,209,255,72,199,192,237,252,233,244,13,255,72,1,135,233,
+  72,139,135,233,72,57,135,233,15,134,244,247,255,72,199,135,233,237,252,233,
+  245,255,72,137,135,253,240,131,233,255,72,199,194,237,232,244,12,72,199,194,
+  237,232,244,10,72,131,252,250,0,15,133,244,247,72,141,151,233,255,136,12,
+  2,255,102,137,12,2,255,72,137,12,2,255,252,233,244,248,248,1,72,137,208,252,
+  233,244,13,248,2,255,72,199,194,237,232,244,12,72,137,194,72,129,194,239,
+  15,130,244,247,72,129,252,250,239,15,135,244,247,72,141,151,233,255,15,182,
+  12,2,255,15,183,12,2,255,139,12,2,255,72,139,12,2,255,72,137,192,240,131,
+  240,35,255,72,139,135,253,240,131,233,255,72,139,135,253,240,131,233,72,137,
+  135,253,240,131,233,255,72,199,192,240,35,237,72,193,224,240,35,32,72,129,
+  200,240,35,239,255
 };
 
 #line 21 "src/machine/aot/aot.x64.c"
@@ -470,10 +470,11 @@ int aot_link(AotContext* context, size_t *szp)
   //| rep
   //| stosd
   //| pop rdi
+  //| ret
   dasm_put(Dst, 161, CKB_VM_ASM_MEMORY_FRAME_SHIFTS, Dt1(->memory), CKB_VM_ASM_MEMORY_FRAMESIZE);
-#line 364 "src/machine/aot/aot.x64.c"
+#line 365 "src/machine/aot/aot.x64.c"
   /*
-   * Zeroed frame by memory address and length.
+   * Zeroed frame by memory address and length if it's necessary.
    *
    * rax: the memory address to read/write
    * rdx: length of memory to read/write
@@ -497,6 +498,7 @@ int aot_link(AotContext* context, size_t *szp)
   //| pop rax
   //| mov rcx, rax
   //| add rcx, rsi
+  //| sub rcx, 1
   //| shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
   //| cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
   //| jae >2
@@ -506,13 +508,13 @@ int aot_link(AotContext* context, size_t *szp)
   //| je >1
   //| lea rdx, machine->frames
   //| mov byte [rdx+rcx], 1
-  dasm_put(Dst, 193, CKB_VM_ASM_MEMORY_FRAME_SHIFTS, CKB_VM_ASM_MEMORY_FRAMES, Dt1(->frames), Dt1(->frames), CKB_VM_ASM_MEMORY_FRAME_SHIFTS, CKB_VM_ASM_MEMORY_FRAMES, Dt1(->frames), Dt1(->frames));
-#line 398 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 194, CKB_VM_ASM_MEMORY_FRAME_SHIFTS, CKB_VM_ASM_MEMORY_FRAMES, Dt1(->frames), Dt1(->frames), CKB_VM_ASM_MEMORY_FRAME_SHIFTS, CKB_VM_ASM_MEMORY_FRAMES, Dt1(->frames), Dt1(->frames));
+#line 400 "src/machine/aot/aot.x64.c"
   //| push rax
   //| mov rax, rcx
   //| call ->zeroed_memory
   //| pop rax
-  //| je >1
+  //| jmp >1
   //|1:
   //| mov rdx, 0
   //| pop rsi
@@ -521,8 +523,8 @@ int aot_link(AotContext* context, size_t *szp)
   //| mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
   //| pop rsi
   //| ret
-  dasm_put(Dst, 290, CKB_VM_ASM_RET_OUT_OF_BOUND);
-#line 411 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 296, CKB_VM_ASM_RET_OUT_OF_BOUND);
+#line 413 "src/machine/aot/aot.x64.c"
   /* rax should store the return value here */
   //|->exit:
   //| mov machine->registers[REGISTER_RA], rsi
@@ -539,8 +541,8 @@ int aot_link(AotContext* context, size_t *szp)
   //| pop r13
   //| pop r12
   //| ret
-  dasm_put(Dst, 326, Dt1(->registers[REGISTER_RA]), Dt1(->registers[REGISTER_SP]), Dt1(->registers[REGISTER_A0]));
-#line 427 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 332, Dt1(->registers[REGISTER_RA]), Dt1(->registers[REGISTER_SP]), Dt1(->registers[REGISTER_A0]));
+#line 429 "src/machine/aot/aot.x64.c"
   return dasm_link(&context->d, szp);
 }
 
@@ -569,7 +571,7 @@ int aot_label(AotContext* context, uint32_t label)
   }
   //|=>label:
   dasm_put(Dst, 74, label);
-#line 454 "src/machine/aot/aot.x64.c"
+#line 456 "src/machine/aot/aot.x64.c"
   return DASM_S_OK;
 }
 
@@ -609,45 +611,45 @@ int aot_add(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       loc1 = riscv_reg_to_x64_reg(target);
       loc2 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1) && VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 352, (loc2), (loc1));
+      dasm_put(Dst, 358, (loc2), (loc1));
       } else if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 360, (loc1), Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 366, (loc1), Dt1(->registers[b.value.reg]));
       } else if (VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 368, (loc2), Dt1(->registers[target]));
+      dasm_put(Dst, 374, (loc2), Dt1(->registers[target]));
       } else {
-      dasm_put(Dst, 376, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
+      dasm_put(Dst, 382, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
       }
-#line 490 "src/machine/aot/aot.x64.c"
+#line 492 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| op2_r_imm add, target, b.value.i, rax
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(target);
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 398, (loc1));
+      dasm_put(Dst, 404, (loc1));
         } else {
-      dasm_put(Dst, 380, Dt1(->registers[target]));
+      dasm_put(Dst, 386, Dt1(->registers[target]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(target);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 404, (loc1), b.value.i);
+      dasm_put(Dst, 410, (loc1), b.value.i);
         } else {
-      dasm_put(Dst, 411, Dt1(->registers[target]), b.value.i);
+      dasm_put(Dst, 417, Dt1(->registers[target]), b.value.i);
         }
       }
-#line 493 "src/machine/aot/aot.x64.c"
+#line 495 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| op2_r_x add, target, Rq(b.value.x64_reg)
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 352, (b.value.x64_reg), (loc1));
+      dasm_put(Dst, 358, (b.value.x64_reg), (loc1));
       } else {
-      dasm_put(Dst, 368, (b.value.x64_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 374, (b.value.x64_reg), Dt1(->registers[target]));
       }
-#line 496 "src/machine/aot/aot.x64.c"
+#line 498 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -676,45 +678,45 @@ int aot_sub(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       loc1 = riscv_reg_to_x64_reg(target);
       loc2 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1) && VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 417, (loc2), (loc1));
+      dasm_put(Dst, 423, (loc2), (loc1));
       } else if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 425, (loc1), Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 431, (loc1), Dt1(->registers[b.value.reg]));
       } else if (VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 433, (loc2), Dt1(->registers[target]));
+      dasm_put(Dst, 439, (loc2), Dt1(->registers[target]));
       } else {
-      dasm_put(Dst, 441, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
+      dasm_put(Dst, 447, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
       }
-#line 521 "src/machine/aot/aot.x64.c"
+#line 523 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| op2_r_imm sub, target, b.value.i, rax
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(target);
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 450, (loc1));
+      dasm_put(Dst, 456, (loc1));
         } else {
-      dasm_put(Dst, 445, Dt1(->registers[target]));
+      dasm_put(Dst, 451, Dt1(->registers[target]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(target);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 456, (loc1), b.value.i);
+      dasm_put(Dst, 462, (loc1), b.value.i);
         } else {
-      dasm_put(Dst, 463, Dt1(->registers[target]), b.value.i);
+      dasm_put(Dst, 469, Dt1(->registers[target]), b.value.i);
         }
       }
-#line 524 "src/machine/aot/aot.x64.c"
+#line 526 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| op2_r_x sub, target, Rq(b.value.x64_reg)
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 417, (b.value.x64_reg), (loc1));
+      dasm_put(Dst, 423, (b.value.x64_reg), (loc1));
       } else {
-      dasm_put(Dst, 433, (b.value.x64_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 439, (b.value.x64_reg), Dt1(->registers[target]));
       }
-#line 527 "src/machine/aot/aot.x64.c"
+#line 529 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -735,39 +737,39 @@ int aot_mul(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       //| op2_x_r imul, rax, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 469, (loc1));
+      dasm_put(Dst, 475, (loc1));
       } else {
-      dasm_put(Dst, 476, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 482, Dt1(->registers[b.value.reg]));
       }
-#line 545 "src/machine/aot/aot.x64.c"
+#line 547 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rcx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 482, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 488, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 495, b.value.i);
+      dasm_put(Dst, 501, b.value.i);
       }
-#line 548 "src/machine/aot/aot.x64.c"
+#line 550 "src/machine/aot/aot.x64.c"
       //| imul rax, rcx
-      dasm_put(Dst, 500);
-#line 549 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 506);
+#line 551 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| imul rax, Rq(b.value.x64_reg)
-      dasm_put(Dst, 469, (b.value.x64_reg));
-#line 552 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 475, (b.value.x64_reg));
+#line 554 "src/machine/aot/aot.x64.c"
       break;
   }
 
   //| op2_r_x mov, target, rax
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 505, (loc1));
+  dasm_put(Dst, 511, (loc1));
   } else {
-  dasm_put(Dst, 511, Dt1(->registers[target]));
+  dasm_put(Dst, 517, Dt1(->registers[target]));
   }
-#line 556 "src/machine/aot/aot.x64.c"
+#line 558 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -787,60 +789,60 @@ int aot_mulh(AotContext* context, riscv_register_t target, AotValue a, AotValue 
         //| op1_r imul, b.value.reg
         loc1 = riscv_reg_to_x64_reg(b.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-        dasm_put(Dst, 516, (loc1));
+        dasm_put(Dst, 522, (loc1));
         } else {
-        dasm_put(Dst, 523, Dt1(->registers[b.value.reg]));
+        dasm_put(Dst, 529, Dt1(->registers[b.value.reg]));
         }
-#line 573 "src/machine/aot/aot.x64.c"
+#line 575 "src/machine/aot/aot.x64.c"
       } else {
         //| op1_r mul, b.value.reg
         loc1 = riscv_reg_to_x64_reg(b.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-        dasm_put(Dst, 529, (loc1));
+        dasm_put(Dst, 535, (loc1));
         } else {
-        dasm_put(Dst, 536, Dt1(->registers[b.value.reg]));
+        dasm_put(Dst, 542, Dt1(->registers[b.value.reg]));
         }
-#line 575 "src/machine/aot/aot.x64.c"
+#line 577 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rcx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 482, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 488, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 495, b.value.i);
+      dasm_put(Dst, 501, b.value.i);
       }
-#line 579 "src/machine/aot/aot.x64.c"
+#line 581 "src/machine/aot/aot.x64.c"
       if (is_signed) {
         //| imul rcx
-        dasm_put(Dst, 542);
-#line 581 "src/machine/aot/aot.x64.c"
-      } else {
-        //| mul rcx
         dasm_put(Dst, 548);
 #line 583 "src/machine/aot/aot.x64.c"
+      } else {
+        //| mul rcx
+        dasm_put(Dst, 554);
+#line 585 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_X64_REGISTER:
       if (is_signed) {
         //| imul Rq(b.value.x64_reg)
-        dasm_put(Dst, 516, (b.value.x64_reg));
-#line 588 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 522, (b.value.x64_reg));
+#line 590 "src/machine/aot/aot.x64.c"
       } else {
         //| mul Rq(b.value.x64_reg)
-        dasm_put(Dst, 529, (b.value.x64_reg));
-#line 590 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 535, (b.value.x64_reg));
+#line 592 "src/machine/aot/aot.x64.c"
       }
       break;
   }
   //| op2_r_x mov, target, rdx
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 553, (loc1));
+  dasm_put(Dst, 559, (loc1));
   } else {
-  dasm_put(Dst, 559, Dt1(->registers[target]));
+  dasm_put(Dst, 565, Dt1(->registers[target]));
   }
-#line 594 "src/machine/aot/aot.x64.c"
+#line 596 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -857,46 +859,46 @@ int aot_mulhsu(AotContext* context, riscv_register_t target, AotValue a, AotValu
 
   //| test rax, rax
   //| jns >1
-  dasm_put(Dst, 564);
-#line 610 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 570);
+#line 612 "src/machine/aot/aot.x64.c"
   /* calculate res = mulhu(-a, b), res is stored in rdx after this. */
   //| neg rax
-  dasm_put(Dst, 572);
-#line 612 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 578);
+#line 614 "src/machine/aot/aot.x64.c"
   switch (b.tag) {
     case AOT_TAG_REGISTER:
       //| op1_r mul, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 529, (loc1));
+      dasm_put(Dst, 535, (loc1));
       } else {
-      dasm_put(Dst, 536, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 542, Dt1(->registers[b.value.reg]));
       }
-#line 615 "src/machine/aot/aot.x64.c"
+#line 617 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rcx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 482, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 488, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 495, b.value.i);
+      dasm_put(Dst, 501, b.value.i);
       }
-#line 618 "src/machine/aot/aot.x64.c"
+#line 620 "src/machine/aot/aot.x64.c"
       //| mul rcx
-      dasm_put(Dst, 548);
-#line 619 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 554);
+#line 621 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| mul Rq(b.value.x64_reg)
-      dasm_put(Dst, 529, (b.value.x64_reg));
-#line 622 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 535, (b.value.x64_reg));
+#line 624 "src/machine/aot/aot.x64.c"
       break;
   }
   /* calculate ~res and store it in rcx */
   //| xor rdx, -1
   //| mov rcx, rdx
-  dasm_put(Dst, 577);
-#line 627 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 583);
+#line 629 "src/machine/aot/aot.x64.c"
   /*
    * calculate (a * b), then test (a * b == 0) and convert that to 1 or 0,
    * result is stored in rax after this.
@@ -908,84 +910,84 @@ int aot_mulhsu(AotContext* context, riscv_register_t target, AotValue a, AotValu
       //| op2_x_r imul, rax, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 469, (loc1));
+      dasm_put(Dst, 475, (loc1));
       } else {
-      dasm_put(Dst, 476, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 482, Dt1(->registers[b.value.reg]));
       }
-#line 636 "src/machine/aot/aot.x64.c"
+#line 638 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rdx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 587, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 593, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 600, b.value.i);
+      dasm_put(Dst, 606, b.value.i);
       }
-#line 639 "src/machine/aot/aot.x64.c"
+#line 641 "src/machine/aot/aot.x64.c"
       //| imul rax, rdx
-      dasm_put(Dst, 605);
-#line 640 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 611);
+#line 642 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| imul rax, Rq(b.value.x64_reg)
-      dasm_put(Dst, 469, (b.value.x64_reg));
-#line 643 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 475, (b.value.x64_reg));
+#line 645 "src/machine/aot/aot.x64.c"
       break;
   }
   //| test rax, rax
   //| setz al
   //| movzx rax, al
-  dasm_put(Dst, 610);
-#line 648 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 616);
+#line 650 "src/machine/aot/aot.x64.c"
   /* calculate ~res + (a * b == 0) */
   //| add rax, rcx
   //| jmp >2
-  dasm_put(Dst, 621);
-#line 651 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 627);
+#line 653 "src/machine/aot/aot.x64.c"
   /* just mulhu here */
   //|1:
-  dasm_put(Dst, 629);
-#line 653 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 635);
+#line 655 "src/machine/aot/aot.x64.c"
   switch (b.tag) {
     case AOT_TAG_REGISTER:
       //| op1_r mul, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 529, (loc1));
+      dasm_put(Dst, 535, (loc1));
       } else {
-      dasm_put(Dst, 536, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 542, Dt1(->registers[b.value.reg]));
       }
-#line 656 "src/machine/aot/aot.x64.c"
+#line 658 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rcx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 482, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 488, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 495, b.value.i);
+      dasm_put(Dst, 501, b.value.i);
       }
-#line 659 "src/machine/aot/aot.x64.c"
+#line 661 "src/machine/aot/aot.x64.c"
       //| mul rcx
-      dasm_put(Dst, 548);
-#line 660 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 554);
+#line 662 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| mul Rq(b.value.x64_reg)
-      dasm_put(Dst, 529, (b.value.x64_reg));
-#line 663 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 535, (b.value.x64_reg));
+#line 665 "src/machine/aot/aot.x64.c"
       break;
   }
   //| mov rax, rdx
   //|2:
   //| op2_r_x mov, target, rax
-  dasm_put(Dst, 632);
+  dasm_put(Dst, 638);
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 505, (loc1));
+  dasm_put(Dst, 511, (loc1));
   } else {
-  dasm_put(Dst, 511, Dt1(->registers[target]));
+  dasm_put(Dst, 517, Dt1(->registers[target]));
   }
-#line 668 "src/machine/aot/aot.x64.c"
+#line 670 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -998,58 +1000,58 @@ int aot_div(AotContext* context, riscv_register_t target, AotValue a, AotValue b
 
   if (is_signed) {
     //| mov64 rax, INT64_MIN
-    dasm_put(Dst, 638, (unsigned int)(INT64_MIN), (unsigned int)((INT64_MIN)>>32));
-#line 680 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 644, (unsigned int)(INT64_MIN), (unsigned int)((INT64_MIN)>>32));
+#line 682 "src/machine/aot/aot.x64.c"
     ret = aot_mov_x64(context, X64_RCX, a);
     if (ret != DASM_S_OK) { return ret; }
     //| cmp rax, rcx
     //| jne >1
     //| mov rax, -1
-    dasm_put(Dst, 643);
-#line 685 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 649);
+#line 687 "src/machine/aot/aot.x64.c"
     ret = aot_mov_x64(context, X64_RCX, b);
     if (ret != DASM_S_OK) { return ret; }
     //| cmp rax, rcx
     //| jne >1
-    dasm_put(Dst, 662);
-#line 689 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 668);
+#line 691 "src/machine/aot/aot.x64.c"
     ret = aot_mov_internal(context, target, a, X64_RAX);
     if (ret != DASM_S_OK) { return ret; }
     //| jmp >3
-    dasm_put(Dst, 670);
-#line 692 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 676);
+#line 694 "src/machine/aot/aot.x64.c"
   }
   //|1:
   //| mov rax, 0
-  dasm_put(Dst, 675);
-#line 695 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 681);
+#line 697 "src/machine/aot/aot.x64.c"
   ret = aot_mov_x64(context, X64_RCX, b);
   if (ret != DASM_S_OK) { return ret; }
   //| cmp rax, rcx
   //| jne >2
   //| op2_r_imm mov, target, (uint64_t)UINT64_MAX, rax
-  dasm_put(Dst, 685);
+  dasm_put(Dst, 691);
   if ((uint64_t)UINT64_MAX > 0xFFFFFFFF && (((uint64_t)UINT64_MAX & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
     loc1 = riscv_reg_to_x64_reg(target);
-  dasm_put(Dst, 385, (uint64_t)UINT64_MAX >> 32, (uint64_t)UINT64_MAX & 0xFFFFFFFF);
+  dasm_put(Dst, 391, (uint64_t)UINT64_MAX >> 32, (uint64_t)UINT64_MAX & 0xFFFFFFFF);
     if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 505, (loc1));
+  dasm_put(Dst, 511, (loc1));
     } else {
-  dasm_put(Dst, 511, Dt1(->registers[target]));
+  dasm_put(Dst, 517, Dt1(->registers[target]));
     }
   } else {
     loc1 = riscv_reg_to_x64_reg(target);
     if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 693, (loc1), (uint64_t)UINT64_MAX);
+  dasm_put(Dst, 699, (loc1), (uint64_t)UINT64_MAX);
     } else {
-  dasm_put(Dst, 700, Dt1(->registers[target]), (uint64_t)UINT64_MAX);
+  dasm_put(Dst, 706, Dt1(->registers[target]), (uint64_t)UINT64_MAX);
     }
   }
-#line 700 "src/machine/aot/aot.x64.c"
+#line 702 "src/machine/aot/aot.x64.c"
   //| jmp >3
   //|2:
-  dasm_put(Dst, 706);
-#line 702 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 712);
+#line 704 "src/machine/aot/aot.x64.c"
   ret = aot_mov_x64(context, X64_RAX, a);
   if (ret != DASM_S_OK) { return ret; }
   switch (b.tag) {
@@ -1057,72 +1059,72 @@ int aot_div(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       if (is_signed) {
         //| cqo
         //| op1_r idiv, b.value.reg
-        dasm_put(Dst, 713);
+        dasm_put(Dst, 719);
         loc1 = riscv_reg_to_x64_reg(b.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-        dasm_put(Dst, 716, (loc1));
+        dasm_put(Dst, 722, (loc1));
         } else {
-        dasm_put(Dst, 724, Dt1(->registers[b.value.reg]));
+        dasm_put(Dst, 730, Dt1(->registers[b.value.reg]));
         }
-#line 709 "src/machine/aot/aot.x64.c"
+#line 711 "src/machine/aot/aot.x64.c"
       } else {
         //| xor rdx, rdx
         //| op1_r div, b.value.reg
-        dasm_put(Dst, 730);
+        dasm_put(Dst, 736);
         loc1 = riscv_reg_to_x64_reg(b.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-        dasm_put(Dst, 734, (loc1));
+        dasm_put(Dst, 740, (loc1));
         } else {
-        dasm_put(Dst, 742, Dt1(->registers[b.value.reg]));
+        dasm_put(Dst, 748, Dt1(->registers[b.value.reg]));
         }
-#line 712 "src/machine/aot/aot.x64.c"
+#line 714 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm, rcx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 482, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 488, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 495, b.value.i);
+      dasm_put(Dst, 501, b.value.i);
       }
-#line 716 "src/machine/aot/aot.x64.c"
+#line 718 "src/machine/aot/aot.x64.c"
       if (is_signed) {
         //| cqo
         //| idiv rcx
-        dasm_put(Dst, 748);
-#line 719 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 754);
+#line 721 "src/machine/aot/aot.x64.c"
       } else {
         //| xor rdx, rdx
         //| div rcx
-        dasm_put(Dst, 756);
-#line 722 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 762);
+#line 724 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_X64_REGISTER:
       if (is_signed) {
         //| cqo
         //| idiv Rq(b.value.x64_reg)
-        dasm_put(Dst, 765, (b.value.x64_reg));
-#line 728 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 771, (b.value.x64_reg));
+#line 730 "src/machine/aot/aot.x64.c"
       } else {
         //| xor rdx, rdx
         //| div Rq(b.value.x64_reg)
-        dasm_put(Dst, 775, (b.value.x64_reg));
-#line 731 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 781, (b.value.x64_reg));
+#line 733 "src/machine/aot/aot.x64.c"
       }
       break;
   }
   //| op2_r_x mov, target, rax
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 505, (loc1));
+  dasm_put(Dst, 511, (loc1));
   } else {
-  dasm_put(Dst, 511, Dt1(->registers[target]));
+  dasm_put(Dst, 517, Dt1(->registers[target]));
   }
-#line 735 "src/machine/aot/aot.x64.c"
+#line 737 "src/machine/aot/aot.x64.c"
   //|3:
-  dasm_put(Dst, 786);
-#line 736 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 792);
+#line 738 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -1135,58 +1137,58 @@ int aot_rem(AotContext* context, riscv_register_t target, AotValue a, AotValue b
 
   if (is_signed) {
     //| mov64 rax, INT64_MIN
-    dasm_put(Dst, 638, (unsigned int)(INT64_MIN), (unsigned int)((INT64_MIN)>>32));
-#line 748 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 644, (unsigned int)(INT64_MIN), (unsigned int)((INT64_MIN)>>32));
+#line 750 "src/machine/aot/aot.x64.c"
     ret = aot_mov_x64(context, X64_RCX, a);
     if (ret != DASM_S_OK) { return ret; }
     //| cmp rax, rcx
     //| jne >1
     //| mov rax, -1
-    dasm_put(Dst, 643);
-#line 753 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 649);
+#line 755 "src/machine/aot/aot.x64.c"
     ret = aot_mov_x64(context, X64_RCX, b);
     if (ret != DASM_S_OK) { return ret; }
     //| cmp rax, rcx
     //| jne >1
     //| op2_r_imm mov, target, (uint64_t)0, rax
-    dasm_put(Dst, 662);
+    dasm_put(Dst, 668);
     if ((uint64_t)0 > 0xFFFFFFFF && (((uint64_t)0 & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
       loc1 = riscv_reg_to_x64_reg(target);
-    dasm_put(Dst, 385, (uint64_t)0 >> 32, (uint64_t)0 & 0xFFFFFFFF);
+    dasm_put(Dst, 391, (uint64_t)0 >> 32, (uint64_t)0 & 0xFFFFFFFF);
       if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 505, (loc1));
+    dasm_put(Dst, 511, (loc1));
       } else {
-    dasm_put(Dst, 511, Dt1(->registers[target]));
+    dasm_put(Dst, 517, Dt1(->registers[target]));
       }
     } else {
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 693, (loc1), (uint64_t)0);
+    dasm_put(Dst, 699, (loc1), (uint64_t)0);
       } else {
-    dasm_put(Dst, 700, Dt1(->registers[target]), (uint64_t)0);
+    dasm_put(Dst, 706, Dt1(->registers[target]), (uint64_t)0);
       }
     }
-#line 758 "src/machine/aot/aot.x64.c"
+#line 760 "src/machine/aot/aot.x64.c"
     //| jmp >3
-    dasm_put(Dst, 670);
-#line 759 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 676);
+#line 761 "src/machine/aot/aot.x64.c"
   }
   //|1:
   //| mov rax, 0
-  dasm_put(Dst, 675);
-#line 762 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 681);
+#line 764 "src/machine/aot/aot.x64.c"
   ret = aot_mov_x64(context, X64_RCX, b);
   if (ret != DASM_S_OK) { return ret; }
   //| cmp rax, rcx
   //| jne >2
-  dasm_put(Dst, 685);
-#line 766 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 691);
+#line 768 "src/machine/aot/aot.x64.c"
   ret = aot_mov_internal(context, target, a, X64_RAX);
   if (ret != DASM_S_OK) { return ret; }
   //| jmp >3
   //|2:
-  dasm_put(Dst, 706);
-#line 770 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 712);
+#line 772 "src/machine/aot/aot.x64.c"
   ret = aot_mov_x64(context, X64_RAX, a);
   if (ret != DASM_S_OK) { return ret; }
   switch (b.tag) {
@@ -1194,72 +1196,72 @@ int aot_rem(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       if (is_signed) {
         //| cqo
         //| op1_r idiv, b.value.reg
-        dasm_put(Dst, 713);
+        dasm_put(Dst, 719);
         loc1 = riscv_reg_to_x64_reg(b.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-        dasm_put(Dst, 716, (loc1));
+        dasm_put(Dst, 722, (loc1));
         } else {
-        dasm_put(Dst, 724, Dt1(->registers[b.value.reg]));
+        dasm_put(Dst, 730, Dt1(->registers[b.value.reg]));
         }
-#line 777 "src/machine/aot/aot.x64.c"
+#line 779 "src/machine/aot/aot.x64.c"
       } else {
         //| xor rdx, rdx
         //| op1_r div, b.value.reg
-        dasm_put(Dst, 730);
+        dasm_put(Dst, 736);
         loc1 = riscv_reg_to_x64_reg(b.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-        dasm_put(Dst, 734, (loc1));
+        dasm_put(Dst, 740, (loc1));
         } else {
-        dasm_put(Dst, 742, Dt1(->registers[b.value.reg]));
+        dasm_put(Dst, 748, Dt1(->registers[b.value.reg]));
         }
-#line 780 "src/machine/aot/aot.x64.c"
+#line 782 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm, rcx, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 482, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 488, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 495, b.value.i);
+      dasm_put(Dst, 501, b.value.i);
       }
-#line 784 "src/machine/aot/aot.x64.c"
+#line 786 "src/machine/aot/aot.x64.c"
       if (is_signed) {
         //| cqo
         //| idiv rcx
-        dasm_put(Dst, 748);
-#line 787 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 754);
+#line 789 "src/machine/aot/aot.x64.c"
       } else {
         //| xor rdx, rdx
         //| div rcx
-        dasm_put(Dst, 756);
-#line 790 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 762);
+#line 792 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_X64_REGISTER:
       if (is_signed) {
         //| cqo
         //| idiv Rq(b.value.x64_reg)
-        dasm_put(Dst, 765, (b.value.x64_reg));
-#line 796 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 771, (b.value.x64_reg));
+#line 798 "src/machine/aot/aot.x64.c"
       } else {
         //| xor rdx, rdx
         //| div Rq(b.value.x64_reg)
-        dasm_put(Dst, 775, (b.value.x64_reg));
-#line 799 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 781, (b.value.x64_reg));
+#line 801 "src/machine/aot/aot.x64.c"
       }
       break;
   }
   //| op2_r_x mov, target, rdx
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 553, (loc1));
+  dasm_put(Dst, 559, (loc1));
   } else {
-  dasm_put(Dst, 559, Dt1(->registers[target]));
+  dasm_put(Dst, 565, Dt1(->registers[target]));
   }
-#line 803 "src/machine/aot/aot.x64.c"
+#line 805 "src/machine/aot/aot.x64.c"
   //|3:
-  dasm_put(Dst, 786);
-#line 804 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 792);
+#line 806 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -1286,45 +1288,45 @@ int aot_and(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       loc1 = riscv_reg_to_x64_reg(target);
       loc2 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1) && VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 789, (loc2), (loc1));
+      dasm_put(Dst, 795, (loc2), (loc1));
       } else if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 797, (loc1), Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 803, (loc1), Dt1(->registers[b.value.reg]));
       } else if (VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 805, (loc2), Dt1(->registers[target]));
+      dasm_put(Dst, 811, (loc2), Dt1(->registers[target]));
       } else {
-      dasm_put(Dst, 813, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
+      dasm_put(Dst, 819, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
       }
-#line 827 "src/machine/aot/aot.x64.c"
+#line 829 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| op2_r_imm and, target, b.value.i, rax
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(target);
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 822, (loc1));
+      dasm_put(Dst, 828, (loc1));
         } else {
-      dasm_put(Dst, 817, Dt1(->registers[target]));
+      dasm_put(Dst, 823, Dt1(->registers[target]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(target);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 828, (loc1), b.value.i);
+      dasm_put(Dst, 834, (loc1), b.value.i);
         } else {
-      dasm_put(Dst, 835, Dt1(->registers[target]), b.value.i);
+      dasm_put(Dst, 841, Dt1(->registers[target]), b.value.i);
         }
       }
-#line 830 "src/machine/aot/aot.x64.c"
+#line 832 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| op2_r_x and, target, Rq(b.value.x64_reg)
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 789, (b.value.x64_reg), (loc1));
+      dasm_put(Dst, 795, (b.value.x64_reg), (loc1));
       } else {
-      dasm_put(Dst, 805, (b.value.x64_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 811, (b.value.x64_reg), Dt1(->registers[target]));
       }
-#line 833 "src/machine/aot/aot.x64.c"
+#line 835 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -1353,45 +1355,45 @@ int aot_or(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
       loc1 = riscv_reg_to_x64_reg(target);
       loc2 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1) && VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 841, (loc2), (loc1));
+      dasm_put(Dst, 847, (loc2), (loc1));
       } else if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 849, (loc1), Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 855, (loc1), Dt1(->registers[b.value.reg]));
       } else if (VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 857, (loc2), Dt1(->registers[target]));
+      dasm_put(Dst, 863, (loc2), Dt1(->registers[target]));
       } else {
-      dasm_put(Dst, 865, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
+      dasm_put(Dst, 871, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
       }
-#line 858 "src/machine/aot/aot.x64.c"
+#line 860 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| op2_r_imm or, target, b.value.i, rax
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(target);
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 874, (loc1));
+      dasm_put(Dst, 880, (loc1));
         } else {
-      dasm_put(Dst, 869, Dt1(->registers[target]));
+      dasm_put(Dst, 875, Dt1(->registers[target]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(target);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 880, (loc1), b.value.i);
+      dasm_put(Dst, 886, (loc1), b.value.i);
         } else {
-      dasm_put(Dst, 887, Dt1(->registers[target]), b.value.i);
+      dasm_put(Dst, 893, Dt1(->registers[target]), b.value.i);
         }
       }
-#line 861 "src/machine/aot/aot.x64.c"
+#line 863 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| op2_r_x or, target, Rq(b.value.x64_reg)
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 841, (b.value.x64_reg), (loc1));
+      dasm_put(Dst, 847, (b.value.x64_reg), (loc1));
       } else {
-      dasm_put(Dst, 857, (b.value.x64_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 863, (b.value.x64_reg), Dt1(->registers[target]));
       }
-#line 864 "src/machine/aot/aot.x64.c"
+#line 866 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -1410,30 +1412,30 @@ int aot_not(AotContext* context, riscv_register_t target, AotValue a, int logica
   //| op1_r not, target
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 893, (loc1));
+  dasm_put(Dst, 899, (loc1));
   } else {
-  dasm_put(Dst, 900, Dt1(->registers[target]));
+  dasm_put(Dst, 906, Dt1(->registers[target]));
   }
-#line 880 "src/machine/aot/aot.x64.c"
+#line 882 "src/machine/aot/aot.x64.c"
   if (logical) {
     //| op2_r_imm and, target, (uint64_t)1, rax
     if ((uint64_t)1 > 0xFFFFFFFF && (((uint64_t)1 & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
       loc1 = riscv_reg_to_x64_reg(target);
-    dasm_put(Dst, 385, (uint64_t)1 >> 32, (uint64_t)1 & 0xFFFFFFFF);
+    dasm_put(Dst, 391, (uint64_t)1 >> 32, (uint64_t)1 & 0xFFFFFFFF);
       if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 822, (loc1));
+    dasm_put(Dst, 828, (loc1));
       } else {
-    dasm_put(Dst, 817, Dt1(->registers[target]));
+    dasm_put(Dst, 823, Dt1(->registers[target]));
       }
     } else {
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 828, (loc1), (uint64_t)1);
+    dasm_put(Dst, 834, (loc1), (uint64_t)1);
       } else {
-    dasm_put(Dst, 835, Dt1(->registers[target]), (uint64_t)1);
+    dasm_put(Dst, 841, Dt1(->registers[target]), (uint64_t)1);
       }
     }
-#line 882 "src/machine/aot/aot.x64.c"
+#line 884 "src/machine/aot/aot.x64.c"
   }
 
   return DASM_S_OK;
@@ -1461,45 +1463,45 @@ int aot_xor(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       loc1 = riscv_reg_to_x64_reg(target);
       loc2 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1) && VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 906, (loc2), (loc1));
+      dasm_put(Dst, 912, (loc2), (loc1));
       } else if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 914, (loc1), Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 920, (loc1), Dt1(->registers[b.value.reg]));
       } else if (VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 922, (loc2), Dt1(->registers[target]));
+      dasm_put(Dst, 928, (loc2), Dt1(->registers[target]));
       } else {
-      dasm_put(Dst, 930, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
+      dasm_put(Dst, 936, Dt1(->registers[b.value.reg]), Dt1(->registers[target]));
       }
-#line 906 "src/machine/aot/aot.x64.c"
+#line 908 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| op2_r_imm xor, target, b.value.i, rax
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(target);
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 939, (loc1));
+      dasm_put(Dst, 945, (loc1));
         } else {
-      dasm_put(Dst, 934, Dt1(->registers[target]));
+      dasm_put(Dst, 940, Dt1(->registers[target]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(target);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 945, (loc1), b.value.i);
+      dasm_put(Dst, 951, (loc1), b.value.i);
         } else {
-      dasm_put(Dst, 953, Dt1(->registers[target]), b.value.i);
+      dasm_put(Dst, 959, Dt1(->registers[target]), b.value.i);
         }
       }
-#line 909 "src/machine/aot/aot.x64.c"
+#line 911 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| op2_r_x xor, target, Rq(b.value.x64_reg)
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 906, (b.value.x64_reg), (loc1));
+      dasm_put(Dst, 912, (b.value.x64_reg), (loc1));
       } else {
-      dasm_put(Dst, 922, (b.value.x64_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 928, (b.value.x64_reg), Dt1(->registers[target]));
       }
-#line 912 "src/machine/aot/aot.x64.c"
+#line 914 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -1520,11 +1522,11 @@ int aot_shl(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       //| op2_x_r mov, rcx, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 959, (loc1));
+      dasm_put(Dst, 965, (loc1));
       } else {
-      dasm_put(Dst, 965, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 971, Dt1(->registers[b.value.reg]));
       }
-#line 930 "src/machine/aot/aot.x64.c"
+#line 932 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       /*
@@ -1532,24 +1534,24 @@ int aot_shl(AotContext* context, riscv_register_t target, AotValue a, AotValue b
        * overflowing issues.
        */
       //| mov ecx, b.value.i
-      dasm_put(Dst, 970, b.value.i);
-#line 937 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 976, b.value.i);
+#line 939 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| mov rcx, Rq(b.value.x64_reg)
-      dasm_put(Dst, 959, (b.value.x64_reg));
-#line 940 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 965, (b.value.x64_reg));
+#line 942 "src/machine/aot/aot.x64.c"
       break;
   }
 
   //| op2_r_x shl, target, cl
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 973, (loc1));
+  dasm_put(Dst, 979, (loc1));
   } else {
-  dasm_put(Dst, 979, Dt1(->registers[target]));
+  dasm_put(Dst, 985, Dt1(->registers[target]));
   }
-#line 944 "src/machine/aot/aot.x64.c"
+#line 946 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -1568,11 +1570,11 @@ int aot_shr(AotContext* context, riscv_register_t target, AotValue a, AotValue b
       //| op2_x_r mov, rcx, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 959, (loc1));
+      dasm_put(Dst, 965, (loc1));
       } else {
-      dasm_put(Dst, 965, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 971, Dt1(->registers[b.value.reg]));
       }
-#line 960 "src/machine/aot/aot.x64.c"
+#line 962 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       /*
@@ -1580,13 +1582,13 @@ int aot_shr(AotContext* context, riscv_register_t target, AotValue a, AotValue b
        * overflowing issues.
        */
       //| mov ecx, b.value.i
-      dasm_put(Dst, 970, b.value.i);
-#line 967 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 976, b.value.i);
+#line 969 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| mov rcx, Rq(b.value.x64_reg)
-      dasm_put(Dst, 959, (b.value.x64_reg));
-#line 970 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 965, (b.value.x64_reg));
+#line 972 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -1594,20 +1596,20 @@ int aot_shr(AotContext* context, riscv_register_t target, AotValue a, AotValue b
     //| op2_r_x sar, target, cl
     loc1 = riscv_reg_to_x64_reg(target);
     if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 984, (loc1));
+    dasm_put(Dst, 990, (loc1));
     } else {
-    dasm_put(Dst, 991, Dt1(->registers[target]));
+    dasm_put(Dst, 997, Dt1(->registers[target]));
     }
-#line 975 "src/machine/aot/aot.x64.c"
+#line 977 "src/machine/aot/aot.x64.c"
   } else {
     //| op2_r_x shr, target, cl
     loc1 = riscv_reg_to_x64_reg(target);
     if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 996, (loc1));
+    dasm_put(Dst, 1002, (loc1));
     } else {
-    dasm_put(Dst, 1002, Dt1(->registers[target]));
+    dasm_put(Dst, 1008, Dt1(->registers[target]));
     }
-#line 977 "src/machine/aot/aot.x64.c"
+#line 979 "src/machine/aot/aot.x64.c"
   }
 
   return DASM_S_OK;
@@ -1627,42 +1629,42 @@ int aot_eq(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
       //| op2_x_r cmp, rcx, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1007, (loc1));
+      dasm_put(Dst, 1013, (loc1));
       } else {
-      dasm_put(Dst, 1013, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 1019, Dt1(->registers[b.value.reg]));
       }
-#line 994 "src/machine/aot/aot.x64.c"
+#line 996 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rax, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 1018, b.value.i);
+      dasm_put(Dst, 1024, b.value.i);
       }
-#line 997 "src/machine/aot/aot.x64.c"
+#line 999 "src/machine/aot/aot.x64.c"
       //| cmp rcx, rax
-      dasm_put(Dst, 1023);
-#line 998 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1029);
+#line 1000 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| cmp rcx, Rq(b.value.x64_reg)
-      dasm_put(Dst, 1007, (b.value.x64_reg));
-#line 1001 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1013, (b.value.x64_reg));
+#line 1003 "src/machine/aot/aot.x64.c"
       break;
   }
 
   //| sete cl
   //| movzx rcx, cl
   //| op2_r_x mov, target, rcx
-  dasm_put(Dst, 1027);
+  dasm_put(Dst, 1033);
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 1035, (loc1));
+  dasm_put(Dst, 1041, (loc1));
   } else {
-  dasm_put(Dst, 1041, Dt1(->registers[target]));
+  dasm_put(Dst, 1047, Dt1(->registers[target]));
   }
-#line 1007 "src/machine/aot/aot.x64.c"
+#line 1009 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -1681,50 +1683,50 @@ int aot_lt(AotContext* context, riscv_register_t target, AotValue a, AotValue b,
       //| op2_x_r cmp, rcx, b.value.reg
       loc1 = riscv_reg_to_x64_reg(b.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1007, (loc1));
+      dasm_put(Dst, 1013, (loc1));
       } else {
-      dasm_put(Dst, 1013, Dt1(->registers[b.value.reg]));
+      dasm_put(Dst, 1019, Dt1(->registers[b.value.reg]));
       }
-#line 1023 "src/machine/aot/aot.x64.c"
+#line 1025 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm rax, b.value.i
       if (b.value.i > 0xFFFFFFFF && ((b.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 385, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 391, b.value.i >> 32, b.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 1018, b.value.i);
+      dasm_put(Dst, 1024, b.value.i);
       }
-#line 1026 "src/machine/aot/aot.x64.c"
+#line 1028 "src/machine/aot/aot.x64.c"
       //| cmp rcx, rax
-      dasm_put(Dst, 1023);
-#line 1027 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1029);
+#line 1029 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| cmp rcx, Rq(b.value.x64_reg)
-      dasm_put(Dst, 1007, (b.value.x64_reg));
-#line 1030 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1013, (b.value.x64_reg));
+#line 1032 "src/machine/aot/aot.x64.c"
       break;
   }
 
   if (is_signed) {
     //| setl cl
-    dasm_put(Dst, 1046);
-#line 1035 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 1052);
+#line 1037 "src/machine/aot/aot.x64.c"
   } else {
     //| setb cl
-    dasm_put(Dst, 1050);
-#line 1037 "src/machine/aot/aot.x64.c"
+    dasm_put(Dst, 1056);
+#line 1039 "src/machine/aot/aot.x64.c"
   }
   //| movzx rcx, cl
   //| op2_r_x mov, target, rcx
-  dasm_put(Dst, 1030);
+  dasm_put(Dst, 1036);
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 1035, (loc1));
+  dasm_put(Dst, 1041, (loc1));
   } else {
-  dasm_put(Dst, 1041, Dt1(->registers[target]));
+  dasm_put(Dst, 1047, Dt1(->registers[target]));
   }
-#line 1040 "src/machine/aot/aot.x64.c"
+#line 1042 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -1739,35 +1741,35 @@ int aot_cond(AotContext* context, riscv_register_t target, AotValue condition, A
       //| op2_r_imm cmp, condition.value.reg, (uint64_t)1, rax
       if ((uint64_t)1 > 0xFFFFFFFF && (((uint64_t)1 & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(condition.value.reg);
-      dasm_put(Dst, 385, (uint64_t)1 >> 32, (uint64_t)1 & 0xFFFFFFFF);
+      dasm_put(Dst, 391, (uint64_t)1 >> 32, (uint64_t)1 & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1054, (loc1));
+      dasm_put(Dst, 1060, (loc1));
         } else {
-      dasm_put(Dst, 1060, Dt1(->registers[condition.value.reg]));
+      dasm_put(Dst, 1066, Dt1(->registers[condition.value.reg]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(condition.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1065, (loc1), (uint64_t)1);
+      dasm_put(Dst, 1071, (loc1), (uint64_t)1);
         } else {
-      dasm_put(Dst, 1073, Dt1(->registers[condition.value.reg]), (uint64_t)1);
+      dasm_put(Dst, 1079, Dt1(->registers[condition.value.reg]), (uint64_t)1);
         }
       }
-#line 1052 "src/machine/aot/aot.x64.c"
+#line 1054 "src/machine/aot/aot.x64.c"
       //| jne >1
       dasm_put(Dst, 100);
-#line 1053 "src/machine/aot/aot.x64.c"
+#line 1055 "src/machine/aot/aot.x64.c"
       ret = aot_mov_internal(context, target, true_value, X64_RAX);
       if (ret != DASM_S_OK) { return ret; }
       //| jmp >2
       //|1:
-      dasm_put(Dst, 1079);
-#line 1057 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1085);
+#line 1059 "src/machine/aot/aot.x64.c"
       ret = aot_mov_internal(context, target, false_value, X64_RAX);
       if (ret != DASM_S_OK) { return ret; }
       //|2:
-      dasm_put(Dst, 635);
-#line 1060 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 641);
+#line 1062 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       ret = aot_mov_internal(context, target, (condition.value.i == 1) ? true_value : false_value, X64_RAX);
@@ -1776,19 +1778,19 @@ int aot_cond(AotContext* context, riscv_register_t target, AotValue condition, A
     case AOT_TAG_X64_REGISTER:
       //| cmp Rq(condition.value.x64_reg), 1
       //| jne >1
-      dasm_put(Dst, 1086, (condition.value.x64_reg));
-#line 1068 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1092, (condition.value.x64_reg));
+#line 1070 "src/machine/aot/aot.x64.c"
       ret = aot_mov_internal(context, target, true_value, X64_RAX);
       if (ret != DASM_S_OK) { return ret; }
       //| jmp >2
       //|1:
-      dasm_put(Dst, 1079);
-#line 1072 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1085);
+#line 1074 "src/machine/aot/aot.x64.c"
       ret = aot_mov_internal(context, target, false_value, X64_RAX);
       if (ret != DASM_S_OK) { return ret; }
       //|2:
-      dasm_put(Dst, 635);
-#line 1075 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 641);
+#line 1077 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -1808,21 +1810,21 @@ int aot_extend(AotContext* context, riscv_register_t target, AotValue src, AotVa
 
     if (is_signed) {
       //| movsxd rax, eax
-      dasm_put(Dst, 1098);
-#line 1094 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1104);
+#line 1096 "src/machine/aot/aot.x64.c"
     } else {
       //| mov eax, eax
-      dasm_put(Dst, 1102);
-#line 1096 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1108);
+#line 1098 "src/machine/aot/aot.x64.c"
     }
     //| op2_r_x mov, target, rax
     loc1 = riscv_reg_to_x64_reg(target);
     if (VALID_X64_REGISTER(loc1)) {
-    dasm_put(Dst, 505, (loc1));
+    dasm_put(Dst, 511, (loc1));
     } else {
-    dasm_put(Dst, 511, Dt1(->registers[target]));
+    dasm_put(Dst, 517, Dt1(->registers[target]));
     }
-#line 1098 "src/machine/aot/aot.x64.c"
+#line 1100 "src/machine/aot/aot.x64.c"
     return DASM_S_OK;
   }
 
@@ -1843,31 +1845,31 @@ int aot_extend(AotContext* context, riscv_register_t target, AotValue src, AotVa
       //| sub ecx, edx
       //| shl rax, cl
       //| mov ecx, edx
-      dasm_put(Dst, 1105);
-#line 1118 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1111);
+#line 1120 "src/machine/aot/aot.x64.c"
       if (is_signed) {
         //| sar rax, cl
-        dasm_put(Dst, 1121);
-#line 1120 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 1127);
+#line 1122 "src/machine/aot/aot.x64.c"
       } else {
         //| shr rax, cl
-        dasm_put(Dst, 1126);
-#line 1122 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 1132);
+#line 1124 "src/machine/aot/aot.x64.c"
       }
       break;
     case AOT_TAG_IMMEDIATE:
       if (bits.value.i < 64) {
         //| shl rax, (64 - bits.value.i)
-        dasm_put(Dst, 1130, (64 - bits.value.i));
-#line 1127 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 1136, (64 - bits.value.i));
+#line 1129 "src/machine/aot/aot.x64.c"
         if (is_signed) {
           //| sar rax, (64 - bits.value.i)
-          dasm_put(Dst, 1135, (64 - bits.value.i));
-#line 1129 "src/machine/aot/aot.x64.c"
-        } else {
-          //| shr rax, (64 - bits.value.i)
           dasm_put(Dst, 1141, (64 - bits.value.i));
 #line 1131 "src/machine/aot/aot.x64.c"
+        } else {
+          //| shr rax, (64 - bits.value.i)
+          dasm_put(Dst, 1147, (64 - bits.value.i));
+#line 1133 "src/machine/aot/aot.x64.c"
         }
       }
       break;
@@ -1878,16 +1880,16 @@ int aot_extend(AotContext* context, riscv_register_t target, AotValue src, AotVa
       //| sub ecx, edx
       //| shl rax, cl
       //| mov ecx, edx
-      dasm_put(Dst, 1146, (bits.value.x64_reg));
-#line 1141 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1152, (bits.value.x64_reg));
+#line 1143 "src/machine/aot/aot.x64.c"
       if (is_signed) {
         //| sar rax, cl
-        dasm_put(Dst, 1121);
-#line 1143 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 1127);
+#line 1145 "src/machine/aot/aot.x64.c"
       } else {
         //| shr rax, cl
-        dasm_put(Dst, 1126);
-#line 1145 "src/machine/aot/aot.x64.c"
+        dasm_put(Dst, 1132);
+#line 1147 "src/machine/aot/aot.x64.c"
       }
       break;
   }
@@ -1895,11 +1897,11 @@ int aot_extend(AotContext* context, riscv_register_t target, AotValue src, AotVa
   //| op2_r_x mov, target, rax
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 505, (loc1));
+  dasm_put(Dst, 511, (loc1));
   } else {
-  dasm_put(Dst, 511, Dt1(->registers[target]));
+  dasm_put(Dst, 517, Dt1(->registers[target]));
   }
-#line 1150 "src/machine/aot/aot.x64.c"
+#line 1152 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -1909,8 +1911,8 @@ int aot_exit(AotContext* context, int code)
   dasm_State** Dst = &context->d;
   //| mov rax, code
   //| jmp ->exit
-  dasm_put(Dst, 1167, code);
-#line 1159 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 1173, code);
+#line 1161 "src/machine/aot/aot.x64.c"
   return DASM_S_OK;
 }
 
@@ -1923,22 +1925,22 @@ int aot_add_cycles(AotContext* context, uint64_t cycles)
   }
   //| load_imm rax, cycles
   if (cycles > 0xFFFFFFFF && ((cycles & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-  dasm_put(Dst, 385, cycles >> 32, cycles & 0xFFFFFFFF);
+  dasm_put(Dst, 391, cycles >> 32, cycles & 0xFFFFFFFF);
   } else {
-  dasm_put(Dst, 1018, cycles);
+  dasm_put(Dst, 1024, cycles);
   }
-#line 1170 "src/machine/aot/aot.x64.c"
+#line 1172 "src/machine/aot/aot.x64.c"
   //| add machine->cycles, rax
   //| mov rax, machine->max_cycles
   //| cmp machine->cycles, rax
   //| jna >1
-  dasm_put(Dst, 1176, Dt1(->cycles), Dt1(->max_cycles), Dt1(->cycles));
-#line 1174 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 1182, Dt1(->cycles), Dt1(->max_cycles), Dt1(->cycles));
+#line 1176 "src/machine/aot/aot.x64.c"
   ret = aot_exit(context, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED);
   if (ret != DASM_S_OK) { return ret; }
   //|1:
-  dasm_put(Dst, 629);
-#line 1177 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 635);
+#line 1179 "src/machine/aot/aot.x64.c"
   return DASM_S_OK;
 }
 
@@ -1968,8 +1970,8 @@ int aot_mov_pc_internal(AotContext* context, AotValue value)
       ret = aot_mov_x64(context, X64_RCX, value);
       if (ret != DASM_S_OK) { return ret; }
       //| mov machine->pc, rcx
-      dasm_put(Dst, 1041, Dt1(->pc));
-#line 1206 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1047, Dt1(->pc));
+#line 1208 "src/machine/aot/aot.x64.c"
       ret = aot_exit(context, CKB_VM_ASM_RET_DYNAMIC_JUMP);
       if (ret != DASM_S_OK) { return ret; }
       break;
@@ -1990,32 +1992,32 @@ int aot_mov_pc_internal(AotContext* context, AotValue value)
            */
           //| load_imm rcx, (value.value.i & 0xFFFFFFFFFFFFFF)
           if ((value.value.i & 0xFFFFFFFFFFFFFF) > 0xFFFFFFFF && (((value.value.i & 0xFFFFFFFFFFFFFF) & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-          dasm_put(Dst, 482, (value.value.i & 0xFFFFFFFFFFFFFF) >> 32, (value.value.i & 0xFFFFFFFFFFFFFF) & 0xFFFFFFFF);
+          dasm_put(Dst, 488, (value.value.i & 0xFFFFFFFFFFFFFF) >> 32, (value.value.i & 0xFFFFFFFFFFFFFF) & 0xFFFFFFFF);
           } else {
-          dasm_put(Dst, 495, (value.value.i & 0xFFFFFFFFFFFFFF));
+          dasm_put(Dst, 501, (value.value.i & 0xFFFFFFFFFFFFFF));
           }
-#line 1225 "src/machine/aot/aot.x64.c"
+#line 1227 "src/machine/aot/aot.x64.c"
           //| mov qword machine->pc, rcx
-          dasm_put(Dst, 1041, Dt1(->pc));
-#line 1226 "src/machine/aot/aot.x64.c"
+          dasm_put(Dst, 1047, Dt1(->pc));
+#line 1228 "src/machine/aot/aot.x64.c"
           break;
         case 0x40:
           //| mov qword machine->pc, ((uint32_t)(value.value.i & 0x7FFFFFFF))
           //| jmp =>((value.value.i >> 32) ^ 0x40000000)
-          dasm_put(Dst, 1193, Dt1(->pc), ((uint32_t)(value.value.i & 0x7FFFFFFF)), ((value.value.i >> 32) ^ 0x40000000));
-#line 1230 "src/machine/aot/aot.x64.c"
+          dasm_put(Dst, 1199, Dt1(->pc), ((uint32_t)(value.value.i & 0x7FFFFFFF)), ((value.value.i >> 32) ^ 0x40000000));
+#line 1232 "src/machine/aot/aot.x64.c"
           break;
         case 0x0:
           //| load_imm rcx, value.value.i
           if (value.value.i > 0xFFFFFFFF && ((value.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-          dasm_put(Dst, 482, value.value.i >> 32, value.value.i & 0xFFFFFFFF);
+          dasm_put(Dst, 488, value.value.i >> 32, value.value.i & 0xFFFFFFFF);
           } else {
-          dasm_put(Dst, 495, value.value.i);
+          dasm_put(Dst, 501, value.value.i);
           }
-#line 1233 "src/machine/aot/aot.x64.c"
+#line 1235 "src/machine/aot/aot.x64.c"
           //| mov machine->pc, rcx
-          dasm_put(Dst, 1041, Dt1(->pc));
-#line 1234 "src/machine/aot/aot.x64.c"
+          dasm_put(Dst, 1047, Dt1(->pc));
+#line 1236 "src/machine/aot/aot.x64.c"
           ret = aot_exit(context, CKB_VM_ASM_RET_DYNAMIC_JUMP);
           if (ret != DASM_S_OK) { return ret; }
           break;
@@ -2025,8 +2027,8 @@ int aot_mov_pc_internal(AotContext* context, AotValue value)
       break;
     case AOT_TAG_X64_REGISTER:
       //| mov machine->pc, Rq(value.value.x64_reg)
-      dasm_put(Dst, 1202, (value.value.x64_reg), Dt1(->pc));
-#line 1243 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1208, (value.value.x64_reg), Dt1(->pc));
+#line 1245 "src/machine/aot/aot.x64.c"
       ret = aot_exit(context, CKB_VM_ASM_RET_DYNAMIC_JUMP);
       if (ret != DASM_S_OK) { return ret; }
       break;
@@ -2046,29 +2048,29 @@ int aot_cond_pc(AotContext* context, AotValue condition, AotValue true_value, Ao
       //| op2_r_imm cmp, condition.value.reg, (uint64_t)1, rax
       if ((uint64_t)1 > 0xFFFFFFFF && (((uint64_t)1 & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(condition.value.reg);
-      dasm_put(Dst, 385, (uint64_t)1 >> 32, (uint64_t)1 & 0xFFFFFFFF);
+      dasm_put(Dst, 391, (uint64_t)1 >> 32, (uint64_t)1 & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1054, (loc1));
+      dasm_put(Dst, 1060, (loc1));
         } else {
-      dasm_put(Dst, 1060, Dt1(->registers[condition.value.reg]));
+      dasm_put(Dst, 1066, Dt1(->registers[condition.value.reg]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(condition.value.reg);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1065, (loc1), (uint64_t)1);
+      dasm_put(Dst, 1071, (loc1), (uint64_t)1);
         } else {
-      dasm_put(Dst, 1073, Dt1(->registers[condition.value.reg]), (uint64_t)1);
+      dasm_put(Dst, 1079, Dt1(->registers[condition.value.reg]), (uint64_t)1);
         }
       }
-#line 1260 "src/machine/aot/aot.x64.c"
+#line 1262 "src/machine/aot/aot.x64.c"
       //| jne >1
       dasm_put(Dst, 100);
-#line 1261 "src/machine/aot/aot.x64.c"
+#line 1263 "src/machine/aot/aot.x64.c"
       ret = aot_mov_pc_internal(context, true_value);
       if (ret != DASM_S_OK) { return ret; }
       //|1:
-      dasm_put(Dst, 629);
-#line 1264 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 635);
+#line 1266 "src/machine/aot/aot.x64.c"
       ret = aot_mov_pc_internal(context, false_value);
       if (ret != DASM_S_OK) { return ret; }
       break;
@@ -2079,13 +2081,13 @@ int aot_cond_pc(AotContext* context, AotValue condition, AotValue true_value, Ao
     case AOT_TAG_X64_REGISTER:
       //| cmp Rq(condition.value.x64_reg), 1
       //| jne >1
-      dasm_put(Dst, 1086, (condition.value.x64_reg));
-#line 1274 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1092, (condition.value.x64_reg));
+#line 1276 "src/machine/aot/aot.x64.c"
       ret = aot_mov_pc_internal(context, true_value);
       if (ret != DASM_S_OK) { return ret; }
       //|1:
-      dasm_put(Dst, 629);
-#line 1277 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 635);
+#line 1279 "src/machine/aot/aot.x64.c"
       ret = aot_mov_pc_internal(context, false_value);
       if (ret != DASM_S_OK) { return ret; }
       break;
@@ -2109,30 +2111,30 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
   //| cmp rdx, 0
   //| jne >1
   //| lea rdx, machine->memory
-  dasm_put(Dst, 1210, size, size, Dt1(->memory));
-#line 1300 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 1216, size, size, Dt1(->memory));
+#line 1302 "src/machine/aot/aot.x64.c"
   ret = aot_mov_x64(context, X64_RCX, v);
   if (ret != DASM_S_OK) { return ret; }
   switch (size) {
     case 1:
       //| mov byte [rdx+rax], cl
-      dasm_put(Dst, 1238);
-#line 1305 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1244);
+#line 1307 "src/machine/aot/aot.x64.c"
       break;
     case 2:
       //| mov word [rdx+rax], cx
-      dasm_put(Dst, 1242);
-#line 1308 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1248);
+#line 1310 "src/machine/aot/aot.x64.c"
       break;
     case 4:
       //| mov dword [rdx+rax], ecx
-      dasm_put(Dst, 1243);
-#line 1311 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1249);
+#line 1313 "src/machine/aot/aot.x64.c"
       break;
     case 8:
       //| mov qword [rdx+rax], rcx
-      dasm_put(Dst, 1247);
-#line 1314 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1253);
+#line 1316 "src/machine/aot/aot.x64.c"
       break;
     default:
       return ERROR_INVALID_MEMORY_SIZE;
@@ -2142,8 +2144,8 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
   //| mov rax, rdx
   //| jmp ->exit
   //|2:
-  dasm_put(Dst, 1252);
-#line 1323 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 1258);
+#line 1325 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -2165,28 +2167,28 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   //| cmp rdx, CKB_VM_ASM_RISCV_MAX_MEMORY
   //| ja >1
   //| lea rdx, machine->memory
-  dasm_put(Dst, 1268, size, size, CKB_VM_ASM_RISCV_MAX_MEMORY, Dt1(->memory));
-#line 1344 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 1274, size, size, CKB_VM_ASM_RISCV_MAX_MEMORY, Dt1(->memory));
+#line 1346 "src/machine/aot/aot.x64.c"
   switch (size) {
     case 1:
       //| movzx ecx, byte [rdx+rax]
-      dasm_put(Dst, 1300);
-#line 1347 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1306);
+#line 1349 "src/machine/aot/aot.x64.c"
       break;
     case 2:
       //| movzx ecx, word [rdx+rax]
-      dasm_put(Dst, 1305);
-#line 1350 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1311);
+#line 1352 "src/machine/aot/aot.x64.c"
       break;
     case 4:
       //| mov ecx, dword [rdx+rax]
-      dasm_put(Dst, 1310);
-#line 1353 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1316);
+#line 1355 "src/machine/aot/aot.x64.c"
       break;
     case 8:
       //| mov rcx, qword [rdx+rax]
-      dasm_put(Dst, 1314);
-#line 1356 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1320);
+#line 1358 "src/machine/aot/aot.x64.c"
       break;
     default:
       return ERROR_INVALID_MEMORY_SIZE;
@@ -2194,20 +2196,20 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   //| op2_r_x mov, target, rcx
   loc1 = riscv_reg_to_x64_reg(target);
   if (VALID_X64_REGISTER(loc1)) {
-  dasm_put(Dst, 1035, (loc1));
+  dasm_put(Dst, 1041, (loc1));
   } else {
-  dasm_put(Dst, 1041, Dt1(->registers[target]));
+  dasm_put(Dst, 1047, Dt1(->registers[target]));
   }
-#line 1361 "src/machine/aot/aot.x64.c"
+#line 1363 "src/machine/aot/aot.x64.c"
   //| jmp >2
   //| 1:
-  dasm_put(Dst, 1079);
-#line 1363 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 1085);
+#line 1365 "src/machine/aot/aot.x64.c"
   ret = aot_exit(context, CKB_VM_ASM_RET_OUT_OF_BOUND);
   if (ret != DASM_S_OK) { return ret; }
   //| 2:
-  dasm_put(Dst, 635);
-#line 1366 "src/machine/aot/aot.x64.c"
+  dasm_put(Dst, 641);
+#line 1368 "src/machine/aot/aot.x64.c"
 
   return DASM_S_OK;
 }
@@ -2224,45 +2226,45 @@ static int aot_mov_internal(AotContext* context, riscv_register_t target, AotVal
       loc1 = riscv_reg_to_x64_reg(target);
       loc2 = riscv_reg_to_x64_reg(value.value.reg);
       if (VALID_X64_REGISTER(loc1) && VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 1319, (loc2), (loc1));
+      dasm_put(Dst, 1325, (loc2), (loc1));
       } else if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1327, (loc1), Dt1(->registers[value.value.reg]));
+      dasm_put(Dst, 1333, (loc1), Dt1(->registers[value.value.reg]));
       } else if (VALID_X64_REGISTER(loc2)) {
-      dasm_put(Dst, 1202, (loc2), Dt1(->registers[target]));
+      dasm_put(Dst, 1208, (loc2), Dt1(->registers[target]));
       } else {
-      dasm_put(Dst, 1335, (x64_temp_reg), Dt1(->registers[value.value.reg]), (x64_temp_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 1341, (x64_temp_reg), Dt1(->registers[value.value.reg]), (x64_temp_reg), Dt1(->registers[target]));
       }
-#line 1379 "src/machine/aot/aot.x64.c"
+#line 1381 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| op2_r_imm mov, target, value.value.i, Rq(x64_temp_reg)
       if (value.value.i > 0xFFFFFFFF && ((value.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
         loc1 = riscv_reg_to_x64_reg(target);
-      dasm_put(Dst, 1350, (x64_temp_reg), value.value.i >> 32, (x64_temp_reg), (x64_temp_reg), value.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 1356, (x64_temp_reg), value.value.i >> 32, (x64_temp_reg), (x64_temp_reg), value.value.i & 0xFFFFFFFF);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1319, (x64_temp_reg), (loc1));
+      dasm_put(Dst, 1325, (x64_temp_reg), (loc1));
         } else {
-      dasm_put(Dst, 1202, (x64_temp_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 1208, (x64_temp_reg), Dt1(->registers[target]));
         }
       } else {
         loc1 = riscv_reg_to_x64_reg(target);
         if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 693, (loc1), value.value.i);
+      dasm_put(Dst, 699, (loc1), value.value.i);
         } else {
-      dasm_put(Dst, 700, Dt1(->registers[target]), value.value.i);
+      dasm_put(Dst, 706, Dt1(->registers[target]), value.value.i);
         }
       }
-#line 1382 "src/machine/aot/aot.x64.c"
+#line 1384 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       //| op2_r_x mov, target, Rq(value.value.x64_reg)
       loc1 = riscv_reg_to_x64_reg(target);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1319, (value.value.x64_reg), (loc1));
+      dasm_put(Dst, 1325, (value.value.x64_reg), (loc1));
       } else {
-      dasm_put(Dst, 1202, (value.value.x64_reg), Dt1(->registers[target]));
+      dasm_put(Dst, 1208, (value.value.x64_reg), Dt1(->registers[target]));
       }
-#line 1385 "src/machine/aot/aot.x64.c"
+#line 1387 "src/machine/aot/aot.x64.c"
       break;
   }
 
@@ -2278,26 +2280,26 @@ static int aot_mov_x64(AotContext* context, x64_register_t x64_target, AotValue 
       //| op2_x_r mov, Rq(x64_target), value.value.reg
       loc1 = riscv_reg_to_x64_reg(value.value.reg);
       if (VALID_X64_REGISTER(loc1)) {
-      dasm_put(Dst, 1319, (loc1), (x64_target));
+      dasm_put(Dst, 1325, (loc1), (x64_target));
       } else {
-      dasm_put(Dst, 1327, (x64_target), Dt1(->registers[value.value.reg]));
+      dasm_put(Dst, 1333, (x64_target), Dt1(->registers[value.value.reg]));
       }
-#line 1398 "src/machine/aot/aot.x64.c"
+#line 1400 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_IMMEDIATE:
       //| load_imm Rq(x64_target), value.value.i
       if (value.value.i > 0xFFFFFFFF && ((value.value.i & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
-      dasm_put(Dst, 1350, (x64_target), value.value.i >> 32, (x64_target), (x64_target), value.value.i & 0xFFFFFFFF);
+      dasm_put(Dst, 1356, (x64_target), value.value.i >> 32, (x64_target), (x64_target), value.value.i & 0xFFFFFFFF);
       } else {
-      dasm_put(Dst, 693, (x64_target), value.value.i);
+      dasm_put(Dst, 699, (x64_target), value.value.i);
       }
-#line 1401 "src/machine/aot/aot.x64.c"
+#line 1403 "src/machine/aot/aot.x64.c"
       break;
     case AOT_TAG_X64_REGISTER:
       if (x64_target == value.value.x64_reg) { return DASM_S_OK; }
       //| mov Rq(x64_target), Rq(value.value.x64_reg)
-      dasm_put(Dst, 1319, (value.value.x64_reg), (x64_target));
-#line 1405 "src/machine/aot/aot.x64.c"
+      dasm_put(Dst, 1325, (value.value.x64_reg), (x64_target));
+#line 1407 "src/machine/aot/aot.x64.c"
       break;
   }
   return DASM_S_OK;
