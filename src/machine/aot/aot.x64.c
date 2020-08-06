@@ -350,15 +350,18 @@ int aot_link(AotContext* context, size_t *szp)
    */
   |->zeroed_memory:
   | push rdi
-  | mov rdi, rax
-  | shl rdi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | push rsi
+  | mov rsi, rax
+  | shl rsi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
   | lea rcx, machine->memory
-  | add rdi, rcx
+  | add rsi, rcx
   | xor eax, eax
   | mov ecx, CKB_VM_ASM_MEMORY_FRAMESIZE
   | shr ecx, 2
+  | mov rdi, rsi
   | cld
   | rep; stosd
+  | pop rsi
   | pop rdi
   | ret
   /*
@@ -1293,6 +1296,8 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
 
   | mov rdx, size
   | call ->inited_memory
+  | cmp rdx, 0
+  | jne >1
   | mov rdx, size
   | call ->check_write
   | cmp rdx, 0
@@ -1336,6 +1341,8 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
 
   | mov rdx, size
   | call ->inited_memory
+  | cmp rdx, 0
+  | jne >1
   | mov rdx, rax
   | add rdx, size
   | jc >1
