@@ -54,7 +54,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
     }
 }
 
-fn inited_memory(machine: &mut Box<AsmCoreMachine>, addr: u64, size: u64) -> Result<(), Error> {
+fn inited_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<(), Error> {
     let frame_from = addr / MEMORY_FRAMESIZE as u64;
     let (addr_to, overflowed) = addr.overflowing_add(size);
     if overflowed {
