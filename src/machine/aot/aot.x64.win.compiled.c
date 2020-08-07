@@ -195,10 +195,10 @@ typedef struct {
   uint64_t max_cycles;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
+  uint8_t frames[CKB_VM_ASM_MEMORY_FRAMES];
   /* We won't access traces here */
   uint8_t _traces[CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE -
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
-  uint8_t frames[CKB_VM_ASM_MEMORY_FRAMES];
 } AsmMachine;
 
 #define AOT_TAG_REGISTER 0x1

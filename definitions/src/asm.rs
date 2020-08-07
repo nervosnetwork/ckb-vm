@@ -42,8 +42,8 @@ pub struct AsmCoreMachine {
     pub max_cycles: u64,
     pub flags: [u8; RISCV_PAGES],
     pub memory: [u8; RISCV_MAX_MEMORY],
-    pub traces: [Trace; TRACE_SIZE],
     pub frames: [u8; MEMORY_FRAMES],
+    pub traces: [Trace; TRACE_SIZE],
 }
 
 impl Default for Box<AsmCoreMachine> {
