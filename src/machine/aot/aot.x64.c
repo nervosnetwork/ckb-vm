@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dasm_proto.h"
 #include "dasm_x86.h"
@@ -351,16 +352,15 @@ int aot_link(AotContext* context, size_t *szp)
   |->zeroed_memory:
   | push rdi
   | push rsi
-  | mov rsi, rax
-  | shl rsi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | lea rcx, machine->memory
-  | add rsi, rcx
-  | xor eax, eax
-  | mov ecx, CKB_VM_ASM_MEMORY_FRAMESIZE
-  | shr ecx, 2
-  | mov rdi, rsi
-  | cld
-  | rep; stosd
+  | push rdx
+  | mov rdi, rax
+  | shl rdi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea rsi, machine->memory
+  | add rdi, rsi
+  | xor rsi, rsi
+  | mov rdx, CKB_VM_ASM_MEMORY_FRAMESIZE
+  | call ->memset
+  | pop rdx
   | pop rsi
   | pop rdi
   | ret
