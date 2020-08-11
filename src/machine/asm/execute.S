@@ -121,6 +121,8 @@
 
 #ifdef __APPLE__
 #define CALL_MEMSET call _memset
+#elif defined IS_WINDOWS
+#define CALL_MEMSET call memset
 #else
 #define CALL_MEMSET call memset@plt
 #endif
