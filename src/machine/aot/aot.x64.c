@@ -237,6 +237,22 @@ AotContext* aot_new(uint32_t npc)
   dasm_setup(&context->d, bf_actions);
   dasm_growpc(&context->d, context->npc);
   Dst = &context->d;
+
+  |.if WIN
+    |.define rArg1, rcx
+    |.define rArg2, rdx
+    |.define rArg3, r8
+  |.else
+    |.define rArg1, rdi
+    |.define rArg2, rsi
+    |.define rArg3, rdx
+  |.endif
+  |.macro prepcall3, arg1, arg2, arg3
+    | mov rArg1, arg1
+    | mov rArg2, arg2
+    | mov rArg3, arg3
+  |.endmacro
+
   /*
    * The function we are generating has the following prototype:
    *
@@ -352,15 +368,15 @@ int aot_link(AotContext* context, size_t *szp)
   |->zeroed_memory:
   | push rdi
   | push rsi
-  | push rdx
-  | mov rdi, rax
-  | shl rdi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | lea rsi, machine->memory
-  | add rdi, rsi
-  | xor rsi, rsi
-  | mov rdx, CKB_VM_ASM_MEMORY_FRAMESIZE
-  | call ->memset
-  | pop rdx
+  | mov r10, rax
+  | shl r10, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea r11, machine->memory
+  | add r10, r11
+  | xor r11, r11
+  | mov r12, CKB_VM_ASM_MEMORY_FRAMESIZE
+  | prepcall3 r10, r11, r12
+  | mov64 rax, (uint64_t)memset
+  | call rax
   | pop rsi
   | pop rdi
   | ret
