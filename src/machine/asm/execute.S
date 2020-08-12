@@ -188,8 +188,6 @@
 #define CHECK_WRITE_PERMISSION(address_reg, temp_reg1, temp_reg2, temp_reg2d, length) \
   movq address_reg, temp_reg1; \
   shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, temp_reg1; \
-  cmp $CKB_VM_ASM_RISCV_PAGES, temp_reg1; \
-  jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, temp_reg1), temp_reg2d; \
   and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_reg2d; \
   cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_reg2d; \
@@ -201,8 +199,6 @@
   cmp temp_reg1, temp_reg2; \
   jbe 1f; \
   shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, temp_reg1; \
-  cmp $CKB_VM_ASM_RISCV_PAGES, temp_reg1; \
-  jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, temp_reg1), temp_reg2d; \
   and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_reg2d; \
   cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_reg2d; \

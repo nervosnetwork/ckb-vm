@@ -337,16 +337,13 @@ int aot_link(AotContext* context, size_t *szp)
   | mov rcx, rax
   | shr rcx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
    /*
-    * Test if the page stored in rcx is out of bound, and if the page has
-    * correct write permissions
+    * Test if the page has correct write permissions
     */
-  | cmp rcx, CKB_VM_ASM_RISCV_PAGES
-  | jae >2
   | lea rdx, machine->flags
   | movzx edx, byte [rdx+rcx]
   | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
   | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >3
+  | jne >2
   /* Check if the write spans to a second memory page */
   | mov rdx, rax
   | add rdx, rsi
@@ -356,25 +353,18 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp rcx, rdx
   | jne >1
    /*
-    * Test if the page stored in rcx is out of bound, and if the page has
-    * correct write permissions
+    * Test if the page has correct write permissions
     */
-  | cmp rcx, CKB_VM_ASM_RISCV_PAGES
-  | jae >2
   | lea rdx, machine->flags
   | movzx edx, byte [rdx+rcx]
   | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
   | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >3
+  | jne >2
   |1:
   | mov rdx, 0
   | pop rsi
   | ret
   |2:
-  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
-  | pop rsi
-  | ret
-  |3:
   | mov rdx, CKB_VM_ASM_RET_INVALID_PERMISSION
   | pop rsi
   | ret
