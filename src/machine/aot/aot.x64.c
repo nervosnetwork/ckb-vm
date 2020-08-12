@@ -376,15 +376,13 @@ int aot_link(AotContext* context, size_t *szp)
    */
   |->zeroed_memory:
   | prepcall
-  | mov r10, rax
-  | shl r10, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | lea r11, machine->memory
-  | add r10, r11
-  | xor r11, r11
-  | mov r12, CKB_VM_ASM_MEMORY_FRAMESIZE
-  | mov rArg1, r10
-  | mov rArg2, r11
-  | mov rArg3, r12
+  | mov rcx, rax
+  | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea rArg2, machine->memory
+  | add rcx, rArg2
+  | mov rArg1, rcx
+  | xor rArg2, rArg2
+  | mov rArg3, CKB_VM_ASM_MEMORY_FRAMESIZE
   | mov64 rax, (uint64_t)memset
   | call rax
   | postcall
