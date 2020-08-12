@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dasm_proto.h"
 #include "dasm_x86.h"
@@ -236,6 +237,41 @@ AotContext* aot_new(uint32_t npc)
   dasm_setup(&context->d, bf_actions);
   dasm_growpc(&context->d, context->npc);
   Dst = &context->d;
+
+  |.if WIN
+    |.define rArg1, rcx
+    |.define rArg2, rdx
+    |.define rArg3, r8
+  |.else
+    |.define rArg1, rdi
+    |.define rArg2, rsi
+    |.define rArg3, rdx
+  |.endif
+  |.macro prepcall
+    | push rdi
+    | push rsi
+    | push rax
+    | push rcx
+    | push rdx
+    | push r8
+    | push r9
+    |.if WIN
+      | sub rsp, 32
+    |.endif
+  |.endmacro
+  |.macro postcall
+    | pop r9
+    | pop r8
+    | pop rdx
+    | pop rcx
+    | pop rax
+    | pop rsi
+    | pop rdi
+    |.if WIN
+      | add rsp, 32
+    |.endif
+  |.endmacro
+
   /*
    * The function we are generating has the following prototype:
    *
@@ -349,20 +385,17 @@ int aot_link(AotContext* context, size_t *szp)
    * rax: index of the frame, no overflow check.
    */
   |->zeroed_memory:
-  | push rdi
-  | push rsi
-  | mov rsi, rax
-  | shl rsi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | lea rcx, machine->memory
-  | add rsi, rcx
-  | xor eax, eax
-  | mov ecx, CKB_VM_ASM_MEMORY_FRAMESIZE
-  | shr ecx, 2
-  | mov rdi, rsi
-  | cld
-  | rep; stosd
-  | pop rsi
-  | pop rdi
+  | prepcall
+  | mov rcx, rax
+  | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea rArg2, machine->memory
+  | add rcx, rArg2
+  | mov rArg1, rcx
+  | xor rArg2, rArg2
+  | mov rArg3, CKB_VM_ASM_MEMORY_FRAMESIZE
+  | mov64 rax, (uint64_t)memset
+  | call rax
+  | postcall
   | ret
   /*
    * Zeroed frame by memory address and length if it's necessary.
