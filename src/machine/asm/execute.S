@@ -30,6 +30,9 @@
   push %rdx; \
   push %r8; \
   push %r9;
+#ifdef IS_WINDOWS
+  sub $32, rsp
+#endif
 
 #define POSTCALL \
   pop %r9; \
@@ -39,6 +42,9 @@
   pop %rax; \
   pop %rsi; \
   pop %rdi;
+#ifdef IS_WINDOWS
+  add $32, rsp
+#endif
 
 /* rax is used both in Microsoft x64 and System V AMD64 ABI */
 #define ARG_RETd %eax
