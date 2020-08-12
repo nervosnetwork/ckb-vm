@@ -13,37 +13,8 @@
 
 #ifdef IS_WINDOWS
 #define ARG1 %rcx
-#define ARG2 %rdx
-#define ARG3 %r8
 #else
 #define ARG1 %rdi
-#define ARG2 %rsi
-#define ARG3 %rdx
-#endif
-
-/* rdi, rsi, rax, rcx, rdx, r8, r9 is volatile registers in x64 calls */
-#define PREPCALL \
-  push %rdi; \
-  push %rsi; \
-  push %rax; \
-  push %rcx; \
-  push %rdx; \
-  push %r8; \
-  push %r9;
-#ifdef IS_WINDOWS
-  sub $32, %rsp
-#endif
-
-#define POSTCALL \
-  pop %r9; \
-  pop %r8; \
-  pop %rdx; \
-  pop %rcx; \
-  pop %rax; \
-  pop %rsi; \
-  pop %rdi;
-#ifdef IS_WINDOWS
-  add $32, %rsp
 #endif
 
 /* rax is used both in Microsoft x64 and System V AMD64 ABI */
@@ -125,13 +96,15 @@
 #define MOV_RS2r_TO_RDX movq RS2r, %rdx
 #define MOV_RDX_TO_RS2r movq %rdx, RS2r
 
-#ifdef __APPLE__
-#define CALL_MEMSET call _memset
-#elif defined IS_WINDOWS
-#define CALL_MEMSET call memset
-#else
-#define CALL_MEMSET call memset@plt
-#endif
+#define ZEROED_MEMORY(frame_reg) \
+  movq frame_reg, %rdi; \
+  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, %rdi; \
+  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, %rdi; \
+  addq MACHINE, %rdi; \
+  xor %eax, %eax; \
+  movl $CKB_VM_ASM_MEMORY_FRAMESIZE, %ecx; \
+  shr $2, %ecx; \
+  cld; rep; stosl;
 
 #define INITED_MEMORY(address_reg, temp_reg1, temp_reg2, temp_reg2d, length) \
   movq address_reg, temp_reg1; \
@@ -141,16 +114,8 @@
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, temp_reg1), temp_reg2d; \
   cmp $1, temp_reg2d; \
   je 2f; \
-  movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, temp_reg1); \
-  PREPCALL; \
-  movq temp_reg1, ARG1; \
-  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, ARG1; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, ARG1; \
-  addq MACHINE, ARG1; \
-  xor ARG2, ARG2; \
-  movq $CKB_VM_ASM_MEMORY_FRAMESIZE, ARG3; \
-  CALL_MEMSET; \
-  POSTCALL; \
+  movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, temp_reg1);\
+  ZEROED_MEMORY(temp_reg1); \
   movq address_reg, temp_reg2; \
   addq $length, temp_reg2; \
   subq $1, temp_reg2; \
@@ -161,15 +126,7 @@
   cmp $1, temp_reg2d; \
   je 2f; \
   movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, temp_reg2);\
-  PREPCALL; \
-  movq temp_reg2, ARG1; \
-  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, ARG1; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, ARG1; \
-  addq MACHINE, ARG1; \
-  xor ARG2, ARG2; \
-  movq $CKB_VM_ASM_MEMORY_FRAMESIZE, ARG3; \
-  CALL_MEMSET; \
-  POSTCALL; \
+  ZEROED_MEMORY(temp_reg2); \
 2:
 
 #define CHECK_WRITE_PERMISSION(address_reg, temp_reg1, temp_reg2, temp_reg2d, length) \
