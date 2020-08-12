@@ -394,6 +394,7 @@ pub fn test_aot_alloc_many() {
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result = machine.run();
+    println!("{:?}", result);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
