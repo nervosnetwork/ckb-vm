@@ -9,7 +9,7 @@ use crate::{
         FLAG_FREEZED, FLAG_WRITABLE,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAMES,
-    MEMORY_FRAMESIZE, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
@@ -55,20 +55,17 @@ impl CoreMachine for Box<AsmCoreMachine> {
 }
 
 fn inited_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<(), Error> {
-    let frame_from = addr / MEMORY_FRAMESIZE as u64;
+    let frame_from = addr >> MEMORY_FRAME_SHIFTS;
     let (addr_to, overflowed) = addr.overflowing_add(size);
     if overflowed {
         return Err(Error::OutOfBound);
     }
-    let frame_to = addr_to / MEMORY_FRAMESIZE as u64;
+    let frame_to = addr_to >> MEMORY_FRAME_SHIFTS;
     for i in frame_from..=std::cmp::min(MEMORY_FRAMES as u64 - 1, frame_to) {
         if machine.frames[i as usize] == 0 {
-            let base_addr = i * MEMORY_FRAMESIZE as u64;
-            memset(
-                &mut machine.memory
-                    [base_addr as usize..(base_addr + MEMORY_FRAMESIZE as u64) as usize],
-                0,
-            );
+            let addr_from = (i << MEMORY_FRAME_SHIFTS) as usize;
+            let addr_to = ((i + 1) << MEMORY_FRAME_SHIFTS) as usize;
+            memset(&mut machine.memory[addr_from..addr_to], 0);
             machine.frames[i as usize] = 1;
         }
     }
