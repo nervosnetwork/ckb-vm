@@ -317,55 +317,102 @@ void aot_finalize(AotContext* context)
 int aot_link(AotContext* context, size_t *szp)
 {
   dasm_State** Dst = &context->d;
+
   /*
-   * Check memory write permissions. Note this pseudo function does not use
-   * C's standard calling convention, since the AOT code here has its own
-   * register allocations for maximum performance. Required arguments to this
-   * pseudo function include:
-   *
-   * rax: the memory address to check for permissions
-   * rdx: length of memory to write
-   *
-   * The return value is kept in rdx, 0 means success, while non-zero values
-   * mean permission check fails.
-   *
-   * Note the free register rcx might also be modified in this pseudo function.
-   */
-  |->check_write:
+  * Initialize the memory and perform permission checks. Note this pseudo
+  * function does not use C's standard calling convention, since the AOT
+  * code here has its own register allocations for maximum performance.
+  * Required arguments to this pseudo function include:
+  *
+  * rax: the memory address to check for permissions
+  * rdx: length of memory to write
+  * rcx:
+  *   non-zero: do permission check
+  *   zero: don't do permission check
+  *
+  * The return value is kept in rdx, 0 means success, while non-zero values
+  * mean permission check fails.
+  */
+  |->access_control:
   | push rsi
-  | mov rsi, rdx
+  | push r8
+  | push r9
+  /*
+   * Test if the frame needs to be initialized
+   */
+  | mov rsi, rax
+  | shr rsi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | cmp rsi, CKB_VM_ASM_MEMORY_FRAMES
+  | jae >2
+  | lea r9, machine->frames
+  | movzx r8d, byte [r9+rsi]
+  | cmp r8d, 0
+  | jne >4
+  | mov byte [r9+rsi], 1
+  | push rax
+  | mov rax, rsi
+  | call ->zeroed_memory
+  | pop rax
+  |4:
+  | mov rsi, rax
+  | add rsi, rdx
+  | sub rsi, 1
+  | shr rsi, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | cmp rsi, CKB_VM_ASM_MEMORY_FRAMES
+  | jae >2
+  | lea r9, machine->frames
+  | movzx r8d, byte [r9+rsi]
+  | cmp r8d, 0
+  | jne >5
+  | mov byte [r9+rsi], 1
+  | push rax
+  | mov rax, rsi
+  | call ->zeroed_memory
+  | pop rax
+  /*
+   * Test if the page has correct write permissions
+   */
+  |5:
+  | cmp rcx, 0
+  | je >1
   | mov rcx, rax
   | shr rcx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
-   /*
-    * Test if the page has correct write permissions
-    */
-  | lea rdx, machine->flags
-  | movzx edx, byte [rdx+rcx]
-  | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
-  | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >2
+  | lea r9, machine->flags
+  | movzx r8d, byte [r9+rcx]
+  | and r8d, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
+  | cmp r8d, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
+  | jne >3
   /* Check if the write spans to a second memory page */
-  | mov rdx, rax
-  | add rdx, rsi
-  | sub rdx, 1
-  | shr rdx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
+  | mov rsi, rax
+  | add rsi, rdx
+  | sub rsi, 1
+  | shr rsi, CKB_VM_ASM_RISCV_PAGE_SHIFTS
   | add rcx, 1
-  | cmp rcx, rdx
+  | cmp rcx, rsi
   | jne >1
-   /*
-    * Test if the page has correct write permissions
-    */
-  | lea rdx, machine->flags
-  | movzx edx, byte [rdx+rcx]
-  | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
-  | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >2
+  /*
+   * Test if the page has correct write permissions
+   */
+  | movzx r8d, byte [r9+rsi]
+  | and r8d, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
+  | cmp r8d, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
+  | jne >3
   |1:
   | mov rdx, 0
+  | pop r9
+  | pop r8
   | pop rsi
   | ret
   |2:
+  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
+  | pop r9
+  | pop r8
+  | pop rsi
+  | ret
+  |3:
   | mov rdx, CKB_VM_ASM_RET_INVALID_PERMISSION
+  | pop r9
+  | pop r8
   | pop rsi
   | ret
   /*
@@ -386,54 +433,6 @@ int aot_link(AotContext* context, size_t *szp)
   | mov64 rax, (uint64_t)memset
   | call rax
   | postcall
-  | ret
-  /*
-   * Zeroed frame by memory address and length if it's necessary.
-   *
-   * rax: the memory address to read/write
-   * rdx: length of memory to read/write
-   */
-  |->inited_memory:
-  | push rsi
-  | mov rsi, rdx
-  | mov rcx, rax
-  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
-  | jae >2
-  | lea rdx, machine->frames
-  | movzx edx, byte [rdx+rcx]
-  | cmp edx, 1
-  | je >1
-  | lea rdx, machine->frames
-  | mov byte [rdx+rcx], 1
-  | push rax
-  | mov rax, rcx
-  | call ->zeroed_memory
-  | pop rax
-  | mov rcx, rax
-  | add rcx, rsi
-  | sub rcx, 1
-  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
-  | jae >2
-  | lea rdx, machine->frames
-  | movzx edx, byte [rdx+rcx]
-  | cmp edx, 1
-  | je >1
-  | lea rdx, machine->frames
-  | mov byte [rdx+rcx], 1
-  | push rax
-  | mov rax, rcx
-  | call ->zeroed_memory
-  | pop rax
-  | jmp >1
-  |1:
-  | mov rdx, 0
-  | pop rsi
-  | ret
-  |2:
-  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
-  | pop rsi
   | ret
   /* rax should store the return value here */
   |->exit:
@@ -1318,11 +1317,8 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
   if (ret != DASM_S_OK) { return ret; }
 
   | mov rdx, size
-  | call ->inited_memory
-  | cmp rdx, 0
-  | jne >1
-  | mov rdx, size
-  | call ->check_write
+  | mov rcx, 1
+  | call ->access_control
   | cmp rdx, 0
   | jne >1
   | lea rdx, machine->memory
@@ -1363,7 +1359,8 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   if (ret != DASM_S_OK) { return ret; }
 
   | mov rdx, size
-  | call ->inited_memory
+  | mov rcx, 0
+  | call ->access_control
   | cmp rdx, 0
   | jne >1
   | mov rdx, rax
