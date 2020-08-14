@@ -326,7 +326,7 @@ int aot_link(AotContext* context, size_t *szp)
   *
   * rax: the memory address to check for permissions
   * rdx: length of memory to write
-  * rcx:
+  * ecx:
   *   non-zero: do permission check
   *   zero: don't do permission check
   *
@@ -367,7 +367,7 @@ int aot_link(AotContext* context, size_t *szp)
    * Test if the page has correct write permissions
    */
   |5:
-  | cmp rcx, 0
+  | cmp ecx, 0
   | je >1
   | mov rcx, rax
   | shr rcx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
@@ -1311,7 +1311,7 @@ int aot_memory_write(AotContext* context, AotValue address, AotValue v, uint32_t
   if (ret != DASM_S_OK) { return ret; }
 
   | mov rdx, size
-  | mov rcx, 1
+  | mov ecx, 1
   | call ->access_control
   | cmp rdx, 0
   | jne >1
@@ -1353,7 +1353,7 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   if (ret != DASM_S_OK) { return ret; }
 
   | mov rdx, size
-  | mov rcx, 0
+  | mov ecx, 0
   | call ->access_control
   | cmp rdx, 0
   | jne >1
