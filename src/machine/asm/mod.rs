@@ -60,7 +60,7 @@ fn inited_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<(
     if overflowed {
         return Err(Error::OutOfBound);
     }
-    let frame_to = addr_to >> MEMORY_FRAME_SHIFTS;
+    let frame_to = (addr_to - 1) >> MEMORY_FRAME_SHIFTS;
     for i in frame_from..=std::cmp::min(MEMORY_FRAMES as u64 - 1, frame_to) {
         if machine.frames[i as usize] == 0 {
             let addr_from = (i << MEMORY_FRAME_SHIFTS) as usize;
