@@ -349,10 +349,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >4
   | mov byte [r9+rsi], 1
-  | push rax
-  | mov rax, rsi
   | call ->zeroed_memory
-  | pop rax
   |4:
   | mov rsi, rax
   | add rsi, rdx
@@ -365,10 +362,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >5
   | mov byte [r9+rsi], 1
-  | push rax
-  | mov rax, rsi
   | call ->zeroed_memory
-  | pop rax
   /*
    * Test if the page has correct write permissions
    */
@@ -419,11 +413,11 @@ int aot_link(AotContext* context, size_t *szp)
    * Fill the specified frame with zeros. Required arguments to this
    * pseudo function include:
    *
-   * rax: index of the frame, no overflow check.
+   * rsi: index of the frame, no overflow check.
    */
   |->zeroed_memory:
   | prepcall
-  | mov rcx, rax
+  | mov rcx, rsi
   | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
   | lea rArg2, machine->memory
   | add rcx, rArg2
