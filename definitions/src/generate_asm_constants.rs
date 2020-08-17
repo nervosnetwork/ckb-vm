@@ -6,8 +6,8 @@ use ckb_vm_definitions::{
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
     memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::SP,
-    MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES,
-    RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
+    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
 use std::mem::{size_of, zeroed};
 
@@ -30,6 +30,10 @@ fn main() {
     );
     println!("#define CKB_VM_ASM_MEMORY_FRAMESIZE {}", MEMORY_FRAMESIZE);
     println!("#define CKB_VM_ASM_MEMORY_FRAMES {}", MEMORY_FRAMES);
+    println!(
+        "#define CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS {}",
+        MEMORY_FRAME_PAGE_SHIFTS
+    );
     println!();
 
     println!(
