@@ -6,6 +6,7 @@ use ckb_vm_definitions::{
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
     memory::{FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::SP,
+    MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
 use std::mem::{size_of, zeroed};
@@ -23,6 +24,16 @@ fn main() {
     println!("#define CKB_VM_ASM_RISCV_PAGE_SIZE {}", RISCV_PAGESIZE);
     println!("#define CKB_VM_ASM_RISCV_PAGE_MASK {}", RISCV_PAGESIZE - 1);
     println!("#define CKB_VM_ASM_RISCV_PAGES {}", RISCV_PAGES);
+    println!(
+        "#define CKB_VM_ASM_MEMORY_FRAME_SHIFTS {}",
+        MEMORY_FRAME_SHIFTS
+    );
+    println!("#define CKB_VM_ASM_MEMORY_FRAMESIZE {}", MEMORY_FRAMESIZE);
+    println!("#define CKB_VM_ASM_MEMORY_FRAMES {}", MEMORY_FRAMES);
+    println!(
+        "#define CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS {}",
+        MEMORY_FRAME_PAGE_SHIFTS
+    );
     println!();
 
     println!(
@@ -124,6 +135,10 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES {}",
         (&m.traces as *const Trace as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",
+        (&m.frames as *const u8 as usize) - m_address
     );
     println!();
 

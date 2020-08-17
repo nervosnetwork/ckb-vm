@@ -14,7 +14,7 @@ use bytes::Bytes;
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
 // Quick bit-mask to truncate a value in trace size range
-const TRACE_MASK: usize = (TRACE_SIZE - 1);
+const TRACE_MASK: usize = TRACE_SIZE - 1;
 // The maximum number of instructions to cache in a trace item
 const TRACE_ITEM_LENGTH: usize = 16;
 // Shifts to truncate a value so 2 traces has the minimal chance of sharing code.

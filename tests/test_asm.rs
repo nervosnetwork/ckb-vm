@@ -279,3 +279,18 @@ pub fn test_asm_wxorx_crash_64() {
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
+
+#[test]
+pub fn test_asm_alloc_many() {
+    let mut file = File::open("tests/programs/alloc_many").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine = AsmMachine::default();
+    machine
+        .load_program(&buffer, &vec!["alloc_many".into()])
+        .unwrap();
+    let result = machine.run();
+    assert_eq!(result.unwrap(), 0);
+}

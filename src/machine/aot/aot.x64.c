@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dasm_proto.h"
 #include "dasm_x86.h"
@@ -99,6 +100,7 @@ typedef struct {
   uint64_t max_cycles;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
+  uint8_t frames[CKB_VM_ASM_MEMORY_FRAMES];
   /* We won't access traces here */
   uint8_t _traces[CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE -
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
@@ -235,6 +237,41 @@ AotContext* aot_new(uint32_t npc)
   dasm_setup(&context->d, bf_actions);
   dasm_growpc(&context->d, context->npc);
   Dst = &context->d;
+
+  |.if WIN
+    |.define rArg1, rcx
+    |.define rArg2, rdx
+    |.define rArg3, r8
+  |.else
+    |.define rArg1, rdi
+    |.define rArg2, rsi
+    |.define rArg3, rdx
+  |.endif
+  |.macro prepcall
+    | push rdi
+    | push rsi
+    | push rax
+    | push rcx
+    | push rdx
+    | push r8
+    | push r9
+    |.if WIN
+      | sub rsp, 32
+    |.endif
+  |.endmacro
+  |.macro postcall
+    |.if WIN
+      | add rsp, 32
+    |.endif
+    | pop r9
+    | pop r8
+    | pop rdx
+    | pop rcx
+    | pop rax
+    | pop rsi
+    | pop rdi
+  |.endmacro
+
   /*
    * The function we are generating has the following prototype:
    *
@@ -280,6 +317,25 @@ void aot_finalize(AotContext* context)
 int aot_link(AotContext* context, size_t *szp)
 {
   dasm_State** Dst = &context->d;
+
+  /*
+   * Fill the specified frame with zeros. Required arguments to this
+   * pseudo function include:
+   *
+   * rcx: index of the frame
+   */
+  |->zeroed_memory:
+  | prepcall
+  | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea rArg2, machine->memory
+  | add rcx, rArg2
+  | mov rArg1, rcx
+  | xor rArg2, rArg2
+  | mov rArg3, CKB_VM_ASM_MEMORY_FRAMESIZE
+  | mov64 rax, (uint64_t)memset
+  | call rax
+  | postcall
+  | ret
   /*
    * Check memory write permissions. Note this pseudo function does not use
    * C's standard calling convention, since the AOT code here has its own
@@ -296,20 +352,32 @@ int aot_link(AotContext* context, size_t *szp)
    */
   |->check_write:
   | push rsi
+  | push r8
   | mov rsi, rdx
   | mov rcx, rax
   | shr rcx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
-   /*
-    * Test if the page stored in rcx is out of bound, and if the page has
-    * correct write permissions
-    */
+  /*
+   * Test if the page stored in rcx is out of bound, and if the page has
+   * correct write permissions
+   */
   | cmp rcx, CKB_VM_ASM_RISCV_PAGES
-  | jae >2
+  | jae >3
   | lea rdx, machine->flags
   | movzx edx, byte [rdx+rcx]
   | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
   | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >3
+  | jne >4
+  /*
+   * If the frame not initialized, then initialize it.
+   */
+  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS
+  | lea rdx, machine->frames
+  | movzx r8d, byte [rdx+rcx]
+  | cmp r8d, 0
+  | jne >1
+  | mov byte [rdx+rcx], 1
+  | call ->zeroed_memory
+  |1:
   /* Check if the write spans to a second memory page */
   | mov rdx, rax
   | add rdx, rsi
@@ -317,28 +385,80 @@ int aot_link(AotContext* context, size_t *szp)
   | shr rdx, CKB_VM_ASM_RISCV_PAGE_SHIFTS
   | add rcx, 1
   | cmp rcx, rdx
-  | jne >1
-   /*
-    * Test if the page stored in rcx is out of bound, and if the page has
-    * correct write permissions
-    */
+  | jne >2
+  /*
+   * Test if the page stored in rcx is out of bound, and if the page has
+   * correct write permissions
+   */
   | cmp rcx, CKB_VM_ASM_RISCV_PAGES
-  | jae >2
+  | jae >3
   | lea rdx, machine->flags
   | movzx edx, byte [rdx+rcx]
   | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
   | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
-  | jne >3
-  |1:
-  | mov rdx, 0
-  | pop rsi
-  | ret
+  | jne >4
+  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS
+  | lea rdx, machine->frames
+  | movzx r8d, byte [rdx+rcx]
+  | cmp r8d, 0
+  | jne >2
+  | mov byte [rdx+rcx], 1
+  | call ->zeroed_memory
   |2:
-  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
+  | mov rdx, 0
+  | pop r8
   | pop rsi
   | ret
   |3:
+  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
+  | pop r8
+  | pop rsi
+  | ret
+  |4:
   | mov rdx, CKB_VM_ASM_RET_INVALID_PERMISSION
+  | pop r8
+  | pop rsi
+  | ret
+  /*
+   * Zeroed frame by memory address and length if it's necessary.
+   *
+   * rax: the memory address to read/write
+   * rdx: length of memory to read/write
+   */
+  |->check_read:
+  | push rsi
+  | push r8
+  | mov rcx, rax
+  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
+  | jae >3
+  | lea rsi, machine->frames
+  | movzx r8d, byte [rsi+rcx]
+  | cmp r8d, 0
+  | jne >1
+  | mov byte [rsi+rcx], 1
+  | call ->zeroed_memory
+  |1:
+  | mov rcx, rax
+  | add rcx, rdx
+  | sub rcx, 1
+  | shr rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | cmp rcx, CKB_VM_ASM_MEMORY_FRAMES
+  | jae >3
+  | movzx r8d, byte [rsi+rcx]
+  | cmp r8d, 0
+  | jne >2
+  | mov byte [rsi+rcx], 1
+  | call ->zeroed_memory
+  | jmp >2
+  |2:
+  | mov rdx, 0
+  | pop r8
+  | pop rsi
+  | ret
+  |3:
+  | mov rdx, CKB_VM_ASM_RET_OUT_OF_BOUND
+  | pop r8
   | pop rsi
   | ret
   /* rax should store the return value here */
@@ -1264,6 +1384,10 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   ret = aot_mov_x64(context, X64_RAX, address);
   if (ret != DASM_S_OK) { return ret; }
 
+  | mov rdx, size
+  | call ->check_read
+  | cmp rdx, 0
+  | jne >1
   | mov rdx, rax
   | add rdx, size
   | jc >1
