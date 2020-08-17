@@ -121,17 +121,17 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
-        inited_memory(self, addr, value.len() as u64)?;
         // Out of bound check is already performed in check_permission
         check_permission(self, addr, value.len() as u64, FLAG_WRITABLE)?;
+        inited_memory(self, addr, value.len() as u64)?;
         let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
         slice.copy_from_slice(value);
         Ok(())
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
-        inited_memory(self, addr, size)?;
         check_permission(self, addr, size, FLAG_WRITABLE)?;
+        inited_memory(self, addr, size)?;
         memset(
             &mut self.memory[addr as usize..(addr + size) as usize],
             value,
@@ -188,16 +188,16 @@ impl Memory<u64> for Box<AsmCoreMachine> {
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        inited_memory(self, addr, 1)?;
         check_permission(self, addr, 1, FLAG_WRITABLE)?;
+        inited_memory(self, addr, 1)?;
         self.memory[addr as usize] = (*value) as u8;
         Ok(())
     }
 
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        inited_memory(self, addr, 2)?;
         check_permission(self, addr, 2, FLAG_WRITABLE)?;
+        inited_memory(self, addr, 2)?;
         LittleEndian::write_u16(
             &mut self.memory[addr as usize..(addr + 2) as usize],
             *value as u16,
@@ -207,8 +207,8 @@ impl Memory<u64> for Box<AsmCoreMachine> {
 
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        inited_memory(self, addr, 4)?;
         check_permission(self, addr, 4, FLAG_WRITABLE)?;
+        inited_memory(self, addr, 4)?;
         LittleEndian::write_u32(
             &mut self.memory[addr as usize..(addr + 4) as usize],
             *value as u32,
@@ -218,8 +218,8 @@ impl Memory<u64> for Box<AsmCoreMachine> {
 
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        inited_memory(self, addr, 8)?;
         check_permission(self, addr, 8, FLAG_WRITABLE)?;
+        inited_memory(self, addr, 8)?;
         LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
         Ok(())
     }
