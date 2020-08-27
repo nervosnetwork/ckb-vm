@@ -18,6 +18,15 @@ use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 use goblin::elf::{Elf, Header};
 use std::fmt::{self, Display};
 
+// Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
+pub const VERSION0: u32 = 0;
+// Version 1 fixes known bugs discovered in version 0:
+// * It's not possible to read the last byte in the VM memory;
+// * https://github.com/nervosnetwork/ckb-vm/issues/92
+// * https://github.com/nervosnetwork/ckb-vm/issues/97
+// * https://github.com/nervosnetwork/ckb-vm/issues/98
+pub const VERSION1: u32 = 1;
+
 fn elf_bits(header: &Header) -> Option<u8> {
     // This is documented in ELF specification, we are exacting ELF file
     // class part here.
@@ -58,6 +67,10 @@ pub trait CoreMachine {
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
     fn set_register(&mut self, idx: usize, value: Self::REG);
+
+    // Current running machine version, used to support compatible behavior
+    // in case of bug fixes.
+    fn version(&self) -> u32;
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
@@ -122,8 +135,10 @@ pub trait SupportMachine: CoreMachine {
                     Some(program.slice(slice_start as usize..slice_end as usize)),
                     padding_start,
                 )?;
-                self.memory_mut()
-                    .store_byte(aligned_start, padding_start, 0)?;
+                if self.version() < VERSION1 {
+                    self.memory_mut()
+                        .store_byte(aligned_start, padding_start, 0)?;
+                }
                 bytes = bytes
                     .checked_add(slice_end - slice_start)
                     .ok_or(Error::Unexpected)?;
@@ -158,6 +173,25 @@ pub trait SupportMachine: CoreMachine {
             values.push(address.clone());
             self.set_register(SP, address);
         }
+        if self.version() >= VERSION1 {
+            // There are 2 standard requirements of the initialized stack:
+            // 1. argv[argc] should contain a null pointer here, hence we are
+            // pushing another 0 to the values array;
+            values.push(Self::REG::zero());
+            // 2. SP must be aligned to 16-byte boundary, also considering _start
+            // will read argc from SP and argv from SP + 8, we have to factor in
+            // alignment here first, then push the values.
+            let values_bytes =
+                Self::REG::from_u64(Self::REG::BITS as u64 / 8 * values.len() as u64);
+            let unaligned_sp_address = self.registers()[SP].overflowing_sub(&values_bytes).to_u64();
+            // Perform alignment at 16-byte boundary towards lower address
+            let aligned_sp_address = unaligned_sp_address & (!15);
+            let aligned_bytes = unaligned_sp_address - aligned_sp_address;
+            self.set_register(
+                SP,
+                self.registers()[SP].overflowing_sub(&Self::REG::from_u64(aligned_bytes)),
+            );
+        }
         // Since we are dealing with a stack, we need to push items in reversed
         // order
         for value in values.iter().rev() {
@@ -183,6 +217,7 @@ pub struct DefaultCoreMachine<R, M> {
     cycles: u64,
     max_cycles: Option<u64>,
     running: bool,
+    version: u32,
 }
 
 impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -211,6 +246,10 @@ impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
     }
+
+    fn version(&self) -> u32 {
+        self.version
+    }
 }
 
 impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
@@ -236,6 +275,21 @@ impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
 }
 
 impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
+    pub fn new(version: u32, max_cycles: u64) -> Self {
+        Self {
+            version,
+            max_cycles: Some(max_cycles),
+            ..Default::default()
+        }
+    }
+
+    pub fn latest() -> Self {
+        Self {
+            version: VERSION1,
+            ..Default::default()
+        }
+    }
+
     pub fn new_with_max_cycles(max_cycles: u64) -> Self {
         Self {
             max_cycles: Some(max_cycles),
@@ -290,6 +344,10 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.inner.set_register(idx, value)
+    }
+
+    fn version(&self) -> u32 {
+        self.inner.version()
     }
 }
 
@@ -404,7 +462,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     // not be practical in production, but it serves as a baseline and
     // reference implementation
     pub fn run(&mut self) -> Result<i8, Error> {
-        let decoder = build_imac_decoder::<Inner::REG>();
+        let decoder = build_imac_decoder::<Inner::REG>(self.version());
         self.set_running(true);
         while self.running() {
             self.step(&decoder)?;

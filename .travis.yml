@@ -8,7 +8,7 @@ cache:
 env:
   global:
     - RUST_BACKTRACE=full
-    - TEST_SUITE_COMMIT=5d65d4b410c1f4dd74988d620e84f49eaea4c1a1
+    - TEST_SUITE_COMMIT=4fe8219308a28f8b31910bad5ae14a5acdb396a2
 
 matrix:
   include:

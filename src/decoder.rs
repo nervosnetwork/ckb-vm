@@ -4,10 +4,18 @@ use super::Error;
 
 #[derive(Default)]
 pub struct Decoder {
+    version: u32,
     factories: Vec<InstructionFactory>,
 }
 
 impl Decoder {
+    pub fn new(version: u32) -> Decoder {
+        Decoder {
+            version,
+            factories: vec![],
+        }
+    }
+
     pub fn add_instruction_factory(&mut self, factory: InstructionFactory) {
         self.factories.push(factory);
     }
@@ -65,7 +73,7 @@ impl Decoder {
     ) -> Result<Instruction, Error> {
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
-            if let Some(instruction) = factory(instruction_bits) {
+            if let Some(instruction) = factory(instruction_bits, self.version) {
                 return Ok(instruction);
             }
         }
@@ -73,8 +81,8 @@ impl Decoder {
     }
 }
 
-pub fn build_imac_decoder<R: Register>() -> Decoder {
-    let mut decoder = Decoder::default();
+pub fn build_imac_decoder<R: Register>(version: u32) -> Decoder {
+    let mut decoder = Decoder::new(version);
     decoder.add_instruction_factory(rvc::factory::<R>);
     decoder.add_instruction_factory(i::factory::<R>);
     decoder.add_instruction_factory(m::factory::<R>);

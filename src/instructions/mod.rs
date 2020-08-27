@@ -25,7 +25,7 @@ pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
     i as u8
 }
 
-pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
+pub type InstructionFactory = fn(instruction_bits: u32, version: u32) -> Option<Instruction>;
 
 // Blank instructions need no register indices nor immediates, they only have opcode
 // and module bit set.
@@ -217,6 +217,8 @@ pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
         insts::OP_RVC_JAL => true,
         insts::OP_RVC_JALR => true,
         insts::OP_RVC_JR => true,
+        insts::OP_VERSION1_JALR => true,
+        insts::OP_VERSION1_RVC_JALR => true,
         _ => false,
     }
 }

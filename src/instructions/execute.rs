@@ -108,39 +108,81 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        insts::OP_LB => {
+        insts::OP_LB | insts::OP_VERSION1_LB => {
             let i = Itype(inst);
-            common::lb(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lb(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LB,
+            )?;
             None
         }
-        insts::OP_LH => {
+        insts::OP_LH | insts::OP_VERSION1_LH => {
             let i = Itype(inst);
-            common::lh(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lh(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LH,
+            )?;
             None
         }
-        insts::OP_LW => {
+        insts::OP_LW | insts::OP_VERSION1_LW => {
             let i = Itype(inst);
-            common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lw(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LW,
+            )?;
             None
         }
-        insts::OP_LD => {
+        insts::OP_LD | insts::OP_VERSION1_LD => {
             let i = Itype(inst);
-            common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::ld(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LD,
+            )?;
             None
         }
-        insts::OP_LBU => {
+        insts::OP_LBU | insts::OP_VERSION1_LBU => {
             let i = Itype(inst);
-            common::lbu(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lbu(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LBU,
+            )?;
             None
         }
-        insts::OP_LHU => {
+        insts::OP_LHU | insts::OP_VERSION1_LHU => {
             let i = Itype(inst);
-            common::lhu(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lhu(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LHU,
+            )?;
             None
         }
-        insts::OP_LWU => {
+        insts::OP_LWU | insts::OP_VERSION1_LWU => {
             let i = Itype(inst);
-            common::lwu(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lwu(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_LWU,
+            )?;
             None
         }
         insts::OP_ADDI => {
@@ -184,13 +226,18 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        insts::OP_JALR => {
+        insts::OP_JALR | insts::OP_VERSION1_JALR => {
             let i = Itype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(4));
+            if op == insts::OP_JALR {
+                update_register(machine, i.rd(), link.clone());
+            }
             let mut next_pc =
                 machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
             next_pc = next_pc & (!Mac::REG::one());
-            update_register(machine, i.rd(), link);
+            if op != insts::OP_JALR {
+                update_register(machine, i.rd(), link);
+            }
             Some(next_pc)
         }
         insts::OP_SLLI => {
@@ -527,14 +574,26 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             common::srai(machine, i.rd(), i.rs1(), i.immediate());
             None
         }
-        insts::OP_RVC_LW => {
+        insts::OP_RVC_LW | insts::OP_VERSION1_RVC_LW => {
             let i = Itype(inst);
-            common::lw(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::lw(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_RVC_LW,
+            )?;
             None
         }
-        insts::OP_RVC_LD => {
+        insts::OP_RVC_LD | insts::OP_VERSION1_RVC_LD => {
             let i = Itype(inst);
-            common::ld(machine, i.rd(), i.rs1(), i.immediate_s())?;
+            common::ld(
+                machine,
+                i.rd(),
+                i.rs1(),
+                i.immediate_s(),
+                op == insts::OP_RVC_LD,
+            )?;
             None
         }
         insts::OP_RVC_SW => {
@@ -563,14 +622,26 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        insts::OP_RVC_LWSP => {
+        insts::OP_RVC_LWSP | insts::OP_VERSION1_RVC_LWSP => {
             let i = Utype(inst);
-            common::lw(machine, i.rd(), SP, i.immediate_s())?;
+            common::lw(
+                machine,
+                i.rd(),
+                SP,
+                i.immediate_s(),
+                op == insts::OP_RVC_LWSP,
+            )?;
             None
         }
-        insts::OP_RVC_LDSP => {
+        insts::OP_RVC_LDSP | insts::OP_VERSION1_RVC_LDSP => {
             let i = Utype(inst);
-            common::ld(machine, i.rd(), SP, i.immediate_s())?;
+            common::ld(
+                machine,
+                i.rd(),
+                SP,
+                i.immediate_s(),
+                op == insts::OP_RVC_LDSP,
+            )?;
             None
         }
         insts::OP_RVC_SWSP => {
@@ -629,12 +700,17 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             next_pc = next_pc & (!Mac::REG::one());
             Some(next_pc)
         }
-        insts::OP_RVC_JALR => {
+        insts::OP_RVC_JALR | insts::OP_VERSION1_RVC_JALR => {
             let i = Stype(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(2));
+            if op == insts::OP_RVC_JALR {
+                update_register(machine, 1, link.clone());
+            }
             let mut next_pc = machine.registers()[i.rs1()].clone();
             next_pc = next_pc & (!Mac::REG::one());
-            update_register(machine, 1, link);
+            if op != insts::OP_RVC_JALR {
+                update_register(machine, 1, link);
+            }
             Some(next_pc)
         }
         insts::OP_RVC_ADDI16SP => {
@@ -658,7 +734,9 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
             update_register(machine, i.rd(), value);
             None
         }
-        _ => return Err(Error::InvalidOp(op as u8)),
+        insts::OP_UNLOADED | insts::OP_CUSTOM_TRACE_END..=255 => {
+            return Err(Error::InvalidOp(op as u8))
+        }
     };
     let default_instruction_size = instruction_length(inst);
     let default_next_pc = machine

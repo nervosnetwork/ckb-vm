@@ -1,5 +1,6 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
+use super::super::RISCV_MAX_MEMORY;
 use super::register::Register;
 use super::utils::update_register;
 use super::{Error, Immediate, RegisterIndex, UImmediate};
@@ -80,13 +81,26 @@ pub fn addiw<Mac: Machine>(
 // =======================
 // #  LOAD instructions  #
 // =======================
+fn check_load_boundary<R: Register>(version0: bool, address: &R, bytes: u64) -> Result<(), Error> {
+    if version0 {
+        let address = address.to_u64();
+        let end = address.checked_add(bytes).ok_or(Error::OutOfBound)?;
+        if end == RISCV_MAX_MEMORY as u64 {
+            return Err(Error::OutOfBound);
+        }
+    }
+    Ok(())
+}
+
 pub fn lb<Mac: Machine>(
     machine: &mut Mac,
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 1)?;
     let value = machine.memory_mut().load8(&address)?;
     // sign-extened
     update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(8)));
@@ -98,8 +112,10 @@ pub fn lh<Mac: Machine>(
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 2)?;
     let value = machine.memory_mut().load16(&address)?;
     // sign-extened
     update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(16)));
@@ -111,8 +127,10 @@ pub fn lw<Mac: Machine>(
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 4)?;
     let value = machine.memory_mut().load32(&address)?;
     update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
     Ok(())
@@ -123,8 +141,10 @@ pub fn ld<Mac: Machine>(
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 8)?;
     let value = machine.memory_mut().load64(&address)?;
     update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(64)));
     Ok(())
@@ -135,8 +155,10 @@ pub fn lbu<Mac: Machine>(
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 1)?;
     let value = machine.memory_mut().load8(&address)?;
     update_register(machine, rd, value);
     Ok(())
@@ -147,8 +169,10 @@ pub fn lhu<Mac: Machine>(
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 2)?;
     let value = machine.memory_mut().load16(&address)?;
     update_register(machine, rd, value);
     Ok(())
@@ -159,8 +183,10 @@ pub fn lwu<Mac: Machine>(
     rd: RegisterIndex,
     rs1: RegisterIndex,
     imm: Immediate,
+    version0: bool,
 ) -> Result<(), Error> {
     let address = machine.registers()[rs1 as usize].overflowing_add(&Mac::REG::from_i32(imm));
+    check_load_boundary(version0, &address, 4)?;
     let value = machine.memory_mut().load32(&address)?;
     update_register(machine, rd, value);
     Ok(())

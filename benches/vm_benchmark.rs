@@ -3,7 +3,7 @@ extern crate criterion;
 
 use bytes::Bytes;
 #[cfg(has_asm)]
-use ckb_vm::machine::{aot::AotCompilingMachine, asm::AsmMachine};
+use ckb_vm::machine::{aot::AotCompilingMachine, asm::AsmMachine, VERSION0};
 use ckb_vm::{run, SparseMemory};
 use criterion::Criterion;
 use std::fs::File;
@@ -61,7 +61,7 @@ fn aot_benchmark(c: &mut Criterion) {
                                       "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
                                       "foo",
                                       "bar"].into_iter().map(|a| a.into()).collect();
-        let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None).unwrap();
+        let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None, VERSION0).unwrap();
         let result = aot_machine.compile().unwrap();
 
         b.iter(|| {
@@ -82,7 +82,7 @@ fn aot_compiling_benchmark(c: &mut Criterion) {
         let buffer = Bytes::from(buffer);
 
         b.iter(|| {
-            AotCompilingMachine::load(&buffer.clone(), None)
+            AotCompilingMachine::load(&buffer.clone(), None, VERSION0)
                 .unwrap()
                 .compile()
                 .unwrap()

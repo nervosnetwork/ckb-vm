@@ -24,6 +24,7 @@ typedef struct {
   dasm_State* d;
   void* labels[lbl__MAX];
   uint32_t npc;
+  uint32_t version;
 } AotContext;
 
 /*
@@ -98,6 +99,7 @@ typedef struct {
   uint8_t running;
   uint64_t cycles;
   uint64_t max_cycles;
+  uint32_t version;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
   uint8_t frames[CKB_VM_ASM_MEMORY_FRAMES];
@@ -227,11 +229,12 @@ x64_register_t riscv_reg_to_x64_reg(riscv_register_t r)
 ||}
 |.endmacro
 
-AotContext* aot_new(uint32_t npc)
+AotContext* aot_new(uint32_t npc, uint32_t version)
 {
   dasm_State** Dst;
   AotContext* context = malloc(sizeof(AotContext));
   context->npc = npc;
+  context->version = version;
   dasm_init(&context->d, DASM_MAXSECTION);
   dasm_setupglobal(&context->d, context->labels, lbl__MAX);
   dasm_setup(&context->d, bf_actions);
@@ -1392,7 +1395,11 @@ int aot_memory_read(AotContext* context, uint32_t target, AotValue address, uint
   | add rdx, size
   | jc >1
   | cmp rdx, CKB_VM_ASM_RISCV_MAX_MEMORY
-  | ja >1
+  if (context->version >= 1) {
+    | ja >1
+  } else {
+    | jae >1
+  }
   | lea rdx, machine->memory
   switch (size) {
     case 1:

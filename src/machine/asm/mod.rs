@@ -52,6 +52,10 @@ impl CoreMachine for Box<AsmCoreMachine> {
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
     }
+
+    fn version(&self) -> u32 {
+        self.version
+    }
 }
 
 fn inited_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<(), Error> {
@@ -280,7 +284,7 @@ impl<'a> AsmMachine<'a> {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
-        let decoder = build_imac_decoder::<u64>();
+        let decoder = build_imac_decoder::<u64>(self.machine.version());
         self.machine.set_running(true);
         while self.machine.running() {
             let result = if let Some(aot_code) = &self.aot_code {

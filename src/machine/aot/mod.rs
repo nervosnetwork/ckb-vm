@@ -5,6 +5,7 @@ use super::super::{
     instructions::{
         ast::Value, execute, instruction_length, is_basic_block_end_instruction, Instruction,
     },
+    machine::VERSION1,
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
     Register, SupportMachine, RISCV_MAX_MEMORY,
 };
@@ -13,6 +14,7 @@ use emitter::Emitter;
 use goblin::elf::{section_header::SHF_EXECINSTR, Elf};
 use memmap::{Mmap, MmapMut};
 use std::collections::{HashMap, HashSet};
+use std::mem;
 use std::rc::Rc;
 
 const MAXIMUM_INSTRUCTIONS_PER_BLOCK: usize = 1024;
@@ -83,6 +85,7 @@ struct LabelGatheringMachine {
     registers: [Value; 32],
     pc: Value,
     labels_to_test: Vec<u64>,
+    version: u32,
 
     // A memory segment which contains code loaded from ELF
     memory: FlatMemory<u64>,
@@ -92,7 +95,7 @@ struct LabelGatheringMachine {
 }
 
 impl LabelGatheringMachine {
-    pub fn load(program: &Bytes) -> Result<Self, Error> {
+    pub fn load(program: &Bytes, version: u32) -> Result<Self, Error> {
         let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
         if elf.section_headers.len() > MAXIMUM_SECTIONS {
             return Err(Error::LimitReached);
@@ -129,6 +132,7 @@ impl LabelGatheringMachine {
         inner.load_elf(&program, false)?;
 
         Ok(Self {
+            version,
             registers: init_registers(),
             pc: Value::from_u64(0),
             labels: HashSet::default(),
@@ -147,7 +151,7 @@ impl LabelGatheringMachine {
     }
 
     pub fn gather(&mut self) -> Result<(), Error> {
-        let decoder = build_imac_decoder::<u64>();
+        let decoder = build_imac_decoder::<u64>(self.version);
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
             self.pc = Value::from_u64(section_start);
@@ -263,6 +267,10 @@ impl CoreMachine for LabelGatheringMachine {
     fn set_register(&mut self, _idx: usize, _value: Value) {
         // This is a NOP since we only care about PC writes
     }
+
+    fn version(&self) -> u32 {
+        self.version
+    }
 }
 
 impl Machine for LabelGatheringMachine {
@@ -355,6 +363,7 @@ impl AotCode {
 }
 
 pub struct AotCompilingMachine {
+    version: u32,
     registers: [Value; 32],
     pc: Value,
     emitter: Emitter,
@@ -371,9 +380,10 @@ impl AotCompilingMachine {
     pub fn load(
         program: &Bytes,
         instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+        version: u32,
     ) -> Result<Self, Error> {
         // First we need to gather labels
-        let mut label_gathering_machine = LabelGatheringMachine::load(&program)?;
+        let mut label_gathering_machine = LabelGatheringMachine::load(&program, version)?;
         label_gathering_machine.gather()?;
 
         let mut labels: Vec<u64> = label_gathering_machine.labels.iter().cloned().collect();
@@ -385,9 +395,10 @@ impl AotCompilingMachine {
             .collect();
 
         Ok(Self {
+            version,
             registers: init_registers(),
             pc: Value::from_u64(0),
-            emitter: Emitter::new(labels.len())?,
+            emitter: Emitter::new(labels.len(), version)?,
             addresses_to_labels,
             memory: label_gathering_machine.memory,
             sections: label_gathering_machine.sections,
@@ -405,17 +416,35 @@ impl AotCompilingMachine {
         }
     }
 
+    fn take_and_clear_writes(&mut self) -> Vec<Write> {
+        mem::replace(&mut self.writes, vec![])
+    }
+
     fn emit_block(&mut self, instructions: &[Instruction]) -> Result<(), Error> {
         let mut cycles = 0;
-        for i in instructions {
+        // A block is split into 2 parts:
+        //
+        // * initial_writes contains writes for all sequential operations,
+        // those can be processed as normal in sequential order.
+        // * last_writes contains writes generated for the last operations,
+        // in case of a branch instruction, this might contains a normal
+        // register write, and a PC update. To correctly handle JALR, those
+        // 2 operations need to happen atomically. Hence later we can ses
+        // when version 1 or above is enabled, last_writes are submitted
+        // together to emit correct native code.
+        let mut initial_writes = vec![];
+        for (i, instruction) in instructions.iter().enumerate() {
+            if i == instructions.len() - 1 {
+                initial_writes = self.take_and_clear_writes();
+            }
             let pc = self.read_pc()?;
-            let length = instruction_length(*i);
+            let length = instruction_length(*instruction);
             cycles += self
                 .instruction_cycle_func
                 .as_ref()
-                .map(|f| f(*i))
+                .map(|f| f(*instruction))
                 .unwrap_or(0);
-            execute(*i, self)?;
+            execute(*instruction, self)?;
             self.pc = Value::from_u64(pc + u64::from(length));
         }
         let pc = self.read_pc()?;
@@ -427,20 +456,33 @@ impl AotCompilingMachine {
         self.emitter.emit(&Write::Pc {
             value: Value::Imm(pc | ADDRESS_WRITE_ONLY_FLAG),
         })?;
-        for write in &self.writes {
+        for write in initial_writes {
             self.emitter.emit(&write)?;
         }
-        self.writes.clear();
+        let mut last_writes = self.take_and_clear_writes();
         if let Some(value) = self.next_pc_write.take() {
-            self.emitter.emit(&Write::Pc {
+            last_writes.push(Write::Pc {
                 value: self.optimize_pc_value(value)?,
-            })?;
+            });
+        }
+        // Atomic writes only accept normal register writes and PC writes.
+        let all_normal_writes = last_writes.iter().all(|write| match write {
+            Write::Register { .. } => true,
+            Write::Pc { .. } => true,
+            _ => false,
+        });
+        if self.version >= VERSION1 && last_writes.len() > 1 && all_normal_writes {
+            self.emitter.emit_writes(&last_writes)?;
+        } else {
+            for write in last_writes {
+                self.emitter.emit(&write)?;
+            }
         }
         Ok(())
     }
 
     pub fn compile(&mut self) -> Result<AotCode, Error> {
-        let decoder = build_imac_decoder::<u64>();
+        let decoder = build_imac_decoder::<u64>(self.version);
         let mut instructions = [Instruction::default(); MAXIMUM_INSTRUCTIONS_PER_BLOCK];
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
@@ -542,6 +584,10 @@ impl CoreMachine for AotCompilingMachine {
 
     fn set_register(&mut self, index: usize, value: Value) {
         self.writes.push(Write::Register { index, value });
+    }
+
+    fn version(&self) -> u32 {
+        self.version
     }
 }
 
