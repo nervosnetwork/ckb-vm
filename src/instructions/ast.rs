@@ -7,6 +7,9 @@ use std::rc::Rc;
 pub enum ActionOp1 {
     Not,
     LogicalNot,
+    Clz,
+    Ctz,
+    Pcnt,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -20,6 +23,10 @@ pub enum ActionOp2 {
     Bitxor,
     Shl,
     Eq,
+    Rol,
+    Ror,
+    Slo,
+    Sro,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -32,6 +39,12 @@ pub enum SignActionOp2 {
     Extend,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum ActionOp3 {
+    Fsl,
+    Fsr,
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     Imm(u64),
@@ -39,6 +52,7 @@ pub enum Value {
     Op1(ActionOp1, Rc<Value>),
     Op2(ActionOp2, Rc<Value>, Rc<Value>),
     SignOp2(SignActionOp2, Rc<Value>, Rc<Value>, bool),
+    Op3(ActionOp3, Rc<Value>, Rc<Value>, Rc<Value>),
     Cond(Rc<Value>, Rc<Value>, Rc<Value>),
     Load(Rc<Value>, u8),
 }
@@ -257,6 +271,64 @@ impl Register for Value {
             ActionOp2::Mulhsu,
             Rc::new(self.clone()),
             Rc::new(rhs.clone()),
+        )
+    }
+
+    fn clz(&self) -> Value {
+        Value::Op1(ActionOp1::Clz, Rc::new(self.clone()))
+    }
+
+    fn ctz(&self) -> Value {
+        Value::Op1(ActionOp1::Ctz, Rc::new(self.clone()))
+    }
+
+    fn pcnt(&self) -> Value {
+        Value::Op1(ActionOp1::Pcnt, Rc::new(self.clone()))
+    }
+
+    fn rol(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(imm1.rotate_left(*imm2 as u32));
+        }
+        Value::Op2(ActionOp2::Rol, Rc::new(self.clone()), Rc::new(rhs.clone()))
+    }
+
+    fn ror(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(imm1.rotate_right(*imm2 as u32));
+        }
+        Value::Op2(ActionOp2::Ror, Rc::new(self.clone()), Rc::new(rhs.clone()))
+    }
+
+    fn slo(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(!((!*imm1).shl(*imm2 as u32)));
+        }
+        Value::Op2(ActionOp2::Slo, Rc::new(self.clone()), Rc::new(rhs.clone()))
+    }
+
+    fn sro(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+            return Value::Imm(!((!*imm1).shr(*imm2 as u32)));
+        }
+        Value::Op2(ActionOp2::Sro, Rc::new(self.clone()), Rc::new(rhs.clone()))
+    }
+
+    fn fsl(&self, rhs: &Value, shift: &Value) -> Value {
+        Value::Op3(
+            ActionOp3::Fsl,
+            Rc::new(self.clone()),
+            Rc::new(rhs.clone()),
+            Rc::new(shift.clone()),
+        )
+    }
+
+    fn fsr(&self, rhs: &Value, shift: &Value) -> Value {
+        Value::Op3(
+            ActionOp3::Fsr,
+            Rc::new(self.clone()),
+            Rc::new(rhs.clone()),
+            Rc::new(shift.clone()),
         )
     }
 

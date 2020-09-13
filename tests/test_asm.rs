@@ -9,6 +9,7 @@ use ckb_vm::{
     memory::Memory,
     registers::{A0, A1, A2, A3, A4, A5, A7},
     Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
+    ISA_IMC,
 };
 use std::fs::File;
 use std::io::Read;
@@ -306,7 +307,7 @@ pub fn test_asm_chaos_seed() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut asm_core1 = AsmCoreMachine::new(VERSION1, u64::max_value());
+    let mut asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     asm_core1.chaos_mode = 1;
     asm_core1.chaos_seed = 100;
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
@@ -317,7 +318,7 @@ pub fn test_asm_chaos_seed() {
     let result1 = machine1.run();
     let exit1 = result1.unwrap();
 
-    let mut asm_core2 = AsmCoreMachine::new(VERSION1, u64::max_value());
+    let mut asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     asm_core2.chaos_mode = 1;
     asm_core2.chaos_seed = 100;
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
