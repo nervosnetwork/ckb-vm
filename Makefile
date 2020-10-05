@@ -20,6 +20,9 @@ clippy:
 	cargo clippy --all --features=asm -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
 	cd definitions && cargo clippy --all -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
 
+fuzz:
+	cargo +nightly fuzz run asm -- -max_total_time=180
+
 ci: fmt clippy test
 	git diff --exit-code Cargo.lock
 
