@@ -62,7 +62,7 @@ src/machine/aot/aot.x64.win.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/s
 		cd .deps/luajit && git checkout v2.1 && \
 		make
 
-.PHONY: test clippy fmt
+.PHONY: test clippy fmt fuzz
 .PHONY: ci ci-quick ci-all-features ci-cdefinitions
 .PHONY: stats security-audit
 .PHONY: update-cdefinitions
