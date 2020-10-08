@@ -107,8 +107,8 @@ impl LabelGatheringMachine {
         let ctx = Ctx::new(container, endianness);
         let section_headers = SectionHeader::parse(
             program,
-            header.e_phoff as usize,
-            header.e_phnum as usize,
+            header.e_shoff as usize,
+            header.e_shnum as usize,
             ctx,
         )
         .map_err(|_e| Error::ParseError)?;
