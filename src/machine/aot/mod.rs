@@ -11,8 +11,10 @@ use super::super::{
 };
 use bytes::Bytes;
 use emitter::Emitter;
-use goblin::elf::{section_header::SHF_EXECINSTR, Elf};
+use goblin::container::Ctx;
+use goblin::elf::{section_header::SHF_EXECINSTR, Header, SectionHeader};
 use memmap::{Mmap, MmapMut};
+use scroll::Pread;
 use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::rc::Rc;
@@ -96,12 +98,25 @@ struct LabelGatheringMachine {
 
 impl LabelGatheringMachine {
     pub fn load(program: &Bytes, version: u32) -> Result<Self, Error> {
-        let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
-        if elf.section_headers.len() > MAXIMUM_SECTIONS {
+        let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+        let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
+        let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+        if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
+            return Err(Error::InvalidElfBits);
+        }
+        let ctx = Ctx::new(container, endianness);
+        let section_headers = SectionHeader::parse(
+            program,
+            header.e_phoff as usize,
+            header.e_phnum as usize,
+            ctx,
+        )
+        .map_err(|_e| Error::ParseError)?;
+
+        if section_headers.len() > MAXIMUM_SECTIONS {
             return Err(Error::LimitReached);
         }
-        let mut sections: Vec<(u64, u64)> = elf
-            .section_headers
+        let mut sections: Vec<(u64, u64)> = section_headers
             .iter()
             .filter_map(|section_header| {
                 if section_header.sh_flags & u64::from(SHF_EXECINSTR) != 0 {
