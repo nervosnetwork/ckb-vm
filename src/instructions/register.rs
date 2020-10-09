@@ -185,7 +185,7 @@ impl Register for u32 {
             let (v, o) = (*self as i32).overflowing_div(*rhs as i32);
             if o {
                 // -2**(L-1) implemented using (-1) << (L - 1)
-                ((-1i32) as u32) << (Self::BITS - 1)
+                ((-1i32) as u32) << (<Self as Register>::BITS - 1)
             } else {
                 v as u32
             }
@@ -390,7 +390,7 @@ impl Register for u64 {
             let (v, o) = (*self as i64).overflowing_div(*rhs as i64);
             if o {
                 // -2**(L-1) implemented using (-1) << (L - 1)
-                ((-1i64) as u64) << (Self::BITS - 1)
+                ((-1i64) as u64) << (<Self as Register>::BITS - 1)
             } else {
                 v as u64
             }

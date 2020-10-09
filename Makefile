@@ -20,6 +20,9 @@ clippy:
 	cargo clippy --all --features=asm -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
 	cd definitions && cargo clippy --all -- -D warnings -D clippy::clone_on_ref_ptr -D clippy::enum_glob_use -A clippy::inconsistent_digit_grouping -A clippy::large-digit-groups
 
+fuzz:
+	cargo +nightly fuzz run asm -- -max_total_time=180
+
 ci: fmt clippy test
 	git diff --exit-code Cargo.lock
 
@@ -59,7 +62,7 @@ src/machine/aot/aot.x64.win.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/s
 		cd .deps/luajit && git checkout v2.1 && \
 		make
 
-.PHONY: test clippy fmt
+.PHONY: test clippy fmt fuzz
 .PHONY: ci ci-quick ci-all-features ci-cdefinitions
 .PHONY: stats security-audit
 .PHONY: update-cdefinitions
