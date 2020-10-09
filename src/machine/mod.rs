@@ -14,8 +14,10 @@ use super::{
     Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
 };
 use bytes::Bytes;
+use goblin::container::Ctx;
 use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
-use goblin::elf::{Elf, Header};
+use goblin::elf::{Header, ProgramHeader};
+use scroll::Pread;
 use std::fmt::{self, Display};
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -26,18 +28,6 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/97
 // * https://github.com/nervosnetwork/ckb-vm/issues/98
 pub const VERSION1: u32 = 1;
-
-fn elf_bits(header: &Header) -> Option<u8> {
-    // This is documented in ELF specification, we are exacting ELF file
-    // class part here.
-    // Right now we are only supporting 32 and 64 bits, in the future we
-    // might add 128 bits support.
-    match header.e_ident[4] {
-        1 => Some(32),
-        2 => Some(64),
-        _ => None,
-    }
-}
 
 // Converts goblin's ELF flags into RISC-V flags
 fn convert_flags(p_flags: u32) -> Result<u8, Error> {
@@ -110,13 +100,22 @@ pub trait SupportMachine: CoreMachine {
     }
 
     fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
-        let elf = Elf::parse(program).map_err(|_e| Error::ParseError)?;
-        let bits = elf_bits(&elf.header).ok_or(Error::InvalidElfBits)?;
-        if bits != Self::REG::BITS {
+        let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+        let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
+        let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+        if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
             return Err(Error::InvalidElfBits);
         }
+        let ctx = Ctx::new(container, endianness);
+        let program_headers = ProgramHeader::parse(
+            program,
+            header.e_phoff as usize,
+            header.e_phnum as usize,
+            ctx,
+        )
+        .map_err(|_e| Error::ParseError)?;
         let mut bytes: u64 = 0;
-        for program_header in &elf.program_headers {
+        for program_header in program_headers {
             if program_header.p_type == PT_LOAD {
                 let aligned_start = round_page_down(program_header.p_vaddr);
                 let padding_start = program_header.p_vaddr.wrapping_sub(aligned_start);
@@ -145,7 +144,7 @@ pub trait SupportMachine: CoreMachine {
             }
         }
         if update_pc {
-            self.set_pc(Self::REG::from_u64(elf.header.e_entry));
+            self.set_pc(Self::REG::from_u64(header.e_entry));
         }
         Ok(bytes)
     }
