@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.com/nervosnetwork/ckb-vm.svg?branch=master)](https://travis-ci.com/nervosnetwork/ckb-vm)
 [![Build Status](https://dev.azure.com/nervosnetwork/ckb-vm/_apis/build/status/nervosnetwork.ckb-vm?branchName=develop)](https://dev.azure.com/nervosnetwork/ckb-vm/_build/latest?definitionId=10&branchName=develop)
-[![dependency status](https://deps.rs/repo/github/nervosnetwork/ckb-vm/status.svg)](https://deps.rs/repo/github/nervosnetwork/ckb-vm)
 [![codecov](https://codecov.io/gh/nervosnetwork/ckb-vm/branch/develop/graph/badge.svg)](https://codecov.io/gh/nervosnetwork/ckb-vm)
 
 ---
