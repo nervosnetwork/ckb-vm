@@ -18,6 +18,7 @@ detect-asm = []
 byteorder = "1"
 bytes = "0.5.4"
 goblin = "0.2.0"
+scroll = "0.10"
 ckb-vm-definitions = { path = "definitions", version = "0.19.1" }
 derive_more = "0.99.2"
 
