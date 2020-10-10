@@ -18,6 +18,10 @@ matrix:
         - cargo fmt --version || rustup component add rustfmt-preview
         - cargo clippy --version || rustup component add clippy-preview
       env: SUITE=ci
+    - rust: stable
+      install:
+        - cargo deny --version || travis_retry cargo install cargo-deny --locked
+      env: SUITE=ci-deps
     - rust: 1.41.0
       addons:
         apt:
