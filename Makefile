@@ -26,6 +26,9 @@ fuzz:
 ci: fmt clippy test
 	git diff --exit-code Cargo.lock
 
+ci-deps: security-audit check-licenses check-crates
+	git diff --exit-code Cargo.lock
+
 ci-quick: test
 	git diff --exit-code Cargo.lock
 
@@ -40,11 +43,20 @@ stats:
 	@cargo count --version || cargo +nightly install --git https://github.com/kbknapp/cargo-count
 	@cargo count --separator , --unsafe-statistics
 
-# Use cargo-audit to audit Cargo.lock for crates with security vulnerabilities
-# expecting to see "Success No vulnerable packages found"
+# Use cargo-deny to audit Cargo.lock for crates with security vulnerabilities
 security-audit:
-	@cargo audit --version || cargo install cargo-audit
-	@cargo audit
+	@cargo deny --version || cargo install cargo-deny
+	@cargo deny check --hide-inclusion-graph --show-stats advisories sources
+
+# Use cargo-deny to check licenses for all dependencies.
+check-licenses:
+	@cargo deny --version || cargo install cargo-deny
+	@cargo deny check --hide-inclusion-graph --show-stats licenses
+
+# Use cargo-deny to check specific crates, detect and handle multiple versions of the same crate and wildcards version requirement.
+check-crates:
+	@cargo deny --version || cargo install cargo-deny
+	@cargo deny check --hide-inclusion-graph --show-stats bans
 
 update-cdefinitions:
 	cargo run --manifest-path=definitions/Cargo.toml --bin generate_asm_constants > src/machine/asm/cdefinitions_generated.h
@@ -64,5 +76,5 @@ src/machine/aot/aot.x64.win.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/s
 
 .PHONY: test clippy fmt fuzz
 .PHONY: ci ci-quick ci-all-features ci-cdefinitions
-.PHONY: stats security-audit
+.PHONY: stats security-audit check-licenses check-crates
 .PHONY: update-cdefinitions

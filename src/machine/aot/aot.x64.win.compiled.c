@@ -1,6 +1,6 @@
 /*
 ** This file has been pre-processed with DynASM.
-** http://luajit.org/dynasm.html
+** https://luajit.org/dynasm.html
 ** DynASM version 1.4.0, DynASM x64 version 1.4.0
 ** DO NOT EDIT! The original file is in "src/machine/aot/aot.x64.c".
 */
