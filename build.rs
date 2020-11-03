@@ -69,10 +69,11 @@ fn main() {
                 .file("src/machine/aot/aot.x64.compiled.c");
         }
 
-        build
-            .include("dynasm")
-            .include("src/machine/asm")
-            .compile("asm");
+        build.include("dynasm").include("src/machine/asm");
+        if cfg!(feature = "chaos_initialization") {
+            build.define("CKB_VM_ASM_MEMORY_CHAOS_INITIALIZATION", "1");
+        }
+        build.compile("asm");
 
         println!("cargo:rustc-cfg=has_asm")
     }

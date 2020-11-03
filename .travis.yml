@@ -58,6 +58,21 @@ matrix:
             - git
             - build-essential
       env: SUITE=ci-all-features
+    - rust: 1.41.0
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+      env: SUITE=ci-chaos
+    - os: osx
+      rust: 1.41.0
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+      env: SUITE=ci-chaos
     - name: Test Suite
       rust: 1.41.0
       dist: xenial
