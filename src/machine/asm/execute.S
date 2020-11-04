@@ -179,21 +179,21 @@
 
 #define RANDOM_MEMORY \
   PREPCALL; \
-  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, %rdi; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, %rdi; \
-  addq MACHINE, %rdi; \
+  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
+  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
+  addq MACHINE, TEMP1; \
   movq $CKB_VM_ASM_MEMORY_FRAMESIZE, %rcx; \
 3: \
   cmp $0, %rcx; \
   je 4f; \
-  push %rdi;\
+  push TEMP1;\
   push %rcx;\
   CALL_RAND; \
   pop %rcx; \
-  pop %rdi; \
+  pop TEMP1; \
   mov %al, (TEMP1); \
   sub $1, %rcx; \
-  add $1, %rdi; \
+  add $1, TEMP1; \
   jmp 3b; \
 4: \
   POSTCALL;
