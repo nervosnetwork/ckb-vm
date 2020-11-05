@@ -8,7 +8,7 @@ edition = "2018"
 autobins = false
 
 [features]
-chaos_mode = []
+enable-chaos-mode-by-default = []
 
 [[bin]]
 name = "generate_asm_constants"

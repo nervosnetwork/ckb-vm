@@ -13,7 +13,7 @@ default = []
 asm = []
 # Detect if requirements are met, and enable asm feature when we can.
 detect-asm = []
-chaos_mode = ["ckb-vm-definitions/chaos_mode"]
+enable-chaos-mode-by-default = ["ckb-vm-definitions/enable-chaos-mode-by-default"]
 
 [dependencies]
 byteorder = "1"

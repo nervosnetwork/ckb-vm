@@ -79,7 +79,7 @@ impl AsmCoreMachine {
         machine.running = 0;
         machine.cycles = 0;
         machine.max_cycles = max_cycles;
-        if cfg!(feature = "chaos-mode") {
+        if cfg!(feature = "enable-chaos-mode-by-default") {
             machine.chaos_mode = 1;
         } else {
             machine.chaos_mode = 0;

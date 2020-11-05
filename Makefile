@@ -5,7 +5,7 @@ test-all-features:
 	cargo test --all --features=asm -- --nocapture
 
 test-chaos:
-	cargo test --all --features=asm,chaos_mode -- --nocapture
+	cargo test --all --features=asm,enable-chaos-mode-by-default -- --nocapture
 
 check:
 	cargo check --all --all-targets --all-features
