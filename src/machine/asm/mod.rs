@@ -21,7 +21,6 @@ use ckb_vm_definitions::{
     instructions::OP_CUSTOM_TRACE_END,
 };
 use libc::c_uchar;
-#[cfg(feature = "chaos_initialization")]
 use rand::prelude::RngCore;
 use std::mem::transmute;
 
@@ -71,10 +70,11 @@ fn inited_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<(
         if machine.frames[i as usize] == 0 {
             let addr_from = (i << MEMORY_FRAME_SHIFTS) as usize;
             let addr_to = ((i + 1) << MEMORY_FRAME_SHIFTS) as usize;
-            #[cfg(feature = "chaos_initialization")]
-            rand::thread_rng().fill_bytes(&mut machine.memory[addr_from..addr_to]);
-            #[cfg(not(feature = "chaos_initialization"))]
-            memset(&mut machine.memory[addr_from..addr_to], 0);
+            if machine.chaos_mode != 0 {
+                rand::thread_rng().fill_bytes(&mut machine.memory[addr_from..addr_to]);
+            } else {
+                memset(&mut machine.memory[addr_from..addr_to], 0);
+            }
             machine.frames[i as usize] = 1;
         }
     }

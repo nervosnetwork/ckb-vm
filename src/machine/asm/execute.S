@@ -183,9 +183,9 @@
   addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
   addq MACHINE, TEMP1; \
   movq $CKB_VM_ASM_MEMORY_FRAMESIZE, %rcx; \
-3: \
+5: \
   cmp $0, %rcx; \
-  je 4f; \
+  je 6f; \
   push TEMP1;\
   push %rcx;\
   CALL_RAND; \
@@ -194,18 +194,22 @@
   mov %al, (TEMP1); \
   sub $1, %rcx; \
   add $1, TEMP1; \
-  jmp 3b; \
-4: \
+  jmp 5b; \
+6: \
   POSTCALL;
 
 /*
  * Make sure TEMP1 stores the frame index.
  */
-#ifdef CKB_VM_ASM_MEMORY_CHAOS_INITIALIZATION
-#define INITED_MEMORY RANDOM_MEMORY
-#else
-#define INITED_MEMORY ZEROED_MEMORY
-#endif
+#define INITED_MEMORY \
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_MODE(MACHINE), TEMP2d; \
+  cmp $0, TEMP2d; \
+  jne 3f; \
+  ZEROED_MEMORY; \
+  jmp 4f; \
+3: \
+  RANDOM_MEMORY; \
+4:
 
 #define CHECK_READ(address_reg, length) \
   movq address_reg, TEMP1; \

@@ -13,10 +13,7 @@ default = []
 asm = []
 # Detect if requirements are met, and enable asm feature when we can.
 detect-asm = []
-# When chaos_initialization opened, fill the memory with random data when
-# VM initializing. Note: Unless you strongly know what you are doing,
-# do not open this flag because it does not meet the RISC-V convention.
-chaos_initialization = ["rand"]
+chaos_mode = ["ckb-vm-definitions/chaos_mode"]
 
 [dependencies]
 byteorder = "1"
@@ -25,7 +22,7 @@ goblin = "0.2.0"
 scroll = "0.10"
 ckb-vm-definitions = { path = "definitions", version = "0.19.1" }
 derive_more = "0.99.2"
-rand = { version = "0.7.3", optional = true }
+rand = "0.7.3"
 
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]

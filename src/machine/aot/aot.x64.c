@@ -99,6 +99,7 @@ typedef struct {
   uint8_t running;
   uint64_t cycles;
   uint64_t max_cycles;
+  uint8_t chaos_mode;
   uint32_t version;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
@@ -362,11 +363,13 @@ int aot_link(AotContext* context, size_t *szp)
   | postcall
   | ret
   |->inited_memory:
-#ifdef CKB_VM_ASM_MEMORY_CHAOS_INITIALIZATION
-  | jmp ->random_memory
-#else
+  | lea rdx, machine->chaos_mode
+  | mov dl, byte [rdx]
+  | cmp dl, 0
+  | jne >1
   | jmp ->zeroed_memory
-#endif
+  |1:
+  | jmp ->random_memory
   /*
    * Check memory write permissions. Note this pseudo function does not use
    * C's standard calling convention, since the AOT code here has its own
