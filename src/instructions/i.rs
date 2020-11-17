@@ -1,11 +1,12 @@
-use super::super::machine::VERSION1;
+use ckb_vm_definitions::instructions as insts;
+
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
     stype_immediate, utype_immediate,
 };
-use super::Register;
-use super::{blank_instruction, Instruction, Itype, Rtype, Stype, Utype};
-use ckb_vm_definitions::instructions as insts;
+use super::{
+    blank_instruction, set_instruction_length_4, Instruction, Itype, Register, Rtype, Stype, Utype,
+};
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
@@ -30,13 +31,13 @@ impl FenceType {
     }
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
     }
     let rv64 = bit_length == 64;
-    match opcode(instruction_bits) {
+    let inst = (|| match opcode(instruction_bits) {
         0b_0110111 => Some(
             Utype::new_s(
                 insts::OP_LUI,
@@ -64,11 +65,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits) {
                 // I-type jump instructions
-                0b_000 => Some(if version >= VERSION1 {
-                    insts::OP_VERSION1_JALR
-                } else {
-                    insts::OP_JALR
-                }),
+                0b_000 => Some(insts::OP_JALR),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -83,28 +80,15 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         }
         0b_0000011 => {
             // I-type load instructions
-            let inst_opt = if version >= VERSION1 {
-                match funct3(instruction_bits) {
-                    0b_000 => Some(insts::OP_VERSION1_LB),
-                    0b_001 => Some(insts::OP_VERSION1_LH),
-                    0b_010 => Some(insts::OP_VERSION1_LW),
-                    0b_100 => Some(insts::OP_VERSION1_LBU),
-                    0b_101 => Some(insts::OP_VERSION1_LHU),
-                    0b_110 if rv64 => Some(insts::OP_VERSION1_LWU),
-                    0b_011 if rv64 => Some(insts::OP_VERSION1_LD),
-                    _ => None,
-                }
-            } else {
-                match funct3(instruction_bits) {
-                    0b_000 => Some(insts::OP_LB),
-                    0b_001 => Some(insts::OP_LH),
-                    0b_010 => Some(insts::OP_LW),
-                    0b_100 => Some(insts::OP_LBU),
-                    0b_101 => Some(insts::OP_LHU),
-                    0b_110 if rv64 => Some(insts::OP_LWU),
-                    0b_011 if rv64 => Some(insts::OP_LD),
-                    _ => None,
-                }
+            let inst_opt = match funct3(instruction_bits) {
+                0b_000 => Some(insts::OP_LB),
+                0b_001 => Some(insts::OP_LH),
+                0b_010 => Some(insts::OP_LW),
+                0b_100 => Some(insts::OP_LBU),
+                0b_101 => Some(insts::OP_LHU),
+                0b_110 if rv64 => Some(insts::OP_LWU),
+                0b_011 if rv64 => Some(insts::OP_LD),
+                _ => None,
             };
             inst_opt.map(|inst| {
                 Itype::new_s(
@@ -296,7 +280,8 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             })
         }
         _ => None,
-    }
+    })();
+    inst.map(set_instruction_length_4)
 }
 
 pub fn nop() -> Instruction {

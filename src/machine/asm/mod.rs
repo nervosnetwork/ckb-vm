@@ -9,7 +9,7 @@ use ckb_vm_definitions::{
         TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    MEMORY_FRAME_PAGE_SHIFTS,
+    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -20,7 +20,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::aot::AotCode,
+    machine::{VERSION0, aot::AotCode},
     memory::{
         check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
         set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
@@ -343,7 +343,10 @@ impl<'a> AsmMachine<'a> {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
-        let decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
+            return Err(Error::InvalidVersion);
+        }
+        let decoder = build_decoder::<u64>(self.machine.isa());
         self.machine.set_running(true);
         while self.machine.running() {
             let result = if let Some(aot_code) = &self.aot_code {
@@ -368,14 +371,9 @@ impl<'a> AsmMachine<'a> {
                     let mut current_pc = pc;
                     let mut i = 0;
                     while i < TRACE_ITEM_LENGTH {
-                        let mut instruction =
-                            decoder.decode(self.machine.memory_mut(), current_pc)?;
+                        let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
-                        // We are storing the offset after current instruction in unused
-                        // space of the instruction, so as to allow easy access of this data
-                        // within assembly loops.
-                        instruction |= u64::from((current_pc - pc) as u8) << 24;
                         trace.instructions[i] = instruction;
                         trace.cycles += self
                             .machine
@@ -387,8 +385,9 @@ impl<'a> AsmMachine<'a> {
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.
                         trace.thread[i] = unsafe {
-                            u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))
-                                + (ckb_vm_asm_labels as *const u32 as u64)
+                            u64::from(
+                                *(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize),
+                            ) + (ckb_vm_asm_labels as *const u32 as u64)
                         };
                         i += 1;
                         if end_instruction {

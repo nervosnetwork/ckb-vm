@@ -18,7 +18,7 @@ pub enum Error {
     #[display(fmt = "invalid elf")]
     InvalidElfBits,
     #[display(fmt = "invalid operand {}", "_0")]
-    InvalidOp(u8),
+    InvalidOp(u16),
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(ErrorKind),
     #[display(fmt = "dynasm error {}", "_0")]

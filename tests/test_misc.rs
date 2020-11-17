@@ -1,4 +1,7 @@
-extern crate ckb_vm;
+use std::fs::File;
+use std::io::Read;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 
 use bytes::Bytes;
 #[cfg(has_asm)]
@@ -12,10 +15,6 @@ use ckb_vm::{
     FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
 use ckb_vm_definitions::RISCV_PAGESIZE;
-use std::fs::File;
-use std::io::Read;
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::Arc;
 
 #[test]
 pub fn test_andi() {
