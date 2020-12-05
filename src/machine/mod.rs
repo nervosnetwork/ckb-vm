@@ -196,8 +196,15 @@ pub trait SupportMachine: CoreMachine {
         for value in values.iter().rev() {
             let address =
                 self.registers()[SP].overflowing_sub(&Self::REG::from_u8(Self::REG::BITS / 8));
-
-            self.memory_mut().store32(&address, value)?;
+            if self.version() >= VERSION1 {
+                if Self::REG::BITS == 64 {
+                    self.memory_mut().store64(&address, value)?;
+                } else {
+                    self.memory_mut().store32(&address, value)?;
+                }
+            } else {
+                self.memory_mut().store32(&address, value)?;
+            }
             self.set_register(SP, address);
         }
         if self.registers()[SP].to_u64() < stack_start {

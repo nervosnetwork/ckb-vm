@@ -40,6 +40,7 @@ pub struct AsmCoreMachine {
     pub running: u8,
     pub cycles: u64,
     pub max_cycles: u64,
+    pub chaos_mode: u8,
     pub version: u32,
     pub flags: [u8; RISCV_PAGES],
     pub memory: [u8; RISCV_MAX_MEMORY],
@@ -78,6 +79,11 @@ impl AsmCoreMachine {
         machine.running = 0;
         machine.cycles = 0;
         machine.max_cycles = max_cycles;
+        if cfg!(feature = "enable-chaos-mode-by-default") {
+            machine.chaos_mode = 1;
+        } else {
+            machine.chaos_mode = 0;
+        }
         machine.flags = [0; RISCV_PAGES];
         for i in 0..TRACE_SIZE {
             machine.traces[i] = Trace::default();

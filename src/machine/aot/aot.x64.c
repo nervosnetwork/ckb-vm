@@ -99,6 +99,7 @@ typedef struct {
   uint8_t running;
   uint64_t cycles;
   uint64_t max_cycles;
+  uint8_t chaos_mode;
   uint32_t version;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
@@ -339,6 +340,36 @@ int aot_link(AotContext* context, size_t *szp)
   | call rax
   | postcall
   | ret
+  |->random_memory:
+  | prepcall
+  | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+  | lea rdi, machine->memory
+  | add rdi, rcx
+  | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
+  |1:
+  | cmp rcx, 0
+  | je >2
+  | mov64 rax, (uint64_t)rand
+  | push rdi
+  | push rcx
+  | call rax
+  | pop rcx
+  | pop rdi
+  | mov byte [rdi], al
+  | sub rcx, 1
+  | add rdi, 1
+  | jmp <1
+  |2:
+  | postcall
+  | ret
+  |->inited_memory:
+  | lea rdx, machine->chaos_mode
+  | mov dl, byte [rdx]
+  | cmp dl, 0
+  | jne >1
+  | jmp ->zeroed_memory
+  |1:
+  | jmp ->random_memory
   /*
    * Check memory write permissions. Note this pseudo function does not use
    * C's standard calling convention, since the AOT code here has its own
@@ -379,7 +410,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >1
   | mov byte [rdx+rcx], 1
-  | call ->zeroed_memory
+  | call ->inited_memory
   |1:
   /* Check if the write spans to a second memory page */
   | mov rdx, rax
@@ -406,7 +437,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >2
   | mov byte [rdx+rcx], 1
-  | call ->zeroed_memory
+  | call ->inited_memory
   |2:
   | mov rdx, 0
   | pop r8
@@ -440,7 +471,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >1
   | mov byte [rsi+rcx], 1
-  | call ->zeroed_memory
+  | call ->inited_memory
   |1:
   | mov rcx, rax
   | add rcx, rdx
@@ -452,7 +483,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >2
   | mov byte [rsi+rcx], 1
-  | call ->zeroed_memory
+  | call ->inited_memory
   | jmp >2
   |2:
   | mov rdx, 0

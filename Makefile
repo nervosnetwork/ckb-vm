@@ -4,6 +4,9 @@ test:
 test-all-features:
 	cargo test --all --features=asm -- --nocapture
 
+test-chaos:
+	cargo test --all --features=asm,enable-chaos-mode-by-default -- --nocapture
+
 check:
 	cargo check --all --all-targets --all-features
 
@@ -33,6 +36,9 @@ ci-quick: test
 	git diff --exit-code Cargo.lock
 
 ci-all-features: test-all-features
+	git diff --exit-code Cargo.lock
+
+ci-chaos: test-chaos
 	git diff --exit-code Cargo.lock
 
 ci-generated: src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c update-cdefinitions

@@ -26,3 +26,13 @@ jobs:
           rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
       - script: make test-all-features
         displayName: Run unit tests with all features
+
+  - job: UnitTestChaos
+    pool:
+      vmImage: 'VS2017-Win2016'
+    steps:
+      - template: devtools/azure/windows-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
+      - script: make test-chaos
+        displayName: Run unit tests with chaos
