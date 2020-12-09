@@ -165,9 +165,13 @@ pub trait SupportMachine: CoreMachine {
         //
         // See https://github.com/nervosnetwork/ckb-vm/issues/106 for more details.
         if self.version() >= VERSION1 && args.is_empty() {
-            let used = u64::from(Self::REG::BITS / 8);
-            self.set_register(SP, Self::REG::from_u64(stack_start + stack_size - used));
-            return Ok(used);
+            let argc_size = u64::from(Self::REG::BITS / 8);
+            let origin_sp = stack_start + stack_size;
+            let unaligned_sp_address = origin_sp - argc_size;
+            let aligned_sp_address = unaligned_sp_address & (!15);
+            let used_bytes = origin_sp - aligned_sp_address;
+            self.set_register(SP, Self::REG::from_u64(aligned_sp_address));
+            return Ok(used_bytes);
         }
 
         // We are enforcing WXorX now, there's no need to call init_pages here
@@ -456,6 +460,10 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
             DEFAULT_STACK_SIZE as u64,
         )?;
+        // Make sure SP is 16 byte aligned
+        if self.inner.version() >= VERSION1 {
+            debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
+        }
         let bytes = elf_bytes
             .checked_add(stack_bytes)
             .ok_or(Error::Unexpected)?;
