@@ -27,6 +27,7 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/92
 // * https://github.com/nervosnetwork/ckb-vm/issues/97
 // * https://github.com/nervosnetwork/ckb-vm/issues/98
+// * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
 
 // Converts goblin's ELF flags into RISC-V flags
@@ -155,6 +156,20 @@ pub trait SupportMachine: CoreMachine {
         stack_start: u64,
         stack_size: u64,
     ) -> Result<u64, Error> {
+        // When we re-ordered the sections of a program, writing data in high memory
+        // will cause unnecessary changes. At the same time, for ckb, argc is always 0
+        // and the memory is initialized to 0, so memory writing can be safely skipped.
+        //
+        // It should be noted that when "chaos_mode" enabled and "argv" is empty,
+        // reading "argc" will return an unexpected data. This situation is not very common.
+        //
+        // See https://github.com/nervosnetwork/ckb-vm/issues/106 for more details.
+        if self.version() >= VERSION1 && args.is_empty() {
+            let used = u64::from(Self::REG::BITS / 8);
+            self.set_register(SP, Self::REG::from_u64(stack_start + stack_size - used));
+            return Ok(used);
+        }
+
         // We are enforcing WXorX now, there's no need to call init_pages here
         // since all the required bits are already set.
         self.set_register(SP, Self::REG::from_u64(stack_start + stack_size));
