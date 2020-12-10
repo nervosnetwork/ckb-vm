@@ -2,7 +2,10 @@
 
 use bytes::Bytes;
 use ckb_vm::{
-    machine::asm::{AsmCoreMachine, AsmMachine},
+    machine::{
+        asm::{AsmCoreMachine, AsmMachine},
+        VERSION1,
+    },
     registers::{A0, A1, A2, A3, A4, A5, A7},
     Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
 };
@@ -293,4 +296,40 @@ pub fn test_asm_alloc_many() {
         .unwrap();
     let result = machine.run();
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_asm_chaos_seed() {
+    let mut file = File::open("tests/programs/read_memory").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let read_1st = {
+        let mut asm_core = AsmCoreMachine::new(VERSION1, u64::max_value());
+        asm_core.chaos_mode = 1;
+        asm_core.chaos_seed = 100;
+        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+        let mut machine = AsmMachine::new(core, None);
+        machine
+            .load_program(&buffer, &vec!["read_memory".into()])
+            .unwrap();
+        let result = machine.run();
+        result.unwrap()
+    };
+
+    let read_2nd = {
+        let mut asm_core = AsmCoreMachine::new(VERSION1, u64::max_value());
+        asm_core.chaos_mode = 1;
+        asm_core.chaos_seed = 100;
+        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+        let mut machine = AsmMachine::new(core, None);
+        machine
+            .load_program(&buffer, &vec!["read_memory".into()])
+            .unwrap();
+        let result = machine.run();
+        result.unwrap()
+    };
+
+    assert_eq!(read_1st, read_2nd);
 }

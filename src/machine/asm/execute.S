@@ -113,6 +113,9 @@
 #define REGISTER_ADDRESS(r) \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE, r, 8)
 
+#define CHAOS_SEED \
+  (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED)(MACHINE)
+
 /*
  * Those macros provide slight abstractions over register allocations,
  * they might change when we alter register allocations. For example:
@@ -147,13 +150,12 @@
 
 #ifdef __APPLE__
 #define CALL_MEMSET call _memset
-#define CALL_RAND   call _rand
+#define CALL_RAND_R call _rand_r
 #elif defined IS_WINDOWS
 #define CALL_MEMSET call memset
-#define CALL_RAND   call rand
 #else
 #define CALL_MEMSET call memset@plt
-#define CALL_RAND   call rand@plt
+#define CALL_RAND_R call rand_r@plt
 #endif
 
 #define CHECK_READ_BOUND_VERSION1(length) \
@@ -177,8 +179,12 @@
   CALL_MEMSET; \
   POSTCALL;
 
+#ifdef IS_WINDOWS
 #define RANDOM_MEMORY \
   PREPCALL; \
+  mov CHAOS_SEED, ARG1; \
+  call srand; \
+  POSTCALL; \
   shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
   addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
   addq MACHINE, TEMP1; \
@@ -186,17 +192,41 @@
 5: \
   cmp $0, %rcx; \
   je 6f; \
-  push TEMP1;\
-  push %rcx;\
-  CALL_RAND; \
-  pop %rcx; \
-  pop TEMP1; \
-  mov %al, (TEMP1); \
+  PREPCALL; \
+  call rand; \
+  mov %al, %r15b; \
+  POSTCALL; \
+  mov %r15b, (TEMP1); \
   sub $1, %rcx; \
   add $1, TEMP1; \
   jmp 5b; \
 6: \
-  POSTCALL;
+  PREPCALL; \
+  call rand; \
+  mov %al, %r15b; \
+  POSTCALL; \
+  mov %r15d, CHAOS_SEED;
+#else
+#define RANDOM_MEMORY \
+  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
+  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
+  addq MACHINE, TEMP1; \
+  movq $CKB_VM_ASM_MEMORY_FRAMESIZE, %rcx; \
+5: \
+  cmp $0, %rcx; \
+  je 6f; \
+  PREPCALL; \
+  movq MACHINE, ARG1; \
+  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED, ARG1; \
+  CALL_RAND_R; \
+  mov %al, %r15b; \
+  POSTCALL; \
+  mov %r15b, (TEMP1); \
+  sub $1, %rcx; \
+  add $1, TEMP1; \
+  jmp 5b; \
+6:
+#endif
 
 /*
  * Make sure TEMP1 stores the frame index.

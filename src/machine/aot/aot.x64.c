@@ -100,6 +100,7 @@ typedef struct {
   uint64_t cycles;
   uint64_t max_cycles;
   uint8_t chaos_mode;
+  uint32_t chaos_seed;
   uint32_t version;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
@@ -340,28 +341,54 @@ int aot_link(AotContext* context, size_t *szp)
   | call rax
   | postcall
   | ret
-  |->random_memory:
-  | prepcall
-  | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | lea rdi, machine->memory
-  | add rdi, rcx
-  | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
-  |1:
-  | cmp rcx, 0
-  | je >2
-  | mov64 rax, (uint64_t)rand
-  | push rdi
-  | push rcx
-  | call rax
-  | pop rcx
-  | pop rdi
-  | mov byte [rdi], al
-  | sub rcx, 1
-  | add rdi, 1
-  | jmp <1
-  |2:
-  | postcall
-  | ret
+  |.if WIN
+    |->random_memory:
+    | prepcall
+    | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+    | lea rdi, machine->memory
+    | add rdi, rcx
+    | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
+    |1:
+    | cmp rcx, 0
+    | je >2
+    | mov64 rax, (uint64_t)rand
+    | push rdi
+    | push rcx
+    | call rax
+    | pop rcx
+    | pop rdi
+    | mov byte [rdi], al
+    | sub rcx, 1
+    | add rdi, 1
+    | jmp <1
+    |2:
+    | postcall
+    | ret
+  |.else
+    |->random_memory:
+    | prepcall
+    | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
+    | lea rdi, machine->memory
+    | add rdi, rcx
+    | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
+    |1:
+    | cmp rcx, 0
+    | je >2
+    | push rdi
+    | push rcx
+    | mov64 rax, (uint64_t)rand_r
+    | lea rArg1, machine->chaos_seed
+    | call rax
+    | pop rcx
+    | pop rdi
+    | mov byte [rdi], al
+    | sub rcx, 1
+    | add rdi, 1
+    | jmp <1
+    |2:
+    | postcall
+    | ret
+  |.endif
   |->inited_memory:
   | lea rdx, machine->chaos_mode
   | mov dl, byte [rdx]

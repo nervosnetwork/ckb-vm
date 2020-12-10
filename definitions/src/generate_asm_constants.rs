@@ -129,6 +129,10 @@ fn main() {
         (&m.chaos_mode as *const u8 as usize) - m_address
     );
     println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED {}",
+        (&m.chaos_seed as *const u32 as usize) - m_address
+    );
+    println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );

@@ -21,7 +21,7 @@ use ckb_vm_definitions::{
     instructions::OP_CUSTOM_TRACE_END,
 };
 use libc::c_uchar;
-use rand::prelude::RngCore;
+use rand::{prelude::RngCore, SeedableRng};
 use std::mem::transmute;
 
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -71,7 +71,9 @@ fn inited_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<(
             let addr_from = (i << MEMORY_FRAME_SHIFTS) as usize;
             let addr_to = ((i + 1) << MEMORY_FRAME_SHIFTS) as usize;
             if machine.chaos_mode != 0 {
-                rand::thread_rng().fill_bytes(&mut machine.memory[addr_from..addr_to]);
+                let mut gen = rand::rngs::StdRng::seed_from_u64(machine.chaos_seed.into());
+                gen.fill_bytes(&mut machine.memory[addr_from..addr_to]);
+                machine.chaos_seed = gen.next_u32();
             } else {
                 memset(&mut machine.memory[addr_from..addr_to], 0);
             }
