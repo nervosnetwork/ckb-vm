@@ -203,7 +203,7 @@
 6: \
   PREPCALL; \
   call rand; \
-  mov %al, %r15b; \
+  mov %eax, %r15d; \
   POSTCALL; \
   mov %r15d, CHAOS_SEED;
 #else

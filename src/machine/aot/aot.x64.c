@@ -247,10 +247,12 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     |.define rArg1, rcx
     |.define rArg2, rdx
     |.define rArg3, r8
+    |.define rArg1d, ecx
   |.else
     |.define rArg1, rdi
     |.define rArg2, rsi
     |.define rArg3, rdx
+    |.define rArg1d, edi
   |.endif
   |.macro prepcall
     | push rdi
@@ -344,55 +346,65 @@ int aot_link(AotContext* context, size_t *szp)
   |.if WIN
     |->random_memory:
     | prepcall
+    | mov64 rax, (uint64_t)srand
+    | mov rArg1d, machine->chaos_seed
+    | call rax
+    | postcall
+    | prepcall
     | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-    | lea rdi, machine->memory
-    | add rdi, rcx
+    | lea rsi, machine->memory
+    | add rsi, rcx
     | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
     |1:
     | cmp rcx, 0
     | je >2
-    | mov64 rax, (uint64_t)rand
-    | push rdi
+    | push rsi
     | push rcx
+    | mov64 rax, (uint64_t)rand
     | call rax
     | pop rcx
-    | pop rdi
-    | mov byte [rdi], al
+    | pop rsi
+    | mov byte [rsi], al
     | sub rcx, 1
-    | add rdi, 1
+    | add rsi, 1
     | jmp <1
     |2:
+    | mov64 rax, (uint64_t)rand
+    | call rax
+    | mov machine->chaos_seed, eax
     | postcall
     | ret
   |.else
     |->random_memory:
     | prepcall
     | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-    | lea rdi, machine->memory
-    | add rdi, rcx
+    | lea rsi, machine->memory
+    | add rsi, rcx
     | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
     |1:
     | cmp rcx, 0
     | je >2
     | push rdi
+    | push rsi
     | push rcx
     | mov64 rax, (uint64_t)rand_r
     | lea rArg1, machine->chaos_seed
     | call rax
     | pop rcx
+    | pop rsi
     | pop rdi
-    | mov byte [rdi], al
+    | mov byte [rsi], al
     | sub rcx, 1
-    | add rdi, 1
+    | add rsi, 1
     | jmp <1
     |2:
     | postcall
     | ret
   |.endif
   |->inited_memory:
-  | lea rdx, machine->chaos_mode
-  | mov dl, byte [rdx]
-  | cmp dl, 0
+  | lea r8, machine->chaos_mode
+  | mov r8b, byte [r8]
+  | cmp r8b, 0
   | jne >1
   | jmp ->zeroed_memory
   |1:
