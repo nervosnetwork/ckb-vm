@@ -15,49 +15,54 @@
 #define ARG1 %rcx
 #define ARG2 %rdx
 #define ARG3 %r8
+#define ARG1d %ecx
 #else
 #define ARG1 %rdi
 #define ARG2 %rsi
 #define ARG3 %rdx
+#define ARG1d %edi
 #endif
 
 #ifdef IS_WINDOWS
 #define PREPCALL \
+  push %rax; \
   push %rdi; \
   push %rsi; \
-  push %rax; \
   push %rcx; \
   push %rdx; \
   push %r8; \
   push %r9; \
-  sub $32, %rsp;
+  push %r10; \
+  sub $32, %rsp
 #define POSTCALL \
   add $32, %rsp; \
+  pop %r10; \
   pop %r9; \
   pop %r8; \
   pop %rdx; \
   pop %rcx; \
-  pop %rax; \
   pop %rsi; \
-  pop %rdi;
+  pop %rdi
 #else
 #define PREPCALL \
+  push %rax; \
   push %rdi; \
   push %rsi; \
-  push %rax; \
   push %rcx; \
   push %rdx; \
   push %r8; \
-  push %r9;
+  push %r9; \
+  push %r10
 #define POSTCALL \
+  pop %r10; \
   pop %r9; \
   pop %r8; \
   pop %rdx; \
   pop %rcx; \
-  pop %rax; \
   pop %rsi; \
-  pop %rdi;
+  pop %rdi
 #endif
+#define POSTCALL_RAX pop %rax
 
 /* rax is used both in Microsoft x64 and System V AMD64 ABI */
 #define ARG_RETd %eax
@@ -105,7 +110,7 @@
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
 
 #define ZERO_ADDRESS \
-  (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS)(MACHINE)
+  CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE)
 
 #define SP_ADDRESS \
   (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_SP * 8)(MACHINE)
@@ -113,8 +118,8 @@
 #define REGISTER_ADDRESS(r) \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE, r, 8)
 
-#define CHAOS_SEED \
-  (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED)(MACHINE)
+#define CHAOS_SEED_ADDRESS \
+  CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED(MACHINE)
 
 /*
  * Those macros provide slight abstractions over register allocations,
@@ -169,22 +174,21 @@
   ja .exit_out_of_bound
 
 #define ZEROED_MEMORY \
-  PREPCALL; \
   MOV_TEMP1_TO_ARG1; \
   shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, ARG1; \
   addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, ARG1; \
   addq MACHINE, ARG1; \
   xor ARG2, ARG2; \
   movq $CKB_VM_ASM_MEMORY_FRAMESIZE, ARG3; \
-  CALL_MEMSET; \
-  POSTCALL;
+  CALL_MEMSET
 
 #ifdef IS_WINDOWS
 #define RANDOM_MEMORY \
   PREPCALL; \
-  mov CHAOS_SEED, ARG1; \
+  movl CHAOS_SEED_ADDRESS, ARG1d; \
   call srand; \
   POSTCALL; \
+  POSTCALL_RAX; \
   shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
   addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
   addq MACHINE, TEMP1; \
@@ -194,18 +198,18 @@
   je 6f; \
   PREPCALL; \
   call rand; \
-  mov %al, %r15b; \
   POSTCALL; \
-  mov %r15b, (TEMP1); \
+  movb %al, (TEMP1); \
+  POSTCALL_RAX; \
   sub $1, %rcx; \
   add $1, TEMP1; \
   jmp 5b; \
 6: \
   PREPCALL; \
   call rand; \
-  mov %eax, %r15d; \
   POSTCALL; \
-  mov %r15d, CHAOS_SEED;
+  mov %eax, CHAOS_SEED_ADDRESS; \
+  POSTCALL_RAX
 #else
 #define RANDOM_MEMORY \
   shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
@@ -216,12 +220,12 @@
   cmp $0, %rcx; \
   je 6f; \
   PREPCALL; \
-  movq MACHINE, ARG1; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED, ARG1; \
+  movq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED, ARG1; \
+  addq MACHINE, ARG1; \
   CALL_RAND_R; \
-  mov %al, %r15b; \
   POSTCALL; \
-  mov %r15b, (TEMP1); \
+  movb %al, (TEMP1); \
+  POSTCALL_RAX; \
   sub $1, %rcx; \
   add $1, TEMP1; \
   jmp 5b; \
@@ -232,14 +236,17 @@
  * Make sure TEMP1 stores the frame index.
  */
 #define INITED_MEMORY \
-  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_MODE(MACHINE), TEMP2d; \
-  cmp $0, TEMP2d; \
+  PREPCALL; \
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_MODE(MACHINE), %edx; \
+  cmp $0, %edx; \
   jne 3f; \
   ZEROED_MEMORY; \
   jmp 4f; \
 3: \
   RANDOM_MEMORY; \
-4:
+4: \
+  POSTCALL; \
+  POSTCALL_RAX
 
 #define CHECK_READ(address_reg, length) \
   movq address_reg, TEMP1; \
@@ -349,6 +356,7 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
+  sub $8, %rsp
 #ifdef IS_WINDOWS
   push %rsi
   push %rdi
@@ -1399,4 +1407,5 @@ ckb_vm_x64_execute:
   pop %rdi
   pop %rsi
 #endif
+  add $8, %rsp
   retq
