@@ -4,8 +4,9 @@ use bytes::Bytes;
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
-        VERSION1,
+        CoreMachine, VERSION1,
     },
+    memory::Memory,
     registers::{A0, A1, A2, A3, A4, A5, A7},
     Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
 };
@@ -305,31 +306,30 @@ pub fn test_asm_chaos_seed() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let read_1st = {
-        let mut asm_core = AsmCoreMachine::new(VERSION1, u64::max_value());
-        asm_core.chaos_mode = 1;
-        asm_core.chaos_seed = 100;
-        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-        let mut machine = AsmMachine::new(core, None);
-        machine
-            .load_program(&buffer, &vec!["read_memory".into()])
-            .unwrap();
-        let result = machine.run();
-        result.unwrap()
-    };
+    let mut asm_core1 = AsmCoreMachine::new(VERSION1, u64::max_value());
+    asm_core1.chaos_mode = 1;
+    asm_core1.chaos_seed = 100;
+    let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
+    let mut machine1 = AsmMachine::new(core1, None);
+    machine1
+        .load_program(&buffer, &vec!["read_memory".into()])
+        .unwrap();
+    let result1 = machine1.run();
+    let exit1 = result1.unwrap();
 
-    let read_2nd = {
-        let mut asm_core = AsmCoreMachine::new(VERSION1, u64::max_value());
-        asm_core.chaos_mode = 1;
-        asm_core.chaos_seed = 100;
-        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-        let mut machine = AsmMachine::new(core, None);
-        machine
-            .load_program(&buffer, &vec!["read_memory".into()])
-            .unwrap();
-        let result = machine.run();
-        result.unwrap()
-    };
+    let mut asm_core2 = AsmCoreMachine::new(VERSION1, u64::max_value());
+    asm_core2.chaos_mode = 1;
+    asm_core2.chaos_seed = 100;
+    let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
+    let mut machine2 = AsmMachine::new(core2, None);
+    machine2
+        .load_program(&buffer, &vec!["read_memory".into()])
+        .unwrap();
+    let result2 = machine2.run();
+    let exit2 = result2.unwrap();
 
-    assert_eq!(read_1st, read_2nd);
+    assert_eq!(exit1, exit2);
+    // Read 4 bytes from 0x300000, it is very unlikely that they are both 0.
+    assert!(machine1.machine.memory_mut().load64(&0x300000).unwrap() != 0);
+    assert!(machine2.machine.memory_mut().load64(&0x300000).unwrap() != 0);
 }

@@ -110,6 +110,37 @@ typedef struct {
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
 } AsmMachine;
 
+#ifdef _WIN32
+void random_memory(uint64_t frame_index, AsmMachine* machine) {
+  uint64_t offset = frame_index << CKB_VM_ASM_MEMORY_FRAME_SHIFTS;
+  srand(machine->chaos_seed);
+  for (uint64_t i = 0; i < CKB_VM_ASM_MEMORY_FRAMESIZE; i++) {
+    machine->memory[offset + i] = rand() & 0xff;
+  }
+  machine->chaos_seed = rand();
+}
+#else
+void random_memory(uint64_t frame_index, AsmMachine* machine) {
+  uint64_t offset = frame_index << CKB_VM_ASM_MEMORY_FRAME_SHIFTS;
+  for (uint64_t i = 0; i < CKB_VM_ASM_MEMORY_FRAMESIZE; i++) {
+    machine->memory[offset + i] = rand_r(&machine->chaos_seed) & 0xff;
+  }
+}
+#endif
+
+void zeroed_memory(uint64_t frame_index, AsmMachine* machine) {
+  uint64_t offset = frame_index << CKB_VM_ASM_MEMORY_FRAME_SHIFTS;
+  memset(&machine->memory[offset], 0, CKB_VM_ASM_MEMORY_FRAMESIZE);
+}
+
+void inited_memory(uint64_t frame_index, AsmMachine* machine) {
+    if (machine->chaos_mode != 0) {
+        random_memory(frame_index, machine);
+    } else {
+        zeroed_memory(frame_index, machine);
+    }
+}
+
 #define AOT_TAG_REGISTER 0x1
 #define AOT_TAG_IMMEDIATE 0x2
 #define AOT_TAG_X64_REGISTER 0x3
@@ -246,17 +277,14 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
   |.if WIN
     |.define rArg1, rcx
     |.define rArg2, rdx
-    |.define rArg3, r8
-    |.define rArg1d, ecx
   |.else
     |.define rArg1, rdi
     |.define rArg2, rsi
-    |.define rArg3, rdx
-    |.define rArg1d, edi
   |.endif
   |.macro prepcall
     | push rdi
     | push rsi
+    | push rax
     | push rcx
     | push rdx
     | push r8
@@ -280,6 +308,7 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     | pop r8
     | pop rdx
     | pop rcx
+    | pop rax
     | pop rsi
     | pop rdi
   |.endmacro
@@ -331,88 +360,6 @@ int aot_link(AotContext* context, size_t *szp)
   dasm_State** Dst = &context->d;
 
   /*
-   * Fill the specified frame with zeros. Required arguments to this
-   * pseudo function include:
-   *
-   * rcx: index of the frame
-   */
-  |->zeroed_memory:
-  | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-  | lea rArg2, machine->memory
-  | add rcx, rArg2
-  | mov rArg1, rcx
-  | xor rArg2, rArg2
-  | mov rArg3, CKB_VM_ASM_MEMORY_FRAMESIZE
-  | mov64 rax, (uint64_t)memset
-  | call rax
-  | pop rax
-  | postcall
-  | ret
-  |.if WIN
-    |->random_memory:
-    | prepcall
-    | mov64 rax, (uint64_t)srand
-    | mov rArg1d, machine->chaos_seed
-    | call rax
-    | postcall
-    | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-    | lea rsi, machine->memory
-    | add rsi, rcx
-    | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
-    |1:
-    | cmp rcx, 0
-    | je >2
-    | prepcall
-    | mov64 rax, (uint64_t)rand
-    | call rax
-    | postcall
-    | mov byte [rsi], al
-    | sub rcx, 1
-    | add rsi, 1
-    | jmp <1
-    |2:
-    | prepcall
-    | mov64 rax, (uint64_t)rand
-    | call rax
-    | postcall
-    | mov machine->chaos_seed, eax
-    | pop rax
-    | postcall
-    | ret
-  |.else
-    |->random_memory:
-    | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
-    | lea rsi, machine->memory
-    | add rsi, rcx
-    | mov rcx, CKB_VM_ASM_MEMORY_FRAMESIZE
-    |1:
-    | cmp rcx, 0
-    | je >2
-    | prepcall
-    | mov64 rax, (uint64_t)rand_r
-    | lea rArg1, machine->chaos_seed
-    | call rax
-    | postcall
-    | mov byte [rsi], al
-    | sub rcx, 1
-    | add rsi, 1
-    | jmp <1
-    |2:
-    | pop rax
-    | postcall
-    | ret
-  |.endif
-  |->inited_memory:
-  | prepcall
-  | push rax
-  | lea rdx, machine->chaos_mode
-  | mov dl, byte [rdx]
-  | cmp dl, 0
-  | jne >1
-  | jmp ->zeroed_memory
-  |1:
-  | jmp ->random_memory
-  /*
    * Check memory write permissions. Note this pseudo function does not use
    * C's standard calling convention, since the AOT code here has its own
    * register allocations for maximum performance. Required arguments to this
@@ -452,7 +399,12 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >1
   | mov byte [rdx+rcx], 1
-  | call ->inited_memory
+  | prepcall
+  | mov rArg2, machine
+  | mov rArg1, rcx
+  | mov64 rax, (uint64_t)inited_memory
+  | call rax
+  | postcall
   |1:
   /* Check if the write spans to a second memory page */
   | mov rdx, rax
@@ -479,7 +431,12 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >2
   | mov byte [rdx+rcx], 1
-  | call ->inited_memory
+  | prepcall
+  | mov rArg2, machine
+  | mov rArg1, rcx
+  | mov64 rax, (uint64_t)inited_memory
+  | call rax
+  | postcall
   |2:
   | mov rdx, 0
   | pop r8
@@ -513,7 +470,12 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >1
   | mov byte [rsi+rcx], 1
-  | call ->inited_memory
+  | prepcall
+  | mov rArg2, machine
+  | mov rArg1, rcx
+  | mov64 rax, (uint64_t)inited_memory
+  | call rax
+  | postcall
   |1:
   | mov rcx, rax
   | add rcx, rdx
@@ -525,7 +487,12 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >2
   | mov byte [rsi+rcx], 1
-  | call ->inited_memory
+  | prepcall
+  | mov rArg2, machine
+  | mov rArg1, rcx
+  | mov64 rax, (uint64_t)inited_memory
+  | call rax
+  | postcall
   | jmp >2
   |2:
   | mov rdx, 0

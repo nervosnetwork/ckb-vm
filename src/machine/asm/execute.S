@@ -14,19 +14,16 @@
 #ifdef IS_WINDOWS
 #define ARG1 %rcx
 #define ARG2 %rdx
-#define ARG3 %r8
-#define ARG1d %ecx
 #else
 #define ARG1 %rdi
 #define ARG2 %rsi
-#define ARG3 %rdx
-#define ARG1d %edi
 #endif
 
 #ifdef IS_WINDOWS
 #define PREPCALL \
   push %rdi; \
   push %rsi; \
+  push %rax; \
   push %rcx; \
   push %rdx; \
   push %r8; \
@@ -45,12 +42,14 @@
   pop %r8; \
   pop %rdx; \
   pop %rcx; \
+  pop %rax; \
   pop %rsi; \
   pop %rdi
 #else
 #define PREPCALL \
   push %rdi; \
   push %rsi; \
+  push %rax; \
   push %rcx; \
   push %rdx; \
   push %r8; \
@@ -67,6 +66,7 @@
   pop %r8; \
   pop %rdx; \
   pop %rcx; \
+  pop %rax; \
   pop %rsi; \
   pop %rdi
 #endif
@@ -156,18 +156,18 @@
 #define MOV_RDX_TO_RS2r movq %rdx, RS2r
 #ifdef IS_WINDOWS
 #define MOV_TEMP1_TO_ARG1 movq TEMP1, ARG1
+#define MOV_MACHINE_TO_ARG2 movq MACHINE, ARG2
 #else
 #define MOV_TEMP1_TO_ARG1
+#define MOV_MACHINE_TO_ARG2
 #endif
 
 #ifdef __APPLE__
-#define CALL_MEMSET call _memset
-#define CALL_RAND_R call _rand_r
+#define CALL_INITED_MEMORY call _inited_memory
 #elif defined IS_WINDOWS
-#define CALL_MEMSET call memset
+#define CALL_INITED_MEMORY call inited_memory
 #else
-#define CALL_MEMSET call memset@plt
-#define CALL_RAND_R call rand_r@plt
+#define CALL_INITED_MEMORY call inited_memory@plt
 #endif
 
 #define CHECK_READ_BOUND_VERSION1(length) \
@@ -180,78 +180,6 @@
   cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1; \
   ja .exit_out_of_bound
 
-#define ZEROED_MEMORY \
-  MOV_TEMP1_TO_ARG1; \
-  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, ARG1; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, ARG1; \
-  addq MACHINE, ARG1; \
-  xor ARG2, ARG2; \
-  movq $CKB_VM_ASM_MEMORY_FRAMESIZE, ARG3; \
-  CALL_MEMSET
-
-#ifdef IS_WINDOWS
-#define RANDOM_MEMORY \
-  PREPCALL; \
-  movl CHAOS_SEED_ADDRESS, ARG1d; \
-  call srand; \
-  POSTCALL; \
-  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
-  addq MACHINE, TEMP1; \
-  movq $CKB_VM_ASM_MEMORY_FRAMESIZE, %rcx; \
-5: \
-  cmp $0, %rcx; \
-  je 6f; \
-  PREPCALL; \
-  call rand; \
-  POSTCALL; \
-  movb %al, (TEMP1); \
-  sub $1, %rcx; \
-  add $1, TEMP1; \
-  jmp 5b; \
-6: \
-  PREPCALL; \
-  call rand; \
-  POSTCALL; \
-  mov %eax, CHAOS_SEED_ADDRESS
-#else
-#define RANDOM_MEMORY \
-  shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
-  addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
-  addq MACHINE, TEMP1; \
-  movq $CKB_VM_ASM_MEMORY_FRAMESIZE, %rcx; \
-5: \
-  cmp $0, %rcx; \
-  je 6f; \
-  PREPCALL; \
-  movq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED, ARG1; \
-  addq MACHINE, ARG1; \
-  CALL_RAND_R; \
-  POSTCALL; \
-  movb %al, (TEMP1); \
-  sub $1, %rcx; \
-  add $1, TEMP1; \
-  jmp 5b; \
-6:
-#endif
-
-/*
- * Make sure TEMP1 stores the frame index.
- */
-#define INITED_MEMORY \
-  PREPCALL; \
-  push %rax; \
-  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_MODE(MACHINE), %edx; \
-  cmp $0, %edx; \
-  jne 3f; \
-  ZEROED_MEMORY; \
-  jmp 4f; \
-3: \
-  RANDOM_MEMORY; \
-4: \
-  pop %rax; \
-  POSTCALL
-
 #define CHECK_READ(address_reg, length) \
   movq address_reg, TEMP1; \
   shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
@@ -261,7 +189,11 @@
   cmp $0, TEMP2d; \
   jne 1f; \
   movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1); \
-  INITED_MEMORY; \
+  PREPCALL; \
+  MOV_TEMP1_TO_ARG1; \
+  MOV_MACHINE_TO_ARG2; \
+  CALL_INITED_MEMORY; \
+  POSTCALL; \
 1: \
   movq address_reg, TEMP1; \
   addq $length, TEMP1; \
@@ -273,7 +205,11 @@
   cmp $0, TEMP2d; \
   jne 2f; \
   movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1);\
-  INITED_MEMORY; \
+  PREPCALL; \
+  MOV_TEMP1_TO_ARG1; \
+  MOV_MACHINE_TO_ARG2; \
+  CALL_INITED_MEMORY; \
+  POSTCALL; \
 2:
 
 #define CHECK_WRITE(address_reg, temp_regd, length) \
@@ -291,7 +227,11 @@
   cmp $0, temp_regd; \
   jne 1f; \
   movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1); \
-  INITED_MEMORY; \
+  PREPCALL; \
+  MOV_TEMP1_TO_ARG1; \
+  MOV_MACHINE_TO_ARG2; \
+  CALL_INITED_MEMORY; \
+  POSTCALL; \
 1: \
   movq TEMP2, TEMP1; \
   addq $1, TEMP1; \
@@ -312,7 +252,11 @@
   cmp $0, temp_regd; \
   jne 2f; \
   movb $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1); \
-  INITED_MEMORY; \
+  PREPCALL; \
+  MOV_TEMP1_TO_ARG1; \
+  MOV_MACHINE_TO_ARG2; \
+  CALL_INITED_MEMORY; \
+  POSTCALL; \
 2:
 
 #define ADDRESS_TO_SLOT_ADDRESS(r) \
