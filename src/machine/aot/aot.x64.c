@@ -255,7 +255,6 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     |.define rArg1d, edi
   |.endif
   |.macro prepcall
-    | push rax
     | push rdi
     | push rsi
     | push rcx
@@ -263,6 +262,9 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     | push r8
     | push r9
     | push r10
+    | push rbp
+    | mov rbp, rsp
+    | and rsp, -16
     |.if WIN
       | sub rsp, 32
     |.endif
@@ -271,6 +273,8 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     |.if WIN
       | add rsp, 32
     |.endif
+    | mov rsp, rbp
+    | pop rbp
     | pop r10
     | pop r9
     | pop r8
@@ -278,9 +282,6 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     | pop rcx
     | pop rsi
     | pop rdi
-  |.endmacro
-  |.macro postcall_rax
-  | pop rax
   |.endmacro
 
   /*
@@ -298,7 +299,6 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
    * As shown in aot_exit, the return result is kept in rax.
    */
   |.code
-  | sub rsp, 8
   | push r12
   | push r13
   | push r14
@@ -345,8 +345,8 @@ int aot_link(AotContext* context, size_t *szp)
   | mov rArg3, CKB_VM_ASM_MEMORY_FRAMESIZE
   | mov64 rax, (uint64_t)memset
   | call rax
+  | pop rax
   | postcall
-  | postcall_rax
   | ret
   |.if WIN
     |->random_memory:
@@ -355,7 +355,6 @@ int aot_link(AotContext* context, size_t *szp)
     | mov rArg1d, machine->chaos_seed
     | call rax
     | postcall
-    | postcall_rax
     | shl rcx, CKB_VM_ASM_MEMORY_FRAME_SHIFTS
     | lea rsi, machine->memory
     | add rsi, rcx
@@ -368,7 +367,6 @@ int aot_link(AotContext* context, size_t *szp)
     | call rax
     | postcall
     | mov byte [rsi], al
-    | postcall_rax
     | sub rcx, 1
     | add rsi, 1
     | jmp <1
@@ -378,9 +376,8 @@ int aot_link(AotContext* context, size_t *szp)
     | call rax
     | postcall
     | mov machine->chaos_seed, eax
-    | postcall_rax
+    | pop rax
     | postcall
-    | postcall_rax
     | ret
   |.else
     |->random_memory:
@@ -397,17 +394,17 @@ int aot_link(AotContext* context, size_t *szp)
     | call rax
     | postcall
     | mov byte [rsi], al
-    | postcall_rax
     | sub rcx, 1
     | add rsi, 1
     | jmp <1
     |2:
+    | pop rax
     | postcall
-    | postcall_rax
     | ret
   |.endif
   |->inited_memory:
   | prepcall
+  | push rax
   | lea rdx, machine->chaos_mode
   | mov dl, byte [rdx]
   | cmp dl, 0
@@ -555,7 +552,6 @@ int aot_link(AotContext* context, size_t *szp)
   | pop r14
   | pop r13
   | pop r12
-  | add rsp, 8
   | ret
   return dasm_link(&context->d, szp);
 }

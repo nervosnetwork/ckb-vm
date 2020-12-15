@@ -25,7 +25,6 @@
 
 #ifdef IS_WINDOWS
 #define PREPCALL \
-  push %rax; \
   push %rdi; \
   push %rsi; \
   push %rcx; \
@@ -33,9 +32,14 @@
   push %r8; \
   push %r9; \
   push %r10; \
+  push %rbp; \
+  movq %rsp, %rbp; \
+  andq $-16, %rsp; \
   sub $32, %rsp
 #define POSTCALL \
   add $32, %rsp; \
+  movq %rbp, %rsp; \
+  pop %rbp; \
   pop %r10; \
   pop %r9; \
   pop %r8; \
@@ -45,15 +49,19 @@
   pop %rdi
 #else
 #define PREPCALL \
-  push %rax; \
   push %rdi; \
   push %rsi; \
   push %rcx; \
   push %rdx; \
   push %r8; \
   push %r9; \
-  push %r10
+  push %r10; \
+  push %rbp; \
+  movq %rsp, %rbp; \
+  andq $-16, %rsp
 #define POSTCALL \
+  movq %rbp, %rsp; \
+  pop %rbp; \
   pop %r10; \
   pop %r9; \
   pop %r8; \
@@ -62,7 +70,6 @@
   pop %rsi; \
   pop %rdi
 #endif
-#define POSTCALL_RAX pop %rax
 
 /* rax is used both in Microsoft x64 and System V AMD64 ABI */
 #define ARG_RETd %eax
@@ -188,7 +195,6 @@
   movl CHAOS_SEED_ADDRESS, ARG1d; \
   call srand; \
   POSTCALL; \
-  POSTCALL_RAX; \
   shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
   addq $CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY, TEMP1; \
   addq MACHINE, TEMP1; \
@@ -200,7 +206,6 @@
   call rand; \
   POSTCALL; \
   movb %al, (TEMP1); \
-  POSTCALL_RAX; \
   sub $1, %rcx; \
   add $1, TEMP1; \
   jmp 5b; \
@@ -208,8 +213,7 @@
   PREPCALL; \
   call rand; \
   POSTCALL; \
-  mov %eax, CHAOS_SEED_ADDRESS; \
-  POSTCALL_RAX
+  mov %eax, CHAOS_SEED_ADDRESS
 #else
 #define RANDOM_MEMORY \
   shl $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
@@ -225,7 +229,6 @@
   CALL_RAND_R; \
   POSTCALL; \
   movb %al, (TEMP1); \
-  POSTCALL_RAX; \
   sub $1, %rcx; \
   add $1, TEMP1; \
   jmp 5b; \
@@ -237,6 +240,7 @@
  */
 #define INITED_MEMORY \
   PREPCALL; \
+  push %rax; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_MODE(MACHINE), %edx; \
   cmp $0, %edx; \
   jne 3f; \
@@ -245,8 +249,8 @@
 3: \
   RANDOM_MEMORY; \
 4: \
-  POSTCALL; \
-  POSTCALL_RAX
+  pop %rax; \
+  POSTCALL
 
 #define CHECK_READ(address_reg, length) \
   movq address_reg, TEMP1; \
@@ -356,7 +360,6 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
-  sub $8, %rsp
 #ifdef IS_WINDOWS
   push %rsi
   push %rdi
@@ -1407,5 +1410,4 @@ ckb_vm_x64_execute:
   pop %rdi
   pop %rsi
 #endif
-  add $8, %rsp
   retq
