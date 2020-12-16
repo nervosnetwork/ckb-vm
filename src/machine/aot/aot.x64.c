@@ -110,36 +110,7 @@ typedef struct {
                   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
 } AsmMachine;
 
-#ifdef _WIN32
-void random_memory(uint64_t frame_index, AsmMachine* machine) {
-  uint64_t offset = frame_index << CKB_VM_ASM_MEMORY_FRAME_SHIFTS;
-  srand(machine->chaos_seed);
-  for (uint64_t i = 0; i < CKB_VM_ASM_MEMORY_FRAMESIZE; i++) {
-    machine->memory[offset + i] = rand() & 0xff;
-  }
-  machine->chaos_seed = rand();
-}
-#else
-void random_memory(uint64_t frame_index, AsmMachine* machine) {
-  uint64_t offset = frame_index << CKB_VM_ASM_MEMORY_FRAME_SHIFTS;
-  for (uint64_t i = 0; i < CKB_VM_ASM_MEMORY_FRAMESIZE; i++) {
-    machine->memory[offset + i] = rand_r(&machine->chaos_seed) & 0xff;
-  }
-}
-#endif
-
-void zeroed_memory(uint64_t frame_index, AsmMachine* machine) {
-  uint64_t offset = frame_index << CKB_VM_ASM_MEMORY_FRAME_SHIFTS;
-  memset(&machine->memory[offset], 0, CKB_VM_ASM_MEMORY_FRAMESIZE);
-}
-
-void inited_memory(uint64_t frame_index, AsmMachine* machine) {
-    if (machine->chaos_mode != 0) {
-        random_memory(frame_index, machine);
-    } else {
-        zeroed_memory(frame_index, machine);
-    }
-}
+extern void inited_memory(uint64_t frame_index, AsmMachine* machine);
 
 #define AOT_TAG_REGISTER 0x1
 #define AOT_TAG_IMMEDIATE 0x2
