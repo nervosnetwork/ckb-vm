@@ -283,6 +283,14 @@ AotContext* aot_new(uint32_t npc, uint32_t version)
     | pop rsi
     | pop rdi
   |.endmacro
+  |.macro call_inited_memory
+    | prepcall
+    | mov rArg2, machine
+    | mov rArg1, rcx
+    | mov64 rax, (uint64_t)inited_memory
+    | call rax
+    | postcall
+  |.endmacro
 
   /*
    * The function we are generating has the following prototype:
@@ -370,12 +378,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >1
   | mov byte [rdx+rcx], 1
-  | prepcall
-  | mov rArg2, machine
-  | mov rArg1, rcx
-  | mov64 rax, (uint64_t)inited_memory
-  | call rax
-  | postcall
+  | call_inited_memory
   |1:
   /* Check if the write spans to a second memory page */
   | mov rdx, rax
@@ -402,12 +405,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >2
   | mov byte [rdx+rcx], 1
-  | prepcall
-  | mov rArg2, machine
-  | mov rArg1, rcx
-  | mov64 rax, (uint64_t)inited_memory
-  | call rax
-  | postcall
+  | call_inited_memory
   |2:
   | mov rdx, 0
   | pop r8
@@ -441,12 +439,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >1
   | mov byte [rsi+rcx], 1
-  | prepcall
-  | mov rArg2, machine
-  | mov rArg1, rcx
-  | mov64 rax, (uint64_t)inited_memory
-  | call rax
-  | postcall
+  | call_inited_memory
   |1:
   | mov rcx, rax
   | add rcx, rdx
@@ -458,12 +451,7 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp r8d, 0
   | jne >2
   | mov byte [rsi+rcx], 1
-  | prepcall
-  | mov rArg2, machine
-  | mov rArg1, rcx
-  | mov64 rax, (uint64_t)inited_memory
-  | call rax
-  | postcall
+  | call_inited_memory
   | jmp >2
   |2:
   | mov rdx, 0
