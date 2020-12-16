@@ -398,7 +398,7 @@ pub fn test_aot_chaos_seed() {
     let exit2 = result2.unwrap();
 
     assert_eq!(exit1, exit2);
-    // Read 4 bytes from 0x300000, it is very unlikely that they are both 0.
+    // Read 8 bytes from 0x300000, it is very unlikely that they are both 0.
     assert!(machine1.machine.memory_mut().load64(&0x300000).unwrap() != 0);
     assert!(machine2.machine.memory_mut().load64(&0x300000).unwrap() != 0);
 }
