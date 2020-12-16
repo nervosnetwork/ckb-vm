@@ -88,8 +88,8 @@ fn check_memory(machine: &mut AsmCoreMachine, addr: u64, size: u64) -> Result<()
     for i in frame_from..=std::cmp::min(MEMORY_FRAMES as u64 - 1, frame_to) {
         if machine.frames[i as usize] == 0 {
             inited_memory(i, machine);
+            machine.frames[i as usize] = 1;
         }
-        machine.frames[i as usize] = 1;
     }
     Ok(())
 }
