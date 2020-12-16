@@ -125,9 +125,6 @@
 #define REGISTER_ADDRESS(r) \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE, r, 8)
 
-#define CHAOS_SEED_ADDRESS \
-  CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED(MACHINE)
-
 /*
  * Those macros provide slight abstractions over register allocations,
  * they might change when we alter register allocations. For example:
