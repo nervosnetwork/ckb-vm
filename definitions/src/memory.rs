@@ -4,3 +4,4 @@ pub const FLAG_FREEZED: u8 = 0b01;
 pub const FLAG_EXECUTABLE: u8 = 0b10;
 pub const FLAG_WXORX_BIT: u8 = 0b10;
 pub const FLAG_WRITABLE: u8 = (!FLAG_EXECUTABLE) & FLAG_WXORX_BIT;
+pub const FLAG_DIRTY: u8 = 0b100;

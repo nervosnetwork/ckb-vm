@@ -7,11 +7,13 @@ pub mod trace;
 use super::debugger::Debugger;
 use super::decoder::{build_imac_decoder, Decoder};
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED};
+use super::memory::{
+    round_page_down, round_page_up, Memory, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED,
+};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
 };
 use bytes::Bytes;
 use goblin::container::Ctx;
@@ -146,6 +148,9 @@ pub trait SupportMachine: CoreMachine {
         }
         if update_pc {
             self.set_pc(Self::REG::from_u64(header.e_entry));
+        }
+        for i in 0..RISCV_PAGES {
+            self.memory_mut().clear_flag(i as u64, FLAG_DIRTY).unwrap();
         }
         Ok(bytes)
     }
@@ -505,13 +510,13 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             let memory = self.memory_mut();
             decoder.decode(memory, pc)?
         };
-        execute(instruction, self)?;
         let cycles = self
             .instruction_cycle_func()
             .as_ref()
             .map(|f| f(instruction))
             .unwrap_or(0);
-        self.add_cycles(cycles)
+        self.add_cycles(cycles)?;
+        execute(instruction, self)
     }
 }
 

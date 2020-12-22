@@ -112,6 +112,7 @@
 #define TEMP1b %dil
 #define TEMP1d %edi
 #define TEMP2d %r10d
+#define TEMP2b %r10b
 
 #define PC_ADDRESS \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
@@ -215,9 +216,12 @@
   cmp $CKB_VM_ASM_RISCV_PAGES, TEMP1; \
   jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, TEMP1), temp_regd; \
+  mov temp_regd, TEMP2d; \
   and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_regd; \
   cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_regd; \
   jne .exit_invalid_permission; \
+  or $CKB_VM_ASM_MEMORY_FLAG_DIRTY, TEMP2b; \
+  movb TEMP2b, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, TEMP1); \
   movq TEMP1, TEMP2; \
   shr $CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS, TEMP1; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1), temp_regd; \
@@ -241,9 +245,12 @@
   cmp $CKB_VM_ASM_RISCV_PAGES, TEMP1; \
   jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, TEMP1), temp_regd; \
+  mov temp_regd, TEMP2d; \
   and $CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT, temp_regd; \
   cmp $CKB_VM_ASM_MEMORY_FLAG_WRITABLE, temp_regd; \
   jne .exit_invalid_permission; \
+  or $CKB_VM_ASM_MEMORY_FLAG_DIRTY, TEMP2b; \
+  movb TEMP2b, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, TEMP1); \
   shr $CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS, TEMP1; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1), temp_regd; \
   cmp $0, temp_regd; \

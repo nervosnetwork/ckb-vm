@@ -5,8 +5,8 @@ use crate::{
     },
     machine::aot::AotCode,
     memory::{
-        check_permission, fill_page_data, memset, round_page_down, round_page_up, FLAG_EXECUTABLE,
-        FLAG_FREEZED, FLAG_WRITABLE,
+        check_permission, fill_page_data, memset, round_page_down, round_page_up, FLAG_DIRTY,
+        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAMES,
     MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
@@ -19,6 +19,7 @@ use ckb_vm_definitions::{
         RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
+    RISCV_PAGE_SHIFTS,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -119,7 +120,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         let mut current_addr = addr;
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE as u64;
-            if self.flags[page as usize] & FLAG_FREEZED != 0 {
+            if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
                 return Err(Error::InvalidPermission);
             }
             current_addr += RISCV_PAGESIZE as u64;
@@ -128,7 +129,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         current_addr = addr;
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE as u64;
-            self.flags[page as usize] = flags;
+            self.set_flag(page, flags)?;
             current_addr += RISCV_PAGESIZE as u64;
         }
         Ok(())
@@ -142,10 +143,33 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         }
     }
 
+    fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        if page < RISCV_PAGES as u64 {
+            self.flags[page as usize] |= flag;
+            Ok(())
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
+    fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        if page < RISCV_PAGES as u64 {
+            self.flags[page as usize] &= !flag;
+            Ok(())
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         // Out of bound check is already performed in check_permission
         check_permission(self, addr, value.len() as u64, FLAG_WRITABLE)?;
         check_memory(self, addr, value.len() as u64)?;
+        for i in
+            (addr >> RISCV_PAGE_SHIFTS)..=((addr + value.len() as u64 - 1) >> RISCV_PAGE_SHIFTS)
+        {
+            self.set_flag(i, FLAG_DIRTY)?;
+        }
         let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
         slice.copy_from_slice(value);
         Ok(())
@@ -154,6 +178,9 @@ impl Memory<u64> for Box<AsmCoreMachine> {
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
         check_permission(self, addr, size, FLAG_WRITABLE)?;
         check_memory(self, addr, size)?;
+        for i in (addr >> RISCV_PAGE_SHIFTS)..=((addr + size - 1) >> RISCV_PAGE_SHIFTS) {
+            self.set_flag(i, FLAG_DIRTY)?;
+        }
         memset(
             &mut self.memory[addr as usize..(addr + size) as usize],
             value,
@@ -213,6 +240,7 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         check_permission(self, addr, 1, FLAG_WRITABLE)?;
         check_memory(self, addr, 1)?;
         self.memory[addr as usize] = (*value) as u8;
+        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 
@@ -224,6 +252,8 @@ impl Memory<u64> for Box<AsmCoreMachine> {
             &mut self.memory[addr as usize..(addr + 2) as usize],
             *value as u16,
         );
+        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        self.set_flag((addr + 1) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 
@@ -235,6 +265,8 @@ impl Memory<u64> for Box<AsmCoreMachine> {
             &mut self.memory[addr as usize..(addr + 4) as usize],
             *value as u32,
         );
+        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        self.set_flag((addr + 3) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 
@@ -243,6 +275,8 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         check_permission(self, addr, 8, FLAG_WRITABLE)?;
         check_memory(self, addr, 8)?;
         LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
+        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        self.set_flag((addr + 7) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 }

@@ -318,6 +318,14 @@ impl Memory<Value> for LabelGatheringMachine {
         Err(Error::Unimplemented)
     }
 
+    fn set_flag(&mut self, _page: u64, _flag: u8) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn clear_flag(&mut self, _page: u64, _flag: u8) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
     fn store_byte(&mut self, _addr: u64, _size: u64, _value: u8) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
@@ -448,22 +456,32 @@ impl AotCompilingMachine {
         // when version 1 or above is enabled, last_writes are submitted
         // together to emit correct native code.
         let mut initial_writes = vec![];
+
+        for instruction in instructions.iter() {
+            cycles += self
+                .instruction_cycle_func
+                .as_ref()
+                .map(|f| f(*instruction))
+                .unwrap_or(0);
+        }
+        self.emitter.emit_add_cycles(cycles)?;
+
         for (i, instruction) in instructions.iter().enumerate() {
             if i == instructions.len() - 1 {
                 initial_writes = self.take_and_clear_writes();
             }
             let pc = self.read_pc()?;
             let length = instruction_length(*instruction);
-            cycles += self
-                .instruction_cycle_func
-                .as_ref()
-                .map(|f| f(*instruction))
-                .unwrap_or(0);
+            // cycles += self
+            //     .instruction_cycle_func
+            //     .as_ref()
+            //     .map(|f| f(*instruction))
+            //     .unwrap_or(0);
             execute(*instruction, self)?;
             self.pc = Value::from_u64(pc + u64::from(length));
         }
         let pc = self.read_pc()?;
-        self.emitter.emit_add_cycles(cycles)?;
+        // self.emitter.emit_add_cycles(cycles)?;
         // Emit succeeding PC write only
         if pc >= RISCV_MAX_MEMORY as u64 {
             return Err(Error::OutOfBound);
@@ -631,6 +649,14 @@ impl Memory<Value> for AotCompilingMachine {
     }
 
     fn fetch_flag(&mut self, _page: u64) -> Result<u8, Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn set_flag(&mut self, _page: u64, _flag: u8) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn clear_flag(&mut self, _page: u64, _flag: u8) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
 

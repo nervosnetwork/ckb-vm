@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{
     check_permission, round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED,
     FLAG_WRITABLE,
@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 
 pub struct WXorXMemory<R: Register, M: Memory<R>> {
     inner: M,
-    flags: Vec<u8>,
     _inner: PhantomData<R>,
 }
 
@@ -17,7 +16,6 @@ impl<R: Register, M: Memory<R> + Default> Default for WXorXMemory<R, M> {
     fn default() -> Self {
         Self {
             inner: M::default(),
-            flags: vec![0; RISCV_PAGES],
             _inner: PhantomData,
         }
     }
@@ -49,22 +47,26 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
             return Err(Error::OutOfBound);
         }
         for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
-            let page = page_addr as usize / RISCV_PAGESIZE;
-            if self.flags[page] & FLAG_FREEZED != 0 {
+            let page = page_addr / RISCV_PAGESIZE as u64;
+            if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
                 return Err(Error::InvalidPermission);
             }
-            self.flags[page] = flags;
+            self.set_flag(page, flags)?;
         }
         self.inner
             .init_pages(addr, size, flags, source, offset_from_addr)
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
-        if page < RISCV_PAGES as u64 {
-            Ok(self.flags[page as usize])
-        } else {
-            Err(Error::OutOfBound)
-        }
+        self.inner.fetch_flag(page)
+    }
+
+    fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        self.inner.set_flag(page, flag)
+    }
+
+    fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        self.inner.clear_flag(page, flag)
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {

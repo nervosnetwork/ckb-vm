@@ -11,7 +11,7 @@ pub mod sparse;
 pub mod wxorx;
 
 pub use ckb_vm_definitions::memory::{
-    FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+    FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
 };
 
 #[inline(always)]
@@ -36,6 +36,9 @@ pub trait Memory<R: Register> {
         offset_from_addr: u64,
     ) -> Result<(), Error>;
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error>;
+    fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
+    fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
+
     // This is in fact just memset
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error>;
