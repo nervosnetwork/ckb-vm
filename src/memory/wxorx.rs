@@ -1,7 +1,7 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{
-    check_permission, round_page_down, round_page_up, Memory, FLAG_EXECUTABLE, FLAG_FREEZED,
-    FLAG_WRITABLE,
+    check_permission, get_page_indices, round_page_down, round_page_up, Memory, FLAG_EXECUTABLE,
+    FLAG_FREEZED, FLAG_WRITABLE,
 };
 
 use bytes::Bytes;
@@ -70,7 +70,8 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
-        check_permission(self, addr, 2, FLAG_EXECUTABLE)?;
+        let page_indices = get_page_indices(addr, 2)?;
+        check_permission(self, &page_indices, FLAG_EXECUTABLE)?;
         self.inner.execute_load16(addr)
     }
 
@@ -91,32 +92,38 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
     }
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_u64(), 1, FLAG_WRITABLE)?;
+        let page_indices = get_page_indices(addr.to_u64(), 1)?;
+        check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store8(addr, value)
     }
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_u64(), 2, FLAG_WRITABLE)?;
+        let page_indices = get_page_indices(addr.to_u64(), 2)?;
+        check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store16(addr, value)
     }
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_u64(), 4, FLAG_WRITABLE)?;
+        let page_indices = get_page_indices(addr.to_u64(), 4)?;
+        check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store32(addr, value)
     }
 
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
-        check_permission(self, addr.to_u64(), 8, FLAG_WRITABLE)?;
+        let page_indices = get_page_indices(addr.to_u64(), 8)?;
+        check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store64(addr, value)
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
-        check_permission(self, addr, value.len() as u64, FLAG_WRITABLE)?;
+        let page_indices = get_page_indices(addr, value.len() as u64)?;
+        check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store_bytes(addr, value)
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
-        check_permission(self, addr, size, FLAG_WRITABLE)?;
+        let page_indices = get_page_indices(addr, size)?;
+        check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store_byte(addr, size, value)
     }
 }

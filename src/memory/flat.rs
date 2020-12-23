@@ -1,5 +1,5 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGE_SHIFTS};
-use super::{fill_page_data, memset, Memory, FLAG_DIRTY};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES};
+use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
@@ -130,10 +130,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        let page_indices = get_page_indices(addr.to_u64(), 1)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u8(value.to_u8())?;
@@ -142,12 +140,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let addr_end = addr.checked_add(2).ok_or(Error::OutOfBound)?;
-        if addr_end > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
-        self.set_flag((addr_end - 1) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        let page_indices = get_page_indices(addr.to_u64(), 2)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u16::<LittleEndian>(value.to_u16())?;
@@ -156,12 +150,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let addr_end = addr.checked_add(4).ok_or(Error::OutOfBound)?;
-        if addr_end > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
-        self.set_flag((addr_end - 1) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        let page_indices = get_page_indices(addr.to_u64(), 4)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u32::<LittleEndian>(value.to_u32())?;
@@ -170,12 +160,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let addr_end = addr.checked_add(8).ok_or(Error::OutOfBound)?;
-        if addr_end > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
-        self.set_flag((addr_end - 1) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+        let page_indices = get_page_indices(addr.to_u64(), 8)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u64::<LittleEndian>(value.to_u64())?;
@@ -184,26 +170,16 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let size = value.len() as u64;
-        let addr_end = addr.checked_add(size).ok_or(Error::OutOfBound)?;
-        if addr_end > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
-        for i in (addr >> RISCV_PAGE_SHIFTS)..=((addr_end - 1) >> RISCV_PAGE_SHIFTS) {
-            self.set_flag(i, FLAG_DIRTY)?;
-        }
+        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        set_dirty(self, &page_indices)?;
         let slice = &mut self[addr as usize..(addr + size) as usize];
         slice.copy_from_slice(value);
         Ok(())
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
-        let addr_end = addr.checked_add(size).ok_or(Error::OutOfBound)?;
-        if addr_end > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
-        for i in (addr >> RISCV_PAGE_SHIFTS)..=((addr_end - 1) >> RISCV_PAGE_SHIFTS) {
-            self.set_flag(i, FLAG_DIRTY)?;
-        }
+        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        set_dirty(self, &page_indices)?;
         memset(&mut self[addr as usize..(addr + size) as usize], value);
         Ok(())
     }

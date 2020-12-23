@@ -10,8 +10,9 @@ pub mod flat;
 pub mod sparse;
 pub mod wxorx;
 
-pub use ckb_vm_definitions::memory::{
-    FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+pub use ckb_vm_definitions::{
+    memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
+    MEMORY_FRAME_PAGE_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
 };
 
 #[inline(always)]
@@ -85,26 +86,42 @@ pub(crate) fn fill_page_data<R: Register>(
     Ok(())
 }
 
-pub fn check_permission<R: Register>(
-    memory: &mut dyn Memory<R>,
-    addr: u64,
-    size: u64,
-    flag: u8,
-) -> Result<(), Error> {
-    // fetch_flag below will check if requested memory is within bound. Here
-    // we only need to test for overflow first
-    let (e, overflowed) = addr.overflowing_add(size);
+pub fn get_page_indices(addr: u64, size: u64) -> Result<Vec<u64>, Error> {
+    if size == 0 {
+        return Ok(vec![]);
+    }
+    let (addr_end, overflowed) = addr.overflowing_add(size);
     if overflowed {
         return Err(Error::OutOfBound);
     }
-    let mut current_addr = round_page_down(addr);
-    while current_addr < e {
-        let page = current_addr / RISCV_PAGESIZE as u64;
-        let page_flag = memory.fetch_flag(page)?;
+    if addr_end > RISCV_MAX_MEMORY as u64 {
+        return Err(Error::OutOfBound);
+    }
+    let page = addr >> RISCV_PAGE_SHIFTS;
+    let page_end = (addr_end - 1) >> RISCV_PAGE_SHIFTS;
+    Ok((page..=page_end).collect())
+}
+
+pub fn check_permission<R: Register>(
+    memory: &mut dyn Memory<R>,
+    page_indices: &[u64],
+    flag: u8,
+) -> Result<(), Error> {
+    for page in page_indices {
+        let page_flag = memory.fetch_flag(*page)?;
         if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
             return Err(Error::InvalidPermission);
         }
-        current_addr += RISCV_PAGESIZE as u64;
+    }
+    Ok(())
+}
+
+pub fn set_dirty<R: Register>(
+    memory: &mut dyn Memory<R>,
+    page_indices: &[u64],
+) -> Result<(), Error> {
+    for page in page_indices {
+        memory.set_flag(*page, FLAG_DIRTY)?
     }
     Ok(())
 }

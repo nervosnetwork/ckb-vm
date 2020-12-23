@@ -8,7 +8,7 @@ use ckb_vm::{
         DefaultCoreMachine, SupportMachine, VERSION1,
     },
     memory::sparse::SparseMemory,
-    snapshot::{make_snapshot, resume_from_snapshot},
+    snapshot::{make_snapshot, resume},
     DefaultMachineBuilder, Error, Instruction,
 };
 use std::fs::File;
@@ -48,7 +48,7 @@ pub fn test_resume_asm_2_asm() {
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine2.machine, &snapshot).unwrap();
+    resume(&mut machine2.machine, &snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.machine.cycles();
     assert!(result2.is_ok());
@@ -85,7 +85,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine2.machine, &snapshot1).unwrap();
+    resume(&mut machine2.machine, &snapshot1).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.machine.cycles();
     assert!(result2.is_err());
@@ -100,7 +100,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
     machine3
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine3.machine, &snapshot2).unwrap();
+    resume(&mut machine3.machine, &snapshot2).unwrap();
     let result3 = machine3.run();
     let cycles3 = machine3.machine.cycles();
     assert!(result3.is_ok());
@@ -137,7 +137,7 @@ pub fn test_resume_asm_2_interpreter() {
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine2, &snapshot).unwrap();
+    resume(&mut machine2, &snapshot).unwrap();
 
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -175,7 +175,7 @@ pub fn test_resume_interpreter_2_interpreter() {
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine2, &snapshot).unwrap();
+    resume(&mut machine2, &snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
     assert!(result2.is_ok());
@@ -212,7 +212,7 @@ pub fn test_resume_interpreter_2_asm() {
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine2.machine, &snapshot).unwrap();
+    resume(&mut machine2.machine, &snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.machine.cycles();
     assert!(result2.is_ok());
@@ -252,7 +252,7 @@ pub fn test_resume_aot_2_asm() {
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
-    resume_from_snapshot(&mut machine2.machine, &snapshot).unwrap();
+    resume(&mut machine2.machine, &snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.machine.cycles();
     assert!(result2.is_ok());

@@ -54,10 +54,7 @@ pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error>
     Ok(snap)
 }
 
-pub fn resume_from_snapshot<T: CoreMachine>(
-    machine: &mut T,
-    snapshot: &Snapshot,
-) -> Result<(), Error> {
+pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<(), Error> {
     if machine.version() != snapshot.version {
         return Err(Error::InvalidVersion);
     }
@@ -68,9 +65,7 @@ pub fn resume_from_snapshot<T: CoreMachine>(
     for i in 0..snapshot.page_indices.len() {
         let page_index = snapshot.page_indices[i];
         let page = &snapshot.pages[i];
-
         let addr_from = page_index << RISCV_PAGE_SHIFTS;
-
         machine
             .memory_mut()
             .store_bytes(addr_from, &page[..])

@@ -472,16 +472,10 @@ impl AotCompilingMachine {
             }
             let pc = self.read_pc()?;
             let length = instruction_length(*instruction);
-            // cycles += self
-            //     .instruction_cycle_func
-            //     .as_ref()
-            //     .map(|f| f(*instruction))
-            //     .unwrap_or(0);
             execute(*instruction, self)?;
             self.pc = Value::from_u64(pc + u64::from(length));
         }
         let pc = self.read_pc()?;
-        // self.emitter.emit_add_cycles(cycles)?;
         // Emit succeeding PC write only
         if pc >= RISCV_MAX_MEMORY as u64 {
             return Err(Error::OutOfBound);
