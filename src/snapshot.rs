@@ -7,6 +7,26 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+// Snapshot provides a mechanism for suspending and resuming a virtual machine.
+//
+// When cycle limit is too low, our work won't be finished when we hit it and
+// a "max cycles exceeded" error will be returned. At this time, a snapshot could
+// be created, we can create a new virtual machine from this snapshot, provide
+// more cycles and then continue to run it.
+//
+// For the following data, we simply save them, and then restore them.
+//   - machine.version
+//   - machine.pc
+//   - machine.registers
+//
+// For memory, the situation becomes more complicated. Every memory page has
+// page flag where each page flag stores a optional FLAG_DIRTY. When this page
+// is wrote, the memory instance will set this bit to 1, this helps us keep
+// track of those pages that have been modified. After `machine.load_elf`, We
+// clean up all dirty flags, so after the program terminates, all pages marked
+// as dirty are the pages that have been modified by the program. We only store
+// these pages in the snapshot.
+
 #[derive(Default, Deserialize, Serialize)]
 pub struct Snapshot {
     pub version: u32,
@@ -66,10 +86,7 @@ pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<()
         let page_index = snapshot.page_indices[i];
         let page = &snapshot.pages[i];
         let addr_from = page_index << RISCV_PAGE_SHIFTS;
-        machine
-            .memory_mut()
-            .store_bytes(addr_from, &page[..])
-            .unwrap();
+        machine.memory_mut().store_bytes(addr_from, &page[..])?;
     }
 
     Ok(())
