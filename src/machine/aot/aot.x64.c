@@ -373,10 +373,9 @@ int aot_link(AotContext* context, size_t *szp)
    * Set the page as dirty
    */
   | lea rdx, machine->flags
-  | movzx edx, byte [rdx+rcx]
-  | and edx, CKB_VM_ASM_MEMORY_FLAG_DIRTY
-  | lea rdx, machine->flags
-  | mov byte [rdx+rcx], dl
+  | movzx r8d, byte [rdx+rcx]
+  | or r8d, CKB_VM_ASM_MEMORY_FLAG_DIRTY
+  | mov byte [rdx+rcx], r8b
   /*
    * If the frame not initialized, then initialize it.
    */
@@ -411,10 +410,9 @@ int aot_link(AotContext* context, size_t *szp)
    * Set the page as dirty
    */
   | lea rdx, machine->flags
-  | movzx edx, byte [rdx+rcx]
-  | and edx, CKB_VM_ASM_MEMORY_FLAG_DIRTY
-  | lea rdx, machine->flags
-  | mov byte [rdx+rcx], dl
+  | movzx r8d, byte [rdx+rcx]
+  | or r8d, CKB_VM_ASM_MEMORY_FLAG_DIRTY
+  | mov byte [rdx+rcx], r8b
   | shr rcx, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS
   | lea rdx, machine->frames
   | movzx r8d, byte [rdx+rcx]
