@@ -150,7 +150,7 @@ pub trait SupportMachine: CoreMachine {
             self.set_pc(Self::REG::from_u64(header.e_entry));
         }
         for i in 0..RISCV_PAGES {
-            self.memory_mut().clear_flag(i as u64, FLAG_DIRTY).unwrap();
+            self.memory_mut().clear_flag(i as u64, FLAG_DIRTY)?;
         }
         Ok(bytes)
     }
