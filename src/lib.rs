@@ -8,6 +8,7 @@ pub mod error;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
+pub mod snapshot;
 pub mod syscalls;
 
 pub use crate::{
@@ -25,6 +26,7 @@ use bytes::Bytes;
 pub use ckb_vm_definitions::{
     registers, DEFAULT_STACK_SIZE, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
     RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    RISCV_PAGE_SHIFTS,
 };
 
 pub use error::Error;

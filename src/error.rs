@@ -29,6 +29,8 @@ pub enum Error {
     LimitReached,
     #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission
     InvalidPermission,
+    #[display(fmt = "invalid version")]
+    InvalidVersion,
     #[display(fmt = "unexpected error")]
     Unexpected,
     #[display(fmt = "unimplemented")]

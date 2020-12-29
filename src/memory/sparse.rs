@@ -1,5 +1,5 @@
-use super::super::{Error, Register, RISCV_PAGES, RISCV_PAGESIZE};
-use super::{fill_page_data, memset, round_page_down, Memory, Page};
+use super::super::{Error, Register, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
+use super::{fill_page_data, memset, round_page_down, Memory, Page, FLAG_DIRTY};
 
 use bytes::Bytes;
 use std::cmp::min;
@@ -16,6 +16,7 @@ pub struct SparseMemory<R> {
     // of 64KB extra storage cost assuming we have 128MB memory.
     indices: [u16; RISCV_PAGES],
     pages: Vec<Page>,
+    flags: Vec<u8>,
     _inner: PhantomData<R>,
 }
 
@@ -25,6 +26,7 @@ impl<R> SparseMemory<R> {
         Self {
             indices: [INVALID_PAGE_INDEX; RISCV_PAGES],
             pages: Vec::new(),
+            flags: vec![0; RISCV_PAGES],
             _inner: PhantomData,
         }
     }
@@ -86,7 +88,25 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
         if page < RISCV_PAGES as u64 {
-            Ok(0)
+            Ok(self.flags[page as usize])
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
+    fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        if page < RISCV_PAGES as u64 {
+            self.flags[page as usize] |= flag;
+            Ok(())
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
+    fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        if page < RISCV_PAGES as u64 {
+            self.flags[page as usize] &= !flag;
+            Ok(())
         } else {
             Err(Error::OutOfBound)
         }
@@ -129,6 +149,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
             let slice =
                 &mut page[current_page_offset as usize..(current_page_offset + bytes) as usize];
             slice.copy_from_slice(&remaining_data[..bytes as usize]);
+            self.set_flag(current_page_addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
 
             remaining_data = &remaining_data[bytes as usize..];
             current_page_addr += RISCV_PAGESIZE as u64;
@@ -148,6 +169,8 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
                 &mut page[current_page_offset as usize..(current_page_offset + bytes) as usize],
                 value,
             );
+            self.set_flag(current_page_addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
+
             remaining_size -= bytes;
             current_page_addr += RISCV_PAGESIZE as u64;
             current_page_offset = 0;

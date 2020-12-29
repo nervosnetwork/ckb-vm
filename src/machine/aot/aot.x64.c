@@ -370,6 +370,13 @@ int aot_link(AotContext* context, size_t *szp)
   | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
   | jne >4
   /*
+   * Set the page as dirty
+   */
+  | lea rdx, machine->flags
+  | movzx r8d, byte [rdx+rcx]
+  | or r8d, CKB_VM_ASM_MEMORY_FLAG_DIRTY
+  | mov byte [rdx+rcx], r8b
+  /*
    * If the frame not initialized, then initialize it.
    */
   | shr rcx, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS
@@ -399,6 +406,13 @@ int aot_link(AotContext* context, size_t *szp)
   | and edx, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT
   | cmp edx, CKB_VM_ASM_MEMORY_FLAG_WRITABLE
   | jne >4
+  /*
+   * Set the page as dirty
+   */
+  | lea rdx, machine->flags
+  | movzx r8d, byte [rdx+rcx]
+  | or r8d, CKB_VM_ASM_MEMORY_FLAG_DIRTY
+  | mov byte [rdx+rcx], r8b
   | shr rcx, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS
   | lea rdx, machine->frames
   | movzx r8d, byte [rdx+rcx]
@@ -1222,13 +1236,13 @@ int aot_add_cycles(AotContext* context, uint64_t cycles)
     return DASM_S_OK;
   }
   | load_imm rax, cycles
-  | add machine->cycles, rax
-  | mov rax, machine->max_cycles
-  | cmp machine->cycles, rax
+  | add rax, machine->cycles
+  | cmp rax, machine->max_cycles
   | jna >1
   ret = aot_exit(context, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED);
   if (ret != DASM_S_OK) { return ret; }
   |1:
+  | mov machine->cycles, rax
   return DASM_S_OK;
 }
 

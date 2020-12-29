@@ -1,5 +1,5 @@
 use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES};
-use super::{fill_page_data, memset, Memory};
+use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
@@ -9,6 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 pub struct FlatMemory<R> {
     data: Vec<u8>,
+    flags: Vec<u8>,
     _inner: PhantomData<R>,
 }
 
@@ -16,6 +17,7 @@ impl<R> Default for FlatMemory<R> {
     fn default() -> Self {
         Self {
             data: vec![0; RISCV_MAX_MEMORY],
+            flags: vec![0; RISCV_PAGES],
             _inner: PhantomData,
         }
     }
@@ -51,7 +53,25 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
         if page < RISCV_PAGES as u64 {
-            Ok(0)
+            Ok(self.flags[page as usize])
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
+    fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        if page < RISCV_PAGES as u64 {
+            self.flags[page as usize] |= flag;
+            Ok(())
+        } else {
+            Err(Error::OutOfBound)
+        }
+    }
+
+    fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        if page < RISCV_PAGES as u64 {
+            self.flags[page as usize] &= !flag;
+            Ok(())
         } else {
             Err(Error::OutOfBound)
         }
@@ -110,9 +130,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
+        let page_indices = get_page_indices(addr.to_u64(), 1)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u8(value.to_u8())?;
@@ -121,9 +140,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(2).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
+        let page_indices = get_page_indices(addr.to_u64(), 2)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u16::<LittleEndian>(value.to_u16())?;
@@ -132,9 +150,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(4).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
+        let page_indices = get_page_indices(addr.to_u64(), 4)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u32::<LittleEndian>(value.to_u32())?;
@@ -143,9 +160,8 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(8).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
+        let page_indices = get_page_indices(addr.to_u64(), 8)?;
+        set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
         writer.write_u64::<LittleEndian>(value.to_u64())?;
@@ -154,18 +170,16 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let size = value.len() as u64;
-        if addr.checked_add(size).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
+        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        set_dirty(self, &page_indices)?;
         let slice = &mut self[addr as usize..(addr + size) as usize];
         slice.copy_from_slice(value);
         Ok(())
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
-        if addr.checked_add(size).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
-        }
+        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        set_dirty(self, &page_indices)?;
         memset(&mut self[addr as usize..(addr + size) as usize], value);
         Ok(())
     }
