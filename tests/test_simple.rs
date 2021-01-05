@@ -61,7 +61,7 @@ pub fn test_simple_cycles() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, &vec!["simple".into()], None)
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -84,7 +84,7 @@ pub fn test_simple_max_cycles_reached() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, &vec!["simple".into()], None)
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -112,7 +112,7 @@ pub fn test_simple_loaded_bytes() {
 
     let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default();
     let bytes = machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, &vec!["simple".into()], None)
         .unwrap();
     assert_eq!(bytes, 4055);
 }

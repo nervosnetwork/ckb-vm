@@ -15,7 +15,7 @@ pub use crate::{
     debugger::Debugger,
     instructions::{Instruction, Register},
     machine::{
-        trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
+        parse_elf, trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
         DefaultMachineBuilder, InstructionCycleFunc, Machine, SupportMachine,
     },
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
@@ -37,7 +37,7 @@ pub fn run<R: Register, M: Memory<R> + Default>(
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<R, M>>::latest();
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
-    machine.load_program(program, args)?;
+    machine.load_program(program, args, None)?;
     machine.run()
 }
 

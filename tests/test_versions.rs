@@ -29,7 +29,7 @@ fn create_rust_machine<'a>(
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     machine
-        .load_program(&buffer, &vec![program.into()])
+        .load_program(&buffer, &vec![program.into()], None)
         .unwrap();
     machine
 }
@@ -44,7 +44,7 @@ fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, None);
     machine
-        .load_program(&buffer, &vec![program.into()])
+        .load_program(&buffer, &vec![program.into()], None)
         .unwrap();
     machine
 }
@@ -69,7 +69,7 @@ fn create_aot_machine<'a>(program: String, code: &'a AotCode, version: u32) -> A
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, Some(code));
     machine
-        .load_program(&buffer, &vec![program.into()])
+        .load_program(&buffer, &vec![program.into()], None)
         .unwrap();
     machine
 }
@@ -385,7 +385,7 @@ pub fn test_rust_version0_unaligned64() {
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(VERSION0, u64::max_value());
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let result = machine.load_program(&buffer, &vec![program.into()], None);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
@@ -409,7 +409,7 @@ pub fn test_asm_version0_unaligned64() {
     let asm_core = AsmCoreMachine::new(VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, None);
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let result = machine.load_program(&buffer, &vec![program.into()], None);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
@@ -434,7 +434,7 @@ pub fn test_aot_version0_unaligned64() {
     let asm_core = AsmCoreMachine::new(VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, Some(&code));
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let result = machine.load_program(&buffer, &vec![program.into()], None);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }

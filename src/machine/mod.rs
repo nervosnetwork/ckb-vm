@@ -16,10 +16,8 @@ use super::{
     Error, DEFAULT_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
 };
 use bytes::Bytes;
-use goblin::container::Ctx;
 use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
-use goblin::elf::{Header, ProgramHeader};
-use scroll::Pread;
+use goblin::elf::Elf;
 use std::fmt::{self, Display};
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -31,6 +29,10 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/98
 // * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
+
+pub fn parse_elf(program: &Bytes) -> Result<Elf, Error> {
+    Elf::parse(program).map_err(|_e| Error::ParseError)
+}
 
 // Converts goblin's ELF flags into RISC-V flags
 fn convert_flags(p_flags: u32) -> Result<u8, Error> {
@@ -102,21 +104,13 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
-    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
-        let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+    fn load_elf(&mut self, program: &Bytes, elf: &Elf, update_pc: bool) -> Result<u64, Error> {
+        let header = elf.header;
         let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-        let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
         if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
             return Err(Error::InvalidElfBits);
         }
-        let ctx = Ctx::new(container, endianness);
-        let program_headers = ProgramHeader::parse(
-            program,
-            header.e_phoff as usize,
-            header.e_phnum as usize,
-            ctx,
-        )
-        .map_err(|_e| Error::ParseError)?;
+        let program_headers = &elf.program_headers;
         let mut bytes: u64 = 0;
         for program_header in program_headers {
             if program_header.p_type == PT_LOAD {
@@ -452,8 +446,17 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
 }
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
-    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        let elf_bytes = self.load_elf(program, true)?;
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: &[Bytes],
+        elf: Option<&Elf>,
+    ) -> Result<u64, Error> {
+        let elf_bytes = if elf.is_none() {
+            self.load_elf(program, &parse_elf(program)?, true)?
+        } else {
+            self.load_elf(program, elf.unwrap(), true)?
+        };
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
         }

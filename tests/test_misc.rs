@@ -2,6 +2,7 @@ extern crate ckb_vm;
 
 use bytes::Bytes;
 use ckb_vm::{
+    parse_elf,
     registers::{A0, A1, A2, A3, A4, A5, A7},
     run, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory,
     Register, SparseMemory, SupportMachine, Syscalls,
@@ -70,7 +71,7 @@ pub fn test_custom_syscall() {
             .syscall(Box::new(CustomSyscall {}))
             .build();
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, &vec!["syscall".into()], None)
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -108,7 +109,7 @@ pub fn test_ebreak() {
             }))
             .build();
     machine
-        .load_program(&buffer, &vec!["ebreak".into()])
+        .load_program(&buffer, &vec!["ebreak".into()], None)
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -236,6 +237,36 @@ pub fn test_flat_crash_64() {
     let buffer: Bytes = buffer.into();
 
     let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
-    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
+    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()], None);
     assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+pub fn test_contains_ckbforks_section() {
+    let mut file = File::open("tests/programs/ckbforks").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let elf = parse_elf(&buffer).unwrap();
+
+    let ckbforks_exists = || -> bool {
+        for section_header in &elf.section_headers {
+            if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
+                if r == ".ckb.forks" {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }();
+    assert_eq!(ckbforks_exists, true);
+
+    let mut machine =
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
+    machine
+        .load_program(&buffer, &vec!["ebreak".into()], Some(&elf))
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 1);
 }

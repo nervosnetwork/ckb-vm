@@ -1,3 +1,19 @@
+use std::mem::transmute;
+
+use byteorder::{ByteOrder, LittleEndian};
+use bytes::Bytes;
+use ckb_vm_definitions::{
+    asm::{
+        calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
+    },
+    instructions::OP_CUSTOM_TRACE_END,
+    MEMORY_FRAME_PAGE_SHIFTS, RISCV_PAGE_SHIFTS,
+};
+use goblin::elf::Elf;
+use libc::c_uchar;
+use rand::{prelude::RngCore, SeedableRng};
+
 use crate::{
     decoder::{build_imac_decoder, Decoder},
     instructions::{
@@ -11,19 +27,6 @@ use crate::{
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
-use byteorder::{ByteOrder, LittleEndian};
-use bytes::Bytes;
-use ckb_vm_definitions::{
-    asm::{
-        calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
-        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
-    },
-    instructions::OP_CUSTOM_TRACE_END,
-    MEMORY_FRAME_PAGE_SHIFTS, RISCV_PAGE_SHIFTS,
-};
-use libc::c_uchar;
-use rand::{prelude::RngCore, SeedableRng};
-use std::mem::transmute;
 
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 
@@ -327,8 +330,13 @@ impl<'a> AsmMachine<'a> {
         }
     }
 
-    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        self.machine.load_program(program, args)
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: &[Bytes],
+        elf: Option<&Elf>,
+    ) -> Result<u64, Error> {
+        self.machine.load_program(program, args, elf)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
