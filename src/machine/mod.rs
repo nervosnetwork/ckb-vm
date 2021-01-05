@@ -452,10 +452,9 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         args: &[Bytes],
         elf: Option<&Elf>,
     ) -> Result<u64, Error> {
-        let elf_bytes = if elf.is_none() {
-            self.load_elf(program, &parse_elf(program)?, true)?
-        } else {
-            self.load_elf(program, elf.unwrap(), true)?
+        let elf_bytes = match elf {
+            Some(data) => self.load_elf(program, data, true)?,
+            None => self.load_elf(program, &parse_elf(program)?, true)?,
         };
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
