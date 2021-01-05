@@ -13,7 +13,7 @@ fn run(data: &[u8]) {
         .build();
     let mut machine = AsmMachine::new(core, None);
     let program = Bytes::copy_from_slice(data);
-    if let Ok(_) = machine.load_program(&program, &[]) {
+    if let Ok(_) = machine.load_program(&program, &[], None) {
         let _ = machine.run();
     }
 }
