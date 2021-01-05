@@ -42,7 +42,7 @@ fn asm_benchmark(c: &mut Criterion) {
 
         b.iter(|| {
             let mut machine = AsmMachine::default();
-            machine.load_program(&buffer, &args[..]).unwrap();
+            machine.load_program(&buffer, &args[..], None).unwrap();
             machine.run().unwrap()
         });
     });
@@ -66,7 +66,7 @@ fn aot_benchmark(c: &mut Criterion) {
 
         b.iter(|| {
             let mut machine = AsmMachine::default_with_aot_code(&result);
-            machine.load_program(&buffer, &args[..]).unwrap();
+            machine.load_program(&buffer, &args[..], None).unwrap();
             machine.run().unwrap()
         });
     });
