@@ -24,7 +24,7 @@ pub fn test_asm_simple64() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["simple".into()], None)
+        .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -66,7 +66,7 @@ pub fn test_asm_with_custom_syscall() {
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -104,7 +104,7 @@ pub fn test_asm_ebreak() {
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine
-        .load_program(&buffer, &vec!["ebreak".into()], None)
+        .load_program(&buffer, &vec!["ebreak".into()])
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -129,7 +129,7 @@ pub fn test_asm_simple_cycles() {
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -152,7 +152,7 @@ pub fn test_asm_simple_max_cycles_reached() {
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -168,7 +168,7 @@ pub fn test_asm_trace() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["simple".into()], None)
+        .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -184,7 +184,7 @@ pub fn test_asm_jump0() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["jump0_64".into()], None)
+        .load_program(&buffer, &vec!["jump0_64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -200,7 +200,7 @@ pub fn test_asm_write_large_address() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["write_large_address64".into()], None)
+        .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -216,7 +216,7 @@ pub fn test_misaligned_jump64() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["write_large_address64".into()], None)
+        .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -231,7 +231,7 @@ pub fn test_mulw64() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["mulw64".into()], None)
+        .load_program(&buffer, &vec!["mulw64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -247,7 +247,7 @@ pub fn test_invalid_read64() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["invalid_read64".into()], None)
+        .load_program(&buffer, &vec!["invalid_read64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -263,7 +263,7 @@ pub fn test_asm_load_elf_crash_64() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["load_elf_crash_64".into()], None)
+        .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::InvalidPermission));
@@ -278,7 +278,7 @@ pub fn test_asm_wxorx_crash_64() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["wxorx_crash_64".into()], None)
+        .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
@@ -293,7 +293,7 @@ pub fn test_asm_alloc_many() {
 
     let mut machine = AsmMachine::default();
     machine
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result = machine.run();
     assert_eq!(result.unwrap(), 0);
@@ -312,7 +312,7 @@ pub fn test_asm_chaos_seed() {
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
     let mut machine1 = AsmMachine::new(core1, None);
     machine1
-        .load_program(&buffer, &vec!["read_memory".into()], None)
+        .load_program(&buffer, &vec!["read_memory".into()])
         .unwrap();
     let result1 = machine1.run();
     let exit1 = result1.unwrap();
@@ -323,7 +323,7 @@ pub fn test_asm_chaos_seed() {
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
     let mut machine2 = AsmMachine::new(core2, None);
     machine2
-        .load_program(&buffer, &vec!["read_memory".into()], None)
+        .load_program(&buffer, &vec!["read_memory".into()])
         .unwrap();
     let result2 = machine2.run();
     let exit2 = result2.unwrap();

@@ -37,7 +37,7 @@ pub fn run<R: Register, M: Memory<R> + Default>(
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<R, M>>::latest();
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
-    machine.load_program(program, args, None)?;
+    machine.load_program(program, args)?;
     machine.run()
 }
 

@@ -71,7 +71,7 @@ pub fn test_custom_syscall() {
             .syscall(Box::new(CustomSyscall {}))
             .build();
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -109,7 +109,7 @@ pub fn test_ebreak() {
             }))
             .build();
     machine
-        .load_program(&buffer, &vec!["ebreak".into()], None)
+        .load_program(&buffer, &vec!["ebreak".into()])
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -237,7 +237,7 @@ pub fn test_flat_crash_64() {
     let buffer: Bytes = buffer.into();
 
     let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
-    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()], None);
+    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
@@ -264,7 +264,7 @@ pub fn test_contains_ckbforks_section() {
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
     machine
-        .load_program(&buffer, &vec!["ebreak".into()], Some(&elf))
+        .load_program_elf(&buffer, &vec!["ebreak".into()], &elf)
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());

@@ -32,7 +32,7 @@ pub fn test_resume_asm_2_asm() {
         .build();
     let mut machine1 = AsmMachine::new(core1, None);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.machine.cycles();
@@ -46,7 +46,7 @@ pub fn test_resume_asm_2_asm() {
         .build();
     let mut machine2 = AsmMachine::new(core2, None);
     machine2
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine2.machine, &snapshot).unwrap();
     let result2 = machine2.run();
@@ -69,7 +69,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
         .build();
     let mut machine1 = AsmMachine::new(core1, None);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.machine.cycles();
@@ -83,7 +83,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
         .build();
     let mut machine2 = AsmMachine::new(core2, None);
     machine2
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine2.machine, &snapshot1).unwrap();
     let result2 = machine2.run();
@@ -98,7 +98,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
         .build();
     let mut machine3 = AsmMachine::new(core3, None);
     machine3
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine3.machine, &snapshot2).unwrap();
     let result3 = machine3.run();
@@ -121,7 +121,7 @@ pub fn test_resume_asm_2_interpreter() {
         .build();
     let mut machine1 = AsmMachine::new(core1, None);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.machine.cycles();
@@ -135,7 +135,7 @@ pub fn test_resume_asm_2_interpreter() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine2
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine2, &snapshot).unwrap();
 
@@ -159,7 +159,7 @@ pub fn test_resume_interpreter_2_interpreter() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -173,7 +173,7 @@ pub fn test_resume_interpreter_2_interpreter() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine2
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine2, &snapshot).unwrap();
     let result2 = machine2.run();
@@ -196,7 +196,7 @@ pub fn test_resume_interpreter_2_asm() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -210,7 +210,7 @@ pub fn test_resume_interpreter_2_asm() {
         .build();
     let mut machine2 = AsmMachine::new(core2, None);
     machine2
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine2.machine, &snapshot).unwrap();
     let result2 = machine2.run();
@@ -236,7 +236,7 @@ pub fn test_resume_aot_2_asm() {
         .build();
     let mut machine1 = AsmMachine::new(core1, Some(&code));
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.machine.cycles();
@@ -250,7 +250,7 @@ pub fn test_resume_aot_2_asm() {
         .build();
     let mut machine2 = AsmMachine::new(core2, None);
     machine2
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     resume(&mut machine2.machine, &snapshot).unwrap();
     let result2 = machine2.run();

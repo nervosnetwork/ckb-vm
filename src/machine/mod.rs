@@ -446,16 +446,17 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
 }
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
-    pub fn load_program(
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+        self.load_program_elf(program, args, &parse_elf(program)?)
+    }
+
+    pub fn load_program_elf(
         &mut self,
         program: &Bytes,
         args: &[Bytes],
-        elf: Option<&Elf>,
+        elf: &Elf,
     ) -> Result<u64, Error> {
-        let elf_bytes = match elf {
-            Some(data) => self.load_elf(program, data, true)?,
-            None => self.load_elf(program, &parse_elf(program)?, true)?,
-        };
+        let elf_bytes = self.load_elf(program, elf, true)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
         }

@@ -330,13 +330,17 @@ impl<'a> AsmMachine<'a> {
         }
     }
 
-    pub fn load_program(
+    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+        self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_elf(
         &mut self,
         program: &Bytes,
         args: &[Bytes],
-        elf: Option<&Elf>,
+        elf: &Elf,
     ) -> Result<u64, Error> {
-        self.machine.load_program(program, args, elf)
+        self.machine.load_program_elf(program, args, elf)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {

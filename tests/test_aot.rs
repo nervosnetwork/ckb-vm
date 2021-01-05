@@ -27,7 +27,7 @@ pub fn test_aot_simple64() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["simple".into()], None)
+        .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -71,7 +71,7 @@ pub fn test_aot_with_custom_syscall() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -111,7 +111,7 @@ pub fn test_aot_ebreak() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
-        .load_program(&buffer, &vec!["ebreak".into()], None)
+        .load_program(&buffer, &vec!["ebreak".into()])
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -139,7 +139,7 @@ pub fn test_aot_simple_cycles() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -165,7 +165,7 @@ pub fn test_aot_simple_max_cycles_reached() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
-        .load_program(&buffer, &vec!["syscall".into()], None)
+        .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -183,7 +183,7 @@ pub fn test_aot_trace() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["simple".into()], None)
+        .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -201,7 +201,7 @@ pub fn test_aot_jump0() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["jump0_64".into()], None)
+        .load_program(&buffer, &vec!["jump0_64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -219,7 +219,7 @@ pub fn test_aot_write_large_address() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["write_large_address64".into()], None)
+        .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -237,7 +237,7 @@ pub fn test_aot_misaligned_jump64() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["write_large_address64".into()], None)
+        .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -254,7 +254,7 @@ pub fn test_aot_mulw64() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["mulw64".into()], None)
+        .load_program(&buffer, &vec!["mulw64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -272,7 +272,7 @@ pub fn test_aot_invalid_read64() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["invalid_read64".into()], None)
+        .load_program(&buffer, &vec!["invalid_read64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -290,7 +290,7 @@ pub fn test_aot_load_elf_crash_64() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["load_elf_crash_64".into()], None)
+        .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::InvalidPermission));
@@ -307,7 +307,7 @@ pub fn test_aot_wxorx_crash_64() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["wxorx_crash_64".into()], None)
+        .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
@@ -357,7 +357,7 @@ pub fn test_aot_alloc_many() {
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
-        .load_program(&buffer, &vec!["alloc_many".into()], None)
+        .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -379,7 +379,7 @@ pub fn test_aot_chaos_seed() {
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
     let mut machine1 = AsmMachine::new(core1, Some(&code1));
     machine1
-        .load_program(&buffer, &vec!["read_memory".into()], None)
+        .load_program(&buffer, &vec!["read_memory".into()])
         .unwrap();
     let result1 = machine1.run();
     let exit1 = result1.unwrap();
@@ -392,7 +392,7 @@ pub fn test_aot_chaos_seed() {
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
     let mut machine2 = AsmMachine::new(core2, Some(&code2));
     machine2
-        .load_program(&buffer, &vec!["read_memory".into()], None)
+        .load_program(&buffer, &vec!["read_memory".into()])
         .unwrap();
     let result2 = machine2.run();
     let exit2 = result2.unwrap();
