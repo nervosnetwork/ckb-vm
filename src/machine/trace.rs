@@ -10,6 +10,7 @@ use super::{
     CoreMachine, DefaultMachine, Machine, SupportMachine,
 };
 use bytes::Bytes;
+use goblin::elf::Elf;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -98,6 +99,15 @@ impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMe
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_elf(
+        &mut self,
+        program: &Bytes,
+        args: &[Bytes],
+        elf: &Elf,
+    ) -> Result<u64, Error> {
+        self.machine.load_program_elf(program, args, elf)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
