@@ -12,17 +12,20 @@ env:
 
 matrix:
   include:
-    - os: osx
+    - name: ci
+      os: osx
       rust: 1.41.0
       install:
         - cargo fmt --version || rustup component add rustfmt-preview
         - cargo clippy --version || rustup component add clippy-preview
       env: SUITE=ci
-    - rust: stable
+    - name: ci-deps
+      rust: stable
       install:
         - cargo deny --version || travis_retry cargo install cargo-deny --locked
       env: SUITE=ci-deps
-    - rust: 1.41.0
+    - name: ci-quick
+      rust: 1.41.0
       addons:
         apt:
           packages:
@@ -33,28 +36,23 @@ matrix:
             - texinfo
             - libtool
       env: SUITE=ci-quick
-    - rust: 1.41.0
+    - name: ci-generated
+      rust: 1.41.0
       addons:
         apt:
           packages:
             - git
             - build-essential
       env: SUITE=ci-generated
-    - rust: 1.41.0
+    - name: check
+      rust: 1.41.0
       addons:
         apt:
           packages:
             - git
             - build-essential
       env: SUITE=check
-    - rust: 1.41.0
-      addons:
-        apt:
-          packages:
-            - git
-            - build-essential
-      env: SUITE=ci-all-features
-    - os: osx
+    - name: ci-all-features
       rust: 1.41.0
       addons:
         apt:
@@ -62,14 +60,25 @@ matrix:
             - git
             - build-essential
       env: SUITE=ci-all-features
-    - rust: 1.41.0
+    - name: ci-all-features
+      os: osx
+      rust: 1.41.0
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+      env: SUITE=ci-all-features
+    - name: ci-chaos
+      rust: 1.41.0
       addons:
         apt:
           packages:
             - git
             - build-essential
       env: SUITE=ci-chaos
-    - os: osx
+    - name: ci-chaos
+      os: osx
       rust: 1.41.0
       addons:
         apt:
