@@ -106,10 +106,10 @@ matrix:
             - libexpat-dev
             - zlib1g-dev
       script:
-        git clone --recursive https://github.com/nervosnetwork/ckb-vm-test-suite &&
+        git clone https://github.com/nervosnetwork/ckb-vm-test-suite &&
         ln -snf .. ckb-vm-test-suite/ckb-vm &&
         docker run --rm -v `pwd`:/code xxuejie/riscv-gnu-toolchain-rv64imac:xenial-20190606 cp -r /riscv /code/riscv &&
-        cd ckb-vm-test-suite && git checkout $TEST_SUITE_COMMIT &&
+        cd ckb-vm-test-suite && git checkout $TEST_SUITE_COMMIT && git submodule update --init &&
         RISCV=`pwd`/../riscv ./test.sh
     - name: Fuzz
       dist: bionic
