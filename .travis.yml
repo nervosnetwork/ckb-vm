@@ -14,7 +14,7 @@ matrix:
   include:
     - name: ci
       os: osx
-      rust: 1.41.0
+      rust: 1.46.0
       install:
         - cargo fmt --version || rustup component add rustfmt-preview
         - cargo clippy --version || rustup component add clippy-preview
@@ -25,7 +25,7 @@ matrix:
         - cargo deny --version || travis_retry cargo install cargo-deny --locked
       env: SUITE=ci-deps
     - name: ci-quick
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -37,7 +37,7 @@ matrix:
             - libtool
       env: SUITE=ci-quick
     - name: ci-generated
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -45,7 +45,7 @@ matrix:
             - build-essential
       env: SUITE=ci-generated
     - name: check
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -53,7 +53,7 @@ matrix:
             - build-essential
       env: SUITE=check
     - name: ci-all-features
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -62,7 +62,7 @@ matrix:
       env: SUITE=ci-all-features
     - name: ci-all-features
       os: osx
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -70,7 +70,7 @@ matrix:
             - build-essential
       env: SUITE=ci-all-features
     - name: ci-chaos
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -79,7 +79,7 @@ matrix:
       env: SUITE=ci-chaos
     - name: ci-chaos
       os: osx
-      rust: 1.41.0
+      rust: 1.46.0
       addons:
         apt:
           packages:
@@ -87,7 +87,7 @@ matrix:
             - build-essential
       env: SUITE=ci-chaos
     - name: Test Suite
-      rust: 1.41.0
+      rust: 1.46.0
       dist: xenial
       addons:
         apt:
@@ -119,7 +119,7 @@ matrix:
         - make fuzz
     - name: Code Coverage
       if: 'tag IS NOT present AND type != pull_request AND (branch = develop OR branch = master)'
-      rust: 1.41.0
+      rust: 1.46.0
       dist: xenial
       addons:
         apt:
