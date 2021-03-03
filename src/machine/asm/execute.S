@@ -327,6 +327,7 @@ ckb_vm_x64_execute:
 #endif
   push %rbp
   push %rbx
+  push %r12
   mov ARG1, MACHINE
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
@@ -2165,6 +2166,7 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_DECODE_TRACE, ARG_RETd
   jmp .exit
 .exit:
+  pop %r12
   pop %rbx
   pop %rbp
 #ifdef IS_WINDOWS
