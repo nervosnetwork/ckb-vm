@@ -131,7 +131,7 @@ pub fn test_aot_simple_cycles() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let asm_core = AsmCoreMachine::new_with_max_cycles(517);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 517);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -158,7 +158,7 @@ pub fn test_aot_simple_max_cycles_reached() {
     let buffer: Bytes = buffer.into();
 
     // Running simple64 should consume 517 cycles using dummy cycle func
-    let asm_core = AsmCoreMachine::new_with_max_cycles(500);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 500);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();

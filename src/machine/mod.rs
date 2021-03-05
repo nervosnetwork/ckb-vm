@@ -2,14 +2,13 @@
 pub mod aot;
 #[cfg(has_asm)]
 pub mod asm;
+pub mod elf_adaptor;
 pub mod trace;
 
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, Decoder};
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{
-    round_page_down, round_page_up, Memory, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED,
-};
+use super::memory::{round_page_down, round_page_up, Memory, FLAG_DIRTY};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
@@ -17,8 +16,6 @@ use super::{
     RISCV_PAGES,
 };
 use bytes::Bytes;
-use goblin::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
-use goblin::elf::Elf;
 use std::fmt::{self, Display};
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -30,25 +27,6 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/98
 // * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
-
-pub fn parse_elf(program: &Bytes) -> Result<Elf, Error> {
-    Elf::parse(program).map_err(|_e| Error::ParseError)
-}
-
-// Converts goblin's ELF flags into RISC-V flags
-fn convert_flags(p_flags: u32) -> Result<u8, Error> {
-    let readable = p_flags & PF_R != 0;
-    let writable = p_flags & PF_W != 0;
-    let executable = p_flags & PF_X != 0;
-    if (!readable) || (writable && executable) {
-        return Err(Error::InvalidPermission);
-    }
-    if executable {
-        Ok(FLAG_EXECUTABLE | FLAG_FREEZED)
-    } else {
-        Ok(FLAG_FREEZED)
-    }
-}
 
 /// This is the core part of RISC-V that only deals with data part, it
 /// is extracted from Machine so we can handle lifetime logic in dynamic
@@ -106,16 +84,19 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
-    fn load_elf(&mut self, program: &Bytes, elf: &Elf, update_pc: bool) -> Result<u64, Error> {
-        let header = elf.header;
-        let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-        if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
+    fn load_elf(
+        &mut self,
+        program: &Bytes,
+        elf: &elf_adaptor::Elf,
+        update_pc: bool,
+    ) -> Result<u64, Error> {
+        if Self::REG::BITS != elf.header.container {
             return Err(Error::InvalidElfBits);
         }
         let program_headers = &elf.program_headers;
         let mut bytes: u64 = 0;
         for program_header in program_headers {
-            if program_header.p_type == PT_LOAD {
+            if program_header.p_type == elf_adaptor::PT_LOAD {
                 let aligned_start = round_page_down(program_header.p_vaddr);
                 let padding_start = program_header.p_vaddr.wrapping_sub(aligned_start);
                 let size = round_page_up(program_header.p_memsz.wrapping_add(padding_start));
@@ -129,7 +110,7 @@ pub trait SupportMachine: CoreMachine {
                 self.memory_mut().init_pages(
                     aligned_start,
                     size,
-                    convert_flags(program_header.p_flags)?,
+                    elf_adaptor::convert_flags(program_header.p_flags)?,
                     Some(program.slice(slice_start as usize..slice_end as usize)),
                     padding_start,
                 )?;
@@ -143,7 +124,7 @@ pub trait SupportMachine: CoreMachine {
             }
         }
         if update_pc {
-            self.set_pc(Self::REG::from_u64(header.e_entry));
+            self.set_pc(Self::REG::from_u64(elf.header.e_entry));
         }
         for i in 0..RISCV_PAGES {
             self.memory_mut().clear_flag(i as u64, FLAG_DIRTY)?;
@@ -323,13 +304,6 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
         }
     }
 
-    pub fn new_with_max_cycles(max_cycles: u64) -> Self {
-        Self {
-            max_cycles: Some(max_cycles),
-            ..Default::default()
-        }
-    }
-
     pub fn take_memory(self) -> M {
         self.memory
     }
@@ -460,14 +434,19 @@ impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
 
 impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        self.load_program_elf(program, args, &parse_elf(program)?)
+        let elf_adaptor = match self.version() {
+            VERSION0 => elf_adaptor::Elf::from_v0(elf_adaptor::parse_elf_v0(program)?)?,
+            VERSION1 => elf_adaptor::Elf::from_v1(elf_adaptor::parse_elf_v1(program)?)?,
+            _ => unreachable!(),
+        };
+        self.load_program_elf(program, args, &elf_adaptor)
     }
 
     pub fn load_program_elf(
         &mut self,
         program: &Bytes,
         args: &[Bytes],
-        elf: &Elf,
+        elf: &elf_adaptor::Elf,
     ) -> Result<u64, Error> {
         let elf_bytes = self.load_elf(program, elf, true)?;
         for syscall in &mut self.syscalls {

@@ -1,6 +1,6 @@
 use crate::{
-    instructions::Instruction, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGES,
+    instructions::Instruction, ISA_IMC, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_MAX_MEMORY, RISCV_PAGES,
 };
 use std::alloc::{alloc, Layout};
 
@@ -56,19 +56,12 @@ impl Default for Box<AsmCoreMachine> {
         // Since in AsmCoreMachine we will always have max_cycles, the best
         // way to solve the case that a max cycle is not available, is just
         // to assign the maximum value allowed in u64.
-        AsmCoreMachine::new_with_max_cycles(u64::max_value())
+        AsmCoreMachine::new(ISA_IMC, 0, u64::max_value())
     }
 }
 
 impl AsmCoreMachine {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
-        let mut machine = Self::new_with_max_cycles(max_cycles);
-        machine.isa = isa;
-        machine.version = version;
-        machine
-    }
-
-    pub fn new_with_max_cycles(max_cycles: u64) -> Box<AsmCoreMachine> {
         let mut machine = unsafe {
             let layout = Layout::new::<AsmCoreMachine>();
             #[allow(clippy::cast_ptr_alignment)]
@@ -89,6 +82,8 @@ impl AsmCoreMachine {
             machine.chaos_mode = 0;
         }
         machine.chaos_seed = 0;
+        machine.version = version;
+        machine.isa = isa;
         machine.flags = [0; RISCV_PAGES];
         for i in 0..TRACE_SIZE {
             machine.traces[i] = Trace::default();

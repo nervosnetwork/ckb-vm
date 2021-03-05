@@ -6,7 +6,6 @@ use std::mem;
 use std::rc::Rc;
 
 use bytes::Bytes;
-use goblin::elf::{section_header::SHF_EXECINSTR, Elf};
 use memmap::{Mmap, MmapMut};
 
 use super::super::{
@@ -15,7 +14,7 @@ use super::super::{
         ast::Value, execute, instruction_length, is_basic_block_end_instruction,
         is_slowpath_instruction, Instruction,
     },
-    machine::{parse_elf, VERSION1},
+    machine::{elf_adaptor, VERSION0, VERSION1},
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
     Register, SupportMachine, RISCV_MAX_MEMORY,
 };
@@ -100,10 +99,13 @@ struct LabelGatheringMachine {
 }
 
 impl LabelGatheringMachine {
-    pub fn load(program: &Bytes, elf: &Elf, isa: u8, version: u32) -> Result<Self, Error> {
-        let header = elf.header;
-        let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-        if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
+    pub fn load(
+        program: &Bytes,
+        elf: &elf_adaptor::Elf,
+        isa: u8,
+        version: u32,
+    ) -> Result<Self, Error> {
+        if <Self as CoreMachine>::REG::BITS != elf.header.container {
             return Err(Error::InvalidElfBits);
         }
         let section_headers = &elf.section_headers;
@@ -114,7 +116,7 @@ impl LabelGatheringMachine {
         let mut sections: Vec<(u64, u64)> = section_headers
             .iter()
             .filter_map(|section_header| {
-                if section_header.sh_flags & u64::from(SHF_EXECINSTR) != 0 {
+                if section_header.sh_flags & u64::from(elf_adaptor::SHF_EXECINSTR) != 0 {
                     Some((
                         section_header.sh_addr,
                         section_header.sh_addr.wrapping_add(section_header.sh_size),
@@ -414,8 +416,13 @@ impl AotCompilingMachine {
         version: u32,
     ) -> Result<Self, Error> {
         // First we need to gather labels
+        let elf_adaptor = match version {
+            VERSION0 => elf_adaptor::Elf::from_v0(elf_adaptor::parse_elf_v0(program)?)?,
+            VERSION1 => elf_adaptor::Elf::from_v1(elf_adaptor::parse_elf_v1(program)?)?,
+            _ => unreachable!(),
+        };
         let mut label_gathering_machine =
-            LabelGatheringMachine::load(&program, &parse_elf(&program)?, isa, version)?;
+            LabelGatheringMachine::load(&program, &elf_adaptor, isa, version)?;
         label_gathering_machine.gather()?;
 
         let mut labels: Vec<u64> = label_gathering_machine.labels.iter().cloned().collect();

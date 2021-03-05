@@ -4,10 +4,11 @@ use bytes::Bytes;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
-    parse_elf,
+    machine::{elf_adaptor::Elf, VERSION0},
+    parse_elf_v0 as parse_elf,
     registers::{A0, A1, A2, A3, A4, A5, A7},
     run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error,
-    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
+    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
 };
 use ckb_vm_definitions::RISCV_PAGESIZE;
 use std::fs::File;
@@ -250,7 +251,7 @@ pub fn test_memory_store_empty_bytes() {
     assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::default());
     assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::default());
     #[cfg(has_asm)]
-    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new_with_max_cycles(200_000));
+    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000));
 }
 
 fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
@@ -281,7 +282,7 @@ pub fn test_contains_ckbforks_section() {
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
     machine
-        .load_program_elf(&buffer, &vec!["ebreak".into()], &elf)
+        .load_program_elf(&buffer, &vec!["ebreak".into()], &Elf::from_v0(elf).unwrap())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
