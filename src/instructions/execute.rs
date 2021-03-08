@@ -1735,7 +1735,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_SUBUW => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = Mac::REG::from_u8(i.rs2() as u8);
+            let rs2_value = &machine.registers()[i.rs2()];
             let rs2_u = rs2_value.zero_extend(&Mac::REG::from_u8(32));
             let value = rs1_value.overflowing_sub(&rs2_u);
             update_register(machine, i.rd(), value);
