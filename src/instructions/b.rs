@@ -138,10 +138,10 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     (0b_001, 0b_11011) => Some(insts::OP_CRC32CD),
                     _ => None,
                 };
-                if inst_opt.is_some() {
-                    return inst_opt.map(|inst| {
-                        Rtype::new(inst, rd(instruction_bits), rs1(instruction_bits), rs2_value).0
-                    });
+                if let Some(inst) = inst_opt {
+                    return Some(
+                        Rtype::new(inst, rd(instruction_bits), rs1(instruction_bits), rs2_value).0,
+                    );
                 }
             }
             let top6_value = top7_value >> 1;

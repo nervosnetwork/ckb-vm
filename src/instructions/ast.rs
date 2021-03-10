@@ -287,28 +287,28 @@ impl Register for Value {
     }
 
     fn rol(&self, rhs: &Value) -> Value {
-        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
             return Value::Imm(imm1.rotate_left(*imm2 as u32));
         }
         Value::Op2(ActionOp2::Rol, Rc::new(self.clone()), Rc::new(rhs.clone()))
     }
 
     fn ror(&self, rhs: &Value) -> Value {
-        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
             return Value::Imm(imm1.rotate_right(*imm2 as u32));
         }
         Value::Op2(ActionOp2::Ror, Rc::new(self.clone()), Rc::new(rhs.clone()))
     }
 
     fn slo(&self, rhs: &Value) -> Value {
-        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
             return Value::Imm(!((!*imm1).shl(*imm2 as u32)));
         }
         Value::Op2(ActionOp2::Slo, Rc::new(self.clone()), Rc::new(rhs.clone()))
     }
 
     fn sro(&self, rhs: &Value) -> Value {
-        if let (Value::Imm(imm1), Value::Imm(imm2)) = (&self, &rhs) {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
             return Value::Imm(!((!*imm1).shr(*imm2 as u32)));
         }
         Value::Op2(ActionOp2::Sro, Rc::new(self.clone()), Rc::new(rhs.clone()))

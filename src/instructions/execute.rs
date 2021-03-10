@@ -6,7 +6,6 @@ use super::{
 };
 use ckb_vm_definitions::instructions as insts;
 
-#[allow(clippy::cognitive_complexity)]
 pub fn execute_instruction<Mac: Machine>(
     inst: Instruction,
     machine: &mut Mac,
@@ -1764,7 +1763,6 @@ pub fn execute_instruction<Mac: Machine>(
     Ok(next_pc)
 }
 
-#[allow(clippy::cognitive_complexity)]
 pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
     let next_pc = execute_instruction(inst, machine)?;
     let default_instruction_size = instruction_length(inst);
