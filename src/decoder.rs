@@ -1,6 +1,9 @@
 use super::instructions::{i, m, rvc, Instruction, InstructionFactory, Register};
 use super::memory::Memory;
 use super::Error;
+use super::RISCV_PAGESIZE;
+
+const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 
 #[derive(Default)]
 pub struct Decoder {
@@ -55,11 +58,21 @@ impl Decoder {
     // RVC instruction into a 32-bit instruction, the meaning of the instruction stays
     // unchanged in the cast conversion.
     fn decode_bits<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<u32, Error> {
-        let mut instruction_bits = u32::from(memory.execute_load16(pc)?);
-        if instruction_bits & 0x3 == 0x3 {
-            instruction_bits |= u32::from(memory.execute_load16(pc + 2)?) << 16;
+        // when the address is not the last 2 bytes of an executable page,
+        // use a faster path to load instruction bits
+        if pc & RISCV_PAGESIZE_MASK < RISCV_PAGESIZE_MASK - 1 {
+            let mut instruction_bits = memory.execute_load32(pc)?;
+            if instruction_bits & 0x3 != 0x3 {
+                instruction_bits &= 0xffff;
+            }
+            Ok(instruction_bits)
+        } else {
+            let mut instruction_bits = u32::from(memory.execute_load16(pc)?);
+            if instruction_bits & 0x3 == 0x3 {
+                instruction_bits |= u32::from(memory.execute_load16(pc + 2)?) << 16;
+            }
+            Ok(instruction_bits)
         }
-        Ok(instruction_bits)
     }
 
     pub fn decode<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
