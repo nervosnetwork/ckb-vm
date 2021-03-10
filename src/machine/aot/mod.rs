@@ -332,6 +332,10 @@ impl Memory for LabelGatheringMachine {
         Err(Error::Unimplemented)
     }
 
+    fn execute_load32(&mut self, _addr: u64) -> Result<u32, Error> {
+        Err(Error::Unimplemented)
+    }
+
     fn load8(&mut self, addr: &Value) -> Result<Value, Error> {
         Ok(Value::Load(Rc::new(addr.clone()), 1))
     }
@@ -660,6 +664,10 @@ impl Memory for AotCompilingMachine {
     }
 
     fn execute_load16(&mut self, _addr: u64) -> Result<u16, Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn execute_load32(&mut self, _addr: u64) -> Result<u32, Error> {
         Err(Error::Unimplemented)
     }
 
