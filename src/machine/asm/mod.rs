@@ -124,6 +124,11 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         self.load16(&(addr)).map(|v| v as u16)
     }
 
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
+        check_permission(self, addr, 4, FLAG_EXECUTABLE)?;
+        self.load32(&(addr)).map(|v| v as u32)
+    }
+
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         if addr + 1 > self.memory.len() as u64 {

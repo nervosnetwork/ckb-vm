@@ -51,9 +51,9 @@ impl Decoder {
         memory: &mut M,
         pc: u64,
     ) -> Result<u32, Error> {
-        let mut instruction_bits = u32::from(memory.execute_load16(pc)?);
-        if instruction_bits & 0x3 == 0x3 {
-            instruction_bits |= u32::from(memory.execute_load16(pc + 2)?) << 16;
+        let mut instruction_bits = u32::from(memory.execute_load32(pc)?);
+        if instruction_bits & 0x3 != 0x3 {
+            instruction_bits &= 0xffff;
         }
         Ok(instruction_bits)
     }

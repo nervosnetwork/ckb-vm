@@ -116,6 +116,10 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         self.load(addr, 2).map(|v| v as u16)
     }
 
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
+        self.load(addr, 4).map(|v| v as u32)
+    }
+
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let mut remaining_data = value;
         let mut current_page_addr = round_page_down(addr);

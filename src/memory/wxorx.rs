@@ -72,6 +72,11 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
         self.inner.execute_load16(addr)
     }
 
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
+        check_permission(self, addr, 4, FLAG_EXECUTABLE)?;
+        self.inner.execute_load32(addr)
+    }
+
     fn load8(&mut self, addr: &R) -> Result<R, Error> {
         self.inner.load8(addr)
     }
