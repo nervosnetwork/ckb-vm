@@ -39,7 +39,9 @@ impl<R> DerefMut for FlatMemory<R> {
 
 /// A flat chunk of memory used for RISC-V machine, it lacks all the permission
 /// checking logic.
-impl<R: Register> Memory<R> for FlatMemory<R> {
+impl<R: Register> Memory for FlatMemory<R> {
+    type REG = R;
+
     fn init_pages(
         &mut self,
         addr: u64,
@@ -78,10 +80,10 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
-        self.load16(&R::from_u64(addr)).map(|v| v.to_u16())
+        self.load16(&Self::REG::from_u64(addr)).map(|v| v.to_u16())
     }
 
-    fn load8(&mut self, addr: &R) -> Result<R, Error> {
+    fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
@@ -89,10 +91,10 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         let v = reader.read_u8()?;
-        Ok(R::from_u8(v))
+        Ok(Self::REG::from_u8(v))
     }
 
-    fn load16(&mut self, addr: &R) -> Result<R, Error> {
+    fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         if addr.checked_add(2).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
@@ -101,10 +103,10 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
         let v = reader.read_u16::<LittleEndian>()?;
-        Ok(R::from_u16(v))
+        Ok(Self::REG::from_u16(v))
     }
 
-    fn load32(&mut self, addr: &R) -> Result<R, Error> {
+    fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         if addr.checked_add(4).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
@@ -113,10 +115,10 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
         let v = reader.read_u32::<LittleEndian>()?;
-        Ok(R::from_u32(v))
+        Ok(Self::REG::from_u32(v))
     }
 
-    fn load64(&mut self, addr: &R) -> Result<R, Error> {
+    fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         if addr.checked_add(8).ok_or(Error::OutOfBound)? > self.len() as u64 {
             return Err(Error::OutOfBound);
@@ -125,10 +127,10 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
         let v = reader.read_u64::<LittleEndian>()?;
-        Ok(R::from_u64(v))
+        Ok(Self::REG::from_u64(v))
     }
 
-    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
         let page_indices = get_page_indices(addr.to_u64(), 1)?;
         set_dirty(self, &page_indices)?;
@@ -138,7 +140,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         Ok(())
     }
 
-    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
         let page_indices = get_page_indices(addr.to_u64(), 2)?;
         set_dirty(self, &page_indices)?;
@@ -148,7 +150,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         Ok(())
     }
 
-    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
         let page_indices = get_page_indices(addr.to_u64(), 4)?;
         set_dirty(self, &page_indices)?;
@@ -158,7 +160,7 @@ impl<R: Register> Memory<R> for FlatMemory<R> {
         Ok(())
     }
 
-    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
         let page_indices = get_page_indices(addr.to_u64(), 8)?;
         set_dirty(self, &page_indices)?;

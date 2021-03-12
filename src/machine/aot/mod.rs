@@ -294,7 +294,9 @@ impl Machine for LabelGatheringMachine {
     }
 }
 
-impl Memory<Value> for LabelGatheringMachine {
+impl Memory for LabelGatheringMachine {
+    type REG = Value;
+
     fn init_pages(
         &mut self,
         _addr: u64,
@@ -623,7 +625,9 @@ impl Machine for AotCompilingMachine {
     }
 }
 
-impl Memory<Value> for AotCompilingMachine {
+impl Memory for AotCompilingMachine {
+    type REG = Value;
+
     fn init_pages(
         &mut self,
         _addr: u64,

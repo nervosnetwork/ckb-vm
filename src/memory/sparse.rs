@@ -74,7 +74,9 @@ impl<R> SparseMemory<R> {
     }
 }
 
-impl<R: Register> Memory<R> for SparseMemory<R> {
+impl<R: Register> Memory for SparseMemory<R> {
+    type REG = R;
+
     fn init_pages(
         &mut self,
         addr: u64,
@@ -112,24 +114,24 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         }
     }
 
-    fn load8(&mut self, addr: &R) -> Result<R, Error> {
+    fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let v = self.load(addr.to_u64(), 1).map(|v| v as u8)?;
-        Ok(R::from_u8(v))
+        Ok(Self::REG::from_u8(v))
     }
 
-    fn load16(&mut self, addr: &R) -> Result<R, Error> {
+    fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let v = self.load(addr.to_u64(), 2).map(|v| v as u16)?;
-        Ok(R::from_u16(v))
+        Ok(Self::REG::from_u16(v))
     }
 
-    fn load32(&mut self, addr: &R) -> Result<R, Error> {
+    fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let v = self.load(addr.to_u64(), 4).map(|v| v as u32)?;
-        Ok(R::from_u32(v))
+        Ok(Self::REG::from_u32(v))
     }
 
-    fn load64(&mut self, addr: &R) -> Result<R, Error> {
+    fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let v = self.load(addr.to_u64(), 8)?;
-        Ok(R::from_u64(v))
+        Ok(Self::REG::from_u64(v))
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
@@ -178,17 +180,17 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         Ok(())
     }
 
-    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         self.store_bytes(addr.to_u64(), &[value.to_u8()])
     }
 
-    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let value = value.to_u16();
         // RISC-V is little-endian by specification
         self.store_bytes(addr.to_u64(), &[(value & 0xFF) as u8, (value >> 8) as u8])
     }
 
-    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let value = value.to_u32();
         // RISC-V is little-endian by specification
         self.store_bytes(
@@ -202,7 +204,7 @@ impl<R: Register> Memory<R> for SparseMemory<R> {
         )
     }
 
-    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let value = value.to_u64();
         // RISC-V is little-endian by specification
         self.store_bytes(

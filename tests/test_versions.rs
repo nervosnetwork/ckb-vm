@@ -14,7 +14,7 @@ use ckb_vm::{
 use std::fs::File;
 use std::io::Read;
 
-type Mem = WXorXMemory<u64, SparseMemory<u64>>;
+type Mem = WXorXMemory<SparseMemory<u64>>;
 
 fn create_rust_machine<'a>(
     program: String,
