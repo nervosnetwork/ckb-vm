@@ -8,7 +8,7 @@ use ckb_vm_definitions::{
         RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    MEMORY_FRAME_PAGE_SHIFTS, RISCV_PAGE_SHIFTS,
+    MEMORY_FRAME_PAGE_SHIFTS,
 };
 use goblin::elf::Elf;
 use libc::c_uchar;
@@ -22,7 +22,7 @@ use crate::{
     machine::aot::AotCode,
     memory::{
         check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
-        set_dirty, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
+        set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
@@ -233,7 +233,6 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         check_memory(self, &page_indices)?;
         set_dirty(self, &page_indices)?;
         self.memory[addr as usize] = (*value) as u8;
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 
@@ -247,8 +246,6 @@ impl Memory<u64> for Box<AsmCoreMachine> {
             &mut self.memory[addr as usize..(addr + 2) as usize],
             *value as u16,
         );
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
-        self.set_flag((addr + 1) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 
@@ -262,8 +259,6 @@ impl Memory<u64> for Box<AsmCoreMachine> {
             &mut self.memory[addr as usize..(addr + 4) as usize],
             *value as u32,
         );
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
-        self.set_flag((addr + 3) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 
@@ -274,8 +269,6 @@ impl Memory<u64> for Box<AsmCoreMachine> {
         check_memory(self, &page_indices)?;
         set_dirty(self, &page_indices)?;
         LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
-        self.set_flag(addr >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
-        self.set_flag((addr + 7) >> RISCV_PAGE_SHIFTS, FLAG_DIRTY)?;
         Ok(())
     }
 }
