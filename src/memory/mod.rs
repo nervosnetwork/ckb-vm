@@ -86,10 +86,7 @@ pub(crate) fn fill_page_data<R: Register>(
     Ok(())
 }
 
-pub fn get_page_indices(addr: u64, size: u64) -> Result<Vec<u64>, Error> {
-    if size == 0 {
-        return Ok(vec![]);
-    }
+pub fn get_page_indices(addr: u64, size: u64) -> Result<(u64, u64), Error> {
     let (addr_end, overflowed) = addr.overflowing_add(size);
     if overflowed {
         return Err(Error::OutOfBound);
@@ -99,16 +96,16 @@ pub fn get_page_indices(addr: u64, size: u64) -> Result<Vec<u64>, Error> {
     }
     let page = addr >> RISCV_PAGE_SHIFTS;
     let page_end = (addr_end - 1) >> RISCV_PAGE_SHIFTS;
-    Ok((page..=page_end).collect())
+    Ok((page, page_end))
 }
 
 pub fn check_permission<R: Register>(
     memory: &mut dyn Memory<R>,
-    page_indices: &[u64],
+    page_indices: &(u64, u64),
     flag: u8,
 ) -> Result<(), Error> {
-    for page in page_indices {
-        let page_flag = memory.fetch_flag(*page)?;
+    for page in page_indices.0..=page_indices.1 {
+        let page_flag = memory.fetch_flag(page)?;
         if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
             return Err(Error::InvalidPermission);
         }
@@ -118,10 +115,10 @@ pub fn check_permission<R: Register>(
 
 pub fn set_dirty<R: Register>(
     memory: &mut dyn Memory<R>,
-    page_indices: &[u64],
+    page_indices: &(u64, u64),
 ) -> Result<(), Error> {
-    for page in page_indices {
-        memory.set_flag(*page, FLAG_DIRTY)?
+    for page in page_indices.0..=page_indices.1 {
+        memory.set_flag(page, FLAG_DIRTY)?
     }
     Ok(())
 }
