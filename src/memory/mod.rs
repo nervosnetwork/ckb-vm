@@ -88,6 +88,7 @@ pub(crate) fn fill_page_data<M: Memory>(
     Ok(())
 }
 
+// `size` should be none zero u64
 pub fn get_page_indices(addr: u64, size: u64) -> Result<(u64, u64), Error> {
     let (addr_end, overflowed) = addr.overflowing_add(size);
     if overflowed {

@@ -115,12 +115,18 @@ impl<M: Memory> Memory for WXorXMemory<M> {
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
+        if value.is_empty() {
+            return Ok(());
+        }
         let page_indices = get_page_indices(addr, value.len() as u64)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store_bytes(addr, value)
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
+        if size == 0 {
+            return Ok(());
+        }
         let page_indices = get_page_indices(addr, size)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store_byte(addr, size, value)

@@ -163,7 +163,9 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
-        // Out of bound check is already performed in get_page_indices
+        if value.is_empty() {
+            return Ok(());
+        }
         let page_indices = get_page_indices(addr, value.len() as u64)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         check_memory(self, &page_indices)?;
@@ -174,6 +176,9 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
+        if size == 0 {
+            return Ok(());
+        }
         let page_indices = get_page_indices(addr, size)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         check_memory(self, &page_indices)?;
