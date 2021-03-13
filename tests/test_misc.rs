@@ -1,11 +1,13 @@
 extern crate ckb_vm;
 
 use bytes::Bytes;
+#[cfg(has_asm)]
+use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
     parse_elf,
     registers::{A0, A1, A2, A3, A4, A5, A7},
     run, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Register, SparseMemory, SupportMachine, Syscalls,
+    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
 use std::fs::File;
 use std::io::Read;
@@ -239,6 +241,20 @@ pub fn test_flat_crash_64() {
     let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
+}
+
+#[test]
+pub fn test_memory_store_empty_bytes() {
+    assert_memory_store_empty_bytes(&mut FlatMemory::<u64>::default());
+    assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::default());
+    assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::default());
+    #[cfg(has_asm)]
+    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new_with_max_cycles(200_000));
+}
+
+fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
+    assert!(memory.store_byte(0, 0, 42).is_ok());
+    assert!(memory.store_bytes(0, &[]).is_ok());
 }
 
 pub fn test_contains_ckbforks_section() {

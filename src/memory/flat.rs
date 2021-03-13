@@ -172,6 +172,9 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         let size = value.len() as u64;
+        if size == 0 {
+            return Ok(());
+        }
         let page_indices = get_page_indices(addr.to_u64(), size)?;
         set_dirty(self, &page_indices)?;
         let slice = &mut self[addr as usize..(addr + size) as usize];
@@ -180,6 +183,9 @@ impl<R: Register> Memory for FlatMemory<R> {
     }
 
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
+        if size == 0 {
+            return Ok(());
+        }
         let page_indices = get_page_indices(addr.to_u64(), size)?;
         set_dirty(self, &page_indices)?;
         memset(&mut self[addr as usize..(addr + size) as usize], value);
