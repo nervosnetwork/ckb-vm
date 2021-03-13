@@ -4,7 +4,6 @@ use super::{
         instructions::{
             execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
         },
-        memory::{wxorx::WXorXMemory, Memory},
         Error,
     },
     CoreMachine, DefaultMachine, Machine, SupportMachine,
@@ -40,9 +39,7 @@ pub struct TraceMachine<'a, Inner> {
     traces: Vec<Trace>,
 }
 
-impl<R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory<R, M>>> CoreMachine
-    for TraceMachine<'_, Inner>
-{
+impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -75,9 +72,7 @@ impl<R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory
     }
 }
 
-impl<R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory<R, M>>> Machine
-    for TraceMachine<'_, Inner>
-{
+impl<Inner: SupportMachine> Machine for TraceMachine<'_, Inner> {
     fn ecall(&mut self) -> Result<(), Error> {
         self.machine.ecall()
     }
@@ -87,9 +82,7 @@ impl<R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory
     }
 }
 
-impl<'a, R: Register, M: Memory<R>, Inner: SupportMachine<REG = R, MEM = WXorXMemory<R, M>>>
-    TraceMachine<'a, Inner>
-{
+impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
     pub fn new(machine: DefaultMachine<'a, Inner>) -> Self {
         Self {
             machine,

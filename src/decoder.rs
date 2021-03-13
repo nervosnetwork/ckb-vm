@@ -54,11 +54,7 @@ impl Decoder {
     // Also, due to RISC-V encoding behavior, it's totally okay when we cast a 16-bit
     // RVC instruction into a 32-bit instruction, the meaning of the instruction stays
     // unchanged in the cast conversion.
-    fn decode_bits<R: Register, M: Memory<R>>(
-        &self,
-        memory: &mut M,
-        pc: u64,
-    ) -> Result<u32, Error> {
+    fn decode_bits<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<u32, Error> {
         let mut instruction_bits = u32::from(memory.execute_load16(pc)?);
         if instruction_bits & 0x3 == 0x3 {
             instruction_bits |= u32::from(memory.execute_load16(pc + 2)?) << 16;
@@ -66,11 +62,7 @@ impl Decoder {
         Ok(instruction_bits)
     }
 
-    pub fn decode<R: Register, M: Memory<R>>(
-        &self,
-        memory: &mut M,
-        pc: u64,
-    ) -> Result<Instruction, Error> {
+    pub fn decode<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
             if let Some(instruction) = factory(instruction_bits, self.version) {

@@ -54,7 +54,7 @@ fn convert_flags(p_flags: u32) -> Result<u8, Error> {
 /// syscall support.
 pub trait CoreMachine {
     type REG: Register;
-    type MEM: Memory<Self::REG>;
+    type MEM: Memory<REG = Self::REG>;
 
     fn pc(&self) -> &Self::REG;
     fn set_pc(&mut self, next_pc: Self::REG);
@@ -244,7 +244,7 @@ pub struct DefaultCoreMachine<R, M> {
     version: u32,
 }
 
-impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     type REG = R;
     type MEM = M;
     fn pc(&self) -> &Self::REG {
@@ -276,7 +276,7 @@ impl<R: Register, M: Memory<R>> CoreMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -298,7 +298,7 @@ impl<R: Register, M: Memory<R>> SupportMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory<R> + Default> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
     pub fn new(version: u32, max_cycles: u64) -> Self {
         Self {
             version,

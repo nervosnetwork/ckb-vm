@@ -31,11 +31,11 @@ pub use ckb_vm_definitions::{
 
 pub use error::Error;
 
-pub fn run<R: Register, M: Memory<R> + Default>(
+pub fn run<R: Register, M: Memory<REG = R> + Default>(
     program: &Bytes,
     args: &[Bytes],
 ) -> Result<i8, Error> {
-    let core_machine = DefaultCoreMachine::<R, WXorXMemory<R, M>>::latest();
+    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::latest();
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
     machine.load_program(program, args)?;
     machine.run()

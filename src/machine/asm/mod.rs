@@ -94,7 +94,9 @@ fn check_memory(machine: &mut AsmCoreMachine, page_indices: &(u64, u64)) -> Resu
     Ok(())
 }
 
-impl Memory<u64> for Box<AsmCoreMachine> {
+impl Memory for Box<AsmCoreMachine> {
+    type REG = u64;
+
     fn init_pages(
         &mut self,
         addr: u64,

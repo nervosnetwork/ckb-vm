@@ -5,29 +5,28 @@ use super::{
 };
 
 use bytes::Bytes;
-use std::marker::PhantomData;
 
-pub struct WXorXMemory<R: Register, M: Memory<R>> {
+pub struct WXorXMemory<M: Memory> {
     inner: M,
-    _inner: PhantomData<R>,
 }
 
-impl<R: Register, M: Memory<R> + Default> Default for WXorXMemory<R, M> {
+impl<M: Memory + Default> Default for WXorXMemory<M> {
     fn default() -> Self {
         Self {
             inner: M::default(),
-            _inner: PhantomData,
         }
     }
 }
 
-impl<R: Register, M: Memory<R>> WXorXMemory<R, M> {
-    pub fn inner_mut(&mut self) -> &mut dyn Memory<R> {
+impl<M: Memory> WXorXMemory<M> {
+    pub fn inner_mut(&mut self) -> &mut M {
         &mut self.inner
     }
 }
 
-impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
+impl<M: Memory> Memory for WXorXMemory<M> {
+    type REG = M::REG;
+
     fn init_pages(
         &mut self,
         addr: u64,
@@ -75,41 +74,41 @@ impl<R: Register, M: Memory<R>> Memory<R> for WXorXMemory<R, M> {
         self.inner.execute_load16(addr)
     }
 
-    fn load8(&mut self, addr: &R) -> Result<R, Error> {
+    fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         self.inner.load8(addr)
     }
 
-    fn load16(&mut self, addr: &R) -> Result<R, Error> {
+    fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         self.inner.load16(addr)
     }
 
-    fn load32(&mut self, addr: &R) -> Result<R, Error> {
+    fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         self.inner.load32(addr)
     }
 
-    fn load64(&mut self, addr: &R) -> Result<R, Error> {
+    fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         self.inner.load64(addr)
     }
 
-    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let page_indices = get_page_indices(addr.to_u64(), 1)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store8(addr, value)
     }
 
-    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let page_indices = get_page_indices(addr.to_u64(), 2)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store16(addr, value)
     }
 
-    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let page_indices = get_page_indices(addr.to_u64(), 4)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store32(addr, value)
     }
 
-    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error> {
+    fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let page_indices = get_page_indices(addr.to_u64(), 8)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
         self.inner.store64(addr, value)

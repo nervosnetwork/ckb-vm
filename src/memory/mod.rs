@@ -27,7 +27,9 @@ pub fn round_page_up(x: u64) -> u64 {
 
 pub type Page = [u8; RISCV_PAGESIZE];
 
-pub trait Memory<R: Register> {
+pub trait Memory {
+    type REG: Register;
+
     fn init_pages(
         &mut self,
         addr: u64,
@@ -48,20 +50,20 @@ pub trait Memory<R: Register> {
     // Methods below are used to implement RISC-V instructions, to make JIT
     // possible, we need to use register type here so as to pass enough
     // information around.
-    fn load8(&mut self, addr: &R) -> Result<R, Error>;
-    fn load16(&mut self, addr: &R) -> Result<R, Error>;
-    fn load32(&mut self, addr: &R) -> Result<R, Error>;
-    fn load64(&mut self, addr: &R) -> Result<R, Error>;
+    fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
+    fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
+    fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
+    fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
 
-    fn store8(&mut self, addr: &R, value: &R) -> Result<(), Error>;
-    fn store16(&mut self, addr: &R, value: &R) -> Result<(), Error>;
-    fn store32(&mut self, addr: &R, value: &R) -> Result<(), Error>;
-    fn store64(&mut self, addr: &R, value: &R) -> Result<(), Error>;
+    fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
+    fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
+    fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
+    fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
 }
 
 #[inline(always)]
-pub(crate) fn fill_page_data<R: Register>(
-    memory: &mut dyn Memory<R>,
+pub(crate) fn fill_page_data<M: Memory>(
+    memory: &mut M,
     addr: u64,
     size: u64,
     source: Option<Bytes>,
@@ -99,8 +101,8 @@ pub fn get_page_indices(addr: u64, size: u64) -> Result<(u64, u64), Error> {
     Ok((page, page_end))
 }
 
-pub fn check_permission<R: Register>(
-    memory: &mut dyn Memory<R>,
+pub fn check_permission<M: Memory>(
+    memory: &mut M,
     page_indices: &(u64, u64),
     flag: u8,
 ) -> Result<(), Error> {
@@ -113,10 +115,7 @@ pub fn check_permission<R: Register>(
     Ok(())
 }
 
-pub fn set_dirty<R: Register>(
-    memory: &mut dyn Memory<R>,
-    page_indices: &(u64, u64),
-) -> Result<(), Error> {
+pub fn set_dirty<M: Memory>(memory: &mut M, page_indices: &(u64, u64)) -> Result<(), Error> {
     for page in page_indices.0..=page_indices.1 {
         memory.set_flag(page, FLAG_DIRTY)?
     }
