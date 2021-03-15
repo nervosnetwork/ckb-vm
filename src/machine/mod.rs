@@ -306,7 +306,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
 }
 
 impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
-    pub fn new(version: u32, max_cycles: u64) -> Self {
+    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
         Self {
             isa,
             version,

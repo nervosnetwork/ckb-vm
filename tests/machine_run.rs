@@ -38,7 +38,7 @@ pub fn aot_v1_imcb(path: &str) {
 
 pub fn int_v1_imcb(path: &str) {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<u64, SparseMemory<u64>>>::new(
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_B,
         VERSION1,
         u64::max_value(),
