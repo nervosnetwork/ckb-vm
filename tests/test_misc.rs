@@ -6,9 +6,10 @@ use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
     parse_elf,
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    run, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
+    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error,
+    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
+use ckb_vm_definitions::RISCV_PAGESIZE;
 use std::fs::File;
 use std::io::Read;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -285,4 +286,31 @@ pub fn test_contains_ckbforks_section() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1);
+}
+
+#[test]
+pub fn test_rvc_pageend() {
+    // The last instruction of a executable memory page is an RVC instruction.
+    let mut file = File::open("tests/programs/rvc_pageend").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine =
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
+    machine
+        .load_program(&buffer, &vec!["rvc_end".into()])
+        .unwrap();
+
+    let anchor_pc: u64 = 69630;
+    assert_eq!(anchor_pc as usize % RISCV_PAGESIZE, RISCV_PAGESIZE - 2);
+    let mut memory = machine.memory_mut();
+    let anchor_addr = anchor_pc;
+    let anchor_inst = memory.load16(&anchor_addr).unwrap().to_u16();
+    assert_eq!(anchor_inst, 36241); // 36241 is "c.sub a1, a2"
+
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+    assert_eq!(machine.registers()[A1].to_u64(), 2);
 }
