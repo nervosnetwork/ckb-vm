@@ -43,6 +43,11 @@ pub fn rs2(instruction_bits: u32) -> usize {
 }
 
 #[inline(always)]
+pub fn rs3(instruction_bits: u32) -> usize {
+    x(instruction_bits, 27, 5, 0) as usize
+}
+
+#[inline(always)]
 pub fn btype_immediate(instruction_bits: u32) -> i32 {
     (x(instruction_bits, 8, 4, 1)
         | x(instruction_bits, 25, 6, 5)

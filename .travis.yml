@@ -8,7 +8,7 @@ cache:
 env:
   global:
     - RUST_BACKTRACE=full
-    - TEST_SUITE_COMMIT=4fe8219308a28f8b31910bad5ae14a5acdb396a2
+    - TEST_SUITE_COMMIT=9cef87fbc8966169ad4d41d992d69ac45c4da695
 
 matrix:
   include:
@@ -16,8 +16,8 @@ matrix:
       os: osx
       rust: 1.46.0
       install:
-        - cargo fmt --version || rustup component add rustfmt-preview
-        - cargo clippy --version || rustup component add clippy-preview
+        - cargo fmt --version || rustup component add rustfmt
+        - cargo clippy --version || rustup component add clippy
       env: SUITE=ci
     - name: ci-deps
       rust: stable

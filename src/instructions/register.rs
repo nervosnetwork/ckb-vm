@@ -57,8 +57,26 @@ pub trait Register:
     fn overflowing_mul_high_unsigned(&self, rhs: &Self) -> Self;
     fn overflowing_mul_high_signed_unsigned(&self, rhs: &Self) -> Self;
 
+    // The clz operation counts the number of 0 bits at the MSB end of the argument.
+    fn clz(&self) -> Self;
+    // The ctz operation counts the number of 0 bits at the LSB end of the argument.
+    fn ctz(&self) -> Self;
+    // Counts the number of 1 bits.
+    fn pcnt(&self) -> Self;
+
     fn signed_shl(&self, rhs: &Self) -> Self;
     fn signed_shr(&self, rhs: &Self) -> Self;
+
+    // Rotate left/right.
+    fn rol(&self, rhs: &Self) -> Self;
+    fn ror(&self, rhs: &Self) -> Self;
+    // These instructions are similar to shift-logical operations from the base spec,
+    // except instead of shifting in zeros, they shift in ones.
+    fn slo(&self, rhs: &Self) -> Self;
+    fn sro(&self, rhs: &Self) -> Self;
+
+    fn fsl(&self, rhs: &Self, shift: &Self) -> Self;
+    fn fsr(&self, rhs: &Self, shift: &Self) -> Self;
 
     // Zero extend from start_bit to the highest bit, note
     // start_bit is offset by 0
@@ -244,6 +262,64 @@ impl Register for u32 {
         let start_bit = min(*start_bit, 32);
         debug_assert!(start_bit > 0);
         (((*self << (32 - start_bit)) as i32) >> (32 - start_bit)) as u32
+    }
+
+    fn clz(&self) -> u32 {
+        self.leading_zeros()
+    }
+
+    fn ctz(&self) -> u32 {
+        self.trailing_zeros()
+    }
+
+    fn pcnt(&self) -> u32 {
+        self.count_ones()
+    }
+
+    fn rol(&self, rhs: &u32) -> u32 {
+        (*self as u32).rotate_left(*rhs) as u32
+    }
+
+    fn ror(&self, rhs: &u32) -> u32 {
+        (*self as u32).rotate_right(*rhs) as u32
+    }
+
+    fn slo(&self, rhs: &u32) -> u32 {
+        !((!*self).shl(rhs))
+    }
+
+    fn sro(&self, rhs: &u32) -> u32 {
+        !((!*self).shr(rhs))
+    }
+
+    fn fsl(&self, rhs: &u32, shift: &u32) -> u32 {
+        let mut shamt = shift & 63;
+        let (a, b) = if shamt >= 32 {
+            shamt -= 32;
+            (rhs, self)
+        } else {
+            (self, rhs)
+        };
+        if shamt != 0 {
+            (a << shamt) | (b >> (32 - shamt))
+        } else {
+            *a
+        }
+    }
+
+    fn fsr(&self, rhs: &u32, shift: &u32) -> u32 {
+        let mut shamt = shift & 63;
+        let (a, b) = if shamt >= 32 {
+            shamt -= 32;
+            (rhs, self)
+        } else {
+            (self, rhs)
+        };
+        if shamt != 0 {
+            (a >> shamt) | (b << (32 - shamt))
+        } else {
+            *a
+        }
     }
 
     fn to_i8(&self) -> i8 {
@@ -449,6 +525,64 @@ impl Register for u64 {
         let start_bit = min(*start_bit, 64);
         debug_assert!(start_bit > 0);
         (((*self << (64 - start_bit)) as i64) >> (64 - start_bit)) as u64
+    }
+
+    fn clz(&self) -> u64 {
+        self.leading_zeros() as u64
+    }
+
+    fn ctz(&self) -> u64 {
+        self.trailing_zeros() as u64
+    }
+
+    fn pcnt(&self) -> u64 {
+        self.count_ones() as u64
+    }
+
+    fn rol(&self, rhs: &Self) -> u64 {
+        (*self as u64).rotate_left((*rhs) as u32) as u64
+    }
+
+    fn ror(&self, rhs: &Self) -> u64 {
+        (*self as u64).rotate_right((*rhs) as u32) as u64
+    }
+
+    fn slo(&self, rhs: &Self) -> u64 {
+        !((!*self).shl(rhs))
+    }
+
+    fn sro(&self, rhs: &Self) -> u64 {
+        !((!*self).shr(rhs))
+    }
+
+    fn fsl(&self, rhs: &Self, shift: &Self) -> u64 {
+        let mut shamt = shift & 127;
+        let (a, b) = if shamt >= 64 {
+            shamt -= 64;
+            (rhs, self)
+        } else {
+            (self, rhs)
+        };
+        if shamt != 0 {
+            (a << shamt) | (b >> (64 - shamt))
+        } else {
+            *a
+        }
+    }
+
+    fn fsr(&self, rhs: &Self, shift: &Self) -> u64 {
+        let mut shamt = shift & 127;
+        let (a, b) = if shamt >= 64 {
+            shamt -= 64;
+            (rhs, self)
+        } else {
+            (self, rhs)
+        };
+        if shamt != 0 {
+            (a >> shamt) | (b << (64 - shamt))
+        } else {
+            *a
+        }
     }
 
     fn to_i8(&self) -> i8 {

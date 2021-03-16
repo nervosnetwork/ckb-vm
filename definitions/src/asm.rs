@@ -15,6 +15,7 @@ pub const RET_DYNAMIC_JUMP: u8 = 4;
 pub const RET_MAX_CYCLES_EXCEEDED: u8 = 5;
 pub const RET_OUT_OF_BOUND: u8 = 6;
 pub const RET_INVALID_PERMISSION: u8 = 7;
+pub const RET_SLOWPATH: u8 = 8;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
@@ -42,6 +43,7 @@ pub struct AsmCoreMachine {
     pub max_cycles: u64,
     pub chaos_mode: u8,
     pub chaos_seed: u32,
+    pub isa: u8,
     pub version: u32,
     pub flags: [u8; RISCV_PAGES],
     pub memory: [u8; RISCV_MAX_MEMORY],
@@ -59,8 +61,9 @@ impl Default for Box<AsmCoreMachine> {
 }
 
 impl AsmCoreMachine {
-    pub fn new(version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
+    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
         let mut machine = Self::new_with_max_cycles(max_cycles);
+        machine.isa = isa;
         machine.version = version;
         machine
     }

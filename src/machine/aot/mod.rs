@@ -9,10 +9,11 @@ use bytes::Bytes;
 use goblin::elf::{section_header::SHF_EXECINSTR, Elf};
 use memmap::{Mmap, MmapMut};
 
-use crate::{
-    decoder::build_imac_decoder,
+use super::super::{
+    decoder::build_decoder,
     instructions::{
-        ast::Value, execute, instruction_length, is_basic_block_end_instruction, Instruction,
+        ast::Value, execute, instruction_length, is_basic_block_end_instruction,
+        is_slowpath_instruction, Instruction,
     },
     machine::{parse_elf, VERSION1},
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
@@ -44,6 +45,7 @@ pub enum Write {
     },
     Ecall,
     Ebreak,
+    Slowpath,
 }
 
 fn init_registers() -> [Value; 32] {
@@ -87,6 +89,7 @@ struct LabelGatheringMachine {
     registers: [Value; 32],
     pc: Value,
     labels_to_test: Vec<u64>,
+    isa: u8,
     version: u32,
 
     // A memory segment which contains code loaded from ELF
@@ -97,7 +100,7 @@ struct LabelGatheringMachine {
 }
 
 impl LabelGatheringMachine {
-    pub fn load(program: &Bytes, elf: &Elf, version: u32) -> Result<Self, Error> {
+    pub fn load(program: &Bytes, elf: &Elf, isa: u8, version: u32) -> Result<Self, Error> {
         let header = elf.header;
         let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
         if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
@@ -139,6 +142,7 @@ impl LabelGatheringMachine {
         inner.load_elf(&program, elf, false)?;
 
         Ok(Self {
+            isa,
             version,
             registers: init_registers(),
             pc: Value::from_u64(0),
@@ -158,7 +162,7 @@ impl LabelGatheringMachine {
     }
 
     pub fn gather(&mut self) -> Result<(), Error> {
-        let decoder = build_imac_decoder::<u64>(self.version);
+        let decoder = build_decoder::<u64>(self.isa(), self.version);
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
             self.pc = Value::from_u64(section_start);
@@ -275,6 +279,10 @@ impl CoreMachine for LabelGatheringMachine {
         // This is a NOP since we only care about PC writes
     }
 
+    fn isa(&self) -> u8 {
+        self.isa
+    }
+
     fn version(&self) -> u32 {
         self.version
     }
@@ -380,6 +388,7 @@ impl AotCode {
 }
 
 pub struct AotCompilingMachine {
+    isa: u8,
     version: u32,
     registers: [Value; 32],
     pc: Value,
@@ -397,11 +406,12 @@ impl AotCompilingMachine {
     pub fn load(
         program: &Bytes,
         instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+        isa: u8,
         version: u32,
     ) -> Result<Self, Error> {
         // First we need to gather labels
         let mut label_gathering_machine =
-            LabelGatheringMachine::load(&program, &parse_elf(&program)?, version)?;
+            LabelGatheringMachine::load(&program, &parse_elf(&program)?, isa, version)?;
         label_gathering_machine.gather()?;
 
         let mut labels: Vec<u64> = label_gathering_machine.labels.iter().cloned().collect();
@@ -413,6 +423,7 @@ impl AotCompilingMachine {
             .collect();
 
         Ok(Self {
+            isa,
             version,
             registers: init_registers(),
             pc: Value::from_u64(0),
@@ -467,7 +478,11 @@ impl AotCompilingMachine {
             }
             let pc = self.read_pc()?;
             let length = instruction_length(*instruction);
-            execute(*instruction, self)?;
+            if is_slowpath_instruction(*instruction) {
+                self.writes.push(Write::Slowpath);
+            } else {
+                execute(*instruction, self)?;
+            }
             self.pc = Value::from_u64(pc + u64::from(length));
         }
         let pc = self.read_pc()?;
@@ -504,7 +519,7 @@ impl AotCompilingMachine {
     }
 
     pub fn compile(&mut self) -> Result<AotCode, Error> {
-        let decoder = build_imac_decoder::<u64>(self.version);
+        let decoder = build_decoder::<u64>(self.isa(), self.version);
         let mut instructions = [Instruction::default(); MAXIMUM_INSTRUCTIONS_PER_BLOCK];
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
@@ -606,6 +621,10 @@ impl CoreMachine for AotCompilingMachine {
 
     fn set_register(&mut self, index: usize, value: Value) {
         self.writes.push(Write::Register { index, value });
+    }
+
+    fn isa(&self) -> u8 {
+        self.isa
     }
 
     fn version(&self) -> u32 {

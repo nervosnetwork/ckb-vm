@@ -5,7 +5,8 @@ use bytes::Bytes;
 use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
-        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, TRACE_ITEM_LENGTH,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
+        TRACE_ITEM_LENGTH,
     },
     instructions::OP_CUSTOM_TRACE_END,
     MEMORY_FRAME_PAGE_SHIFTS,
@@ -15,9 +16,10 @@ use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
 
 use crate::{
-    decoder::{build_imac_decoder, Decoder},
+    decoder::{build_decoder, Decoder},
     instructions::{
-        blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
+        blank_instruction, execute_instruction, extract_opcode, instruction_length,
+        is_basic_block_end_instruction,
     },
     machine::aot::AotCode,
     memory::{
@@ -56,6 +58,10 @@ impl CoreMachine for Box<AsmCoreMachine> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
+    }
+
+    fn isa(&self) -> u8 {
+        self.isa
     }
 
     fn version(&self) -> u32 {
@@ -341,7 +347,7 @@ impl<'a> AsmMachine<'a> {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
-        let decoder = build_imac_decoder::<u64>(self.machine.version());
+        let decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
         self.machine.set_running(true);
         while self.machine.running() {
             let result = if let Some(aot_code) = &self.aot_code {
@@ -409,6 +415,11 @@ impl<'a> AsmMachine<'a> {
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
                 RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
+                RET_SLOWPATH => {
+                    let pc = *self.machine.pc() - 4;
+                    let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+                    execute_instruction(instruction, &mut self.machine)?;
+                }
                 _ => return Err(Error::Asm(result)),
             }
         }
@@ -452,6 +463,11 @@ impl<'a> AsmMachine<'a> {
             RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
             RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
             RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
+            RET_SLOWPATH => {
+                let pc = *self.machine.pc() - 4;
+                let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+                execute_instruction(instruction, &mut self.machine)?;
+            }
             _ => return Err(Error::Asm(result)),
         }
         self.machine.inner_mut().traces[slot] = Trace::default();
