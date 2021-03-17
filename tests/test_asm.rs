@@ -349,5 +349,4 @@ pub fn test_asm_rvc_pageend() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(machine.machine.registers()[A1].to_u64(), 2);
 }

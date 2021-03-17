@@ -413,7 +413,7 @@ pub fn test_aot_rvc_pageend() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let mut aot_machine = AotCompilingMachine::load(&buffer, None, VERSION0).unwrap();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::default_with_aot_code(&code);
     machine
@@ -422,5 +422,4 @@ pub fn test_aot_rvc_pageend() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(machine.machine.registers()[A1].to_u64(), 2);
 }

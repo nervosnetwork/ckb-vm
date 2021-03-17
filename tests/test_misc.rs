@@ -303,14 +303,19 @@ pub fn test_rvc_pageend() {
         .unwrap();
 
     let anchor_pc: u64 = 69630;
+    // Ensure that anchor_pc is in the end of the page
     assert_eq!(anchor_pc as usize % RISCV_PAGESIZE, RISCV_PAGESIZE - 2);
-    let mut memory = machine.memory_mut();
-    let anchor_addr = anchor_pc;
-    let anchor_inst = memory.load16(&anchor_addr).unwrap().to_u16();
-    assert_eq!(anchor_inst, 36241); // 36241 is "c.sub a1, a2"
+    let memory = machine.memory_mut();
+    // Ensure that the data segment is located at anchor_pc + 2
+    let data0 = memory.load16(&(anchor_pc + 2)).unwrap().to_u32();
+    assert_eq!(data0, 4);
+    let data1 = memory.load16(&(anchor_pc + 6)).unwrap().to_u32();
+    assert_eq!(data1, 2);
+    // Ensure that the anchor instruction is "c.jr a0"
+    let anchor_inst = memory.load16(&anchor_pc).unwrap().to_u16();
+    assert_eq!(anchor_inst, 0x8502);
 
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(machine.registers()[A1].to_u64(), 2);
 }
