@@ -405,3 +405,21 @@ pub fn test_aot_chaos_seed() {
     assert!(machine1.machine.memory_mut().load64(&0x300000).unwrap() != 0);
     assert!(machine2.machine.memory_mut().load64(&0x300000).unwrap() != 0);
 }
+
+#[test]
+pub fn test_aot_rvc_pageend() {
+    let mut file = File::open("tests/programs/rvc_pageend").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let mut machine = AsmMachine::default_with_aot_code(&code);
+    machine
+        .load_program(&buffer, &vec!["rvc_pageend".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}

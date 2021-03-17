@@ -1,0 +1,31 @@
+
+rvc_pageend:     file format elf64-littleriscv
+rvc_pageend
+architecture: riscv:rv64, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x00000000000100b0
+
+Program Header:
+    LOAD off    0x0000000000000000 vaddr 0x0000000000010000 paddr 0x0000000000010000 align 2**12
+         filesz 0x0000000000001000 memsz 0x0000000000001000 flags r-x
+    LOAD off    0x0000000000001000 vaddr 0x0000000000011000 paddr 0x0000000000011000 align 2**12
+         filesz 0x0000000000000008 memsz 0x0000000000000008 flags rw-
+
+Sections:
+Idx Name          Size      VMA               LMA               File off  Algn
+  0 .text         00000f50  00000000000100b0  00000000000100b0  000000b0  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .data         00000008  0000000000011000  0000000000011000  00001000  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .riscv.attributes 00000033  0000000000000000  0000000000000000  00001008  2**0
+                  CONTENTS, READONLY
+SYMBOL TABLE:
+00000000000100b0 l    d  .text	0000000000000000 .text
+0000000000011000 l    d  .data	0000000000000000 .data
+0000000000000000 l    d  .riscv.attributes	0000000000000000 .riscv.attributes
+0000000000000000 l    df *ABS*	0000000000000000 rvc_pageend.o
+0000000000011000 l       .data	0000000000000000 n0
+0000000000011004 l       .data	0000000000000000 n1
+00000000000100b0 g       .text	0000000000000000 _start
+
+
