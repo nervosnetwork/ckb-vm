@@ -15,8 +15,10 @@ pub use crate::{
     debugger::Debugger,
     instructions::{Instruction, Register},
     machine::{
-        parse_elf, trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
-        DefaultMachineBuilder, InstructionCycleFunc, Machine, SupportMachine,
+        elf_adaptor::{parse_elf_v0, parse_elf_v1},
+        trace::TraceMachine,
+        CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder,
+        InstructionCycleFunc, Machine, SupportMachine,
     },
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,

@@ -1,9 +1,10 @@
 extern crate ckb_vm;
 
 use bytes::Bytes;
+use ckb_vm::machine::VERSION0;
 use ckb_vm::{
     run, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction,
-    SparseMemory, SupportMachine,
+    SparseMemory, SupportMachine, ISA_IMC,
 };
 use std::fs::File;
 use std::io::Read;
@@ -55,7 +56,7 @@ pub fn test_simple_cycles() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new_with_max_cycles(517);
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 517);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -78,7 +79,7 @@ pub fn test_simple_max_cycles_reached() {
     let buffer: Bytes = buffer.into();
 
     // Running simple64 should consume 517 cycles using dummy cycle func
-    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new_with_max_cycles(500);
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 500);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
             .instruction_cycle_func(Box::new(dummy_cycle_func))

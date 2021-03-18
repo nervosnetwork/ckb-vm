@@ -11,7 +11,6 @@ use ckb_vm_definitions::{
     instructions::OP_CUSTOM_TRACE_END,
     MEMORY_FRAME_PAGE_SHIFTS,
 };
-use goblin::elf::Elf;
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
 
@@ -21,7 +20,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::aot::AotCode,
+    machine::{aot::AotCode, elf_adaptor},
     memory::{
         check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
         set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
@@ -347,7 +346,7 @@ impl<'a> AsmMachine<'a> {
         &mut self,
         program: &Bytes,
         args: &[Bytes],
-        elf: &Elf,
+        elf: &elf_adaptor::Elf,
     ) -> Result<u64, Error> {
         self.machine.load_program_elf(program, args, elf)
     }
