@@ -69,7 +69,9 @@ typedef struct {
 #define REGISTER_TEMP1 32
 #define REGISTER_TEMP2 33
 #define REGISTER_TEMP3 34
-#define MAXIMUM_REGISTER 34
+#define REGISTER_TEMP4 35
+#define REGISTER_TEMP5 36
+#define MAXIMUM_REGISTER 36
 #define INVALID_REGISTER (MAXIMUM_REGISTER + 1)
 #define VALID_REGISTER(r) ((r) <= MAXIMUM_REGISTER)
 
@@ -101,6 +103,7 @@ typedef struct {
   uint64_t max_cycles;
   uint8_t chaos_mode;
   uint32_t chaos_seed;
+  uint8_t isa;
   uint32_t version;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
@@ -148,6 +151,10 @@ x64_register_t riscv_reg_to_x64_reg(riscv_register_t r)
       return X64_R11;
     case REGISTER_TEMP3:
       return X64_R12;
+    case REGISTER_TEMP4:
+      return X64_R13;
+    case REGISTER_TEMP5:
+      return X64_R14;
     default:
       return INVALID_X64_REGISTER;
   }
@@ -156,14 +163,12 @@ x64_register_t riscv_reg_to_x64_reg(riscv_register_t r)
 |.type machine, AsmMachine, rdi
 
 |.macro load_imm64, x64_reg, imm64
-| mov x64_reg, imm64 >> 32
-| shl x64_reg, 32
-| or x64_reg, imm64 & 0xFFFFFFFF
+| mov64 x64_reg, imm64
 |.endmacro
 
 /* We can leverage sign extension to save bits when handling negative integers */
 |.macro load_imm, x64_reg, imm
-||if (imm > 0xFFFFFFFF && ((imm & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
+||if ((imm >> (context->version >= 1? 31: 32)) > 0 && ((imm & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
 |   load_imm64 x64_reg, imm
 ||} else {
 |   mov x64_reg, imm
@@ -205,8 +210,14 @@ x64_register_t riscv_reg_to_x64_reg(riscv_register_t r)
 ||}
 |.endmacro
 
+/*
+ * In version 0, imm 0x80000000 will be wrongly treated as 0xffffffff80000000.
+ * It is feasible to directly compare imm with 0x7FFFFFFF or 0xFFFFFFFF, but
+ * this will trigger a gcc warning when imm is 0 or UINT64_MAX: comparison is
+ * always true due to limited range of data type.
+ */
 |.macro op2_r_imm, op, target, imm, x64_temp_reg
-||if (imm > 0xFFFFFFFF && ((imm & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
+||if ((imm >> (context->version >= 1? 31: 32)) > 0 && ((imm & 0xFFFFFFFF80000000) != 0xFFFFFFFF80000000)) {
 ||  loc1 = riscv_reg_to_x64_reg(target);
 |   load_imm64 x64_temp_reg, imm
 ||  if (VALID_X64_REGISTER(loc1)) {
@@ -1048,6 +1059,122 @@ int aot_shr(AotContext* context, riscv_register_t target, AotValue a, AotValue b
   return DASM_S_OK;
 }
 
+int aot_rol(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_internal(context, target, a, X64_RAX);
+  if (ret != DASM_S_OK) { return ret; }
+
+  switch (b.tag) {
+    case AOT_TAG_REGISTER:
+      | op2_x_r mov, rcx, b.value.reg
+      break;
+    case AOT_TAG_IMMEDIATE:
+      /*
+       * shift operations only use cl as operand, there won't be any
+       * overflowing issues.
+       */
+      | mov ecx, b.value.i
+      break;
+    case AOT_TAG_X64_REGISTER:
+      | mov rcx, Rq(b.value.x64_reg)
+      break;
+  }
+
+  | op2_r_x rol, target, cl
+
+  return DASM_S_OK;
+}
+
+int aot_ror(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_internal(context, target, a, X64_RAX);
+  if (ret != DASM_S_OK) { return ret; }
+
+  switch (b.tag) {
+    case AOT_TAG_REGISTER:
+      | op2_x_r mov, rcx, b.value.reg
+      break;
+    case AOT_TAG_IMMEDIATE:
+      /*
+       * shift operations only use cl as operand, there won't be any
+       * overflowing issues.
+       */
+      | mov ecx, b.value.i
+      break;
+    case AOT_TAG_X64_REGISTER:
+      | mov rcx, Rq(b.value.x64_reg)
+      break;
+  }
+
+  | op2_r_x ror, target, cl
+
+  return DASM_S_OK;
+}
+
+int aot_slo(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_internal(context, target, a, X64_RAX);
+  if (ret != DASM_S_OK) { return ret; }
+
+  switch (b.tag) {
+    case AOT_TAG_REGISTER:
+      | op2_x_r mov, rcx, b.value.reg
+      break;
+    case AOT_TAG_IMMEDIATE:
+      | mov ecx, b.value.i
+      break;
+    case AOT_TAG_X64_REGISTER:
+      | mov rcx, Rq(b.value.x64_reg)
+      break;
+  }
+
+  | op1_r not, target
+  | op2_r_x shl, target, cl
+  | op1_r not, target
+
+  return DASM_S_OK;
+}
+
+int aot_sro(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_internal(context, target, a, X64_RAX);
+  if (ret != DASM_S_OK) { return ret; }
+
+  switch (b.tag) {
+    case AOT_TAG_REGISTER:
+      | op2_x_r mov, rcx, b.value.reg
+      break;
+    case AOT_TAG_IMMEDIATE:
+      | mov ecx, b.value.i
+      break;
+    case AOT_TAG_X64_REGISTER:
+      | mov rcx, Rq(b.value.x64_reg)
+      break;
+  }
+
+  | op1_r not, target
+  | op2_r_x shr, target, cl
+  | op1_r not, target
+
+  return DASM_S_OK;
+}
+
 int aot_eq(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
 {
   uint32_t loc1;
@@ -1143,6 +1270,159 @@ int aot_cond(AotContext* context, riscv_register_t target, AotValue condition, A
       |2:
       break;
   }
+
+  return DASM_S_OK;
+}
+
+int aot_clz(AotContext* context, riscv_register_t target, AotValue a)
+{
+  uint32_t loc1;
+  int ret;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+
+  | cmp rax, 0
+  | je >1
+  | bsr rax, rax
+  | neg rax
+  | add rax, 63
+  | op2_r_x mov, target, rax
+  | jmp >2
+  |1:
+  | op2_r_imm mov, target, (uint64_t)64, rax
+  | jmp >2
+  |2:
+
+  return DASM_S_OK;
+}
+
+int aot_ctz(AotContext* context, riscv_register_t target, AotValue a)
+{
+  uint32_t loc1;
+  int ret;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+
+  | cmp rax, 0
+  | je >1
+  | bsf rax, rax
+  | op2_r_x mov, target, rax
+  | jmp >2
+  |1:
+  | op2_r_imm mov, target, (uint64_t)64, rax
+  | jmp >2
+  |2:
+
+  return DASM_S_OK;
+}
+
+int aot_pcnt(AotContext* context, riscv_register_t target, AotValue a)
+{
+  uint32_t loc1;
+  int ret;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+
+  | popcnt rax, rax
+  | op2_r_x mov, target, rax
+
+  return DASM_S_OK;
+}
+
+int aot_fsl(AotContext* context, riscv_register_t target, AotValue a, AotValue b, AotValue c)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+  ret = aot_mov_x64(context, X64_RDX, b);
+  if (ret != DASM_S_OK) { return ret; }
+
+  switch (c.tag) {
+    case AOT_TAG_REGISTER:
+      | op2_x_r mov, rcx, c.value.reg
+      break;
+    case AOT_TAG_IMMEDIATE:
+      | mov ecx, c.value.i
+      break;
+    case AOT_TAG_X64_REGISTER:
+      | mov rcx, Rq(c.value.x64_reg)
+      break;
+  }
+
+  | and cl, 0x7F
+  | cmp cl, 0x3F
+  | jle >1
+  | sub cl, 0x40
+  | xor rax, rdx
+  | xor rdx, rax
+  | xor rax, rdx
+  |1:
+  | cmp cl, 0x00
+  | jnz >2
+  | jmp >3
+  |2:
+  | shl rax, cl
+  | neg cl
+  | add cl, 0x40
+  | shr rdx, cl
+  | or rax, rdx
+  |3:
+  | op2_r_x mov, target, rax
+
+  return DASM_S_OK;
+}
+
+int aot_fsr(AotContext* context, riscv_register_t target, AotValue a, AotValue b, AotValue c)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+  ret = aot_mov_x64(context, X64_RDX, b);
+  if (ret != DASM_S_OK) { return ret; }
+
+  switch (c.tag) {
+    case AOT_TAG_REGISTER:
+      | op2_x_r mov, rcx, c.value.reg
+      break;
+    case AOT_TAG_IMMEDIATE:
+      | mov ecx, c.value.i
+      break;
+    case AOT_TAG_X64_REGISTER:
+      | mov rcx, Rq(c.value.x64_reg)
+      break;
+  }
+
+  | and cl, 0x7F
+  | cmp cl, 0x3F
+  | jle >1
+  | sub cl, 0x40
+  | xor rax, rdx
+  | xor rdx, rax
+  | xor rax, rdx
+  |1:
+  | cmp cl, 0x00
+  | jnz >2
+  | jmp >3
+  |2:
+  | shr rax, cl
+  | neg cl
+  | add cl, 0x40
+  | shl rdx, cl
+  | or rax, rdx
+  |3:
+  | op2_r_x mov, target, rax
 
   return DASM_S_OK;
 }
@@ -1254,6 +1534,11 @@ int aot_ecall(AotContext* context)
 int aot_ebreak(AotContext* context)
 {
   return aot_exit(context, CKB_VM_ASM_RET_EBREAK);
+}
+
+int aot_slowpath(AotContext* context)
+{
+  return aot_exit(context, CKB_VM_ASM_RET_SLOWPATH);
 }
 
 int aot_mov_pc_internal(AotContext* context, AotValue value)

@@ -9,7 +9,7 @@ use ckb_vm::{
     },
     memory::sparse::SparseMemory,
     snapshot::{make_snapshot, resume},
-    DefaultMachineBuilder, Error, Instruction,
+    DefaultMachineBuilder, Error, Instruction, ISA_IMC,
 };
 use std::fs::File;
 use std::io::Read;
@@ -26,7 +26,7 @@ pub fn test_resume_asm_2_asm() {
     let buffer: Bytes = buffer.into();
 
     // The cycles required for complete execution is 4194622
-    let asm_core1 = AsmCoreMachine::new(VERSION1, 4194600);
+    let asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, 4194600);
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -40,7 +40,7 @@ pub fn test_resume_asm_2_asm() {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = make_snapshot(&mut machine1.machine).unwrap();
 
-    let asm_core2 = AsmCoreMachine::new(VERSION1, 30);
+    let asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, 30);
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -63,7 +63,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let asm_core1 = AsmCoreMachine::new(VERSION1, 1000000);
+    let asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, 1000000);
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -77,7 +77,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot1 = make_snapshot(&mut machine1.machine).unwrap();
 
-    let asm_core2 = AsmCoreMachine::new(VERSION1, 2000000);
+    let asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, 2000000);
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -92,7 +92,7 @@ pub fn test_resume_asm_2_asm_2_asm() {
     assert_eq!(result2.unwrap_err(), Error::InvalidCycles);
     let snapshot2 = make_snapshot(&mut machine2.machine).unwrap();
 
-    let asm_core3 = AsmCoreMachine::new(VERSION1, 2000000);
+    let asm_core3 = AsmCoreMachine::new(ISA_IMC, VERSION1, 2000000);
     let core3 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core3)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -115,7 +115,7 @@ pub fn test_resume_asm_2_interpreter() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let asm_core1 = AsmCoreMachine::new(VERSION1, 4194600);
+    let asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, 4194600);
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -129,7 +129,7 @@ pub fn test_resume_asm_2_interpreter() {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = make_snapshot(&mut machine1.machine).unwrap();
 
-    let core_machine2 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(VERSION1, 30);
+    let core_machine2 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 30);
     let mut machine2 =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine2)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -153,7 +153,8 @@ pub fn test_resume_interpreter_2_interpreter() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let core_machine1 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(VERSION1, 4194600);
+    let core_machine1 =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 4194600);
     let mut machine1 =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine1)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -167,7 +168,7 @@ pub fn test_resume_interpreter_2_interpreter() {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = make_snapshot(&mut machine1).unwrap();
 
-    let core_machine2 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(VERSION1, 30);
+    let core_machine2 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 30);
     let mut machine2 =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine2)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -190,7 +191,8 @@ pub fn test_resume_interpreter_2_asm() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let core_machine1 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(VERSION1, 4194600);
+    let core_machine1 =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 4194600);
     let mut machine1 =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine1)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -204,7 +206,7 @@ pub fn test_resume_interpreter_2_asm() {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = make_snapshot(&mut machine1).unwrap();
 
-    let asm_core2 = AsmCoreMachine::new(VERSION1, 30);
+    let asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, 30);
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -228,9 +230,10 @@ pub fn test_resume_aot_2_asm() {
     let buffer: Bytes = buffer.into();
 
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func)), VERSION1).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func)), ISA_IMC, VERSION1)
+            .unwrap();
     let code = aot_machine.compile().unwrap();
-    let asm_core1 = AsmCoreMachine::new(VERSION1, 4194600);
+    let asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, 4194600);
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -244,7 +247,7 @@ pub fn test_resume_aot_2_asm() {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = make_snapshot(&mut machine1.machine).unwrap();
 
-    let asm_core2 = AsmCoreMachine::new(VERSION1, 30);
+    let asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, 30);
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();

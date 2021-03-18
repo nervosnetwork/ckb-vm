@@ -1,12 +1,15 @@
 extern crate ckb_vm;
 
 use bytes::Bytes;
+#[cfg(has_asm)]
+use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
     parse_elf,
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    run, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Register, SparseMemory, SupportMachine, Syscalls,
+    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error,
+    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
+use ckb_vm_definitions::RISCV_PAGESIZE;
 use std::fs::File;
 use std::io::Read;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -241,6 +244,20 @@ pub fn test_flat_crash_64() {
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
+#[test]
+pub fn test_memory_store_empty_bytes() {
+    assert_memory_store_empty_bytes(&mut FlatMemory::<u64>::default());
+    assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::default());
+    assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::default());
+    #[cfg(has_asm)]
+    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new_with_max_cycles(200_000));
+}
+
+fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
+    assert!(memory.store_byte(0, 0, 42).is_ok());
+    assert!(memory.store_bytes(0, &[]).is_ok());
+}
+
 pub fn test_contains_ckbforks_section() {
     let mut file = File::open("tests/programs/ckbforks").unwrap();
     let mut buffer = Vec::new();
@@ -269,4 +286,36 @@ pub fn test_contains_ckbforks_section() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1);
+}
+
+#[test]
+pub fn test_rvc_pageend() {
+    // The last instruction of a executable memory page is an RVC instruction.
+    let mut file = File::open("tests/programs/rvc_pageend").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let mut machine =
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
+    machine
+        .load_program(&buffer, &vec!["rvc_end".into()])
+        .unwrap();
+
+    let anchor_pc: u64 = 69630;
+    // Ensure that anchor_pc is in the end of the page
+    assert_eq!(anchor_pc as usize % RISCV_PAGESIZE, RISCV_PAGESIZE - 2);
+    let memory = machine.memory_mut();
+    // Ensure that the data segment is located at anchor_pc + 2
+    let data0 = memory.load16(&(anchor_pc + 2)).unwrap().to_u32();
+    assert_eq!(data0, 4);
+    let data1 = memory.load16(&(anchor_pc + 6)).unwrap().to_u32();
+    assert_eq!(data1, 2);
+    // Ensure that the anchor instruction is "c.jr a0"
+    let anchor_inst = memory.load16(&anchor_pc).unwrap().to_u16();
+    assert_eq!(anchor_inst, 0x8502);
+
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
 }

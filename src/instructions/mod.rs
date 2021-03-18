@@ -4,6 +4,7 @@ mod register;
 mod utils;
 
 pub mod ast;
+pub mod b;
 pub mod i;
 pub mod m;
 pub mod rvc;
@@ -14,7 +15,7 @@ pub use ckb_vm_definitions::instructions::{
     self as insts, Instruction, InstructionOpcode, INSTRUCTION_OPCODE_NAMES, MAXIMUM_RVC_OPCODE,
     MINIMAL_RVC_OPCODE,
 };
-pub use execute::execute;
+pub use execute::{execute, execute_instruction};
 
 type RegisterIndex = usize;
 type Immediate = i32;
@@ -197,6 +198,90 @@ impl Utype {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct R4type(pub Instruction);
+
+impl R4type {
+    pub fn new(
+        op: InstructionOpcode,
+        rd: RegisterIndex,
+        rs1: RegisterIndex,
+        rs2: RegisterIndex,
+        rs3: RegisterIndex,
+    ) -> Self {
+        R4type(
+            u64::from(op as u8)
+                | (u64::from(rd as u8) << 8)
+                | (u64::from(rs1 as u8) << 32)
+                | (u64::from(rs2 as u8) << 40)
+                | (u64::from(rs3 as u8) << 48),
+        )
+    }
+
+    pub fn op(self) -> InstructionOpcode {
+        self.0 as u8 as InstructionOpcode
+    }
+
+    pub fn rd(self) -> RegisterIndex {
+        (self.0 >> 8) as u8 as RegisterIndex
+    }
+
+    pub fn rs1(self) -> RegisterIndex {
+        (self.0 >> 32) as u8 as RegisterIndex
+    }
+
+    pub fn rs2(self) -> RegisterIndex {
+        (self.0 >> 40) as u8 as RegisterIndex
+    }
+
+    pub fn rs3(self) -> RegisterIndex {
+        (self.0 >> 48) as u8 as RegisterIndex
+    }
+}
+
+pub fn is_slowpath_instruction(i: Instruction) -> bool {
+    match extract_opcode(i) {
+        insts::OP_GREV => true,
+        insts::OP_GREVI => true,
+        insts::OP_GREVW => true,
+        insts::OP_GREVIW => true,
+        insts::OP_SHFL => true,
+        insts::OP_UNSHFL => true,
+        insts::OP_SHFLI => true,
+        insts::OP_UNSHFLI => true,
+        insts::OP_SHFLW => true,
+        insts::OP_UNSHFLW => true,
+        insts::OP_GORC => true,
+        insts::OP_GORCI => true,
+        insts::OP_GORCW => true,
+        insts::OP_GORCIW => true,
+        insts::OP_BFP => true,
+        insts::OP_BFPW => true,
+        insts::OP_BDEP => true,
+        insts::OP_BEXT => true,
+        insts::OP_BDEPW => true,
+        insts::OP_BEXTW => true,
+        insts::OP_CLMUL => true,
+        insts::OP_CLMULR => true,
+        insts::OP_CLMULH => true,
+        insts::OP_CLMULW => true,
+        insts::OP_CLMULRW => true,
+        insts::OP_CLMULHW => true,
+        insts::OP_CRC32B => true,
+        insts::OP_CRC32H => true,
+        insts::OP_CRC32W => true,
+        insts::OP_CRC32D => true,
+        insts::OP_CRC32CB => true,
+        insts::OP_CRC32CH => true,
+        insts::OP_CRC32CW => true,
+        insts::OP_CRC32CD => true,
+        insts::OP_BMATOR => true,
+        insts::OP_BMATXOR => true,
+        insts::OP_BMATFLIP => true,
+        _ => false,
+    }
+}
+
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
     match extract_opcode(i) {
         insts::OP_AUIPC => true,
@@ -219,7 +304,7 @@ pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
         insts::OP_RVC_JR => true,
         insts::OP_VERSION1_JALR => true,
         insts::OP_VERSION1_RVC_JALR => true,
-        _ => false,
+        _ => is_slowpath_instruction(i),
     }
 }
 

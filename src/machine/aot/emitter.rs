@@ -1,5 +1,5 @@
 use super::{
-    super::super::instructions::ast::{ActionOp1, ActionOp2, SignActionOp2, Value},
+    super::super::instructions::ast::{ActionOp1, ActionOp2, ActionOp3, SignActionOp2, Value},
     Write,
 };
 use crate::Error;
@@ -24,7 +24,7 @@ const AOT_TAG_REGISTER: u32 = 0x1;
 const AOT_TAG_IMMEDIATE: u32 = 0x2;
 
 const MINIMAL_TEMP_REGISTER: usize = 32;
-const MAXIMAL_TEMP_REGISTER: usize = 34;
+const MAXIMAL_TEMP_REGISTER: usize = 36;
 
 #[repr(C)]
 struct AotValue {
@@ -43,6 +43,7 @@ extern "C" {
     fn aot_add_cycles(c: *mut AotContext, cycles: u64) -> c_int;
     fn aot_ecall(c: *mut AotContext) -> c_int;
     fn aot_ebreak(c: *mut AotContext) -> c_int;
+    fn aot_slowpath(c: *mut AotContext) -> c_int;
     fn aot_mov(c: *mut AotContext, target: u32, value: AotValue) -> c_int;
     fn aot_add(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_sub(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
@@ -81,6 +82,10 @@ extern "C" {
         b: AotValue,
         is_signed: c_int,
     ) -> c_int;
+    fn aot_rol(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
+    fn aot_ror(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
+    fn aot_slo(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
+    fn aot_sro(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_eq(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_lt(c: *mut AotContext, target: u32, a: AotValue, b: AotValue, is_signed: c_int)
         -> c_int;
@@ -98,6 +103,11 @@ extern "C" {
         b: AotValue,
         is_signed: c_int,
     ) -> c_int;
+    fn aot_clz(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
+    fn aot_ctz(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
+    fn aot_pcnt(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
+    fn aot_fsl(c: *mut AotContext, target: u32, a: AotValue, b: AotValue, c: AotValue) -> c_int;
+    fn aot_fsr(c: *mut AotContext, target: u32, a: AotValue, b: AotValue, c: AotValue) -> c_int;
 
     fn aot_mov_pc(c: *mut AotContext, value: AotValue) -> c_int;
     fn aot_cond_pc(
@@ -282,6 +292,7 @@ impl Emitter {
             Write::Pc { value } => self.emit_pc_write(value),
             Write::Ecall => check_aot_result(unsafe { aot_ecall(self.aot) }),
             Write::Ebreak => check_aot_result(unsafe { aot_ebreak(self.aot) }),
+            Write::Slowpath => check_aot_result(unsafe { aot_slowpath(self.aot) }),
         }?;
         self.allocator.clear();
         Ok(())
@@ -352,6 +363,11 @@ impl Emitter {
                     ActionOp1::LogicalNot => unsafe {
                         aot_not(self.aot, target_register as u32, a_value, 1)
                     },
+                    ActionOp1::Clz => unsafe { aot_clz(self.aot, target_register as u32, a_value) },
+                    ActionOp1::Ctz => unsafe { aot_ctz(self.aot, target_register as u32, a_value) },
+                    ActionOp1::Pcnt => unsafe {
+                        aot_pcnt(self.aot, target_register as u32, a_value)
+                    },
                 };
                 check_aot_result(result)?;
                 self.allocator.restore(saved);
@@ -389,6 +405,18 @@ impl Emitter {
                     ActionOp2::Eq => unsafe {
                         aot_eq(self.aot, target_register as u32, a_value, b_value)
                     },
+                    ActionOp2::Rol => unsafe {
+                        aot_rol(self.aot, target_register as u32, a_value, b_value)
+                    },
+                    ActionOp2::Ror => unsafe {
+                        aot_ror(self.aot, target_register as u32, a_value, b_value)
+                    },
+                    ActionOp2::Slo => unsafe {
+                        aot_slo(self.aot, target_register as u32, a_value, b_value)
+                    },
+                    ActionOp2::Sro => unsafe {
+                        aot_sro(self.aot, target_register as u32, a_value, b_value)
+                    },
                 };
                 check_aot_result(result)?;
                 self.allocator.restore(saved);
@@ -417,6 +445,23 @@ impl Emitter {
                     },
                     SignActionOp2::Extend => unsafe {
                         aot_extend(self.aot, target_register as u32, a_value, b_value, signed)
+                    },
+                };
+                check_aot_result(result)?;
+                self.allocator.restore(saved);
+                Ok(())
+            }
+            Value::Op3(op, a, b, c) => {
+                let saved = self.allocator.save();
+                let a_value = self.emit_value(a)?;
+                let b_value = self.emit_value(b)?;
+                let c_value = self.emit_value(c)?;
+                let result = match op {
+                    ActionOp3::Fsl => unsafe {
+                        aot_fsl(self.aot, target_register as u32, a_value, b_value, c_value)
+                    },
+                    ActionOp3::Fsr => unsafe {
+                        aot_fsr(self.aot, target_register as u32, a_value, b_value, c_value)
                     },
                 };
                 check_aot_result(result)?;
