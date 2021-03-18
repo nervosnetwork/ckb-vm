@@ -46,6 +46,7 @@ pub trait Memory {
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error>;
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error>;
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error>;
 
     // Methods below are used to implement RISC-V instructions, to make JIT
     // possible, we need to use register type here so as to pass enough

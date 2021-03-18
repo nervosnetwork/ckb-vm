@@ -74,6 +74,12 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         self.inner.execute_load16(addr)
     }
 
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
+        let page_indices = get_page_indices(addr, 4)?;
+        check_permission(self, &page_indices, FLAG_EXECUTABLE)?;
+        self.inner.execute_load32(addr)
+    }
+
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         self.inner.load8(addr)
     }

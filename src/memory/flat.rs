@@ -83,6 +83,10 @@ impl<R: Register> Memory for FlatMemory<R> {
         self.load16(&Self::REG::from_u64(addr)).map(|v| v.to_u16())
     }
 
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
+        self.load32(&R::from_u64(addr)).map(|v| v.to_u32())
+    }
+
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
