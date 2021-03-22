@@ -1,6 +1,7 @@
 mod machine_run;
 
 #[test]
+#[cfg_attr(miri, ignore)] // slow
 pub fn test_b_extension() {
     machine_run::int_v1_imcb("tests/programs/b_extension");
     #[cfg(has_asm)]
