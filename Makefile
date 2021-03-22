@@ -41,6 +41,11 @@ ci-all-features: test-all-features
 ci-chaos: test-chaos
 	git diff --exit-code Cargo.lock
 
+ci-miri:
+	rustup component add miri
+	cargo miri setup
+	MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test --all
+
 ci-generated: src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c update-cdefinitions
 	git diff --exit-code src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c src/machine/asm/cdefinitions_generated.h
 
