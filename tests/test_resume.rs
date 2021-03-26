@@ -5,6 +5,7 @@ use ckb_vm::{
     machine::{
         aot::AotCompilingMachine,
         asm::{AsmCoreMachine, AsmMachine},
+        trace::TraceMachine,
         DefaultCoreMachine, SupportMachine, VERSION1,
     },
     memory::sparse::SparseMemory,
@@ -246,6 +247,45 @@ pub fn test_resume_aot_2_asm() {
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = make_snapshot(&mut machine1.machine).unwrap();
+
+    let asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, 30);
+    let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2)
+        .instruction_cycle_func(Box::new(dummy_cycle_func))
+        .build();
+    let mut machine2 = AsmMachine::new(core2, None);
+    machine2
+        .load_program(&buffer, &vec!["alloc_many".into()])
+        .unwrap();
+    resume(&mut machine2.machine, &snapshot).unwrap();
+    let result2 = machine2.run();
+    let cycles2 = machine2.machine.cycles();
+    assert!(result2.is_ok());
+    assert_eq!(result2.unwrap(), 0);
+    assert_eq!(cycles1 + cycles2, 4194622);
+}
+
+#[test]
+pub fn test_resume_interpreter_with_trace_2_asm() {
+    let mut file = File::open("tests/programs/alloc_many").unwrap();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).unwrap();
+    let buffer: Bytes = buffer.into();
+
+    let core_machine1 =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 4194600);
+    let mut machine1 = TraceMachine::new(
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine1)
+            .instruction_cycle_func(Box::new(dummy_cycle_func))
+            .build(),
+    );
+    machine1
+        .load_program(&buffer, &vec!["alloc_many".into()])
+        .unwrap();
+    let result1 = machine1.run();
+    let cycles1 = machine1.machine.cycles();
+    assert!(result1.is_err());
+    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    let snapshot = make_snapshot(&mut machine1).unwrap();
 
     let asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, 30);
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2)
