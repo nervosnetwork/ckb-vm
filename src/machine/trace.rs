@@ -136,7 +136,6 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
             }
             for i in 0..self.traces[slot].instruction_count {
                 let i = self.traces[slot].instructions[i as usize];
-                execute(i, self)?;
                 let cycles = self
                     .machine
                     .instruction_cycle_func()
@@ -144,6 +143,7 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
                     .map(|f| f(i))
                     .unwrap_or(0);
                 self.machine.add_cycles(cycles)?;
+                execute(i, self)?;
             }
         }
         Ok(self.machine.exit_code())
