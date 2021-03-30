@@ -27,6 +27,8 @@ pub fn convert_flags(p_flags: u32) -> Result<u8, Error> {
     }
     if executable {
         Ok(FLAG_EXECUTABLE | FLAG_FREEZED)
+    } else if writable {
+        Ok(0)
     } else {
         Ok(FLAG_FREEZED)
     }
