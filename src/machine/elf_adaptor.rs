@@ -18,7 +18,7 @@ pub fn parse_elf_v1(program: &Bytes) -> Result<goblin_v034::elf::Elf, Error> {
 }
 
 /// Converts goblin's ELF flags into RISC-V flags
-pub fn convert_flags(p_flags: u32) -> Result<u8, Error> {
+pub fn convert_flags(p_flags: u32, allow_freeze_writable: bool) -> Result<u8, Error> {
     let readable = p_flags & PF_R != 0;
     let writable = p_flags & PF_W != 0;
     let executable = p_flags & PF_X != 0;
@@ -27,7 +27,7 @@ pub fn convert_flags(p_flags: u32) -> Result<u8, Error> {
     }
     if executable {
         Ok(FLAG_EXECUTABLE | FLAG_FREEZED)
-    } else if writable {
+    } else if writable && !allow_freeze_writable {
         Ok(0)
     } else {
         Ok(FLAG_FREEZED)
