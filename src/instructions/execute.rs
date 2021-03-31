@@ -1553,6 +1553,16 @@ pub fn execute_instruction<Mac: Machine>(
             update_register(machine, i.rs3(), value_l);
             None
         }
+        insts::OP_WIDE_MULSU => {
+            let i = R4type(inst);
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
+            let value_h = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
+            let value_l = rs1_value.overflowing_mul(&rs2_value);
+            update_register(machine, i.rd(), value_h);
+            update_register(machine, i.rs3(), value_l);
+            None
+        }
         insts::OP_WIDE_DIV => {
             let i = R4type(inst);
             let rs1_value = &machine.registers()[i.rs1()];

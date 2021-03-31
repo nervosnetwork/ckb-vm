@@ -2029,6 +2029,45 @@ ckb_vm_x64_execute:
   WRITE_RS3(TEMP1)
   NEXT_INST
 .p2align 3
+.CKB_VM_ASM_LABEL_OP_WIDE_MULSU:
+  DECODE_R4
+  PUSH_RD_IF_RAX
+  PUSH_RD_IF_RDX
+  PUSH_RS1_IF_RAX
+  PUSH_RS1_IF_RDX
+  movq REGISTER_ADDRESS(RS1), %rax
+  test %rax, %rax
+  jns .wide_mulsu_branch1
+  neg %rax
+  mulq REGISTER_ADDRESS(RS2r)
+  xor $-1, %rdx
+  movq %rdx, TEMP1
+  POP_RS1_IF_RDX
+  POP_RS1_IF_RAX
+  movq REGISTER_ADDRESS(RS1), %rax
+  imulq REGISTER_ADDRESS(RS2r)
+  movq %rax, TEMP2
+  test %rax, %rax
+  setz %al
+  movzbl %al, %eax
+  addq %rax, TEMP1
+  POP_RD_IF_RDX
+  POP_RD_IF_RAX
+  WRITE_RD(TEMP1)
+  WRITE_RS3(TEMP2)
+  NEXT_INST
+.wide_mulsu_branch1:
+  mulq REGISTER_ADDRESS(RS2r)
+  MOV_RDX_TO_RS2r
+  movq %rax, TEMP1
+  POP_RS1_IF_RDX
+  POP_RS1_IF_RAX
+  POP_RD_IF_RDX
+  POP_RD_IF_RAX
+  WRITE_RD(RS2r)
+  WRITE_RS3(TEMP1)
+  NEXT_INST
+.p2align 3
 .CKB_VM_ASM_LABEL_OP_WIDE_DIV:
   DECODE_R4
   push RD

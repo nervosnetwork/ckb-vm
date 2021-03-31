@@ -203,6 +203,36 @@ impl Decoder {
                     _ => Ok(head_instruction),
                 }
             }
+            insts::OP_MULHSU => {
+                let head_inst = Rtype(head_instruction);
+                let head_size = instruction_length(head_instruction);
+                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_opcode = extract_opcode(next_instruction);
+                match next_opcode {
+                    insts::OP_MUL => {
+                        let next_inst = Rtype(next_instruction);
+                        if head_inst.rd() != head_inst.rs1()
+                            && head_inst.rd() != head_inst.rs2()
+                            && head_inst.rs1() == next_inst.rs1()
+                            && head_inst.rs2() == next_inst.rs2()
+                        {
+                            let next_size = instruction_length(next_instruction);
+                            let fuze_inst = R4type::new(
+                                insts::OP_WIDE_MULSU,
+                                head_inst.rd(),
+                                head_inst.rs1(),
+                                head_inst.rs2(),
+                                next_inst.rd(),
+                            );
+                            let fuze_size = head_size + next_size;
+                            Ok(set_instruction_length_n(fuze_inst.0, fuze_size))
+                        } else {
+                            Ok(head_instruction)
+                        }
+                    }
+                    _ => Ok(head_instruction),
+                }
+            }
             insts::OP_DIV => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);

@@ -342,6 +342,111 @@ uint64_t test_wide_mulu_rdh_eq_rdl(uint64_t rs1, uint64_t rs2) {
     return 0;
 }
 
+uint64_t test_wide_mulsu_fusion(uint64_t rs1, uint64_t rs2) {
+    uint64_t rdh;
+    uint64_t rdl;
+    uint64_t expect_rdh;
+    uint64_t expect_rdl;
+
+    register long t0 asm("t0") = rs1;
+    register long t1 asm("t1") = rs2;
+
+    asm volatile (
+        "mulhsu %0, t0, t1\n"
+        "nop\n"
+        "mul   %1, t0, t1\n"
+        : "=r"(expect_rdh), "=r"(expect_rdl)
+    );
+
+    asm volatile (
+        "mulhsu %0, t0, t1\n"
+        "mul   %1, t0, t1\n"
+        : "=r"(rdh), "=r"(rdl)
+    );
+    if (rdh != expect_rdh || rdl != expect_rdl) {
+        return 1;
+    }
+    return 0;
+}
+
+uint64_t test_wide_mulsu_rdh_eq_rs1(uint64_t rs1, uint64_t rs2) {
+    uint64_t rdl;
+    uint64_t expect_rdl;
+
+    register long t0 asm("t0") = rs1;
+    register long t1 asm("t1") = rs2;
+
+    asm volatile (
+        "mulhsu t3, t0, t1\n"
+        "mul   %0, t3, t1\n"
+        : "=r"(expect_rdl)
+        :
+        :"t3"
+    );
+
+    asm volatile (
+        "mulhsu t0, t0, t1\n"
+        "mul   %0, t0, t1\n"
+        : "=r"(rdl)
+    );
+
+    if (rdl != expect_rdl) {
+        return 1;
+    }
+    return 0;
+}
+
+uint64_t test_wide_mulsu_rdh_eq_rs2(uint64_t rs1, uint64_t rs2) {
+    uint64_t rdl;
+    uint64_t expect_rdl;
+
+    register long t0 asm("t0") = rs1;
+    register long t1 asm("t1") = rs2;
+
+    asm volatile (
+        "mulhsu t3, t0, t1\n"
+        "mul   %0, t0, t3\n"
+        : "=r"(expect_rdl)
+        :
+        :"t3"
+    );
+
+    asm volatile (
+        "mulhsu t1, t0, t1\n"
+        "mul   %0, t0, t1\n"
+        : "=r"(rdl)
+    );
+
+    if (rdl != expect_rdl) {
+        return 1;
+    }
+    return 0;
+}
+
+uint64_t test_wide_mulsu_rdh_eq_rdl(uint64_t rs1, uint64_t rs2) {
+    uint64_t rdl;
+    uint64_t expect_rdl;
+
+    register long t0 asm("t0") = rs1;
+    register long t1 asm("t1") = rs2;
+
+    asm volatile (
+        "mul  %0, t0, t1\n"
+        : "=r"(expect_rdl)
+    );
+
+    asm volatile (
+        "mulhsu %0, t0, t1\n"
+        "mul   %0, t0, t1\n"
+        : "=r"(rdl)
+    );
+
+    if (rdl != expect_rdl) {
+        return 1;
+    }
+    return 0;
+}
+
 int main() {
     for (int i = 0; i < argc; i++)
 	for (int j = 0; j < argc; j++)
@@ -374,6 +479,22 @@ int main() {
     for (int i = 0; i < argc; i++)
 	for (int j = 0; j < argc; j++)
     if (test_wide_mulu_rdh_eq_rdl(args[i], args[j]) != 0) { return 8; }
+
+    for (int i = 0; i < argc; i++)
+	for (int j = 0; j < argc; j++)
+    if (test_wide_mulsu_fusion(args[i], args[j]) != 0) { return 9; }
+
+    for (int i = 0; i < argc; i++)
+	for (int j = 0; j < argc; j++)
+    if (test_wide_mulsu_rdh_eq_rs1(args[i], args[j]) != 0) { return 10; }
+
+    for (int i = 0; i < argc; i++)
+	for (int j = 0; j < argc; j++)
+    if (test_wide_mulsu_rdh_eq_rs2(args[i], args[j]) != 0) { return 11; }
+
+    for (int i = 0; i < argc; i++)
+	for (int j = 0; j < argc; j++)
+    if (test_wide_mulsu_rdh_eq_rdl(args[i], args[j]) != 0) { return 12; }
 
     return 0;
 }

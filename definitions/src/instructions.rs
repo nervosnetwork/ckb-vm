@@ -175,13 +175,14 @@ pub const OP_SLLIUW: InstructionOpcode = 0x87;
 // Level-1 Macro op fusion
 pub const OP_WIDE_MUL: InstructionOpcode = 0x88;
 pub const OP_WIDE_MULU: InstructionOpcode = 0x89;
-pub const OP_WIDE_DIV: InstructionOpcode = 0x8A;
-pub const OP_WIDE_DIVU: InstructionOpcode = 0x8B;
-pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x8C;
-pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x8D;
+pub const OP_WIDE_MULSU: InstructionOpcode = 0x8A;
+pub const OP_WIDE_DIV: InstructionOpcode = 0x8B;
+pub const OP_WIDE_DIVU: InstructionOpcode = 0x8C;
+pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x8D;
+pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x8E;
 // Level-1 Custom
-pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x8E;
-pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x8F;
+pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x8F;
+pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x90;
 // Level-2 B
 pub const OP_GREV: InstructionOpcode = 0x00F0;
 pub const OP_GREVI: InstructionOpcode = 0x01F0;
@@ -366,6 +367,7 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize
     "SLLIUW",
     "WIDE_MUL",
     "WIDE_MULU",
+    "WIDE_MULSU",
     "WIDE_DIV",
     "WIDE_DIVU",
     "FAR_JUMP_REL",
