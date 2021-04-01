@@ -83,6 +83,30 @@ pub fn test_mop_far_jump() {
 }
 
 #[test]
+pub fn test_mop_ld_32_constants() {
+    let mut machine = machine_build::int_v1_mop("tests/programs/mop_ld_signextend_32", vec![]);
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm =
+            machine_build::asm_v1_mop("tests/programs/mop_ld_signextend_32", vec![]);
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+
+        let code = machine_build::aot_v1_mop_code("tests/programs/mop_ld_signextend_32");
+        let mut machine_aot =
+            machine_build::aot_v1_mop("tests/programs/mop_ld_signextend_32", vec![], &code);
+        let ret_aot = machine_aot.run();
+        assert!(ret_aot.is_ok());
+        assert_eq!(ret_aot.unwrap(), 0);
+    }
+}
+
+#[test]
 pub fn test_mop_secp256k1() {
     let args = vec![
         Bytes::from("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f"),

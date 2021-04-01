@@ -1602,6 +1602,11 @@ pub fn execute_instruction<Mac: Machine>(
             update_register(machine, RA, link);
             Some(next_pc)
         }
+        insts::OP_LD_SIGN_EXTENDED_32_CONSTANT => {
+            let i = Utype(inst);
+            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+            None
+        }
         insts::OP_CUSTOM_LOAD_IMM => {
             let i = Utype(inst);
             let value = Mac::REG::from_i32(i.immediate_s());

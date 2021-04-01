@@ -119,6 +119,22 @@ impl Decoder {
                             Ok(head_instruction)
                         }
                     }
+                    insts::OP_ADDIW => {
+                        let next_inst = Itype(next_instruction);
+                        if next_inst.rs1() == next_inst.rd() && next_inst.rd() == head_inst.rd() {
+                            let fuze_imm = head_inst.immediate_s() + next_inst.immediate_s();
+                            let fuze_inst = Utype::new_s(
+                                insts::OP_LD_SIGN_EXTENDED_32_CONSTANT,
+                                head_inst.rd(),
+                                fuze_imm,
+                            );
+                            let next_size = instruction_length(next_instruction);
+                            let fuze_size = head_size + next_size;
+                            Ok(set_instruction_length_n(fuze_inst.0, fuze_size))
+                        } else {
+                            Ok(head_instruction)
+                        }
+                    }
                     _ => Ok(head_instruction),
                 }
             }

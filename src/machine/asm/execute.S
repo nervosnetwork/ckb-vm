@@ -2121,6 +2121,11 @@ ckb_vm_x64_execute:
   WRITE_RS3(RS2r)
   NEXT_INST
 .p2align 3
+.CKB_VM_ASM_LABEL_OP_LD_SIGN_EXTENDED_32_CONSTANT:
+  DECODE_U
+  WRITE_RD(IMMEDIATE)
+  NEXT_INST
+.p2align 3
 .exit_out_of_bound:
   mov $CKB_VM_ASM_RET_OUT_OF_BOUND, ARG_RETd
   jmp .exit
