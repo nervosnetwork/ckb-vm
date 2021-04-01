@@ -93,6 +93,7 @@ pub trait SupportMachine: CoreMachine {
         if Self::REG::BITS != elf.header.container {
             return Err(Error::InvalidElfBits);
         }
+        let version = self.version();
         let program_headers = &elf.program_headers;
         let mut bytes: u64 = 0;
         for program_header in program_headers {
@@ -110,11 +111,11 @@ pub trait SupportMachine: CoreMachine {
                 self.memory_mut().init_pages(
                     aligned_start,
                     size,
-                    elf_adaptor::convert_flags(program_header.p_flags)?,
+                    elf_adaptor::convert_flags(program_header.p_flags, version < VERSION1)?,
                     Some(program.slice(slice_start as usize..slice_end as usize)),
                     padding_start,
                 )?;
-                if self.version() < VERSION1 {
+                if version < VERSION1 {
                     self.memory_mut()
                         .store_byte(aligned_start, padding_start, 0)?;
                 }

@@ -9,8 +9,9 @@ use ckb_vm::{
         asm::{AsmCoreMachine, AsmMachine},
         VERSION0, VERSION1,
     },
-    DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, SparseMemory, WXorXMemory,
-    ISA_IMC,
+    memory::FLAG_FREEZED,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
+    SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
 use std::fs::File;
 use std::io::Read;
@@ -445,6 +446,29 @@ pub fn test_aot_version0_unaligned64() {
 pub fn test_aot_version1_unaligned64() {
     let code = compile_aot_code("unaligned64".to_string(), VERSION1);
     let mut machine = create_aot_machine("unaligned64".to_string(), &code, VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_asm_version0_writable_page() {
+    let mut machine = create_asm_machine("writable_page".to_string(), VERSION0);
+    // 0x12000 is the address of the variable "buffer", which can be found from the dump file.
+    let page_index = 0x12000 / RISCV_PAGESIZE as u64;
+    let flag = machine.machine.memory_mut().fetch_flag(page_index).unwrap();
+    assert_eq!(flag, FLAG_FREEZED);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_asm_version1_writable_page() {
+    let mut machine = create_asm_machine("writable_page".to_string(), VERSION1);
+    let page_index = 0x12000 / RISCV_PAGESIZE as u64;
+    let flag = machine.machine.memory_mut().fetch_flag(page_index).unwrap();
+    assert_eq!(flag, 0);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
