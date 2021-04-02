@@ -104,7 +104,11 @@ impl Decoder {
             insts::OP_LUI => {
                 let head_inst = Utype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_JALR => {
@@ -141,7 +145,11 @@ impl Decoder {
             insts::OP_AUIPC => {
                 let head_inst = Utype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_JALR => {
@@ -162,7 +170,11 @@ impl Decoder {
             insts::OP_MULH => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_MUL => {
@@ -192,7 +204,11 @@ impl Decoder {
             insts::OP_MULHU => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_MUL => {
@@ -222,7 +238,11 @@ impl Decoder {
             insts::OP_MULHSU => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_MUL => {
@@ -252,7 +272,11 @@ impl Decoder {
             insts::OP_DIV => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_REM => {
@@ -282,7 +306,11 @@ impl Decoder {
             insts::OP_DIVU => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
+                if next_instruction_opt.is_err() {
+                    return Ok(head_instruction);
+                }
+                let next_instruction = next_instruction_opt.unwrap();
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_REMU => {
