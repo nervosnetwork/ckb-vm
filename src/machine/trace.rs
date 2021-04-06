@@ -6,7 +6,7 @@ use super::{
         },
         Error,
     },
-    elf_adaptor, CoreMachine, DefaultMachine, Machine, SupportMachine,
+    CoreMachine, DefaultMachine, Machine, SupportMachine,
 };
 use bytes::Bytes;
 
@@ -95,15 +95,6 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         self.machine.load_program(program, args)
-    }
-
-    pub fn load_program_elf(
-        &mut self,
-        program: &Bytes,
-        args: &[Bytes],
-        elf_adaptor: &elf_adaptor::Elf,
-    ) -> Result<u64, Error> {
-        self.machine.load_program_elf(program, args, elf_adaptor)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {

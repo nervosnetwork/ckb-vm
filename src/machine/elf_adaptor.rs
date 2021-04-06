@@ -3,19 +3,9 @@
 use crate::memory::{FLAG_EXECUTABLE, FLAG_FREEZED};
 use crate::Error;
 
-use bytes::Bytes;
-
 // Even for different versions of goblin, their values must be consistent.
 pub use goblin_v020::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 pub use goblin_v020::elf::section_header::SHF_EXECINSTR;
-
-pub fn parse_elf_v0(program: &Bytes) -> Result<goblin_v020::elf::Elf, Error> {
-    goblin_v020::elf::Elf::parse(program).map_err(|_e| Error::ParseError)
-}
-
-pub fn parse_elf_v1(program: &Bytes) -> Result<goblin_v034::elf::Elf, Error> {
-    goblin_v034::elf::Elf::parse(program).map_err(|_e| Error::ParseError)
-}
 
 /// Converts goblin's ELF flags into RISC-V flags
 pub fn convert_flags(p_flags: u32, allow_freeze_writable: bool) -> Result<u8, Error> {
@@ -31,33 +21,6 @@ pub fn convert_flags(p_flags: u32, allow_freeze_writable: bool) -> Result<u8, Er
         Ok(0)
     } else {
         Ok(FLAG_FREEZED)
-    }
-}
-
-/// Same as goblin::elf::Header.
-pub struct Header {
-    // Container is 32 or 64.
-    pub container: u8,
-    pub e_entry: u64,
-}
-
-impl Header {
-    pub fn from_v0(header: goblin_v020::elf::Header) -> Result<Self, Error> {
-        let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-        let bits = if container.is_big() { 64 } else { 32 };
-        Ok(Header {
-            container: bits,
-            e_entry: header.e_entry,
-        })
-    }
-
-    pub fn from_v1(header: goblin_v034::elf::Header) -> Result<Self, Error> {
-        let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-        let bits = if container.is_big() { 64 } else { 32 };
-        Ok(Header {
-            container: bits,
-            e_entry: header.e_entry,
-        })
     }
 }
 
@@ -144,46 +107,5 @@ impl SectionHeader {
             sh_addralign: header.sh_addralign,
             sh_entsize: header.sh_entsize,
         }
-    }
-}
-
-/// An internal ELF binary.
-pub struct Elf {
-    pub header: Header,
-    pub program_headers: Vec<ProgramHeader>,
-    pub section_headers: Vec<SectionHeader>,
-}
-
-impl Elf {
-    pub fn from_v0(elf: goblin_v020::elf::Elf) -> Result<Self, Error> {
-        Ok(Elf {
-            header: Header::from_v0(elf.header)?,
-            program_headers: elf
-                .program_headers
-                .iter()
-                .map(|e| ProgramHeader::from_v0(e))
-                .collect(),
-            section_headers: elf
-                .section_headers
-                .iter()
-                .map(|e| SectionHeader::from_v0(e))
-                .collect(),
-        })
-    }
-
-    pub fn from_v1(elf: goblin_v034::elf::Elf) -> Result<Self, Error> {
-        Ok(Elf {
-            header: Header::from_v1(elf.header)?,
-            program_headers: elf
-                .program_headers
-                .iter()
-                .map(|e| ProgramHeader::from_v1(e))
-                .collect(),
-            section_headers: elf
-                .section_headers
-                .iter()
-                .map(|e| SectionHeader::from_v1(e))
-                .collect(),
-        })
     }
 }

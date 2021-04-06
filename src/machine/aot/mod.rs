@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use bytes::Bytes;
 use memmap::{Mmap, MmapMut};
+use scroll::Pread;
 
 use super::super::{
     decoder::build_decoder,
@@ -14,9 +15,9 @@ use super::super::{
         ast::Value, execute, instruction_length, is_basic_block_end_instruction,
         is_slowpath_instruction, Instruction,
     },
-    machine::{elf_adaptor, VERSION0, VERSION1},
+    machine::{elf_adaptor, SupportMachine, VERSION1},
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
-    Register, SupportMachine, RISCV_MAX_MEMORY,
+    Register, RISCV_MAX_MEMORY,
 };
 
 const MAXIMUM_INSTRUCTIONS_PER_BLOCK: usize = 1024;
@@ -99,17 +100,50 @@ struct LabelGatheringMachine {
 }
 
 impl LabelGatheringMachine {
-    pub fn load(
-        program: &Bytes,
-        elf: &elf_adaptor::Elf,
-        isa: u8,
-        version: u32,
-    ) -> Result<Self, Error> {
-        if <Self as CoreMachine>::REG::BITS != elf.header.container {
-            return Err(Error::InvalidElfBits);
-        }
-        let section_headers = &elf.section_headers;
+    pub fn load(program: &Bytes, isa: u8, version: u32) -> Result<Self, Error> {
+        let section_headers: Vec<elf_adaptor::SectionHeader> = if version < VERSION1 {
+            use goblin_v020::container::Ctx;
+            use goblin_v020::elf::{Header, SectionHeader};
 
+            let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+            let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
+            let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+            if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
+                return Err(Error::InvalidElfBits);
+            }
+            let ctx = Ctx::new(container, endianness);
+            SectionHeader::parse(
+                program,
+                header.e_shoff as usize,
+                header.e_shnum as usize,
+                ctx,
+            )
+            .map_err(|_e| Error::ParseError)?
+            .iter()
+            .map(elf_adaptor::SectionHeader::from_v0)
+            .collect()
+        } else {
+            use goblin_v034::container::Ctx;
+            use goblin_v034::elf::{Header, SectionHeader};
+
+            let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+            let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
+            let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+            if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
+                return Err(Error::InvalidElfBits);
+            }
+            let ctx = Ctx::new(container, endianness);
+            SectionHeader::parse(
+                program,
+                header.e_shoff as usize,
+                header.e_shnum as usize,
+                ctx,
+            )
+            .map_err(|_e| Error::ParseError)?
+            .iter()
+            .map(elf_adaptor::SectionHeader::from_v1)
+            .collect()
+        };
         if section_headers.len() > MAXIMUM_SECTIONS {
             return Err(Error::LimitReached);
         }
@@ -140,8 +174,8 @@ impl LabelGatheringMachine {
         }
         // DefaultCoreMachine is only used here for loading ELF binaries
         // into memory.
-        let mut inner = DefaultCoreMachine::default();
-        inner.load_elf(&program, elf, false)?;
+        let mut inner = DefaultCoreMachine::new(isa, version, 0);
+        inner.load_elf(&program, false)?;
 
         Ok(Self {
             isa,
@@ -416,13 +450,7 @@ impl AotCompilingMachine {
         version: u32,
     ) -> Result<Self, Error> {
         // First we need to gather labels
-        let elf_adaptor = match version {
-            VERSION0 => elf_adaptor::Elf::from_v0(elf_adaptor::parse_elf_v0(program)?)?,
-            VERSION1 => elf_adaptor::Elf::from_v1(elf_adaptor::parse_elf_v1(program)?)?,
-            _ => unreachable!(),
-        };
-        let mut label_gathering_machine =
-            LabelGatheringMachine::load(&program, &elf_adaptor, isa, version)?;
+        let mut label_gathering_machine = LabelGatheringMachine::load(&program, isa, version)?;
         label_gathering_machine.gather()?;
 
         let mut labels: Vec<u64> = label_gathering_machine.labels.iter().cloned().collect();

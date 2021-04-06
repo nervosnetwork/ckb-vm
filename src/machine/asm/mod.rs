@@ -20,7 +20,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::{aot::AotCode, elf_adaptor},
+    machine::aot::AotCode,
     memory::{
         check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
         set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
@@ -340,15 +340,6 @@ impl<'a> AsmMachine<'a> {
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         self.machine.load_program(program, args)
-    }
-
-    pub fn load_program_elf(
-        &mut self,
-        program: &Bytes,
-        args: &[Bytes],
-        elf: &elf_adaptor::Elf,
-    ) -> Result<u64, Error> {
-        self.machine.load_program_elf(program, args, elf)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
