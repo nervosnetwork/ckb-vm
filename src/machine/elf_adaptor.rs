@@ -4,8 +4,8 @@ use crate::memory::{FLAG_EXECUTABLE, FLAG_FREEZED};
 use crate::Error;
 
 // Even for different versions of goblin, their values must be consistent.
-pub use goblin_v020::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
-pub use goblin_v020::elf::section_header::SHF_EXECINSTR;
+pub use goblin_v023::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
+pub use goblin_v023::elf::section_header::SHF_EXECINSTR;
 
 /// Converts goblin's ELF flags into RISC-V flags
 pub fn convert_flags(p_flags: u32, allow_freeze_writable: bool) -> Result<u8, Error> {
@@ -37,7 +37,7 @@ pub struct ProgramHeader {
 }
 
 impl ProgramHeader {
-    pub fn from_v0(header: &goblin_v020::elf::ProgramHeader) -> Self {
+    pub fn from_v0(header: &goblin_v023::elf::ProgramHeader) -> Self {
         Self {
             p_type: header.p_type,
             p_flags: header.p_flags,
@@ -79,7 +79,7 @@ pub struct SectionHeader {
 }
 
 impl SectionHeader {
-    pub fn from_v0(header: &goblin_v020::elf::SectionHeader) -> Self {
+    pub fn from_v0(header: &goblin_v023::elf::SectionHeader) -> Self {
         Self {
             sh_name: header.sh_name,
             sh_type: header.sh_type,

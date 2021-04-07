@@ -267,7 +267,7 @@ pub fn test_contains_ckbforks_section() {
     let buffer: Bytes = buffer.into();
 
     let ckbforks_exists_v0 = || -> bool {
-        let elf = goblin_v020::elf::Elf::parse(&buffer).unwrap();
+        let elf = goblin_v023::elf::Elf::parse(&buffer).unwrap();
         for section_header in &elf.section_headers {
             if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
                 if r == ".ckb.forks" {

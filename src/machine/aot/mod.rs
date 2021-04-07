@@ -102,8 +102,8 @@ struct LabelGatheringMachine {
 impl LabelGatheringMachine {
     pub fn load(program: &Bytes, isa: u8, version: u32) -> Result<Self, Error> {
         let section_headers: Vec<elf_adaptor::SectionHeader> = if version < VERSION1 {
-            use goblin_v020::container::Ctx;
-            use goblin_v020::elf::{Header, SectionHeader};
+            use goblin_v023::container::Ctx;
+            use goblin_v023::elf::{Header, SectionHeader};
 
             let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
             let container = header.container().map_err(|_e| Error::InvalidElfBits)?;

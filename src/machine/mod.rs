@@ -93,8 +93,8 @@ pub trait SupportMachine: CoreMachine {
         // * https://github.com/nervosnetwork/ckb-vm/issues/143
         let (e_entry, program_headers): (u64, Vec<elf_adaptor::ProgramHeader>) =
             if version < VERSION1 {
-                use goblin_v020::container::Ctx;
-                use goblin_v020::elf::{program_header::ProgramHeader, Header};
+                use goblin_v023::container::Ctx;
+                use goblin_v023::elf::{program_header::ProgramHeader, Header};
                 let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
                 let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
                 let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
