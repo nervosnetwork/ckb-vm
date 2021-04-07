@@ -14,6 +14,8 @@ asm = []
 # Detect if requirements are met, and enable asm feature when we can.
 detect-asm = []
 enable-chaos-mode-by-default = ["ckb-vm-definitions/enable-chaos-mode-by-default"]
+# Disable slow tests to run miri on CI
+miri-ci = []
 
 [dependencies]
 byteorder = "1"

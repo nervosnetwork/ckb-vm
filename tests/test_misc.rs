@@ -179,6 +179,7 @@ pub fn test_invalid_file_offset64() {
 }
 
 #[test]
+#[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srli_crash_32() {
     let mut file = File::open("tests/programs/op_rvc_srli_crash_32").unwrap();
     let mut buffer = Vec::new();
@@ -190,6 +191,7 @@ pub fn test_op_rvc_srli_crash_32() {
 }
 
 #[test]
+#[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srai_crash_32() {
     let mut file = File::open("tests/programs/op_rvc_srai_crash_32").unwrap();
     let mut buffer = Vec::new();
@@ -201,6 +203,7 @@ pub fn test_op_rvc_srai_crash_32() {
 }
 
 #[test]
+#[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_slli_crash_32() {
     let mut file = File::open("tests/programs/op_rvc_slli_crash_32").unwrap();
     let mut buffer = Vec::new();

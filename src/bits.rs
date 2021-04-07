@@ -40,6 +40,7 @@ mod tests {
 
     proptest! {
         #[test]
+        #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
         fn roundup_proptest(x: u64, round in (0u32..16).prop_map(|d| 2u64.pow(d))) {
             prop_assume!(x.checked_add(round).is_some(), "avoid integer overflow");
             let result = roundup(x, round);
@@ -55,6 +56,7 @@ mod tests {
         }
 
         #[test]
+        #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
         fn rounddown_proptest(x: u64, round in (0u32..16).prop_map(|d| 2u64.pow(d))) {
             let result = rounddown(x, round);
 

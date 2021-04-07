@@ -86,6 +86,14 @@ matrix:
             - git
             - build-essential
       env: SUITE=ci-chaos
+    - name: ci-miri
+      rust: nightly-2021-03-20
+      addons:
+        apt:
+          packages:
+            - git
+            - build-essential
+      env: SUITE=ci-miri
     - name: Test Suite
       rust: 1.46.0
       dist: xenial
