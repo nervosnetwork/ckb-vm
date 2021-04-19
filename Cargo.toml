@@ -19,7 +19,7 @@ enable-chaos-mode-by-default = ["ckb-vm-definitions/enable-chaos-mode-by-default
 byteorder = "1"
 bytes = "0.5.4"
 goblin_v023 = { package = "goblin", version = "=0.2.3" }
-goblin_v040 = { package = "goblin", version = "0.3.4" }
+goblin_v040 = { package = "goblin", version = "=0.4.0" }
 scroll = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 ckb-vm-definitions = { path = "definitions", version = "0.19.1" }
