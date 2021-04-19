@@ -278,7 +278,7 @@ pub fn test_contains_ckbforks_section() {
         return false;
     }();
     let ckbforks_exists_v1 = || -> bool {
-        let elf = goblin_v034::elf::Elf::parse(&buffer).unwrap();
+        let elf = goblin_v040::elf::Elf::parse(&buffer).unwrap();
         for section_header in &elf.section_headers {
             if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
                 if r == ".ckb.forks" {

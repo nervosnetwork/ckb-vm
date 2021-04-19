@@ -50,7 +50,7 @@ impl ProgramHeader {
         }
     }
 
-    pub fn from_v1(header: &goblin_v034::elf::ProgramHeader) -> Self {
+    pub fn from_v1(header: &goblin_v040::elf::ProgramHeader) -> Self {
         Self {
             p_type: header.p_type,
             p_flags: header.p_flags,
@@ -94,7 +94,7 @@ impl SectionHeader {
         }
     }
 
-    pub fn from_v1(header: &goblin_v034::elf::SectionHeader) -> Self {
+    pub fn from_v1(header: &goblin_v040::elf::SectionHeader) -> Self {
         Self {
             sh_name: header.sh_name,
             sh_type: header.sh_type,

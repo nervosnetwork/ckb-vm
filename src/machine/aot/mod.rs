@@ -123,8 +123,8 @@ impl LabelGatheringMachine {
             .map(elf_adaptor::SectionHeader::from_v0)
             .collect()
         } else {
-            use goblin_v034::container::Ctx;
-            use goblin_v034::elf::{Header, SectionHeader};
+            use goblin_v040::container::Ctx;
+            use goblin_v040::elf::{Header, SectionHeader};
 
             let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
             let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
