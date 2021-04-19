@@ -2,13 +2,14 @@ extern crate ckb_vm;
 
 use bytes::Bytes;
 #[cfg(has_asm)]
-use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
-    machine::{elf_adaptor::Elf, VERSION0},
-    parse_elf_v0 as parse_elf,
+    machine::{asm::AsmCoreMachine, VERSION0},
+    ISA_IMC,
+};
+use ckb_vm::{
     registers::{A0, A1, A2, A3, A4, A5, A7},
     run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error,
-    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
+    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
 use ckb_vm_definitions::RISCV_PAGESIZE;
 use std::fs::File;
@@ -268,9 +269,8 @@ pub fn test_contains_ckbforks_section() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer: Bytes = buffer.into();
 
-    let elf = parse_elf(&buffer).unwrap();
-
-    let ckbforks_exists = || -> bool {
+    let ckbforks_exists_v0 = || -> bool {
+        let elf = goblin_v023::elf::Elf::parse(&buffer).unwrap();
         for section_header in &elf.section_headers {
             if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
                 if r == ".ckb.forks" {
@@ -280,16 +280,19 @@ pub fn test_contains_ckbforks_section() {
         }
         return false;
     }();
-    assert_eq!(ckbforks_exists, true);
-
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
-    machine
-        .load_program_elf(&buffer, &vec!["ebreak".into()], &Elf::from_v0(elf).unwrap())
-        .unwrap();
-    let result = machine.run();
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 1);
+    let ckbforks_exists_v1 = || -> bool {
+        let elf = goblin_v040::elf::Elf::parse(&buffer).unwrap();
+        for section_header in &elf.section_headers {
+            if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
+                if r == ".ckb.forks" {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }();
+    assert_eq!(ckbforks_exists_v0, true);
+    assert_eq!(ckbforks_exists_v1, true);
 }
 
 #[test]

@@ -473,3 +473,17 @@ pub fn test_asm_version1_writable_page() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
+
+#[test]
+pub fn test_asm_version0_goblin_overflow_elf() {
+    // This test case only guarantee that the process of loading elf will not crash.
+    let machine = create_asm_machine("goblin_overflow_elf".to_string(), VERSION0);
+    assert_eq!(machine.machine.version(), VERSION0);
+}
+
+#[test]
+pub fn test_asm_version1_goblin_overflow_elf() {
+    // This test case only guarantee that the process of loading elf will not crash.
+    let machine = create_asm_machine("goblin_overflow_elf".to_string(), VERSION1);
+    assert_eq!(machine.machine.version(), VERSION1);
+}
