@@ -17,10 +17,10 @@ pub struct Decoder {
 }
 
 impl Decoder {
-    pub fn new() -> Decoder {
+    pub fn new(mop: bool) -> Decoder {
         Decoder {
             factories: vec![],
-            mop: false,
+            mop,
         }
     }
 
@@ -351,13 +351,12 @@ impl Decoder {
 }
 
 pub fn build_decoder<R: Register>(isa: u8) -> Decoder {
-    let mut decoder = Decoder::new();
+    let mut decoder = Decoder::new(isa & ISA_MOP != 0);
     decoder.add_instruction_factory(rvc::factory::<R>);
     decoder.add_instruction_factory(i::factory::<R>);
     decoder.add_instruction_factory(m::factory::<R>);
     if isa & ISA_B != 0 {
         decoder.add_instruction_factory(b::factory::<R>);
     }
-    decoder.mop = isa & ISA_MOP != 0;
     decoder
 }
