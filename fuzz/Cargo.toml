@@ -11,7 +11,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4.0"
-bytes = "0.5.4"
+bytes = "1"
 ckb-vm = { path = "..", features = ["asm"] }
 
 # Prevent this from interfering with workspaces
