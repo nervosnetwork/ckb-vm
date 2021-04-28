@@ -1,0 +1,11 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: weekly
+    day: wednesday
+    timezone: Asia/Shanghai
+  open-pull-requests-limit: 10
+  versioning-strategy: lockfile-only
+  rebase-strategy: disabled
