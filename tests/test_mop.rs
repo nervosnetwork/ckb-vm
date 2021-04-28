@@ -5,6 +5,7 @@ use bytes::Bytes;
 use ckb_vm::SupportMachine;
 
 #[test]
+#[cfg_attr(miri, ignore)]
 pub fn test_mop_wide_multiply() {
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_multiply", vec![]);
     let ret = machine.run();
@@ -31,6 +32,7 @@ pub fn test_mop_wide_multiply() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 pub fn test_mop_wide_divide() {
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_divide", vec![]);
     let ret = machine.run();
@@ -83,6 +85,7 @@ pub fn test_mop_far_jump() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 pub fn test_mop_ld_32_constants() {
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_ld_signextend_32", vec![]);
     let ret = machine.run();
@@ -107,6 +110,7 @@ pub fn test_mop_ld_32_constants() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 pub fn test_mop_secp256k1() {
     let args = vec![
         Bytes::from("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f"),
