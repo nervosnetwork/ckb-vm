@@ -1331,7 +1331,32 @@ int aot_pcnt(AotContext* context, riscv_register_t target, AotValue a)
   ret = aot_mov_x64(context, X64_RAX, a);
   if (ret != DASM_S_OK) { return ret; }
 
-  | popcnt rax, rax
+  | mov rdx, rax
+  | shr rdx, 1
+  | mov64 rcx, 0x5555555555555555
+  | and rdx, rcx
+  | sub rax, rdx
+  | mov rdx, rax
+  | mov64 rcx, 0x3333333333333333
+  | and rdx, rcx
+  | shr rax, 2
+  | and rax, rcx
+  | add rax, rdx
+  | mov rdx, rax
+  | shr rdx, 4
+  | add rax, rdx
+  | mov64 rcx, 0x0F0F0F0F0F0F0F0F
+  | and rax, rcx
+  | mov rdx, rax
+  | shr rdx, 8
+  | add rax, rdx
+  | mov rdx, rax
+  | shr rdx, 16
+  | add rax, rdx
+  | mov rdx, rax
+  | shr rdx, 32
+  | add rax, rdx
+  | and rax, 0x7F
   | op2_r_x mov, target, rax
 
   return DASM_S_OK;
