@@ -1504,9 +1504,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
   cmp RS1, RS2r
-  movq RS1, TEMP1
-  cmovle RS2r, TEMP1
-  WRITE_RD(TEMP1)
+  cmovle RS2r, RS1
+  WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_MINU:
@@ -1514,9 +1513,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
   cmp RS1, RS2r
-  movq RS1, TEMP1
-  cmovbe RS2r, TEMP1
-  WRITE_RD(TEMP1)
+  cmovbe RS2r, RS1
+  WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_MAX:
@@ -1524,9 +1522,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
   cmp RS1, RS2r
-  movq RS1, TEMP1
-  cmovge RS2r, TEMP1
-  WRITE_RD(TEMP1)
+  cmovge RS2r, RS1
+  WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_MAXU:
@@ -1534,9 +1531,8 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
   cmp RS1, RS2r
-  movq RS1, TEMP1
-  cmovae RS2r, TEMP1
-  WRITE_RD(TEMP1)
+  cmovae RS2r, RS1
+  WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SEXTB:
