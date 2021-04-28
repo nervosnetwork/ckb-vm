@@ -1284,14 +1284,83 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_PCNT:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
-  popcnt RS1, RS1
+  /* Since we only plan to use SSE2, the popcnt instruction cannot be used.
+   * As an alternative, a soft-popcnt is given below, which is described in
+   * Hacker's delight Chapter 5, Counting Bits.
+   *
+   * int popcnt64(uint64_t x)
+   * {
+   *   x = x - (x >> 1) & 0x5555555555555555;
+   *   x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
+   *   x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0f;
+   *   x = x + (x >> 8);
+   *   x = x + (x >> 16);
+   *   x = x + (x >> 32);
+   *   return x & 0x7f;
+   * }
+   */
+  movq RS1, RS2r
+  shr $1, RS2r
+  movabs $0x5555555555555555, TEMP1
+  and TEMP1, RS2r
+  sub RS2r, RS1
+  movq RS1, RS2r
+  movabs $0x3333333333333333, TEMP1
+  and TEMP1, RS2r
+  shr $2, RS1
+  and TEMP1, RS1
+  add RS2r, RS1
+  movq RS1, RS2r
+  shr $4, RS2r
+  add RS2r, RS1
+  movabs $0x0f0f0f0f0f0f0f0f, TEMP1
+  and TEMP1, RS1
+  movq RS1, RS2r
+  shr $8, RS2r
+  add RS2r, RS1
+  movq RS1, RS2r
+  shr $16, RS2r
+  add RS2r, RS1
+  movq RS1, RS2r
+  shr $32, RS2r
+  add RS2r, RS1
+  and $0x7f, RS1
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_PCNTW:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
-  popcnt RS1d, RS1d
+  /*
+   * int popcnt32(uint32_t x) {
+   *   x = x - ((x >> 1) & 0x55555555);
+   *   x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+   *   x = (x + (x >> 4)) & 0x0f0f0f0f;
+   *   x = x + (x >> 8);
+   *   x = x + (x >> 16);
+   *   return x & 0x3f;
+   * }
+   */
+  mov RS1d, RS2rd
+  shr $1, RS2rd
+  and $0x55555555, RS2rd
+  sub RS2rd, RS1d
+  mov RS1d, RS2rd
+  and $0x33333333, RS2rd
+  shr $2, RS1d
+  and $0x33333333, RS1d
+  add RS2rd, RS1d
+  mov RS1d, RS2rd
+  shr $4, RS2rd
+  add RS2rd, RS1d
+  and $0x0f0f0f0f, RS1d
+  mov RS1d, RS2rd
+  shr $8, RS2rd
+  add RS2rd, RS1d
+  mov RS1d, RS2rd
+  shr $16, RS2rd
+  add RS2rd, RS1d
+  and $0x3f, RS1d
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
