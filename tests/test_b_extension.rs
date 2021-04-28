@@ -158,3 +158,12 @@ pub fn test_fsri_decode_bug() {
         assert_eq!(ret_aot.unwrap(), 0);
     }
 }
+
+#[test]
+pub fn test_pcnt() {
+    machine_run::int_v1_imcb("tests/programs/pcnt");
+    #[cfg(has_asm)]
+    machine_run::asm_v1_imcb("tests/programs/pcnt");
+    #[cfg(has_asm)]
+    machine_run::aot_v1_imcb("tests/programs/pcnt");
+}
