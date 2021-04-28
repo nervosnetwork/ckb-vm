@@ -20,7 +20,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::{VERSION0, aot::AotCode},
+    machine::{aot::AotCode, VERSION0},
     memory::{
         check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
         set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
