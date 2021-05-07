@@ -82,7 +82,7 @@ src/machine/aot/aot.x64.win.compiled.c: src/machine/aot/aot.x64.c .deps/luajit/s
 .deps/luajit/src/host/minilua:
 	rm -rf .deps/luajit && mkdir -p .deps && \
 		git clone https://github.com/LuaJIT/LuaJIT .deps/luajit && \
-		cd .deps/luajit && git checkout v2.1 && \
+		cd .deps/luajit && git checkout 0f8a340c8c71fb8f5b8ae7c3ae94bfe81af8f8e8 && \
 		make
 
 .PHONY: test clippy fmt fuzz
