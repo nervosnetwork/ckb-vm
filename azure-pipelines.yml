@@ -168,7 +168,7 @@ jobs:
         displayName: Run fuzz
 
   - job: LinuxCodeCoverage
-    condition: $[eq(variables['Build.SourceBranch'], 'refs/heads/release')]
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/release')
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
