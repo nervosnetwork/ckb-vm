@@ -168,6 +168,8 @@ jobs:
         displayName: Run fuzz
 
   - job: LinuxCodeCoverage
+    trigger:
+      - release
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
