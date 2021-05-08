@@ -1,0 +1,15 @@
+parameters:
+  rustup_toolchain: ''
+steps:
+- script: |
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain ${{ parameters.rustup_toolchain }}
+    set PATH=$PATH:~/.cargo/bin
+  displayName: Install rust
+- script: rustup component add rustfmt
+  displayName: Install rustfmt
+- script: rustup component add clippy
+  displayName: Install clippy
+- script: |
+    rustc --version
+    cargo --version
+  displayName: Test/query binaries

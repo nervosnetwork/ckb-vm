@@ -6,23 +6,167 @@ trigger:
     include:
     - '*'
 
+variables:
+  RUST_BACKTRACE: full
+  TEST_SUITE_BRANCH: release
+  TEST_SUITE_COMMIT: 68dbb183e4033b3984579e280282466b864252df
+
 jobs:
-  - job: UnitTest
+  - job: WinUnitTest
     pool:
       vmImage: 'VS2017-Win2016'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
       - script: make test
         displayName: Run unit tests
 
-  - job: UnitTestAllFeatures
+  - job: WinUnitTestAllFeatures
     pool:
       vmImage: 'VS2017-Win2016'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.41.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
       - script: make test-all-features
         displayName: Run unit tests with all features
+
+  - job: OSXCI
+    pool:
+      vmImage: 'macOS-10.15'
+    steps:
+      - template: devtools/azure/osx-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-apple-darwin'
+      - script: make ci
+        displayName: Run ci
+
+  - job: OSXCIAllFeatures
+    pool:
+      vmImage: 'macOS-10.15'
+    steps:
+      - template: devtools/azure/osx-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-apple-darwin'
+      - script: make ci-all-features
+        displayName: Run ci-all-features
+
+  - job: LinuxCIQuick
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make ci-quick
+        displayName: Run ci-quick
+
+  - job: LinuxCIGenerated
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make ci-generated
+        displayName: Run ci-generated
+
+  - job: LinuxCheck
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make check
+        displayName: Run check
+
+  - job: LinuxCIAllFeatures
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make ci-all-features
+        displayName: Run ci-all-features
+
+  - job: LinuxTestSuite
+    pool:
+      vmImage: 'ubuntu-16.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: |
+          sudo apt install -y git \
+                              build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              zlib1g-dev
+      - script: |
+          git clone -b $TEST_SUITE_BRANCH https://github.com/nervosnetwork/ckb-vm-test-suite &&
+          ln -snf .. ckb-vm-test-suite/ckb-vm &&
+          docker run --rm -v `pwd`:/code xxuejie/riscv-gnu-toolchain-rv64imac:xenial-20190606 cp -r /riscv /code/riscv &&
+          cd ckb-vm-test-suite &&
+          git checkout $TEST_SUITE_COMMIT &&
+          git submodule update --init --recursive &&
+          RISCV=`pwd`/../riscv ./test.sh
+        displayName: Run test suite
+
+  - job: LinuxCodeCoverage
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/release')
+    pool:
+      vmImage: 'ubuntu-16.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: |
+          sudo apt install -y git \
+                              build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              binutils-dev \
+                              libcurl4-openssl-dev \
+                              zlib1g-dev \
+                              libdw-dev \
+                              libiberty-dev
+      - script: |
+          wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz &&
+          tar xzf v36.tar.gz &&
+          cd kcov-36 &&
+          mkdir build &&
+          cd build &&
+          cmake .. &&
+          make &&
+          sudo make install &&
+          cd ../.. &&
+          rm -rf kcov-36 v36.tar.gz &&
+          git clone -b $TEST_SUITE_BRANCH https://github.com/nervosnetwork/ckb-vm-test-suite &&
+          ln -snf .. ckb-vm-test-suite/ckb-vm &&
+          docker run --rm -v `pwd`:/code xxuejie/riscv-gnu-toolchain-rv64imac:xenial-20190606 cp -r /riscv /code/riscv &&
+          cd ckb-vm-test-suite && git checkout $TEST_SUITE_COMMIT && git submodule update --init --recursive &&
+          RISCV=`pwd`/../riscv ./test.sh --coverage &&
+          cd .. &&
+          make cov &&
+          bash <(curl -s https://codecov.io/bash) &&
+          echo "Uploaded code coverage"
+        displayName: Run code coverage
