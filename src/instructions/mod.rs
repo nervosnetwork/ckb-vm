@@ -252,22 +252,22 @@ pub fn is_slowpath_instruction(i: Instruction) -> bool {
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
-    match extract_opcode(i) {
-        insts::OP_AUIPC => true,
-        insts::OP_JALR => true,
-        insts::OP_BEQ => true,
-        insts::OP_BNE => true,
-        insts::OP_BLT => true,
-        insts::OP_BGE => true,
-        insts::OP_BLTU => true,
-        insts::OP_BGEU => true,
-        insts::OP_ECALL => true,
-        insts::OP_EBREAK => true,
-        insts::OP_JAL => true,
-        insts::OP_FAR_JUMP_ABS => true,
-        insts::OP_FAR_JUMP_REL => true,
-        _ => is_slowpath_instruction(i),
-    }
+    matches!(
+        extract_opcode(i),
+        insts::OP_AUIPC
+            | insts::OP_JALR
+            | insts::OP_BEQ
+            | insts::OP_BNE
+            | insts::OP_BLT
+            | insts::OP_BGE
+            | insts::OP_BLTU
+            | insts::OP_BGEU
+            | insts::OP_ECALL
+            | insts::OP_EBREAK
+            | insts::OP_JAL
+            | insts::OP_FAR_JUMP_ABS
+            | insts::OP_FAR_JUMP_REL
+    ) | is_slowpath_instruction(i)
 }
 
 #[inline(always)]

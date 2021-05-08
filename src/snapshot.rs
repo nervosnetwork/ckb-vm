@@ -37,12 +37,14 @@ pub struct Snapshot {
 }
 
 pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error> {
-    let mut snap = Snapshot::default();
-    snap.version = machine.version();
+    let mut snap = Snapshot {
+        version: machine.version(),
+        pc: machine.pc().to_u64(),
+        ..Default::default()
+    };
     for (i, v) in machine.registers().iter().enumerate() {
         snap.registers[i] = v.to_u64();
     }
-    snap.pc = machine.pc().to_u64();
 
     for i in 0..RISCV_PAGES {
         let flag = machine.memory_mut().fetch_flag(i as u64)?;
