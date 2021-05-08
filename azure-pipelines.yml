@@ -51,6 +51,16 @@ jobs:
       - script: make ci
         displayName: Run ci
 
+  - job: OSXCIAllFeatures
+    pool:
+      vmImage: 'macOS-10.15'
+    steps:
+      - template: devtools/azure/osx-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-apple-darwin'
+      - script: make ci-all-features
+        displayName: Run ci-all-features
+
   - job: LinuxCIDeps
     pool:
       vmImage: 'ubuntu-20.04'
