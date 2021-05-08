@@ -198,33 +198,33 @@ impl Utype {
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
-    match extract_opcode(i) {
-        insts::OP_AUIPC => true,
-        insts::OP_JALR => true,
-        insts::OP_BEQ => true,
-        insts::OP_BNE => true,
-        insts::OP_BLT => true,
-        insts::OP_BGE => true,
-        insts::OP_BLTU => true,
-        insts::OP_BGEU => true,
-        insts::OP_ECALL => true,
-        insts::OP_EBREAK => true,
-        insts::OP_JAL => true,
-        insts::OP_RVC_EBREAK => true,
-        insts::OP_RVC_BEQZ => true,
-        insts::OP_RVC_BNEZ => true,
-        insts::OP_RVC_J => true,
-        insts::OP_RVC_JAL => true,
-        insts::OP_RVC_JALR => true,
-        insts::OP_RVC_JR => true,
-        _ => false,
-    }
+    matches!(
+        extract_opcode(i),
+        insts::OP_AUIPC
+            | insts::OP_JALR
+            | insts::OP_BEQ
+            | insts::OP_BNE
+            | insts::OP_BLT
+            | insts::OP_BGE
+            | insts::OP_BLTU
+            | insts::OP_BGEU
+            | insts::OP_ECALL
+            | insts::OP_EBREAK
+            | insts::OP_JAL
+            | insts::OP_RVC_EBREAK
+            | insts::OP_RVC_BEQZ
+            | insts::OP_RVC_BNEZ
+            | insts::OP_RVC_J
+            | insts::OP_RVC_JAL
+            | insts::OP_RVC_JALR
+            | insts::OP_RVC_JR
+    )
 }
 
 #[inline(always)]
 pub fn instruction_length(i: Instruction) -> u8 {
     let o = extract_opcode(i);
-    if o >= MINIMAL_RVC_OPCODE && o <= MAXIMUM_RVC_OPCODE {
+    if (MINIMAL_RVC_OPCODE..=MAXIMUM_RVC_OPCODE).contains(&o) {
         2
     } else {
         4

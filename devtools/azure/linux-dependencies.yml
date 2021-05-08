@@ -1,0 +1,13 @@
+parameters:
+  rustup_toolchain: ''
+steps:
+- script: |
+    sudo apt install -y build-essential
+- script: |
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain ${{ parameters.rustup_toolchain }}
+    set PATH=$PATH:~/.cargo/bin
+  displayName: Install rust
+- script: |
+    rustc --version
+    cargo --version
+  displayName: Test/query binaries
