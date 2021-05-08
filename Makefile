@@ -17,12 +17,12 @@ fmt:
 	cd definitions && cargo fmt ${VERBOSE} --all -- --check
 
 clippy_rule = -D warnings \
-		      -D clippy::clone_on_ref_ptr \
-		      -D clippy::enum_glob_use \
-              -A clippy::upper_case_acronyms \
-			  -A clippy::unusual_byte_groupings \
-		      -A clippy::inconsistent_digit_grouping \
-		      -A clippy::large_digit_groups
+	-D clippy::clone_on_ref_ptr \
+	-D clippy::enum_glob_use \
+	-A clippy::upper_case_acronyms \
+	-A clippy::unusual_byte_groupings \
+	-A clippy::inconsistent_digit_grouping \
+	-A clippy::large_digit_groups
 clippy:
 	cargo clippy --all --features=asm -- $(clippy_rule)
 	cd definitions && cargo clippy --all -- $(clippy_rule)
