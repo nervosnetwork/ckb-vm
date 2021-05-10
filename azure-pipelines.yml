@@ -17,7 +17,7 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
       - script: make test
         displayName: Run unit tests
 
@@ -27,7 +27,7 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
       - script: make test-all-features
         displayName: Run unit tests with all features
 
@@ -37,7 +37,7 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
       - script: make test-chaos
         displayName: Run unit tests with chaos
 
@@ -47,9 +47,19 @@ jobs:
     steps:
       - template: devtools/azure/osx-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-apple-darwin'
+          rustup_toolchain: '1.51.0-x86_64-apple-darwin'
       - script: make ci
         displayName: Run ci
+
+  - job: OSXCIAllFeatures
+    pool:
+      vmImage: 'macOS-10.15'
+    steps:
+      - template: devtools/azure/osx-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-apple-darwin'
+      - script: make ci-all-features
+        displayName: Run ci-all-features
 
   - job: LinuxCIDeps
     pool:
@@ -69,7 +79,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: make ci-quick
         displayName: Run ci-quick
 
@@ -79,7 +89,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: make ci-generated
         displayName: Run ci-generated
 
@@ -89,7 +99,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: make check
         displayName: Run check
 
@@ -99,7 +109,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: make ci-all-features
         displayName: Run ci-all-features
 
@@ -109,7 +119,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: make ci-chaos
         displayName: Run ci-chaos
 
@@ -117,6 +127,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-20.04'
     steps:
+      - script: rm rust-toolchain
       - template: devtools/azure/linux-dependencies.yml
         parameters:
           rustup_toolchain: 'nightly-2021-03-20'
@@ -129,7 +140,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: |
           sudo apt install -y git \
                               build-essential \
@@ -158,6 +169,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-20.04'
     steps:
+      - script: rm rust-toolchain
       - template: devtools/azure/linux-dependencies.yml
         parameters:
           rustup_toolchain: 'nightly-2021-03-20'
@@ -174,7 +186,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.46.0-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: |
           sudo apt install -y git \
                               build-essential \

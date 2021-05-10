@@ -542,11 +542,9 @@ impl AotCompilingMachine {
             });
         }
         // Atomic writes only accept normal register writes and PC writes.
-        let all_normal_writes = last_writes.iter().all(|write| match write {
-            Write::Register { .. } => true,
-            Write::Pc { .. } => true,
-            _ => false,
-        });
+        let all_normal_writes = last_writes
+            .iter()
+            .all(|write| matches!(write, Write::Register { .. } | Write::Pc { .. }));
         if self.version >= VERSION1 && last_writes.len() > 1 && all_normal_writes {
             self.emitter.emit_writes(&last_writes)?;
         } else {
