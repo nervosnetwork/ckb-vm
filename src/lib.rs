@@ -21,7 +21,7 @@ pub use crate::{
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,
 };
-use bytes::Bytes;
+pub use bytes::Bytes;
 
 pub use ckb_vm_definitions::{
     registers, DEFAULT_STACK_SIZE, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE,
