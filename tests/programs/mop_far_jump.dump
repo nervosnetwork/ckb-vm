@@ -1,0 +1,17 @@
+
+mop_far_jump:     file format elf64-littleriscv
+
+
+Disassembly of section .text:
+
+0000000000010078 <_start>:
+   10078:	00000097          	auipc	ra,0x0
+   1007c:	008080e7          	jalr	8(ra) # 10080 <_start+0x8>
+   10080:	60c1                	lui	ra,0x10
+   10082:	090080e7          	jalr	144(ra) # 10090 <_start+0x18>
+   10086:	4505                	li	a0,1
+   10088:	05d00893          	li	a7,93
+   1008c:	00000073          	ecall
+   10090:	4501                	li	a0,0
+   10092:	05d00893          	li	a7,93
+   10096:	00000073          	ecall

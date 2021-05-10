@@ -4,9 +4,9 @@ use ckb_vm_definitions::{
         RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
         TRACE_ITEM_LENGTH,
     },
-    instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
+    instructions::{Instruction, INSTRUCTION_OPCODE_NAMES_LEVEL1, MAXIMUM_LEVEL1_OPCODE},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
-    registers::SP,
+    registers::{RA, SP},
     MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
@@ -59,6 +59,7 @@ fn main() {
     println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
     println!();
 
+    println!("#define CKB_VM_ASM_REGISTER_RA {}", RA);
     println!("#define CKB_VM_ASM_REGISTER_SP {}", SP);
     println!();
 
@@ -136,6 +137,10 @@ fn main() {
         (&m.chaos_seed as *const u32 as usize) - m_address
     );
     println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION {}",
+        (&m.version as *const u32 as usize) - m_address
+    );
+    println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );
@@ -153,7 +158,7 @@ fn main() {
     );
     println!();
 
-    for (op, name) in INSTRUCTION_OPCODE_NAMES.iter().enumerate() {
+    for (op, name) in INSTRUCTION_OPCODE_NAMES_LEVEL1.iter().enumerate() {
         println!("#define CKB_VM_ASM_OP_{} {}", name, op);
     }
     println!();
@@ -167,11 +172,15 @@ fn main() {
     println!("ckb_vm_asm_labels:");
     println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
-    for name in INSTRUCTION_OPCODE_NAMES.iter() {
+    for name in INSTRUCTION_OPCODE_NAMES_LEVEL1.iter() {
         println!(
             "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_ASM_LABEL_TABLE",
             name
         );
     }
+    for _ in MAXIMUM_LEVEL1_OPCODE + 1..0xF0 {
+        println!("\t.long\t.CKB_VM_ASM_LABEL_OP_UNLOADED - .CKB_VM_ASM_LABEL_TABLE");
+    }
+    println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
 }
