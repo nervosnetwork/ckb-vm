@@ -16,7 +16,7 @@ Nervos CKB is released under the terms of the MIT license. See [COPYING](COPYING
 
 ## Development Process
 
-This project is still in development, it's NOT in production ready status.
+This is now deployed and used in production CKB mainnet.
 
 The `develop` branch is regularly built and tested, but is not guaranteed to be completely stable. CKB will use released versions of CKB VM which are tested and more stable.
 
