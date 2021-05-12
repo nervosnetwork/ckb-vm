@@ -9,7 +9,7 @@ use ckb_vm::{Instruction, SparseMemory, WXorXMemory};
 
 use bytes::Bytes;
 
-fn instruction_cycle_func(_: Instruction) -> u64 {
+pub fn instruction_cycle_func(_: Instruction) -> u64 {
     1
 }
 

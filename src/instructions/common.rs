@@ -373,15 +373,10 @@ pub fn sraiw<Mac: Machine>(
 // =======================
 // #  JUMP instructions  #
 // =======================
-pub fn jal<Mac: Machine>(
-    machine: &mut Mac,
-    rd: RegisterIndex,
-    imm: Immediate,
-    xbytes: u8,
-) -> Option<Mac::REG> {
+pub fn jal<Mac: Machine>(machine: &mut Mac, rd: RegisterIndex, imm: Immediate, xbytes: u8) {
     let link = machine.pc().overflowing_add(&Mac::REG::from_u8(xbytes));
     update_register(machine, rd, link);
-    Some(machine.pc().overflowing_add(&Mac::REG::from_i32(imm)))
+    machine.set_next_pc(machine.pc().overflowing_add(&Mac::REG::from_i32(imm)));
 }
 
 // ==============================

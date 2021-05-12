@@ -98,11 +98,13 @@ typedef struct {
 typedef struct {
   uint64_t registers[32];
   uint64_t pc;
+  uint64_t next_pc;
   uint8_t running;
   uint64_t cycles;
   uint64_t max_cycles;
   uint8_t chaos_mode;
   uint32_t chaos_seed;
+  uint8_t reset_signal;
   uint8_t isa;
   uint32_t version;
   uint8_t flags[CKB_VM_ASM_RISCV_PAGES];

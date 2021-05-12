@@ -39,7 +39,9 @@ pub trait CoreMachine {
     type MEM: Memory<REG = Self::REG>;
 
     fn pc(&self) -> &Self::REG;
-    fn set_pc(&mut self, next_pc: Self::REG);
+    fn set_pc(&mut self, pc: Self::REG);
+    fn next_pc(&self) -> &Self::REG;
+    fn set_next_pc(&mut self, next_pc: Self::REG);
     fn memory(&self) -> &Self::MEM;
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
@@ -72,6 +74,10 @@ pub trait SupportMachine: CoreMachine {
 
     fn running(&self) -> bool;
     fn set_running(&mut self, running: bool);
+
+    // Erase all the states of the virtual machine.
+    fn reset(&mut self);
+    fn reset_signal(&mut self) -> bool;
 
     fn add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
         let new_cycles = self
@@ -261,6 +267,8 @@ pub trait SupportMachine: CoreMachine {
 pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pc: R,
+    next_pc: R,
+    reset_signal: bool,
     memory: M,
     cycles: u64,
     max_cycles: Option<u64>,
@@ -276,8 +284,16 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         &self.pc
     }
 
-    fn set_pc(&mut self, next_pc: Self::REG) {
-        self.pc = next_pc;
+    fn set_pc(&mut self, pc: Self::REG) {
+        self.pc = pc;
+    }
+
+    fn next_pc(&self) -> &Self::REG {
+        &self.next_pc
+    }
+
+    fn set_next_pc(&mut self, next_pc: Self::REG) {
+        self.next_pc = next_pc;
     }
 
     fn memory(&self) -> &Self::MEM {
@@ -305,7 +321,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMachine<R, M> {
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -316,6 +332,19 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
 
     fn max_cycles(&self) -> Option<u64> {
         self.max_cycles
+    }
+
+    fn reset(&mut self) {
+        self.registers = Default::default();
+        self.pc = Default::default();
+        self.memory = Default::default();
+        self.reset_signal = true;
+    }
+
+    fn reset_signal(&mut self) -> bool {
+        let ret = self.reset_signal;
+        self.reset_signal = false;
+        ret
     }
 
     fn running(&self) -> bool {
@@ -378,6 +407,14 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         self.inner.set_pc(next_pc)
     }
 
+    fn next_pc(&self) -> &Self::REG {
+        self.inner.next_pc()
+    }
+
+    fn set_next_pc(&mut self, next_pc: Self::REG) {
+        self.inner.set_next_pc(next_pc);
+    }
+
     fn memory(&self) -> &Self::MEM {
         self.inner.memory()
     }
@@ -414,6 +451,14 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
 
     fn max_cycles(&self) -> Option<u64> {
         self.inner.max_cycles()
+    }
+
+    fn reset(&mut self) {
+        self.inner_mut().reset();
+    }
+
+    fn reset_signal(&mut self) -> bool {
+        self.inner_mut().reset_signal()
     }
 
     fn running(&self) -> bool {
