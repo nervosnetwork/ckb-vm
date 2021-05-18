@@ -38,16 +38,12 @@ impl CoreMachine for Box<AsmCoreMachine> {
         &self.pc
     }
 
-    fn set_pc(&mut self, pc: Self::REG) {
-        self.pc = pc
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
     }
 
-    fn next_pc(&self) -> &Self::REG {
-        &self.next_pc
-    }
-
-    fn set_next_pc(&mut self, next_pc: Self::REG) {
-        self.next_pc = next_pc;
+    fn commit_pc(&mut self) {
+        self.pc = self.next_pc;
     }
 
     fn memory(&self) -> &Self {

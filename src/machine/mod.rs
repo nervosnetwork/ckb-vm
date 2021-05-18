@@ -39,9 +39,8 @@ pub trait CoreMachine {
     type MEM: Memory<REG = Self::REG>;
 
     fn pc(&self) -> &Self::REG;
-    fn set_pc(&mut self, pc: Self::REG);
-    fn next_pc(&self) -> &Self::REG;
-    fn set_next_pc(&mut self, next_pc: Self::REG);
+    fn update_pc(&mut self, pc: Self::REG);
+    fn commit_pc(&mut self);
     fn memory(&self) -> &Self::MEM;
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
@@ -171,7 +170,8 @@ pub trait SupportMachine: CoreMachine {
             }
         }
         if update_pc {
-            self.set_pc(Self::REG::from_u64(e_entry));
+            self.update_pc(Self::REG::from_u64(e_entry));
+            self.commit_pc();
         }
         for i in 0..RISCV_PAGES {
             self.memory_mut().clear_flag(i as u64, FLAG_DIRTY)?;
@@ -284,16 +284,12 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         &self.pc
     }
 
-    fn set_pc(&mut self, pc: Self::REG) {
-        self.pc = pc;
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
     }
 
-    fn next_pc(&self) -> &Self::REG {
-        &self.next_pc
-    }
-
-    fn set_next_pc(&mut self, next_pc: Self::REG) {
-        self.next_pc = next_pc;
+    fn commit_pc(&mut self) {
+        self.pc = self.next_pc.clone();
     }
 
     fn memory(&self) -> &Self::MEM {
@@ -403,16 +399,12 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         &self.inner.pc()
     }
 
-    fn set_pc(&mut self, next_pc: Self::REG) {
-        self.inner.set_pc(next_pc)
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.inner.update_pc(pc);
     }
 
-    fn next_pc(&self) -> &Self::REG {
-        self.inner.next_pc()
-    }
-
-    fn set_next_pc(&mut self, next_pc: Self::REG) {
-        self.inner.set_next_pc(next_pc);
+    fn commit_pc(&mut self) {
+        self.inner.commit_pc();
     }
 
     fn memory(&self) -> &Self::MEM {

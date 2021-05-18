@@ -26,14 +26,13 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
         }
         machine.reset();
         let code_data = std::fs::read("tests/programs/reset_callee").unwrap();
-        let code = bytes::Bytes::from(code_data);
+        let code = Bytes::from(code_data);
         machine.load_elf(&code, true).unwrap();
         machine.initialize_stack(
             &[],
             (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
             DEFAULT_STACK_SIZE as u64,
         )?;
-        machine.set_next_pc(machine.pc().clone());
         Ok(true)
     }
 }
@@ -41,7 +40,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 #[test]
 fn test_reset_int() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
-    let code = bytes::Bytes::from(code_data);
+    let code = Bytes::from(code_data);
 
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_MOP,
@@ -63,7 +62,7 @@ fn test_reset_int() {
 #[test]
 fn test_reset_int_with_trace() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
-    let code = bytes::Bytes::from(code_data);
+    let code = Bytes::from(code_data);
 
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_MOP,
@@ -88,7 +87,7 @@ fn test_reset_int_with_trace() {
 #[cfg(has_asm)]
 fn test_reset_asm() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
-    let code = bytes::Bytes::from(code_data);
+    let code = Bytes::from(code_data);
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
@@ -109,7 +108,7 @@ fn test_reset_asm() {
 #[cfg(has_asm)]
 pub fn test_reset_aot() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
-    let code = bytes::Bytes::from(code_data);
+    let code = Bytes::from(code_data);
 
     let mut aot_machine = AotCompilingMachine::load(
         &code,

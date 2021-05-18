@@ -376,7 +376,7 @@ pub fn sraiw<Mac: Machine>(
 pub fn jal<Mac: Machine>(machine: &mut Mac, rd: RegisterIndex, imm: Immediate, xbytes: u8) {
     let link = machine.pc().overflowing_add(&Mac::REG::from_u8(xbytes));
     update_register(machine, rd, link);
-    machine.set_next_pc(machine.pc().overflowing_add(&Mac::REG::from_i32(imm)));
+    machine.update_pc(machine.pc().overflowing_add(&Mac::REG::from_i32(imm)));
 }
 
 // ==============================

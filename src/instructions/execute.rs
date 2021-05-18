@@ -209,13 +209,13 @@ pub fn execute_instruction<Mac: Machine>(
                     .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
                 next_pc = next_pc & (!Mac::REG::one());
                 update_register(machine, i.rd(), link);
-                machine.set_next_pc(next_pc);
+                machine.update_pc(next_pc);
             } else {
                 update_register(machine, i.rd(), link);
                 let mut next_pc = machine.registers()[i.rs1()]
                     .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
                 next_pc = next_pc & (!Mac::REG::one());
-                machine.set_next_pc(next_pc);
+                machine.update_pc(next_pc);
             }
         }
         insts::OP_SLLI => {
@@ -268,7 +268,7 @@ pub fn execute_instruction<Mac: Machine>(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
                 &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
-            machine.set_next_pc(new_pc);
+            machine.update_pc(new_pc);
         }
         insts::OP_BNE => {
             let i = Stype(inst);
@@ -280,7 +280,7 @@ pub fn execute_instruction<Mac: Machine>(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
                 &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
-            machine.set_next_pc(new_pc);
+            machine.update_pc(new_pc);
         }
         insts::OP_BLT => {
             let i = Stype(inst);
@@ -292,7 +292,7 @@ pub fn execute_instruction<Mac: Machine>(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
                 &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
-            machine.set_next_pc(new_pc);
+            machine.update_pc(new_pc);
         }
         insts::OP_BGE => {
             let i = Stype(inst);
@@ -304,7 +304,7 @@ pub fn execute_instruction<Mac: Machine>(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
                 &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
-            machine.set_next_pc(new_pc);
+            machine.update_pc(new_pc);
         }
         insts::OP_BLTU => {
             let i = Stype(inst);
@@ -316,7 +316,7 @@ pub fn execute_instruction<Mac: Machine>(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
                 &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
-            machine.set_next_pc(new_pc);
+            machine.update_pc(new_pc);
         }
         insts::OP_BGEU => {
             let i = Stype(inst);
@@ -328,7 +328,7 @@ pub fn execute_instruction<Mac: Machine>(
                 &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
                 &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
-            machine.set_next_pc(new_pc);
+            machine.update_pc(new_pc);
         }
         insts::OP_LUI => {
             let i = Utype(inst);
@@ -1425,7 +1425,7 @@ pub fn execute_instruction<Mac: Machine>(
                 .overflowing_add(&Mac::REG::from_i32(i.immediate_s()))
                 & (!Mac::REG::one());
             update_register(machine, RA, link);
-            machine.set_next_pc(next_pc);
+            machine.update_pc(next_pc);
         }
         insts::OP_FAR_JUMP_ABS => {
             let i = Utype(inst);
@@ -1433,7 +1433,7 @@ pub fn execute_instruction<Mac: Machine>(
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
             let next_pc = Mac::REG::from_i32(i.immediate_s()) & (!Mac::REG::one());
             update_register(machine, RA, link);
-            machine.set_next_pc(next_pc);
+            machine.update_pc(next_pc);
         }
         insts::OP_LD_SIGN_EXTENDED_32_CONSTANT => {
             let i = Utype(inst);
@@ -1454,8 +1454,8 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
     let next_pc = machine
         .pc()
         .overflowing_add(&Mac::REG::from_u8(instruction_size));
-    machine.set_next_pc(next_pc);
+    machine.update_pc(next_pc);
     execute_instruction(inst, machine)?;
-    machine.set_pc(machine.next_pc().clone());
+    machine.commit_pc();
     Ok(())
 }

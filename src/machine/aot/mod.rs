@@ -214,7 +214,7 @@ impl LabelGatheringMachine {
                         }
                         start_of_basic_block = is_basic_block_end_instruction(instruction);
                         let next_pc = pc + u64::from(instruction_length(instruction));
-                        self.set_next_pc(Value::from_u64(next_pc));
+                        self.update_pc(Value::from_u64(next_pc));
                         execute(instruction, self)?;
                         for label in self.labels_to_test.drain(..) {
                             if label != next_pc && label < section_end && label >= section_start {
@@ -289,8 +289,12 @@ impl CoreMachine for LabelGatheringMachine {
         &self.pc
     }
 
-    fn set_pc(&mut self, pc: Value) {
-        match pc {
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
+    }
+
+    fn commit_pc(&mut self) {
+        match self.next_pc.clone() {
             Value::Imm(pc) => self.labels_to_test.push(pc),
             Value::Cond(_, t, f) => {
                 if let (Value::Imm(t), Value::Imm(f)) = (&*t, &*f) {
@@ -300,14 +304,6 @@ impl CoreMachine for LabelGatheringMachine {
             }
             _ => (),
         }
-    }
-
-    fn next_pc(&self) -> &Value {
-        &self.next_pc
-    }
-
-    fn set_next_pc(&mut self, next_pc: Self::REG) {
-        self.next_pc = next_pc;
     }
 
     fn memory(&self) -> &Self {
@@ -653,16 +649,12 @@ impl CoreMachine for AotCompilingMachine {
         &self.pc
     }
 
-    fn set_pc(&mut self, pc: Value) {
-        self.next_pc_write = Some(pc);
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
     }
 
-    fn next_pc(&self) -> &Value {
-        &self.next_pc
-    }
-
-    fn set_next_pc(&mut self, next_pc: Self::REG) {
-        self.next_pc = next_pc;
+    fn commit_pc(&mut self) {
+        self.next_pc_write = Some(self.next_pc.clone())
     }
 
     fn memory(&self) -> &Self {

@@ -46,16 +46,12 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         &self.machine.pc()
     }
 
-    fn set_pc(&mut self, pc: Self::REG) {
-        self.machine.set_pc(pc);
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.machine.update_pc(pc);
     }
 
-    fn next_pc(&self) -> &Self::REG {
-        self.machine.next_pc()
-    }
-
-    fn set_next_pc(&mut self, next_pc: Self::REG) {
-        self.machine.set_next_pc(next_pc);
+    fn commit_pc(&mut self) {
+        self.machine.commit_pc();
     }
 
     fn memory(&self) -> &Self::MEM {
