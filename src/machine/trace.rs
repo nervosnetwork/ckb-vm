@@ -46,8 +46,12 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         &self.machine.pc()
     }
 
-    fn set_pc(&mut self, next_pc: Self::REG) {
-        self.machine.set_pc(next_pc)
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.machine.update_pc(pc);
+    }
+
+    fn commit_pc(&mut self) {
+        self.machine.commit_pc();
     }
 
     fn memory(&self) -> &Self::MEM {
@@ -105,6 +109,11 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
         // larger trace item length.
         self.traces.resize_with(TRACE_SIZE, Trace::default);
         while self.machine.running() {
+            if self.machine.reset_signal() {
+                for i in self.traces.iter_mut() {
+                    *i = Trace::default()
+                }
+            }
             let pc = self.machine.pc().to_u64();
             let slot = calculate_slot(pc);
             if pc != self.traces[slot].address || self.traces[slot].instruction_count == 0 {

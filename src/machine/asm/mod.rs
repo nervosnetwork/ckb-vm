@@ -2,14 +2,15 @@ use std::mem::transmute;
 
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
+pub use ckb_vm_definitions::asm::AsmCoreMachine;
+use ckb_vm_definitions::asm::{
+    calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+    RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
+    TRACE_ITEM_LENGTH, TRACE_SIZE,
+};
 use ckb_vm_definitions::{
-    asm::{
-        calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
-        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH,
-    },
-    instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS,
+    instructions::OP_CUSTOM_TRACE_END, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS,
+    RISCV_GENERAL_REGISTER_NUMBER,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -29,8 +30,6 @@ use crate::{
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
-pub use ckb_vm_definitions::asm::AsmCoreMachine;
-
 impl CoreMachine for Box<AsmCoreMachine> {
     type REG = u64;
     type MEM = Self;
@@ -39,8 +38,12 @@ impl CoreMachine for Box<AsmCoreMachine> {
         &self.pc
     }
 
-    fn set_pc(&mut self, next_pc: Self::REG) {
-        self.pc = next_pc
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
+    }
+
+    fn commit_pc(&mut self) {
+        self.pc = self.next_pc;
     }
 
     fn memory(&self) -> &Self {
@@ -300,6 +303,23 @@ impl SupportMachine for Box<AsmCoreMachine> {
         Some(self.max_cycles)
     }
 
+    fn reset(&mut self) {
+        self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+        self.pc = 0;
+        self.flags = [0; RISCV_PAGES];
+        for i in 0..TRACE_SIZE {
+            self.traces[i] = Trace::default();
+        }
+        self.frames = [0; MEMORY_FRAMES];
+        self.reset_signal = 1;
+    }
+
+    fn reset_signal(&mut self) -> bool {
+        let ret = self.reset_signal != 0;
+        self.reset_signal = 0;
+        ret
+    }
+
     fn running(&self) -> bool {
         self.running == 1
     }
@@ -348,6 +368,9 @@ impl<'a> AsmMachine<'a> {
         let decoder = build_decoder::<u64>(self.machine.isa());
         self.machine.set_running(true);
         while self.machine.running() {
+            if self.machine.reset_signal() {
+                self.aot_code = None;
+            }
             let result = if let Some(aot_code) = &self.aot_code {
                 if let Some(offset) = aot_code.labels.get(self.machine.pc()) {
                     let base_address = aot_code.base_address();

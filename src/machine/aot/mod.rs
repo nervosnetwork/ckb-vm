@@ -88,6 +88,7 @@ fn init_registers() -> [Value; 32] {
 struct LabelGatheringMachine {
     registers: [Value; 32],
     pc: Value,
+    next_pc: Value,
     labels_to_test: Vec<u64>,
     isa: u8,
     version: u32,
@@ -182,6 +183,7 @@ impl LabelGatheringMachine {
             version,
             registers: init_registers(),
             pc: Value::from_u64(0),
+            next_pc: Value::from_u64(0),
             labels: HashSet::default(),
             labels_to_test: Vec::new(),
             memory: inner.take_memory(),
@@ -212,6 +214,7 @@ impl LabelGatheringMachine {
                         }
                         start_of_basic_block = is_basic_block_end_instruction(instruction);
                         let next_pc = pc + u64::from(instruction_length(instruction));
+                        self.update_pc(Value::from_u64(next_pc));
                         execute(instruction, self)?;
                         for label in self.labels_to_test.drain(..) {
                             if label != next_pc && label < section_end && label >= section_start {
@@ -286,8 +289,12 @@ impl CoreMachine for LabelGatheringMachine {
         &self.pc
     }
 
-    fn set_pc(&mut self, next_pc: Value) {
-        match next_pc {
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
+    }
+
+    fn commit_pc(&mut self) {
+        match self.next_pc.clone() {
             Value::Imm(pc) => self.labels_to_test.push(pc),
             Value::Cond(_, t, f) => {
                 if let (Value::Imm(t), Value::Imm(f)) = (&*t, &*f) {
@@ -432,6 +439,7 @@ pub struct AotCompilingMachine {
     version: u32,
     registers: [Value; 32],
     pc: Value,
+    next_pc: Value,
     emitter: Emitter,
     memory: FlatMemory<u64>,
     sections: Vec<(u64, u64)>,
@@ -466,6 +474,7 @@ impl AotCompilingMachine {
             version,
             registers: init_registers(),
             pc: Value::from_u64(0),
+            next_pc: Value::from_u64(0),
             emitter: Emitter::new(labels.len(), version)?,
             addresses_to_labels,
             memory: label_gathering_machine.memory,
@@ -640,8 +649,12 @@ impl CoreMachine for AotCompilingMachine {
         &self.pc
     }
 
-    fn set_pc(&mut self, next_pc: Value) {
-        self.next_pc_write = Some(next_pc);
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.next_pc = pc;
+    }
+
+    fn commit_pc(&mut self) {
+        self.next_pc_write = Some(self.next_pc.clone())
     }
 
     fn memory(&self) -> &Self {

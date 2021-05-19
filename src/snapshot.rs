@@ -83,7 +83,8 @@ pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<()
     for (i, v) in snapshot.registers.iter().enumerate() {
         machine.set_register(i, T::REG::from_u64(*v));
     }
-    machine.set_pc(T::REG::from_u64(snapshot.pc));
+    machine.update_pc(T::REG::from_u64(snapshot.pc));
+    machine.commit_pc();
     for i in 0..snapshot.page_indices.len() {
         let page_index = snapshot.page_indices[i];
         let page = &snapshot.pages[i];

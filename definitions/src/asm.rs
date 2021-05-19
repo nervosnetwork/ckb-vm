@@ -38,11 +38,13 @@ pub struct Trace {
 pub struct AsmCoreMachine {
     pub registers: [u64; RISCV_GENERAL_REGISTER_NUMBER],
     pub pc: u64,
+    pub next_pc: u64,
     pub running: u8,
     pub cycles: u64,
     pub max_cycles: u64,
     pub chaos_mode: u8,
     pub chaos_seed: u32,
+    pub reset_signal: u8,
     pub isa: u8,
     pub version: u32,
     pub flags: [u8; RISCV_PAGES],
@@ -73,6 +75,7 @@ impl AsmCoreMachine {
         };
         machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         machine.pc = 0;
+        machine.next_pc = 0;
         machine.running = 0;
         machine.cycles = 0;
         machine.max_cycles = max_cycles;
@@ -82,6 +85,7 @@ impl AsmCoreMachine {
             machine.chaos_mode = 0;
         }
         machine.chaos_seed = 0;
+        machine.reset_signal = 0;
         machine.version = version;
         machine.isa = isa;
         machine.flags = [0; RISCV_PAGES];
