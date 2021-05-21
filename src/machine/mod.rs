@@ -538,6 +538,18 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         self.inner
     }
 
+    pub fn take_cycle_func(&mut self) -> Option<Box<InstructionCycleFunc>> {
+        self.instruction_cycle_func.take()
+    }
+
+    pub fn take_syscalls(&mut self) -> Vec<Box<dyn Syscalls<Inner> + 'a>> {
+        ::std::mem::take(&mut self.syscalls)
+    }
+
+    pub fn take_debugger(&mut self) -> Option<Box<dyn Debugger<Inner> + 'a>> {
+        self.debugger.take()
+    }
+
     pub fn exit_code(&self) -> i8 {
         self.exit_code
     }
@@ -610,6 +622,11 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
 
     pub fn syscall(mut self, syscall: Box<dyn Syscalls<Inner> + 'a>) -> Self {
         self.syscalls.push(syscall);
+        self
+    }
+
+    pub fn syscalls(mut self, syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>) -> Self {
+        self.syscalls = syscalls;
         self
     }
 
