@@ -312,8 +312,8 @@ impl SupportMachine for Box<AsmCoreMachine> {
         }
         self.frames = [0; MEMORY_FRAMES];
         self.cycles = 0;
-        debug_assert!(max_cycles.is_some());
-        self.max_cycles = max_cycles.unwrap_or(0);
+        // AsmMachine always needs a max_cycles, caller needs to guarantee this.
+        self.max_cycles = max_cycles.unwrap();
         self.reset_signal = 1;
     }
 
