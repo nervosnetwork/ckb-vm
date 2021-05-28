@@ -75,7 +75,7 @@ pub trait SupportMachine: CoreMachine {
     fn set_running(&mut self, running: bool);
 
     // Erase all the states of the virtual machine.
-    fn reset(&mut self);
+    fn reset(&mut self, max_cycles: Option<u64>);
     fn reset_signal(&mut self) -> bool;
 
     fn add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
@@ -330,10 +330,12 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
         self.max_cycles
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self, max_cycles: Option<u64>) {
         self.registers = Default::default();
         self.pc = Default::default();
         self.memory = Default::default();
+        self.cycles = 0;
+        self.max_cycles = max_cycles;
         self.reset_signal = true;
     }
 
@@ -445,8 +447,8 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
         self.inner.max_cycles()
     }
 
-    fn reset(&mut self) {
-        self.inner_mut().reset();
+    fn reset(&mut self, max_cycles: Option<u64>) {
+        self.inner_mut().reset(max_cycles);
     }
 
     fn reset_signal(&mut self) -> bool {

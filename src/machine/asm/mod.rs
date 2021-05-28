@@ -303,7 +303,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
         Some(self.max_cycles)
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self, max_cycles: Option<u64>) {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
         self.flags = [0; RISCV_PAGES];
@@ -311,6 +311,9 @@ impl SupportMachine for Box<AsmCoreMachine> {
             self.traces[i] = Trace::default();
         }
         self.frames = [0; MEMORY_FRAMES];
+        self.cycles = 0;
+        debug_assert!(max_cycles.is_some());
+        self.max_cycles = max_cycles.unwrap_or(0);
         self.reset_signal = 1;
     }
 
