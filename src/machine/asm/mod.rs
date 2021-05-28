@@ -312,8 +312,9 @@ impl SupportMachine for Box<AsmCoreMachine> {
         }
         self.frames = [0; MEMORY_FRAMES];
         self.cycles = 0;
-        // AsmMachine always needs a max_cycles, caller needs to guarantee this.
-        self.max_cycles = max_cycles.unwrap();
+        if let Some(cycles) = max_cycles {
+            self.max_cycles = cycles;
+        }
         self.reset_signal = 1;
     }
 
