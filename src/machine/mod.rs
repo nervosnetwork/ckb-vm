@@ -69,13 +69,13 @@ pub trait SupportMachine: CoreMachine {
     // feature.
     fn cycles(&self) -> u64;
     fn set_cycles(&mut self, cycles: u64);
-    fn max_cycles(&self) -> Option<u64>;
+    fn max_cycles(&self) -> u64;
 
     fn running(&self) -> bool;
     fn set_running(&mut self, running: bool);
 
     // Erase all the states of the virtual machine.
-    fn reset(&mut self, max_cycles: Option<u64>);
+    fn reset(&mut self, max_cycles: u64);
     fn reset_signal(&mut self) -> bool;
 
     fn add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
@@ -83,10 +83,8 @@ pub trait SupportMachine: CoreMachine {
             .cycles()
             .checked_add(cycles)
             .ok_or(Error::InvalidCycles)?;
-        if let Some(max_cycles) = self.max_cycles() {
-            if new_cycles > max_cycles {
-                return Err(Error::InvalidCycles);
-            }
+        if new_cycles > self.max_cycles() {
+            return Err(Error::InvalidCycles);
         }
         self.set_cycles(new_cycles);
         Ok(())
@@ -271,7 +269,7 @@ pub struct DefaultCoreMachine<R, M> {
     reset_signal: bool,
     memory: M,
     cycles: u64,
-    max_cycles: Option<u64>,
+    max_cycles: u64,
     running: bool,
     isa: u8,
     version: u32,
@@ -326,11 +324,11 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
         self.cycles = cycles;
     }
 
-    fn max_cycles(&self) -> Option<u64> {
+    fn max_cycles(&self) -> u64 {
         self.max_cycles
     }
 
-    fn reset(&mut self, max_cycles: Option<u64>) {
+    fn reset(&mut self, max_cycles: u64) {
         self.registers = Default::default();
         self.pc = Default::default();
         self.memory = Default::default();
@@ -359,7 +357,7 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
         Self {
             isa,
             version,
-            max_cycles: Some(max_cycles),
+            max_cycles,
             ..Default::default()
         }
     }
@@ -443,11 +441,11 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
         self.inner.set_cycles(cycles)
     }
 
-    fn max_cycles(&self) -> Option<u64> {
+    fn max_cycles(&self) -> u64 {
         self.inner.max_cycles()
     }
 
-    fn reset(&mut self, max_cycles: Option<u64>) {
+    fn reset(&mut self, max_cycles: u64) {
         self.inner_mut().reset(max_cycles);
     }
 
