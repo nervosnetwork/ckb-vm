@@ -24,7 +24,9 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
         if code.to_i32() != 1111 {
             return Ok(false);
         }
-        machine.reset();
+        let cycles = machine.cycles();
+        machine.reset(machine.max_cycles());
+        machine.set_cycles(cycles);
         let code_data = std::fs::read("tests/programs/reset_callee").unwrap();
         let code = Bytes::from(code_data);
         machine.load_elf(&code, true).unwrap();
