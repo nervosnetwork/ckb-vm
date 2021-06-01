@@ -303,10 +303,6 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.max_cycles
     }
 
-    fn set_max_cycles(&mut self, cycles: u64) {
-        self.max_cycles = cycles;
-    }
-
     fn reset(&mut self, max_cycles: u64) {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
@@ -361,6 +357,10 @@ impl<'a> AsmMachine<'a> {
             machine: DefaultMachine::<'a, Box<AsmCoreMachine>>::default(),
             aot_code: Some(aot_code),
         }
+    }
+
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner.max_cycles = cycles;
     }
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
