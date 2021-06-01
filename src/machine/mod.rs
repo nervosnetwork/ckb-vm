@@ -70,6 +70,7 @@ pub trait SupportMachine: CoreMachine {
     fn cycles(&self) -> u64;
     fn set_cycles(&mut self, cycles: u64);
     fn max_cycles(&self) -> u64;
+    fn set_max_cycles(&mut self, cycles: u64);
 
     fn running(&self) -> bool;
     fn set_running(&mut self, running: bool);
@@ -328,6 +329,10 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
         self.max_cycles
     }
 
+    fn set_max_cycles(&mut self, cycles: u64) {
+        self.max_cycles = cycles;
+    }
+
     fn reset(&mut self, max_cycles: u64) {
         self.registers = Default::default();
         self.pc = Default::default();
@@ -443,6 +448,10 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
 
     fn max_cycles(&self) -> u64 {
         self.inner.max_cycles()
+    }
+
+    fn set_max_cycles(&mut self, cycles: u64) {
+        self.inner.set_max_cycles(cycles)
     }
 
     fn reset(&mut self, max_cycles: u64) {

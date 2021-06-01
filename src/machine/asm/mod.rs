@@ -303,6 +303,10 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.max_cycles
     }
 
+    fn set_max_cycles(&mut self, cycles: u64) {
+        self.max_cycles = cycles;
+    }
+
     fn reset(&mut self, max_cycles: u64) {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
