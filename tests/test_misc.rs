@@ -1,41 +1,30 @@
-use std::fs::File;
-use std::io::Read;
+pub mod machine_build;
+
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
-use bytes::Bytes;
 #[cfg(has_asm)]
+use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
-    machine::{asm::AsmCoreMachine, VERSION0},
-    ISA_IMC,
-};
-use ckb_vm::{
+    machine::{trace::TraceMachine, VERSION0},
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error,
-    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
+    CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory, Memory,
+    Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
 };
 use ckb_vm_definitions::RISCV_PAGESIZE;
 
 #[test]
 pub fn test_andi() {
-    let mut file = File::open("tests/programs/andi").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["andi".into()]);
+    let mut machine = machine_build::int_v0_imc_32("tests/programs/andi");
+    let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
 
 #[test]
 pub fn test_nop() {
-    let mut file = File::open("tests/programs/nop").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["nop".into()]);
+    let mut machine = machine_build::int_v0_imc_32("tests/programs/nop");
+    let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -65,17 +54,18 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 
 #[test]
 pub fn test_custom_syscall() {
-    let mut file = File::open("tests/programs/syscall64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
-            .syscall(Box::new(CustomSyscall {}))
-            .build();
+    let path = "tests/programs/syscall64";
+    let code = std::fs::read(path).unwrap().into();
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+        ISA_IMC,
+        VERSION0,
+        u64::max_value(),
+    );
+    let mut machine = DefaultMachineBuilder::new(core_machine)
+        .syscall(Box::new(CustomSyscall {}))
+        .build();
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&code, &vec!["syscall64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -100,20 +90,21 @@ impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
 
 #[test]
 pub fn test_ebreak() {
-    let mut file = File::open("tests/programs/ebreak64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = "tests/programs/ebreak64";
+    let code = std::fs::read(path).unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
-            .debugger(Box::new(CustomDebugger {
-                value: Arc::clone(&value),
-            }))
-            .build();
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+        ISA_IMC,
+        VERSION0,
+        u64::max_value(),
+    );
+    let mut machine = DefaultMachineBuilder::new(core_machine)
+        .debugger(Box::new(CustomDebugger {
+            value: Arc::clone(&value),
+        }))
+        .build();
     machine
-        .load_program(&buffer, &vec!["ebreak".into()])
+        .load_program(&code, &vec!["ebreak64".into()])
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -123,128 +114,97 @@ pub fn test_ebreak() {
 
 #[test]
 pub fn test_trace() {
-    let mut file = File::open("tests/programs/trace64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["trace64".into()]);
+    let mut machine = machine_build::int_v0_imc("tests/programs/trace64");
+    let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 pub fn test_jump0() {
-    let mut file = File::open("tests/programs/jump0_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["jump0_64".into()]);
+    let mut machine = machine_build::int_v0_imc("tests/programs/jump0_64");
+    let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 pub fn test_misaligned_jump64() {
-    let mut file = File::open("tests/programs/misaligned_jump64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["misaligned_jump64".into()]);
+    let mut machine = machine_build::int_v0_imc("tests/programs/misaligned_jump64");
+    let result = machine.run();
     assert!(result.is_ok());
 }
 
 #[test]
 pub fn test_mulw64() {
-    let mut file = File::open("tests/programs/mulw64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["mulw64".into()]);
+    let mut machine = machine_build::int_v0_imc("tests/programs/mulw64");
+    let result = machine.run();
     assert!(result.is_ok());
 }
 
 #[test]
 pub fn test_invalid_file_offset64() {
-    let mut file = File::open("tests/programs/invalid_file_offset64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
+    let path = "tests/programs/invalid_file_offset64";
+    let code = std::fs::read(path).unwrap().into();
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+        ISA_IMC,
+        VERSION0,
+        u64::max_value(),
+    );
+    let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
+    let result = machine.load_program(&code, &vec!["invalid_file_offset64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
 #[test]
 #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srli_crash_32() {
-    let mut file = File::open("tests/programs/op_rvc_srli_crash_32").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srli_crash_32".into()]);
+    let mut machine = machine_build::int_v0_imc_32("tests/programs/op_rvc_srli_crash_32");
+    let result = machine.run();
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srai_crash_32() {
-    let mut file = File::open("tests/programs/op_rvc_srai_crash_32").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srai_crash_32".into()]);
+    let mut machine = machine_build::int_v0_imc_32("tests/programs/op_rvc_srai_crash_32");
+    let result = machine.run();
     assert!(result.is_ok());
 }
 
 #[test]
 #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_slli_crash_32() {
-    let mut file = File::open("tests/programs/op_rvc_slli_crash_32").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_slli_crash_32".into()]);
+    let mut machine = machine_build::int_v0_imc_32("tests/programs/op_rvc_slli_crash_32");
+    let result = machine.run();
     assert!(result.is_ok());
 }
 
 #[test]
 pub fn test_load_elf_crash_64() {
-    let mut file = File::open("tests/programs/load_elf_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["load_elf_crash_64".into()]);
+    let mut machine = machine_build::int_v0_imc("tests/programs/load_elf_crash_64");
+    let result = machine.run();
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 pub fn test_wxorx_crash_64() {
-    let mut file = File::open("tests/programs/wxorx_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
+    let mut machine = machine_build::int_v0_imc("tests/programs/wxorx_crash_64");
+    let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
 #[test]
 pub fn test_flat_crash_64() {
-    let mut file = File::open("tests/programs/flat_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
-    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
+    let path = "tests/programs/flat_crash_64";
+    let code = std::fs::read(path).unwrap().into();
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<FlatMemory<u64>>>::new(
+        ISA_IMC,
+        VERSION0,
+        u64::max_value(),
+    );
+    let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
+    let result = machine.load_program(&code, &vec!["flat_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
@@ -263,13 +223,10 @@ fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
 }
 
 pub fn test_contains_ckbforks_section() {
-    let mut file = File::open("tests/programs/ckbforks").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = "tests/programs/ckbforks";
+    let code = std::fs::read(path).unwrap();
     let ckbforks_exists_v0 = || -> bool {
-        let elf = goblin_v023::elf::Elf::parse(&buffer).unwrap();
+        let elf = goblin_v023::elf::Elf::parse(&code).unwrap();
         for section_header in &elf.section_headers {
             if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
                 if r == ".ckb.forks" {
@@ -280,7 +237,7 @@ pub fn test_contains_ckbforks_section() {
         return false;
     }();
     let ckbforks_exists_v1 = || -> bool {
-        let elf = goblin_v040::elf::Elf::parse(&buffer).unwrap();
+        let elf = goblin_v040::elf::Elf::parse(&code).unwrap();
         for section_header in &elf.section_headers {
             if let Some(Ok(r)) = elf.shdr_strtab.get(section_header.sh_name) {
                 if r == ".ckb.forks" {
@@ -297,15 +254,16 @@ pub fn test_contains_ckbforks_section() {
 #[test]
 pub fn test_rvc_pageend() {
     // The last instruction of a executable memory page is an RVC instruction.
-    let mut file = File::open("tests/programs/rvc_pageend").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
+    let path = "tests/programs/rvc_pageend";
+    let code = std::fs::read(path).unwrap().into();
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+        ISA_IMC,
+        VERSION0,
+        u64::max_value(),
+    );
+    let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
-        .load_program(&buffer, &vec!["rvc_end".into()])
+        .load_program(&code, &vec!["rvc_end".into()])
         .unwrap();
 
     let anchor_pc: u64 = 69630;

@@ -1,32 +1,22 @@
 #![cfg(has_asm)]
 
-use bytes::Bytes;
+pub mod machine_build;
+
 use ckb_vm::{
     machine::{
-        asm::{AsmCoreMachine, AsmMachine},
-        CoreMachine, VERSION0, VERSION1,
+        asm::{AsmCoreMachine, AsmMachine, AsmWrapMachine},
+        CoreMachine, VERSION0,
     },
     memory::Memory,
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
-    ISA_IMC,
+    Debugger, DefaultMachineBuilder, Error, Register, SupportMachine, Syscalls, ISA_IMC,
 };
-use std::fs::File;
-use std::io::Read;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 #[test]
 pub fn test_asm_simple64() {
-    let mut file = File::open("tests/programs/simple64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["simple".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/simple64");
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -57,17 +47,16 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 
 #[test]
 pub fn test_asm_with_custom_syscall() {
-    let mut file = File::open("tests/programs/syscall64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
+    let path = "tests/programs/syscall64";
+    let code = std::fs::read(path).unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let asm_wrap = AsmWrapMachine::new(asm_core, false);
+    let core = DefaultMachineBuilder::new(asm_wrap)
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&code, &vec!["syscall64".into()])
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -92,20 +81,19 @@ impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
 
 #[test]
 pub fn test_asm_ebreak() {
-    let mut file = File::open("tests/programs/ebreak64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = "tests/programs/ebreak64";
+    let code = std::fs::read(path).unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let asm_wrap = AsmWrapMachine::new(asm_core, false);
+    let core = DefaultMachineBuilder::new(asm_wrap)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
         }))
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["ebreak".into()])
+        .load_program(&code, &vec!["ebreak64".into()])
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -113,48 +101,20 @@ pub fn test_asm_ebreak() {
     assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
-    1
-}
-
 #[test]
 pub fn test_asm_simple_cycles() {
-    let mut file = File::open("tests/programs/simple64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 517);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(dummy_cycle_func))
-        .build();
-    let mut machine = AsmMachine::new(core, None);
-    machine
-        .load_program(&buffer, &vec!["syscall".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/simple64");
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-
     assert_eq!(SupportMachine::cycles(&machine.machine), 517);
 }
 
 #[test]
 pub fn test_asm_simple_max_cycles_reached() {
-    let mut file = File::open("tests/programs/simple64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let mut machine = machine_build::asm_v0_imc("tests/programs/simple64");
     // Running simple64 should consume 517 cycles using dummy cycle func
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 500);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(dummy_cycle_func))
-        .build();
-    let mut machine = AsmMachine::new(core, None);
-    machine
-        .load_program(&buffer, &vec!["syscall".into()])
-        .unwrap();
+    machine.machine.inner_mut().machine.max_cycles = 500;
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
@@ -162,15 +122,7 @@ pub fn test_asm_simple_max_cycles_reached() {
 
 #[test]
 pub fn test_asm_trace() {
-    let mut file = File::open("tests/programs/trace64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["simple".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/trace64");
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
@@ -178,15 +130,7 @@ pub fn test_asm_trace() {
 
 #[test]
 pub fn test_asm_jump0() {
-    let mut file = File::open("tests/programs/jump0_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["jump0_64".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/jump0_64");
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
@@ -194,62 +138,30 @@ pub fn test_asm_jump0() {
 
 #[test]
 pub fn test_asm_write_large_address() {
-    let mut file = File::open("tests/programs/write_large_address64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["write_large_address64".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/write_large_address64");
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
 #[test]
-pub fn test_misaligned_jump64() {
-    let mut file = File::open("tests/programs/misaligned_jump64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["write_large_address64".into()])
-        .unwrap();
+pub fn test_asm_misaligned_jump64() {
+    let mut machine = machine_build::asm_v0_imc("tests/programs/misaligned_jump64");
     let result = machine.run();
     assert!(result.is_ok());
 }
 
 #[test]
-pub fn test_mulw64() {
-    let mut file = File::open("tests/programs/mulw64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["mulw64".into()])
-        .unwrap();
+pub fn test_asm_mulw64() {
+    let mut machine = machine_build::asm_v0_imc("tests/programs/mulw64");
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
 
 #[test]
-pub fn test_invalid_read64() {
-    let mut file = File::open("tests/programs/invalid_read64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["invalid_read64".into()])
-        .unwrap();
+pub fn test_asm_invalid_read64() {
+    let mut machine = machine_build::asm_v0_imc("tests/programs/invalid_read64");
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::OutOfBound));
@@ -257,75 +169,36 @@ pub fn test_invalid_read64() {
 
 #[test]
 pub fn test_asm_load_elf_crash_64() {
-    let mut file = File::open("tests/programs/load_elf_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["load_elf_crash_64".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/load_elf_crash_64");
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 pub fn test_asm_wxorx_crash_64() {
-    let mut file = File::open("tests/programs/wxorx_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["wxorx_crash_64".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/wxorx_crash_64");
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
 #[test]
 pub fn test_asm_alloc_many() {
-    let mut file = File::open("tests/programs/alloc_many").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/alloc_many");
     let result = machine.run();
     assert_eq!(result.unwrap(), 0);
 }
 
 #[test]
 pub fn test_asm_chaos_seed() {
-    let mut file = File::open("tests/programs/read_memory").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
-    asm_core1.chaos_mode = 1;
-    asm_core1.chaos_seed = 100;
-    let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
-    let mut machine1 = AsmMachine::new(core1, None);
-    machine1
-        .load_program(&buffer, &vec!["read_memory".into()])
-        .unwrap();
+    let mut machine1 = machine_build::asm_v0_imc("tests/programs/read_memory");
+    machine1.machine.inner_mut().machine.chaos_mode = 1;
+    machine1.machine.inner_mut().machine.chaos_seed = 100;
     let result1 = machine1.run();
     let exit1 = result1.unwrap();
 
-    let mut asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
-    asm_core2.chaos_mode = 1;
-    asm_core2.chaos_seed = 100;
-    let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
-    let mut machine2 = AsmMachine::new(core2, None);
-    machine2
-        .load_program(&buffer, &vec!["read_memory".into()])
-        .unwrap();
+    let mut machine2 = machine_build::asm_v0_imc("tests/programs/read_memory");
+    machine2.machine.inner_mut().machine.chaos_mode = 1;
+    machine2.machine.inner_mut().machine.chaos_seed = 100;
     let result2 = machine2.run();
     let exit2 = result2.unwrap();
 
@@ -337,15 +210,7 @@ pub fn test_asm_chaos_seed() {
 
 #[test]
 pub fn test_asm_rvc_pageend() {
-    let mut file = File::open("tests/programs/rvc_pageend").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut machine = AsmMachine::default();
-    machine
-        .load_program(&buffer, &vec!["rvc_pageend".into()])
-        .unwrap();
+    let mut machine = machine_build::asm_v0_imc("tests/programs/rvc_pageend");
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);

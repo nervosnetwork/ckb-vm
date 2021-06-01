@@ -447,16 +447,10 @@ pub struct AotCompilingMachine {
     addresses_to_labels: HashMap<u64, u32>,
     writes: Vec<Write>,
     next_pc_write: Option<Value>,
-    instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
 }
 
 impl AotCompilingMachine {
-    pub fn load(
-        program: &Bytes,
-        instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
-        isa: u8,
-        version: u32,
-    ) -> Result<Self, Error> {
+    pub fn load(program: &Bytes, isa: u8, version: u32) -> Result<Self, Error> {
         // First we need to gather labels
         let mut label_gathering_machine = LabelGatheringMachine::load(&program, isa, version)?;
         label_gathering_machine.gather()?;
@@ -482,7 +476,7 @@ impl AotCompilingMachine {
             dummy_sections: label_gathering_machine.dummy_sections,
             writes: vec![],
             next_pc_write: None,
-            instruction_cycle_func,
+            // instruction_cycle_func,
         })
     }
 
@@ -497,7 +491,11 @@ impl AotCompilingMachine {
         mem::replace(&mut self.writes, vec![])
     }
 
-    fn emit_block(&mut self, instructions: &[Instruction]) -> Result<(), Error> {
+    fn emit_block(
+        &mut self,
+        instructions: &[Instruction],
+        instruction_cycle_func: &Option<Box<InstructionCycleFunc>>,
+    ) -> Result<(), Error> {
         let mut cycles = 0;
         // A block is split into 2 parts:
         //
@@ -512,8 +510,7 @@ impl AotCompilingMachine {
         let mut initial_writes = vec![];
 
         for instruction in instructions.iter() {
-            cycles += self
-                .instruction_cycle_func
+            cycles += instruction_cycle_func
                 .as_ref()
                 .map(|f| f(*instruction))
                 .unwrap_or(0);
@@ -564,7 +561,10 @@ impl AotCompilingMachine {
         Ok(())
     }
 
-    pub fn compile(&mut self) -> Result<AotCode, Error> {
+    pub fn compile(
+        &mut self,
+        instruction_cycle_func: &Option<Box<InstructionCycleFunc>>,
+    ) -> Result<AotCode, Error> {
         let decoder = build_decoder::<u64>(self.isa());
         let mut instructions = [Instruction::default(); MAXIMUM_INSTRUCTIONS_PER_BLOCK];
         for i in 0..self.sections.len() {
@@ -595,7 +595,7 @@ impl AotCompilingMachine {
                         break;
                     }
                 }
-                self.emit_block(&instructions[0..count])?;
+                self.emit_block(&instructions[0..count], instruction_cycle_func)?;
             }
         }
         let encoded_size = self.emitter.link()?;

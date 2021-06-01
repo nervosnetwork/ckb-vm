@@ -3,14 +3,14 @@ use std::mem::transmute;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
-use ckb_vm_definitions::asm::{
-    calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
-    RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-    TRACE_ITEM_LENGTH, TRACE_SIZE,
-};
 use ckb_vm_definitions::{
-    instructions::OP_CUSTOM_TRACE_END, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER,
+    asm::{
+        calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
+        TRACE_ITEM_LENGTH, TRACE_SIZE,
+    },
+    instructions::OP_CUSTOM_TRACE_END,
+    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -21,7 +21,10 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::{aot::AotCode, VERSION0},
+    machine::{
+        aot::{AotCode, AotCompilingMachine},
+        VERSION0,
+    },
     memory::{
         check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
         set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
@@ -332,9 +335,181 @@ impl SupportMachine for Box<AsmCoreMachine> {
 }
 
 #[derive(Default)]
+pub struct AsmWrapMachine {
+    pub machine: Box<AsmCoreMachine>,
+    pub program: Option<Bytes>,
+    pub aot_mode: bool,
+    pub aot_code: Option<AotCode>,
+}
+
+impl AsmWrapMachine {
+    pub fn new(machine: Box<AsmCoreMachine>, aot_mode: bool) -> Self {
+        Self {
+            machine,
+            program: None,
+            aot_mode,
+            aot_code: None,
+        }
+    }
+}
+
+impl CoreMachine for AsmWrapMachine {
+    type REG = u64;
+    type MEM = Self;
+
+    fn pc(&self) -> &Self::REG {
+        self.machine.pc()
+    }
+
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.machine.update_pc(pc)
+    }
+
+    fn commit_pc(&mut self) {
+        self.machine.commit_pc()
+    }
+
+    fn memory(&self) -> &Self {
+        &self
+    }
+
+    fn memory_mut(&mut self) -> &mut Self {
+        self
+    }
+
+    fn registers(&self) -> &[Self::REG] {
+        self.machine.registers()
+    }
+
+    fn set_register(&mut self, idx: usize, value: Self::REG) {
+        self.machine.set_register(idx, value)
+    }
+
+    fn isa(&self) -> u8 {
+        self.machine.isa()
+    }
+
+    fn version(&self) -> u32 {
+        self.machine.version()
+    }
+}
+
+impl Memory for AsmWrapMachine {
+    type REG = u64;
+
+    fn init_pages(
+        &mut self,
+        addr: u64,
+        size: u64,
+        flags: u8,
+        source: Option<Bytes>,
+        offset_from_addr: u64,
+    ) -> Result<(), Error> {
+        self.machine
+            .init_pages(addr, size, flags, source, offset_from_addr)
+    }
+
+    fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
+        self.machine.fetch_flag(page)
+    }
+
+    fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        self.machine.set_flag(page, flag)
+    }
+
+    fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
+        self.machine.clear_flag(page, flag)
+    }
+
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
+        self.machine.store_bytes(addr, value)
+    }
+
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
+        self.machine.store_byte(addr, size, value)
+    }
+
+    fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
+        self.machine.execute_load16(addr)
+    }
+
+    fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
+        self.machine.execute_load32(addr)
+    }
+
+    fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
+        self.machine.load8(addr)
+    }
+
+    fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
+        self.machine.load16(addr)
+    }
+
+    fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
+        self.machine.load32(addr)
+    }
+
+    fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
+        self.machine.load64(addr)
+    }
+
+    fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
+        self.machine.store8(addr, value)
+    }
+
+    fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
+        self.machine.store16(addr, value)
+    }
+
+    fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
+        self.machine.store32(addr, value)
+    }
+
+    fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
+        self.machine.store64(addr, value)
+    }
+}
+
+impl SupportMachine for AsmWrapMachine {
+    fn cycles(&self) -> u64 {
+        self.machine.cycles()
+    }
+
+    fn set_cycles(&mut self, cycles: u64) {
+        self.machine.set_cycles(cycles)
+    }
+
+    fn max_cycles(&self) -> u64 {
+        self.machine.max_cycles()
+    }
+
+    fn reset(&mut self, max_cycles: u64) {
+        self.machine.reset(max_cycles)
+    }
+
+    fn reset_signal(&mut self) -> bool {
+        self.machine.reset_signal()
+    }
+
+    fn running(&self) -> bool {
+        self.machine.running()
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.machine.set_running(running)
+    }
+
+    fn load_elf_callback(&mut self, program: &Bytes) -> Result<(), Error> {
+        if self.aot_mode {
+            self.program = Some(program.clone());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Default)]
 pub struct AsmMachine<'a> {
-    pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
-    pub aot_code: Option<&'a AotCode>,
+    pub machine: DefaultMachine<'a, AsmWrapMachine>,
 }
 
 extern "C" {
@@ -345,18 +520,8 @@ extern "C" {
 }
 
 impl<'a> AsmMachine<'a> {
-    pub fn new(
-        machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
-        aot_code: Option<&'a AotCode>,
-    ) -> Self {
-        Self { machine, aot_code }
-    }
-
-    pub fn default_with_aot_code(aot_code: &'a AotCode) -> Self {
-        Self {
-            machine: DefaultMachine::<'a, Box<AsmCoreMachine>>::default(),
-            aot_code: Some(aot_code),
-        }
+    pub fn new(machine: DefaultMachine<'a, AsmWrapMachine>) -> Self {
+        Self { machine }
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -374,22 +539,30 @@ impl<'a> AsmMachine<'a> {
         let decoder = build_decoder::<u64>(self.machine.isa());
         self.machine.set_running(true);
         while self.machine.running() {
-            if self.machine.reset_signal() {
-                self.aot_code = None;
+            if self.machine.inner.aot_mode
+                && (self.machine.reset_signal() || self.machine.inner.aot_code.is_none())
+            {
+                let mut aot_machine = AotCompilingMachine::load(
+                    self.machine.inner.program.as_ref().unwrap(),
+                    self.machine.isa(),
+                    self.machine.version(),
+                )?;
+                self.machine.inner.aot_code =
+                    Some(aot_machine.compile(self.machine.instruction_cycle_func())?)
             }
-            let result = if let Some(aot_code) = &self.aot_code {
+            let result = if let Some(aot_code) = &self.machine.inner.aot_code {
                 if let Some(offset) = aot_code.labels.get(self.machine.pc()) {
                     let base_address = aot_code.base_address();
                     let offset_address = base_address + u64::from(*offset);
                     let f = unsafe {
                         transmute::<u64, fn(*mut AsmCoreMachine, u64) -> u8>(base_address)
                     };
-                    f(&mut (**self.machine.inner_mut()), offset_address)
+                    f(&mut *self.machine.inner_mut().machine, offset_address)
                 } else {
-                    unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                    unsafe { ckb_vm_x64_execute(&mut *self.machine.inner_mut().machine) }
                 }
             } else {
-                unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                unsafe { ckb_vm_x64_execute(&mut *self.machine.inner_mut().machine) }
             };
             match result {
                 RET_DECODE_TRACE => {
@@ -430,7 +603,7 @@ impl<'a> AsmMachine<'a> {
                     };
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
-                    self.machine.inner_mut().traces[slot] = trace;
+                    self.machine.inner_mut().machine.traces[slot] = trace;
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
@@ -476,9 +649,9 @@ impl<'a> AsmMachine<'a> {
         };
         trace.address = pc;
         trace.length = len;
-        self.machine.inner_mut().traces[slot] = trace;
+        self.machine.inner_mut().machine.traces[slot] = trace;
 
-        let result = unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) };
+        let result = unsafe { ckb_vm_x64_execute(&mut *self.machine.inner_mut().machine) };
         match result {
             RET_DECODE_TRACE => (),
             RET_ECALL => self.machine.ecall()?,
@@ -493,7 +666,7 @@ impl<'a> AsmMachine<'a> {
             }
             _ => return Err(Error::Asm(result)),
         }
-        self.machine.inner_mut().traces[slot] = Trace::default();
+        self.machine.inner_mut().machine.traces[slot] = Trace::default();
         Ok(())
     }
 }

@@ -1,19 +1,15 @@
 #![cfg(has_asm)]
 
-use bytes::Bytes;
 use ckb_vm::{
     machine::{
-        aot::{AotCode, AotCompilingMachine},
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmMachine, AsmWrapMachine},
         trace::TraceMachine,
         DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1,
     },
     memory::sparse::SparseMemory,
     snapshot::{make_snapshot, resume, Snapshot},
-    DefaultMachineBuilder, Error, Instruction, ISA_IMC,
+    Bytes, DefaultMachineBuilder, Error, ISA_IMC,
 };
-use std::fs::File;
-use std::io::Read;
 
 #[test]
 fn test_resume_interpreter_with_trace_2_asm() {
@@ -57,15 +53,11 @@ fn test_resume_asm_2_asm() {
     resume_asm_2_asm(VERSION0, 4194622);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
-    1
-}
-
 pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
     // The cycles required for complete execution is 4194622
-    let mut machine1 = MachineTy::Asm.build(version, except_cycles - 30, None);
+    let mut machine1 = MachineTy::Asm.build(version, except_cycles - 30);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -75,7 +67,7 @@ pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Asm.build(version, 40, None);
+    let mut machine2 = MachineTy::Asm.build(version, 40);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -88,9 +80,9 @@ pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
 }
 
 pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
-    let mut machine1 = MachineTy::Asm.build(version, 1000000, None);
+    let mut machine1 = MachineTy::Asm.build(version, 1000000);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -100,7 +92,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot1 = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Asm.build(version, 2000000, None);
+    let mut machine2 = MachineTy::Asm.build(version, 2000000);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -111,7 +103,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result2.unwrap_err(), Error::InvalidCycles);
     let snapshot2 = machine2.snapshot().unwrap();
 
-    let mut machine3 = MachineTy::Asm.build(version, 2000000, None);
+    let mut machine3 = MachineTy::Asm.build(version, 2000000);
     machine3
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -124,9 +116,9 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
 }
 
 pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
-    let mut machine1 = MachineTy::Asm.build(version, except_cycles - 30, None);
+    let mut machine1 = MachineTy::Asm.build(version, except_cycles - 30);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -136,7 +128,7 @@ pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Interpreter.build(version, 40, None);
+    let mut machine2 = MachineTy::Interpreter.build(version, 40);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -150,9 +142,9 @@ pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
 }
 
 pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
-    let mut machine1 = MachineTy::Interpreter.build(version, except_cycles - 30, None);
+    let mut machine1 = MachineTy::Interpreter.build(version, except_cycles - 30);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -162,7 +154,7 @@ pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Interpreter.build(version, 30, None);
+    let mut machine2 = MachineTy::Interpreter.build(version, 30);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -175,9 +167,9 @@ pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
 }
 
 pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
-    let mut machine1 = MachineTy::Interpreter.build(version, except_cycles - 30, None);
+    let mut machine1 = MachineTy::Interpreter.build(version, except_cycles - 30);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -187,7 +179,7 @@ pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Asm.build(version, 30, None);
+    let mut machine2 = MachineTy::Asm.build(version, 30);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -200,13 +192,9 @@ pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
 }
 
 pub fn resume_aot_2_asm(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
-    let mut aot_machine =
-        AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func)), ISA_IMC, VERSION1)
-            .unwrap();
-    let code = aot_machine.compile().unwrap();
-    let mut machine1 = MachineTy::Aot.build(version, except_cycles - 30, Some(&code));
+    let mut machine1 = MachineTy::Aot.build(version, except_cycles - 30);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -216,7 +204,7 @@ pub fn resume_aot_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Asm.build(version, 40, None);
+    let mut machine2 = MachineTy::Asm.build(version, 40);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -229,9 +217,9 @@ pub fn resume_aot_2_asm(version: u32, except_cycles: u64) {
 }
 
 pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u64) {
-    let buffer = load_program();
+    let buffer = std::fs::read("tests/programs/alloc_many").unwrap().into();
 
-    let mut machine1 = MachineTy::InterpreterWithTrace.build(version, except_cycles - 30, None);
+    let mut machine1 = MachineTy::InterpreterWithTrace.build(version, except_cycles - 30);
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -241,7 +229,7 @@ pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u6
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Asm.build(version, 30, None);
+    let mut machine2 = MachineTy::Asm.build(version, 30);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -253,13 +241,6 @@ pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u6
     assert_eq!(cycles1 + cycles2, except_cycles);
 }
 
-fn load_program() -> Bytes {
-    let mut file = File::open("tests/programs/alloc_many").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    buffer.into()
-}
-
 enum MachineTy {
     Asm,
     Aot,
@@ -268,41 +249,43 @@ enum MachineTy {
 }
 
 impl MachineTy {
-    fn build<'a>(self, version: u32, max_cycles: u64, program: Option<&'a AotCode>) -> Machine<'a> {
+    fn build<'a>(self, version: u32, max_cycles: u64) -> Machine<'a> {
         match self {
             MachineTy::Asm => {
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
-                let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
+                let asm_core = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
+                let asm_wrap = AsmWrapMachine::new(asm_core, false);
+                let core = DefaultMachineBuilder::new(asm_wrap)
+                    .instruction_cycle_func(Box::new(|_| 1))
                     .build();
-                Machine::Asm(AsmMachine::new(core1, None))
+                Machine::Asm(AsmMachine::new(core))
             }
             MachineTy::Aot => {
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
-                let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
+                let asm_core = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
+                let asm_wrap = AsmWrapMachine::new(asm_core, true);
+                let core = DefaultMachineBuilder::new(asm_wrap)
+                    .instruction_cycle_func(Box::new(|_| 1))
                     .build();
-                Machine::Aot(AsmMachine::new(core1, program))
+                Machine::Aot(AsmMachine::new(core))
             }
             MachineTy::Interpreter => {
-                let core_machine1 =
+                let core_machine =
                     DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, version, max_cycles);
                 Machine::Interpreter(
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(
-                        core_machine1,
+                        core_machine,
                     )
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
+                    .instruction_cycle_func(Box::new(|_| 1))
                     .build(),
                 )
             }
             MachineTy::InterpreterWithTrace => {
-                let core_machine1 =
+                let core_machine =
                     DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, version, max_cycles);
                 Machine::InterpreterWithTrace(TraceMachine::new(
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(
-                        core_machine1,
+                        core_machine,
                     )
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
+                    .instruction_cycle_func(Box::new(|_| 1))
                     .build(),
                 ))
             }

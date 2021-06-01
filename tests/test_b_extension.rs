@@ -15,8 +15,7 @@ pub fn test_b_extension() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/b_extension");
-        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/b_extension", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/b_extension");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -37,8 +36,7 @@ pub fn test_clzw_bug() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/clzw_bug");
-        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/clzw_bug", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/clzw_bug");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -59,8 +57,7 @@ pub fn test_packw_signextend() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/packw_signextend");
-        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/packw_signextend", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/packw_signextend");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -81,9 +78,7 @@ pub fn test_single_bit_signextend() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/single_bit_signextend");
-        let mut machine_aot =
-            machine_build::aot_v1_imcb("tests/programs/single_bit_signextend", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/single_bit_signextend");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -104,9 +99,7 @@ pub fn test_sbinvi_aot_load_imm_bug() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/sbinvi_aot_load_imm_bug");
-        let mut machine_aot =
-            machine_build::aot_v1_imcb("tests/programs/sbinvi_aot_load_imm_bug", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/sbinvi_aot_load_imm_bug");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -128,9 +121,7 @@ pub fn test_rorw_in_end_of_aot_block() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/rorw_in_end_of_aot_block");
-        let mut machine_aot =
-            machine_build::aot_v1_imcb("tests/programs/rorw_in_end_of_aot_block", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/rorw_in_end_of_aot_block");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -151,8 +142,7 @@ pub fn test_fsri_decode_bug() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/fsri_decode_bug");
-        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/fsri_decode_bug", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/fsri_decode_bug");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
@@ -173,8 +163,7 @@ pub fn test_pcnt() {
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
 
-        let code = machine_build::aot_v1_imcb_code("tests/programs/pcnt");
-        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/pcnt", &code);
+        let mut machine_aot = machine_build::aot_v1_imcb("tests/programs/pcnt");
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);

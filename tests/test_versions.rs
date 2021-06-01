@@ -1,20 +1,14 @@
 #![cfg(has_asm)]
 
-extern crate ckb_vm;
-
-use bytes::Bytes;
 use ckb_vm::{
     machine::{
-        aot::{AotCode, AotCompilingMachine},
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmMachine, AsmWrapMachine},
         VERSION0, VERSION1,
     },
     memory::FLAG_FREEZED,
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
     SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
-use std::fs::File;
-use std::io::Read;
 
 type Mem = WXorXMemory<SparseMemory<u64>>;
 
@@ -22,58 +16,34 @@ fn create_rust_machine<'a>(
     program: String,
     version: u32,
 ) -> DefaultMachine<'a, DefaultCoreMachine<u64, Mem>> {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = format!("tests/programs/{}", program);
+    let code = std::fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value());
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
-    machine
-        .load_program(&buffer, &vec![program.into()])
-        .unwrap();
+    machine.load_program(&code, &vec![program.into()]).unwrap();
     machine
 }
 
 fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = format!("tests/programs/{}", program);
+    let code = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, None);
-    machine
-        .load_program(&buffer, &vec![program.into()])
-        .unwrap();
+    let asm_wrap = AsmWrapMachine::new(asm_core, false);
+    let core = DefaultMachineBuilder::new(asm_wrap).build();
+    let mut machine = AsmMachine::new(core);
+    machine.load_program(&code, &vec![program.into()]).unwrap();
     machine
 }
 
-fn compile_aot_code(program: String, version: u32) -> AotCode {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut aot_machine =
-        AotCompilingMachine::load(&buffer.clone(), None, ISA_IMC, version).unwrap();
-    aot_machine.compile().unwrap()
-}
-
-fn create_aot_machine<'a>(program: String, code: &'a AotCode, version: u32) -> AsmMachine<'a> {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+fn create_aot_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
+    let path = format!("tests/programs/{}", program);
+    let code = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, Some(code));
-    machine
-        .load_program(&buffer, &vec![program.into()])
-        .unwrap();
+    let asm_wrap = AsmWrapMachine::new(asm_core, true);
+    let core = DefaultMachineBuilder::new(asm_wrap).build();
+    let mut machine = AsmMachine::new(core);
+    machine.load_program(&code, &vec![program.into()]).unwrap();
     machine
 }
 
@@ -271,8 +241,7 @@ pub fn test_asm_version1_write_at_boundary() {
 
 #[test]
 pub fn test_aot_version0_argv_null() {
-    let code = compile_aot_code("argv_null_test".to_string(), VERSION0);
-    let mut machine = create_aot_machine("argv_null_test".to_string(), &code, VERSION0);
+    let mut machine = create_aot_machine("argv_null_test".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1);
@@ -280,8 +249,7 @@ pub fn test_aot_version0_argv_null() {
 
 #[test]
 pub fn test_aot_version0_sp_alignment() {
-    let code = compile_aot_code("sp_alignment_test".to_string(), VERSION0);
-    let mut machine = create_aot_machine("sp_alignment_test".to_string(), &code, VERSION0);
+    let mut machine = create_aot_machine("sp_alignment_test".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1);
@@ -289,8 +257,7 @@ pub fn test_aot_version0_sp_alignment() {
 
 #[test]
 pub fn test_aot_version0_jalr_bug() {
-    let code = compile_aot_code("jalr_bug".to_string(), VERSION0);
-    let mut machine = create_aot_machine("jalr_bug".to_string(), &code, VERSION0);
+    let mut machine = create_aot_machine("jalr_bug".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), -1);
@@ -298,8 +265,7 @@ pub fn test_aot_version0_jalr_bug() {
 
 #[test]
 pub fn test_aot_version0_jalr_bug_noc() {
-    let code = compile_aot_code("jalr_bug_noc".to_string(), VERSION0);
-    let mut machine = create_aot_machine("jalr_bug_noc".to_string(), &code, VERSION0);
+    let mut machine = create_aot_machine("jalr_bug_noc".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), -1);
@@ -307,8 +273,7 @@ pub fn test_aot_version0_jalr_bug_noc() {
 
 #[test]
 pub fn test_aot_version0_read_at_boundary() {
-    let code = compile_aot_code("read_at_boundary64".to_string(), VERSION0);
-    let mut machine = create_aot_machine("read_at_boundary64".to_string(), &code, VERSION0);
+    let mut machine = create_aot_machine("read_at_boundary64".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::OutOfBound));
@@ -316,8 +281,7 @@ pub fn test_aot_version0_read_at_boundary() {
 
 #[test]
 pub fn test_aot_version0_write_at_boundary() {
-    let code = compile_aot_code("write_at_boundary64".to_string(), VERSION0);
-    let mut machine = create_aot_machine("write_at_boundary64".to_string(), &code, VERSION0);
+    let mut machine = create_aot_machine("write_at_boundary64".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -325,8 +289,7 @@ pub fn test_aot_version0_write_at_boundary() {
 
 #[test]
 pub fn test_aot_version1_argv_null() {
-    let code = compile_aot_code("argv_null_test".to_string(), VERSION1);
-    let mut machine = create_aot_machine("argv_null_test".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("argv_null_test".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -334,8 +297,7 @@ pub fn test_aot_version1_argv_null() {
 
 #[test]
 pub fn test_aot_version1_sp_alignment() {
-    let code = compile_aot_code("sp_alignment_test".to_string(), VERSION1);
-    let mut machine = create_aot_machine("sp_alignment_test".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("sp_alignment_test".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -343,8 +305,7 @@ pub fn test_aot_version1_sp_alignment() {
 
 #[test]
 pub fn test_aot_version1_jalr_bug() {
-    let code = compile_aot_code("jalr_bug".to_string(), VERSION1);
-    let mut machine = create_aot_machine("jalr_bug".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("jalr_bug".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -352,8 +313,7 @@ pub fn test_aot_version1_jalr_bug() {
 
 #[test]
 pub fn test_aot_version1_jalr_bug_noc() {
-    let code = compile_aot_code("jalr_bug_noc".to_string(), VERSION1);
-    let mut machine = create_aot_machine("jalr_bug_noc".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("jalr_bug_noc".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -361,8 +321,7 @@ pub fn test_aot_version1_jalr_bug_noc() {
 
 #[test]
 pub fn test_aot_version1_read_at_boundary() {
-    let code = compile_aot_code("read_at_boundary64".to_string(), VERSION1);
-    let mut machine = create_aot_machine("read_at_boundary64".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("read_at_boundary64".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -370,8 +329,7 @@ pub fn test_aot_version1_read_at_boundary() {
 
 #[test]
 pub fn test_aot_version1_write_at_boundary() {
-    let code = compile_aot_code("write_at_boundary64".to_string(), VERSION1);
-    let mut machine = create_aot_machine("write_at_boundary64".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("write_at_boundary64".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -379,16 +337,12 @@ pub fn test_aot_version1_write_at_boundary() {
 
 #[test]
 pub fn test_rust_version0_unaligned64() {
-    let program = "unaligned64";
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = "tests/programs/unaligned64";
+    let code = std::fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::max_value());
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let result = machine.load_program(&code, &vec!["unaligned64".into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
@@ -403,16 +357,13 @@ pub fn test_rust_version1_unaligned64() {
 
 #[test]
 pub fn test_asm_version0_unaligned64() {
-    let program = "unaligned64";
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = "tests/programs/unaligned64";
+    let code = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, None);
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let asm_wrap = AsmWrapMachine::new(asm_core, false);
+    let core = DefaultMachineBuilder::new(asm_wrap).build();
+    let mut machine = AsmMachine::new(core);
+    let result = machine.load_program(&code, &vec!["unaligned64".into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
@@ -427,25 +378,20 @@ pub fn test_asm_version1_unaligned64() {
 
 #[test]
 pub fn test_aot_version0_unaligned64() {
-    let program = "unaligned64";
-    let code = compile_aot_code(program.to_string(), VERSION1);
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = "tests/programs/unaligned64";
+    let code = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, Some(&code));
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let asm_wrap = AsmWrapMachine::new(asm_core, true);
+    let core = DefaultMachineBuilder::new(asm_wrap).build();
+    let mut machine = AsmMachine::new(core);
+    let result = machine.load_program(&code, &vec!["unaligned64".into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 pub fn test_aot_version1_unaligned64() {
-    let code = compile_aot_code("unaligned64".to_string(), VERSION1);
-    let mut machine = create_aot_machine("unaligned64".to_string(), &code, VERSION1);
+    let mut machine = create_aot_machine("unaligned64".to_string(), VERSION1);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);

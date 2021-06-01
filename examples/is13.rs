@@ -25,7 +25,7 @@
 //     $ cargo run --example is13 13
 //  or $ cargo run --example is13 0xd
 //  or $ cargo run --example is13 HELLO
-use bytes::Bytes;
+use ckb_vm::{machine::VERSION0, Bytes, ISA_IMC};
 use std::io::Read;
 
 fn main() {
@@ -36,7 +36,8 @@ fn main() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer = Bytes::from(buffer);
 
-    let r = ckb_vm::run::<u32, ckb_vm::SparseMemory<u32>>(&buffer, &args[..]).unwrap();
+    let r = ckb_vm::run::<u32, ckb_vm::SparseMemory<u32>>(&buffer, &args[..], ISA_IMC, VERSION0)
+        .unwrap();
     match r {
         1 => println!("{:?} is not thirteen", args[1]),
         0 => println!("{:?} is thirteen", args[1]),

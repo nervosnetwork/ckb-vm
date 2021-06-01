@@ -17,8 +17,8 @@ use super::memory::{round_page_down, round_page_up, Memory, FLAG_DIRTY};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_B, ISA_IMC, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_MAX_MEMORY, RISCV_PAGES,
+    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    RISCV_PAGES,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -90,7 +90,13 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
+    fn load_elf_callback(&mut self, _program: &Bytes) -> Result<(), Error> {
+        Ok(())
+    }
+
     fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
+        self.load_elf_callback(program)?;
+
         let version = self.version();
         // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
         // * https://github.com/nervosnetwork/ckb-vm/issues/143
@@ -362,14 +368,6 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
         }
     }
 
-    pub fn latest() -> Self {
-        Self {
-            isa: ISA_IMC | ISA_B,
-            version: VERSION1,
-            ..Default::default()
-        }
-    }
-
     pub fn set_max_cycles(&mut self, cycles: u64) {
         self.max_cycles = cycles;
     }
@@ -463,6 +461,10 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
 
     fn set_running(&mut self, running: bool) {
         self.inner.set_running(running);
+    }
+
+    fn load_elf_callback(&mut self, program: &Bytes) -> Result<(), Error> {
+        self.inner.load_elf_callback(program)
     }
 }
 

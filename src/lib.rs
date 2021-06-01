@@ -34,8 +34,10 @@ pub use error::Error;
 pub fn run<R: Register, M: Memory<REG = R> + Default>(
     program: &Bytes,
     args: &[Bytes],
+    isa: u8,
+    version: u32,
 ) -> Result<i8, Error> {
-    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::latest();
+    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new(isa, version, u64::max_value());
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
     machine.load_program(program, args)?;
     machine.run()
