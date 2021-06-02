@@ -370,6 +370,10 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
         }
     }
 
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.max_cycles = cycles;
+    }
+
     pub fn take_memory(self) -> M {
         self.memory
     }

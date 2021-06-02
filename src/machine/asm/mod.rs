@@ -359,6 +359,10 @@ impl<'a> AsmMachine<'a> {
         }
     }
 
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner.max_cycles = cycles;
+    }
+
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         self.machine.load_program(program, args)
     }
