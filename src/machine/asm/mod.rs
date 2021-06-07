@@ -525,7 +525,7 @@ impl<'a> AsmMachine<'a> {
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner.max_cycles = cycles;
+        self.machine.inner.machine.max_cycles = cycles;
     }
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
