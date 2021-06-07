@@ -476,7 +476,6 @@ impl AotCompilingMachine {
             dummy_sections: label_gathering_machine.dummy_sections,
             writes: vec![],
             next_pc_write: None,
-            // instruction_cycle_func,
         })
     }
 
