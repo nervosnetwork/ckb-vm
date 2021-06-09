@@ -46,7 +46,7 @@ fn asm_benchmark(c: &mut Criterion) {
 #[cfg(has_asm)]
 fn aot_benchmark(c: &mut Criterion) {
     c.bench_function("aot secp256k1_bench", |b| {
-        let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+        let buffer: Bytes = fs::read("benches/data/secp256k1_bench").unwrap().into();
         let args: Vec<Bytes> = vec!["secp256k1_bench",
                                       "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
                                       "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
@@ -66,7 +66,7 @@ fn aot_benchmark(c: &mut Criterion) {
 #[cfg(has_asm)]
 fn aot_compiling_benchmark(c: &mut Criterion) {
     c.bench_function("compiling secp256k1_bench for aot", |b| {
-        let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+        let buffer: Bytes = fs::read("benches/data/secp256k1_bench").unwrap().into();
         b.iter(|| {
             AotCompilingMachine::load(&buffer.clone(), None, ISA_IMC, VERSION0)
                 .unwrap()
