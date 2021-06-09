@@ -1,9 +1,7 @@
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
-use bytes::Bytes;
 #[cfg(has_asm)]
 use ckb_vm::{
     machine::{asm::AsmCoreMachine, VERSION0},
@@ -18,11 +16,7 @@ use ckb_vm_definitions::RISCV_PAGESIZE;
 
 #[test]
 pub fn test_andi() {
-    let mut file = File::open("tests/programs/andi").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/andi").unwrap().into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["andi".into()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -30,11 +24,7 @@ pub fn test_andi() {
 
 #[test]
 pub fn test_nop() {
-    let mut file = File::open("tests/programs/nop").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/nop").unwrap().into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["nop".into()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -65,11 +55,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 
 #[test]
 pub fn test_custom_syscall() {
-    let mut file = File::open("tests/programs/syscall64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
             .syscall(Box::new(CustomSyscall {}))
@@ -100,11 +86,7 @@ impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
 
 #[test]
 pub fn test_ebreak() {
-    let mut file = File::open("tests/programs/ebreak64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/ebreak64").unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
@@ -123,11 +105,7 @@ pub fn test_ebreak() {
 
 #[test]
 pub fn test_trace() {
-    let mut file = File::open("tests/programs/trace64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/trace64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["trace64".into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
@@ -135,11 +113,7 @@ pub fn test_trace() {
 
 #[test]
 pub fn test_jump0() {
-    let mut file = File::open("tests/programs/jump0_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/jump0_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["jump0_64".into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::InvalidPermission));
@@ -147,33 +121,23 @@ pub fn test_jump0() {
 
 #[test]
 pub fn test_misaligned_jump64() {
-    let mut file = File::open("tests/programs/misaligned_jump64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/misaligned_jump64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["misaligned_jump64".into()]);
     assert!(result.is_ok());
 }
 
 #[test]
 pub fn test_mulw64() {
-    let mut file = File::open("tests/programs/mulw64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/mulw64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["mulw64".into()]);
     assert!(result.is_ok());
 }
 
 #[test]
 pub fn test_invalid_file_offset64() {
-    let mut file = File::open("tests/programs/invalid_file_offset64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/invalid_file_offset64")
+        .unwrap()
+        .into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
@@ -181,11 +145,9 @@ pub fn test_invalid_file_offset64() {
 #[test]
 #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srli_crash_32() {
-    let mut file = File::open("tests/programs/op_rvc_srli_crash_32").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/op_rvc_srli_crash_32")
+        .unwrap()
+        .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srli_crash_32".into()]);
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
@@ -193,11 +155,9 @@ pub fn test_op_rvc_srli_crash_32() {
 #[test]
 #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srai_crash_32() {
-    let mut file = File::open("tests/programs/op_rvc_srai_crash_32").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/op_rvc_srai_crash_32")
+        .unwrap()
+        .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srai_crash_32".into()]);
     assert!(result.is_ok());
 }
@@ -205,44 +165,30 @@ pub fn test_op_rvc_srai_crash_32() {
 #[test]
 #[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_slli_crash_32() {
-    let mut file = File::open("tests/programs/op_rvc_slli_crash_32").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/op_rvc_slli_crash_32")
+        .unwrap()
+        .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_slli_crash_32".into()]);
     assert!(result.is_ok());
 }
 
 #[test]
 pub fn test_load_elf_crash_64() {
-    let mut file = File::open("tests/programs/load_elf_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/load_elf_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["load_elf_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::InvalidPermission));
 }
 
 #[test]
 pub fn test_wxorx_crash_64() {
-    let mut file = File::open("tests/programs/wxorx_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
 
 #[test]
 pub fn test_flat_crash_64() {
-    let mut file = File::open("tests/programs/flat_crash_64").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/flat_crash_64").unwrap().into();
     let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
@@ -263,11 +209,7 @@ fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
 }
 
 pub fn test_contains_ckbforks_section() {
-    let mut file = File::open("tests/programs/ckbforks").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/ckbforks").unwrap();
     let ckbforks_exists_v0 = || -> bool {
         let elf = goblin_v023::elf::Elf::parse(&buffer).unwrap();
         for section_header in &elf.section_headers {
@@ -297,11 +239,7 @@ pub fn test_contains_ckbforks_section() {
 #[test]
 pub fn test_rvc_pageend() {
     // The last instruction of a executable memory page is an RVC instruction.
-    let mut file = File::open("tests/programs/rvc_pageend").unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
     machine
