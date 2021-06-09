@@ -331,7 +331,6 @@ impl SupportMachine for Box<AsmCoreMachine> {
     }
 }
 
-#[derive(Default)]
 pub struct AsmMachine<'a> {
     pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
     pub aot_code: Option<&'a AotCode>,
@@ -350,13 +349,6 @@ impl<'a> AsmMachine<'a> {
         aot_code: Option<&'a AotCode>,
     ) -> Self {
         Self { machine, aot_code }
-    }
-
-    pub fn default_with_aot_code(aot_code: &'a AotCode) -> Self {
-        Self {
-            machine: DefaultMachine::<'a, Box<AsmCoreMachine>>::default(),
-            aot_code: Some(aot_code),
-        }
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {

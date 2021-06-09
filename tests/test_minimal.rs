@@ -1,5 +1,3 @@
-extern crate ckb_vm;
-
 use ckb_vm::{run, SparseMemory};
 use std::fs;
 

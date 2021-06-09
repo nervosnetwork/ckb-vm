@@ -1,9 +1,7 @@
-extern crate ckb_vm;
-
 use ckb_vm::machine::VERSION0;
 use ckb_vm::{
-    run, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction,
-    SparseMemory, SupportMachine, ISA_IMC,
+    run, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction, SparseMemory,
+    SupportMachine, ISA_IMC,
 };
 use std::fs;
 
@@ -81,7 +79,9 @@ pub fn test_simple_invalid_bits() {
 #[test]
 pub fn test_simple_loaded_bytes() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default();
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let bytes = machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();

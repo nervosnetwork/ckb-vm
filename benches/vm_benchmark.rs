@@ -3,12 +3,15 @@ extern crate criterion;
 
 use bytes::Bytes;
 #[cfg(has_asm)]
-use ckb_vm::machine::{
-    aot::AotCompilingMachine,
-    asm::{AsmCoreMachine, AsmMachine},
-    DefaultMachineBuilder, VERSION0, VERSION1,
+use ckb_vm::{
+    machine::{
+        aot::AotCompilingMachine,
+        asm::{AsmCoreMachine, AsmMachine},
+        DefaultMachineBuilder, VERSION0, VERSION1,
+    },
+    ISA_B, ISA_IMC, ISA_MOP,
 };
-use ckb_vm::{run, SparseMemory, ISA_B, ISA_IMC, ISA_MOP};
+use ckb_vm::{run, SparseMemory};
 use criterion::Criterion;
 use std::fs;
 
@@ -36,7 +39,9 @@ fn asm_benchmark(c: &mut Criterion) {
                                       "bar"].into_iter().map(|a| a.into()).collect();
 
         b.iter(|| {
-            let mut machine = AsmMachine::default();
+            let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+            let core = DefaultMachineBuilder::new(asm_core).build();
+            let mut machine = AsmMachine::new(core, None);
             machine.load_program(&buffer, &args[..]).unwrap();
             machine.run().unwrap()
         });
@@ -56,7 +61,9 @@ fn aot_benchmark(c: &mut Criterion) {
         let result = aot_machine.compile().unwrap();
 
         b.iter(|| {
-            let mut machine = AsmMachine::default_with_aot_code(&result);
+            let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+            let core = DefaultMachineBuilder::new(asm_core).build();
+            let mut machine = AsmMachine::new(core, Some(&result));
             machine.load_program(&buffer, &args[..]).unwrap();
             machine.run().unwrap()
         });

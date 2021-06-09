@@ -17,7 +17,9 @@ use std::sync::Arc;
 #[test]
 pub fn test_asm_simple64() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
@@ -52,7 +54,8 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 #[test]
 pub fn test_asm_with_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -84,7 +87,9 @@ impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
 pub fn test_asm_ebreak() {
     let buffer = fs::read("tests/programs/ebreak64").unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
+
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
         }))
@@ -141,7 +146,9 @@ pub fn test_asm_simple_max_cycles_reached() {
 #[test]
 pub fn test_asm_trace() {
     let buffer = fs::read("tests/programs/trace64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
@@ -153,7 +160,9 @@ pub fn test_asm_trace() {
 #[test]
 pub fn test_asm_jump0() {
     let buffer = fs::read("tests/programs/jump0_64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["jump0_64".into()])
         .unwrap();
@@ -167,7 +176,9 @@ pub fn test_asm_write_large_address() {
     let buffer = fs::read("tests/programs/write_large_address64")
         .unwrap()
         .into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
@@ -179,7 +190,9 @@ pub fn test_asm_write_large_address() {
 #[test]
 pub fn test_misaligned_jump64() {
     let buffer = fs::read("tests/programs/misaligned_jump64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["misaligned_jump64".into()])
         .unwrap();
@@ -190,7 +203,9 @@ pub fn test_misaligned_jump64() {
 #[test]
 pub fn test_mulw64() {
     let buffer = fs::read("tests/programs/mulw64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["mulw64".into()])
         .unwrap();
@@ -202,7 +217,9 @@ pub fn test_mulw64() {
 #[test]
 pub fn test_invalid_read64() {
     let buffer = fs::read("tests/programs/invalid_read64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["invalid_read64".into()])
         .unwrap();
@@ -214,7 +231,9 @@ pub fn test_invalid_read64() {
 #[test]
 pub fn test_asm_load_elf_crash_64() {
     let buffer = fs::read("tests/programs/load_elf_crash_64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
@@ -225,7 +244,9 @@ pub fn test_asm_load_elf_crash_64() {
 #[test]
 pub fn test_asm_wxorx_crash_64() {
     let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
@@ -236,7 +257,9 @@ pub fn test_asm_wxorx_crash_64() {
 #[test]
 pub fn test_asm_alloc_many() {
     let buffer = fs::read("tests/programs/alloc_many").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -278,7 +301,9 @@ pub fn test_asm_chaos_seed() {
 #[test]
 pub fn test_asm_rvc_pageend() {
     let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
-    let mut machine = AsmMachine::default();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["rvc_pageend".into()])
         .unwrap();
