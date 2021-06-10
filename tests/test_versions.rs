@@ -2,7 +2,6 @@
 
 extern crate ckb_vm;
 
-use bytes::Bytes;
 use ckb_vm::{
     machine::{
         aot::{AotCode, AotCompilingMachine},
@@ -10,11 +9,10 @@ use ckb_vm::{
         VERSION0, VERSION1,
     },
     memory::FLAG_FREEZED,
-    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
+    Bytes, CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
     SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 
 type Mem = WXorXMemory<SparseMemory<u64>>;
 
@@ -22,11 +20,8 @@ fn create_rust_machine<'a>(
     program: String,
     version: u32,
 ) -> DefaultMachine<'a, DefaultCoreMachine<u64, Mem>> {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = format!("tests/programs/{}", program);
+    let buffer = fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value());
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
@@ -37,11 +32,8 @@ fn create_rust_machine<'a>(
 }
 
 fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = format!("tests/programs/{}", program);
+    let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, None);
@@ -52,22 +44,15 @@ fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
 }
 
 fn compile_aot_code(program: String, version: u32) -> AotCode {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
-    let mut aot_machine =
-        AotCompilingMachine::load(&buffer.clone(), None, ISA_IMC, version).unwrap();
+    let path = format!("tests/programs/{}", program);
+    let buffer = fs::read(path).unwrap().into();
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, version).unwrap();
     aot_machine.compile().unwrap()
 }
 
 fn create_aot_machine<'a>(program: String, code: &'a AotCode, version: u32) -> AsmMachine<'a> {
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let path = format!("tests/programs/{}", program);
+    let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, Some(code));
@@ -380,11 +365,9 @@ pub fn test_aot_version1_write_at_boundary() {
 #[test]
 pub fn test_rust_version0_unaligned64() {
     let program = "unaligned64";
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read(format!("tests/programs/{}", program))
+        .unwrap()
+        .into();
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::max_value());
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
@@ -404,11 +387,9 @@ pub fn test_rust_version1_unaligned64() {
 #[test]
 pub fn test_asm_version0_unaligned64() {
     let program = "unaligned64";
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read(format!("tests/programs/{}", program))
+        .unwrap()
+        .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, None);
@@ -429,11 +410,9 @@ pub fn test_asm_version1_unaligned64() {
 pub fn test_aot_version0_unaligned64() {
     let program = "unaligned64";
     let code = compile_aot_code(program.to_string(), VERSION1);
-    let mut file = File::open(format!("tests/programs/{}", program)).unwrap();
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).unwrap();
-    let buffer: Bytes = buffer.into();
-
+    let buffer = fs::read(format!("tests/programs/{}", program))
+        .unwrap()
+        .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core, Some(&code));
