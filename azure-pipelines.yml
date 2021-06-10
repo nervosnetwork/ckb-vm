@@ -8,7 +8,7 @@ trigger:
 
 variables:
   RUST_BACKTRACE: full
-  TEST_SUITE_COMMIT: a840d8215da444c0420de6c034128663237e769e
+  TEST_SUITE_COMMIT: f8707fdd208ffedc7c51b83722cbe9fb5fdc5d4f
 
 jobs:
   - job: WinUnitTest
