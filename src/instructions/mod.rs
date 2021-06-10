@@ -282,7 +282,9 @@ pub fn set_instruction_length_4(i: u64) -> u64 {
 
 #[inline(always)]
 pub fn set_instruction_length_n(i: u64, n: u8) -> u64 {
-    i | ((n as u64 & 0x0f) >> 1 << 24)
+    debug_assert!(n % 2 == 0);
+    debug_assert!(n <= 30);
+    i | ((n as u64 & 0x1f) >> 1 << 24)
 }
 
 #[inline(always)]
