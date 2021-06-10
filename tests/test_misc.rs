@@ -3,14 +3,12 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 #[cfg(has_asm)]
+use ckb_vm::machine::asm::AsmCoreMachine;
 use ckb_vm::{
-    machine::{asm::AsmCoreMachine, VERSION0},
-    ISA_IMC,
-};
-use ckb_vm::{
+    machine::VERSION0,
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error,
-    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
+    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
+    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
 };
 use ckb_vm_definitions::RISCV_PAGESIZE;
 
@@ -56,10 +54,11 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 #[test]
 pub fn test_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
-            .syscall(Box::new(CustomSyscall {}))
-            .build();
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut machine = DefaultMachineBuilder::new(core_machine)
+        .syscall(Box::new(CustomSyscall {}))
+        .build();
     machine
         .load_program(&buffer, &vec!["syscall".into()])
         .unwrap();
@@ -88,12 +87,13 @@ impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
 pub fn test_ebreak() {
     let buffer = fs::read("tests/programs/ebreak64").unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default()
-            .debugger(Box::new(CustomDebugger {
-                value: Arc::clone(&value),
-            }))
-            .build();
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut machine = DefaultMachineBuilder::new(core_machine)
+        .debugger(Box::new(CustomDebugger {
+            value: Arc::clone(&value),
+        }))
+        .build();
     machine
         .load_program(&buffer, &vec!["ebreak".into()])
         .unwrap();
@@ -189,7 +189,9 @@ pub fn test_wxorx_crash_64() {
 #[test]
 pub fn test_flat_crash_64() {
     let buffer = fs::read("tests/programs/flat_crash_64").unwrap().into();
-    let mut machine = DefaultMachine::<DefaultCoreMachine<u64, FlatMemory<u64>>>::default();
+    let core_machine =
+        DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
     assert_eq!(result.err(), Some(Error::OutOfBound));
 }
@@ -240,8 +242,9 @@ pub fn test_contains_ckbforks_section() {
 pub fn test_rvc_pageend() {
     // The last instruction of a executable memory page is an RVC instruction.
     let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
-    let mut machine =
-        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::default().build();
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
         .load_program(&buffer, &vec!["rvc_end".into()])
         .unwrap();

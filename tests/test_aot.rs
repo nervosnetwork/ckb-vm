@@ -20,7 +20,9 @@ pub fn test_aot_simple64() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
@@ -55,11 +57,12 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 #[test]
 pub fn test_aot_with_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
-        .syscall(Box::new(CustomSyscall {}))
-        .build();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core)
+        .syscall(Box::new(CustomSyscall {}))
+        .build();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["syscall".into()])
@@ -89,13 +92,14 @@ impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
 pub fn test_aot_ebreak() {
     let buffer = fs::read("tests/programs/ebreak64").unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::default()
+    let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
+    let code = aot_machine.compile().unwrap();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
         }))
         .build();
-    let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
-    let code = aot_machine.compile().unwrap();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["ebreak".into()])
@@ -158,7 +162,9 @@ pub fn test_aot_trace() {
     let buffer = fs::read("tests/programs/trace64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
@@ -172,7 +178,9 @@ pub fn test_aot_jump0() {
     let buffer = fs::read("tests/programs/jump0_64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["jump0_64".into()])
         .unwrap();
@@ -188,7 +196,9 @@ pub fn test_aot_write_large_address() {
         .into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
@@ -202,7 +212,9 @@ pub fn test_aot_misaligned_jump64() {
     let buffer = fs::read("tests/programs/misaligned_jump64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
         .unwrap();
@@ -215,7 +227,9 @@ pub fn test_aot_mulw64() {
     let buffer = fs::read("tests/programs/mulw64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["mulw64".into()])
         .unwrap();
@@ -229,7 +243,9 @@ pub fn test_aot_invalid_read64() {
     let buffer = fs::read("tests/programs/invalid_read64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["invalid_read64".into()])
         .unwrap();
@@ -243,7 +259,9 @@ pub fn test_aot_load_elf_crash_64() {
     let buffer = fs::read("tests/programs/load_elf_crash_64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
@@ -256,7 +274,9 @@ pub fn test_aot_wxorx_crash_64() {
     let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
@@ -294,7 +314,9 @@ pub fn test_aot_alloc_many() {
     let buffer = fs::read("tests/programs/alloc_many").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -343,7 +365,9 @@ pub fn test_aot_rvc_pageend() {
     let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine = AsmMachine::default_with_aot_code(&code);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, Some(&code));
     machine
         .load_program(&buffer, &vec!["rvc_pageend".into()])
         .unwrap();

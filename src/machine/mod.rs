@@ -17,8 +17,8 @@ use super::memory::{round_page_down, round_page_up, Memory, FLAG_DIRTY};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_B, ISA_IMC, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_MAX_MEMORY, RISCV_PAGES,
+    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    RISCV_PAGES,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -358,14 +358,6 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
             isa,
             version,
             max_cycles,
-            ..Default::default()
-        }
-    }
-
-    pub fn latest() -> Self {
-        Self {
-            isa: ISA_IMC | ISA_B,
-            version: VERSION1,
             ..Default::default()
         }
     }

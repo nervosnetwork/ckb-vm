@@ -110,7 +110,7 @@ fn main() {
         size_of::<AsmCoreMachine>()
     );
 
-    let m: Box<AsmCoreMachine> = Box::<AsmCoreMachine>::default();
+    let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0);
     let m_address = &*m as *const AsmCoreMachine as usize;
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS {}",

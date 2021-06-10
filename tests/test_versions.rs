@@ -1,7 +1,5 @@
 #![cfg(has_asm)]
 
-extern crate ckb_vm;
-
 use ckb_vm::{
     machine::{
         aot::{AotCode, AotCompilingMachine},

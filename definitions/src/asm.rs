@@ -1,6 +1,6 @@
 use crate::{
-    instructions::Instruction, ISA_IMC, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_MAX_MEMORY, RISCV_PAGES,
+    instructions::Instruction, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    RISCV_PAGES,
 };
 use std::alloc::{alloc, Layout};
 
@@ -51,15 +51,6 @@ pub struct AsmCoreMachine {
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
-}
-
-impl Default for Box<AsmCoreMachine> {
-    fn default() -> Self {
-        // Since in AsmCoreMachine we will always have max_cycles, the best
-        // way to solve the case that a max cycle is not available, is just
-        // to assign the maximum value allowed in u64.
-        AsmCoreMachine::new(ISA_IMC, 0, u64::max_value())
-    }
 }
 
 impl AsmCoreMachine {
