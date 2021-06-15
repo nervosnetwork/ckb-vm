@@ -205,3 +205,36 @@ pub fn test_mop_sbb() {
         assert_eq!(machine.machine.cycles(), 27);
     }
 }
+
+#[test]
+pub fn test_mop_random_adc_sbb() {
+    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_random_adc_sbb");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+    assert_eq!(machine.machine.cycles(), 9458);
+
+    let mut machine = machine_build::int_v1_mop("tests/programs/mop_random_adc_sbb", vec![]);
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+    assert_eq!(machine.machine.cycles(), 6755);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm =
+            machine_build::asm_v1_mop("tests/programs/mop_random_adc_sbb", vec![]);
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+        assert_eq!(machine.machine.cycles(), 6755);
+
+        let code = machine_build::aot_v1_mop_code("tests/programs/mop_random_adc_sbb");
+        let mut machine_aot =
+            machine_build::aot_v1_mop("tests/programs/mop_random_adc_sbb", vec![], &code);
+        let ret_aot = machine_aot.run();
+        assert!(ret_aot.is_ok());
+        assert_eq!(ret_aot.unwrap(), 0);
+        assert_eq!(machine.machine.cycles(), 6755);
+    }
+}
