@@ -105,9 +105,6 @@ impl Decoder {
                 let mut rule_adc = || -> Result<Option<Instruction>, Error> {
                     let head_inst = Rtype(head_instruction);
                     let head_size = instruction_length(head_instruction);
-                    if head_inst.rs1() == ZERO  || head_inst.rs2() == ZERO {
-                        return Ok(None);
-                    }
                     if head_inst.rd() != head_inst.rs1() || head_inst.rs1() == head_inst.rs2() {
                         return Ok(None);
                     }
@@ -132,9 +129,6 @@ impl Decoder {
                     }
                     let neck_inst = Rtype(neck_instruction);
                     let neck_size = instruction_length(neck_instruction);
-                    if neck_inst.rs2() == ZERO {
-                        return Ok(None);
-                    }
                     if neck_inst.rd() != neck_inst.rs1()
                         || neck_inst.rs1() != next_inst.rs1()
                         || neck_inst.rs2() == head_inst.rs1()
@@ -177,6 +171,9 @@ impl Decoder {
                     {
                         return Ok(None);
                     }
+                    if head_inst.rd() == ZERO || next_inst.rd() == ZERO || body_inst.rd() == ZERO {
+                        return Ok(None);
+                    }
                     let fuze_inst = Rtype::new(
                         insts::OP_ADC,
                         head_inst.rd(),
@@ -196,9 +193,6 @@ impl Decoder {
                 let mut rule_sbb = || -> Result<Option<Instruction>, Error> {
                     let head_inst = Rtype(head_instruction);
                     let head_size = instruction_length(head_instruction);
-                    if head_inst.rs1() == ZERO || head_inst.rs2() == ZERO {
-                        return Ok(None);
-                    }
                     if head_inst.rd() != head_inst.rs2() || head_inst.rs1() == head_inst.rs2() {
                         return Ok(None);
                     }
@@ -209,9 +203,6 @@ impl Decoder {
                     }
                     let next_inst = Rtype(next_instruction);
                     let next_size = instruction_length(next_instruction);
-                    if next_inst.rd() == ZERO {
-                        return Ok(None);
-                    }
                     if next_inst.rd() == head_inst.rs1()
                         || next_inst.rd() == head_inst.rs2()
                         || next_inst.rs1() != head_inst.rs1()
@@ -227,9 +218,6 @@ impl Decoder {
                     }
                     let neck_inst = Rtype(neck_instruction);
                     let neck_size = instruction_length(neck_instruction);
-                    if neck_inst.rs2() == ZERO {
-                        return Ok(None);
-                    }
                     if neck_inst.rd() != head_inst.rs1()
                         || neck_inst.rs1() != head_inst.rs2()
                         || neck_inst.rs2() == head_inst.rs1()
@@ -280,6 +268,13 @@ impl Decoder {
                         neck_inst.rs2(),
                         next_inst.rd(),
                     );
+                    if head_inst.rs1() == ZERO
+                        || head_inst.rs2() == ZERO
+                        || neck_inst.rs2() == ZERO
+                        || next_inst.rd() == ZERO
+                    {
+                        return Ok(None);
+                    }
                     let fuze_size = head_size + next_size + neck_size + body_size + tail_size;
                     Ok(Some(set_instruction_length_n(fuze_inst.0, fuze_size)))
                 };
