@@ -105,7 +105,7 @@ impl Decoder {
                 let mut rule_adc = || -> Result<Option<Instruction>, Error> {
                     let head_inst = Rtype(head_instruction);
                     let head_size = instruction_length(head_instruction);
-                    if head_inst.rd() == ZERO {
+                    if head_inst.rs1() == ZERO  || head_inst.rs2() == ZERO {
                         return Ok(None);
                     }
                     if head_inst.rd() != head_inst.rs1() || head_inst.rs1() == head_inst.rs2() {
@@ -132,6 +132,9 @@ impl Decoder {
                     }
                     let neck_inst = Rtype(neck_instruction);
                     let neck_size = instruction_length(neck_instruction);
+                    if neck_inst.rs2() == ZERO {
+                        return Ok(None);
+                    }
                     if neck_inst.rd() != neck_inst.rs1()
                         || neck_inst.rs1() != next_inst.rs1()
                         || neck_inst.rs2() == head_inst.rs1()
@@ -224,6 +227,9 @@ impl Decoder {
                     }
                     let neck_inst = Rtype(neck_instruction);
                     let neck_size = instruction_length(neck_instruction);
+                    if neck_inst.rs2() == ZERO {
+                        return Ok(None);
+                    }
                     if neck_inst.rd() != head_inst.rs1()
                         || neck_inst.rs1() != head_inst.rs2()
                         || neck_inst.rs2() == head_inst.rs1()
