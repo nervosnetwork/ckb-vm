@@ -183,9 +183,11 @@ pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x8E;
 pub const OP_LD_SIGN_EXTENDED_32_CONSTANT: InstructionOpcode = 0x8F;
 pub const OP_ADC: InstructionOpcode = 0x90;
 pub const OP_SBB: InstructionOpcode = 0x91;
+pub const OP_TWINS_LD: InstructionOpcode = 0x92;
+pub const OP_TWINS_SD: InstructionOpcode = 0x93;
 // Level-1 Custom
-pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x92;
-pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x93;
+pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x94;
+pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x95;
 // Level-2 B
 pub const OP_GREV: InstructionOpcode = 0x00F0;
 pub const OP_GREVI: InstructionOpcode = 0x01F0;
@@ -378,6 +380,8 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize
     "LD_SIGN_EXTENDED_32_CONSTANT",
     "ADC",
     "SBB",
+    "TWINS_LD",
+    "TWINS_SD",
     "CUSTOM_LOAD_IMM",
     "CUSTOM_TRACE_END",
 ];

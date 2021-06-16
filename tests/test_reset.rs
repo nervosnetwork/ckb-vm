@@ -6,7 +6,7 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachineBuilder, VERSION1};
 use ckb_vm::{
     registers::A7, Error, Register, SparseMemory, SupportMachine, Syscalls, TraceMachine,
-    WXorXMemory, DEFAULT_STACK_SIZE, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY,
+    WXorXMemory, DEFAULT_STACK_SIZE, ISA_IMC, RISCV_MAX_MEMORY,
 };
 
 #[allow(dead_code)]
@@ -45,7 +45,7 @@ fn test_reset_int() {
     let code = Bytes::from(code_data);
 
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-        ISA_IMC | ISA_MOP,
+        ISA_IMC,
         VERSION1,
         u64::max_value(),
     );
@@ -67,7 +67,7 @@ fn test_reset_int_with_trace() {
     let code = Bytes::from(code_data);
 
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-        ISA_IMC | ISA_MOP,
+        ISA_IMC,
         VERSION1,
         u64::max_value(),
     );
@@ -91,7 +91,7 @@ fn test_reset_asm() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
     let code = Bytes::from(code_data);
 
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))
@@ -115,7 +115,7 @@ pub fn test_reset_aot() {
     let mut aot_machine = AotCompilingMachine::load(
         &code,
         Some(Box::new(machine_build::instruction_cycle_func)),
-        ISA_IMC | ISA_MOP,
+        ISA_IMC,
         VERSION1,
     )
     .unwrap();
@@ -123,7 +123,7 @@ pub fn test_reset_aot() {
 
     let buffer: Bytes = std::fs::read("tests/programs/reset_caller").unwrap().into();
 
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))

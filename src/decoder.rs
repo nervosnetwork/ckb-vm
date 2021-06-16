@@ -3,7 +3,7 @@ use ckb_vm_definitions::registers::{RA, ZERO};
 
 use crate::instructions::{
     b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
-    InstructionFactory, Itype, R4type, Register, Rtype, Utype,
+    InstructionFactory, Itype, R4type, Register, Rtype, Stype, Utype,
 };
 use crate::memory::Memory;
 use crate::{Error, ISA_B, ISA_MOP, RISCV_PAGESIZE};
@@ -101,6 +101,116 @@ impl Decoder {
         let head_instruction = self.decode_raw(memory, pc)?;
         let head_opcode = extract_opcode(head_instruction);
         match head_opcode {
+            insts::OP_LD => {
+                let mut rule_twins_ld = || -> Result<Option<Instruction>, Error> {
+                    let head_inst = Itype(head_instruction);
+                    let head_size = instruction_length(head_instruction);
+                    let head_offset = head_inst.immediate_s();
+                    if head_offset < -128 || head_offset > 127 {
+                        return Ok(None);
+                    }
+                    let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                    let next_opcode = extract_opcode(next_instruction);
+                    if next_opcode != insts::OP_LD {
+                        return Ok(None);
+                    }
+                    let next_inst = Itype(next_instruction);
+                    let next_size = instruction_length(next_instruction);
+                    let next_offset = next_inst.immediate_s();
+                    if head_inst.rs1() != next_inst.rs1() {
+                        return Ok(None);
+                    }
+                    let diff = next_offset - head_offset;
+                    if diff.abs() != 8 {
+                        return Ok(None);
+                    }
+                    if diff > 0 {
+                        if head_inst.rd() == head_inst.rs1() {
+                            return Ok(None);
+                        }
+                    } else {
+                        if next_inst.rd() == next_inst.rs1() {
+                            return Ok(None);
+                        }
+                        if head_inst.rd() == next_inst.rd() {
+                            return Ok(None);
+                        }
+                    }
+                    let fuze_inst = if diff > 0 {
+                        R4type::new(
+                            insts::OP_TWINS_LD,
+                            next_inst.rd(),
+                            head_inst.rs1(),
+                            head_inst.rd(),
+                            head_offset as i8 as u8 as usize,
+                        )
+                    } else {
+                        R4type::new(
+                            insts::OP_TWINS_LD,
+                            head_inst.rd(),
+                            head_inst.rs1(),
+                            next_inst.rd(),
+                            next_offset as i8 as u8 as usize,
+                        )
+                    };
+                    let fuze_size = head_size + next_size;
+                    Ok(Some(set_instruction_length_n(fuze_inst.0, fuze_size)))
+                };
+                if let Ok(Some(i)) = rule_twins_ld() {
+                    Ok(i)
+                } else {
+                    Ok(head_instruction)
+                }
+            }
+            insts::OP_SD => {
+                let mut rule_twins_sd = || -> Result<Option<Instruction>, Error> {
+                    let head_inst = Stype(head_instruction);
+                    let head_size = instruction_length(head_instruction);
+                    let head_offset = head_inst.immediate_s();
+                    if head_offset < -128 || head_offset > 127 {
+                        return Ok(None);
+                    }
+                    let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                    let next_opcode = extract_opcode(next_instruction);
+                    if next_opcode != insts::OP_SD {
+                        return Ok(None);
+                    }
+                    let next_inst = Stype(next_instruction);
+                    let next_size = instruction_length(next_instruction);
+                    let next_offset = next_inst.immediate_s();
+                    if head_inst.rs1() != next_inst.rs1() {
+                        return Ok(None);
+                    }
+                    let diff = next_offset - head_offset;
+                    if diff.abs() != 8 {
+                        return Ok(None);
+                    }
+                    let fuze_inst = if diff > 0 {
+                        R4type::new(
+                            insts::OP_TWINS_SD,
+                            next_inst.rs2(),
+                            head_inst.rs1(),
+                            head_inst.rs2(),
+                            head_offset as i8 as u8 as usize,
+                        )
+                    } else {
+                        R4type::new(
+                            insts::OP_TWINS_SD,
+                            head_inst.rs2(),
+                            head_inst.rs1(),
+                            next_inst.rs2(),
+                            next_offset as i8 as u8 as usize,
+                        )
+                    };
+                    let fuze_size = head_size + next_size;
+                    Ok(Some(set_instruction_length_n(fuze_inst.0, fuze_size)))
+                };
+                if let Ok(Some(i)) = rule_twins_sd() {
+                    Ok(i)
+                } else {
+                    Ok(head_instruction)
+                }
+            }
             insts::OP_ADD => {
                 let mut rule_adc = || -> Result<Option<Instruction>, Error> {
                     let head_inst = Rtype(head_instruction);

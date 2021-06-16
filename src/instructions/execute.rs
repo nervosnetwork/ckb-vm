@@ -1,5 +1,5 @@
 use super::{
-    super::{machine::Machine, Error},
+    super::{machine::Machine, memory::Memory, Error},
     common, extract_opcode, instruction_length,
     utils::update_register,
     Instruction, Itype, R4type, Register, Rtype, Stype, Utype,
@@ -1484,6 +1484,26 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_LD_SIGN_EXTENDED_32_CONSTANT => {
             let i = Utype(inst);
             update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+        }
+        insts::OP_TWINS_LD => {
+            let i = R4type(inst);
+            let imm = i.rs3() as u8 as i8 as i32;
+            let address = machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(imm));
+            let value = machine.memory_mut().load64(&address)?;
+            update_register(machine, i.rs2(), value);
+            let address = address.overflowing_add(&Mac::REG::from_i32(8));
+            let value = machine.memory_mut().load64(&address)?;
+            update_register(machine, i.rd(), value);
+        }
+        insts::OP_TWINS_SD => {
+            let i = R4type(inst);
+            let imm = i.rs3() as u8 as i8 as i32;
+            let address = machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(imm));
+            let value = machine.registers()[i.rs2()].clone();
+            machine.memory_mut().store64(&address, &value)?;
+            let address = address.overflowing_add(&Mac::REG::from_i32(8));
+            let value = machine.registers()[i.rd()].clone();
+            machine.memory_mut().store64(&address, &value)?;
         }
         insts::OP_CUSTOM_LOAD_IMM => {
             let i = Utype(inst);
