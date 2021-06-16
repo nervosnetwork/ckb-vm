@@ -292,6 +292,12 @@
   movq v, REGISTER_ADDRESS(RD); \
   movq $0, ZERO_ADDRESS
 
+#define WRITE_RS1(v) \
+  movq v, REGISTER_ADDRESS(RS1); \
+
+#define WRITE_RS2r(v) \
+  movq v, REGISTER_ADDRESS(RS2r); \
+
 #define WRITE_RS3(v) \
   movq v, REGISTER_ADDRESS(RS3); \
 
@@ -2189,6 +2195,37 @@ ckb_vm_x64_execute:
   POP_RD_IF_RAX
   WRITE_RD(TEMP1)
   WRITE_RS3(RS2r)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_ADC:
+  DECODE_R
+  xor TEMP1, TEMP1
+  xor TEMP2, TEMP2
+  movq REGISTER_ADDRESS(RD), %rcx
+  addq REGISTER_ADDRESS(RS1), %rcx
+  adc $0, TEMP1
+  addq REGISTER_ADDRESS(RS2r), %rcx
+  adc $0, TEMP2
+  orq TEMP2, TEMP1
+  WRITE_RS1(TEMP1)
+  WRITE_RS2r(TEMP2)
+  WRITE_RD(%rcx)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SBB:
+  DECODE_R4
+  xor TEMP1, TEMP1
+  xor TEMP2, TEMP2
+  movq REGISTER_ADDRESS(RD), %rcx
+  subq REGISTER_ADDRESS(RS1), %rcx
+  adc $0, TEMP1
+  subq REGISTER_ADDRESS(RS2r), %rcx
+  adc $0, TEMP2
+  WRITE_RS2r(TEMP2)
+  WRITE_RS3(TEMP1)
+  orq TEMP2, TEMP1
+  WRITE_RS1(TEMP1)
+  WRITE_RD(%rcx)
   NEXT_INST
 .p2align 3
 .exit_out_of_bound:

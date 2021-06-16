@@ -1435,6 +1435,52 @@ pub fn execute_instruction<Mac: Machine>(
             update_register(machine, RA, link);
             machine.update_pc(next_pc);
         }
+        insts::OP_ADC => {
+            let i = Rtype(inst);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let r = rd_value.overflowing_add(&rs1_value);
+            update_register(machine, i.rd(), r);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let r = rd_value.lt(&rs1_value);
+            update_register(machine, i.rs1(), r);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs2_value = &machine.registers()[i.rs2()];
+            let r = rd_value.overflowing_add(&rs2_value);
+            update_register(machine, i.rd(), r);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs2_value = &machine.registers()[i.rs2()];
+            let r = rd_value.lt(&rs2_value);
+            update_register(machine, i.rs2(), r);
+            let rs1_value = machine.registers()[i.rs1()].clone();
+            let rs2_value = machine.registers()[i.rs2()].clone();
+            let r = rs1_value | rs2_value;
+            update_register(machine, i.rs1(), r);
+        }
+        insts::OP_SBB => {
+            let i = R4type(inst);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let r = rd_value.overflowing_sub(&rs1_value);
+            update_register(machine, i.rs1(), r);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let r = rd_value.lt(&rs1_value);
+            update_register(machine, i.rs3(), r);
+            let rs1_value = &machine.registers()[i.rs1()];
+            let rs2_value = &machine.registers()[i.rs2()];
+            let r = rs1_value.overflowing_sub(&rs2_value);
+            update_register(machine, i.rd(), r);
+            let rd_value = &machine.registers()[i.rd()];
+            let rs1_value = &machine.registers()[i.rs1()];
+            let r = rs1_value.lt(&rd_value);
+            update_register(machine, i.rs2(), r);
+            let rs2_value = machine.registers()[i.rs2()].clone();
+            let rs3_value = machine.registers()[i.rs3()].clone();
+            let r = rs2_value | rs3_value;
+            update_register(machine, i.rs1(), r);
+        }
         insts::OP_LD_SIGN_EXTENDED_32_CONSTANT => {
             let i = Utype(inst);
             update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));

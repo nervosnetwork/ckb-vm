@@ -1,5 +1,5 @@
 use ckb_vm_definitions::instructions::{self as insts};
-use ckb_vm_definitions::registers::RA;
+use ckb_vm_definitions::registers::{RA, ZERO};
 
 use crate::instructions::{
     b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
@@ -101,14 +101,196 @@ impl Decoder {
         let head_instruction = self.decode_raw(memory, pc)?;
         let head_opcode = extract_opcode(head_instruction);
         match head_opcode {
+            insts::OP_ADD => {
+                let mut rule_adc = || -> Result<Option<Instruction>, Error> {
+                    let head_inst = Rtype(head_instruction);
+                    let head_size = instruction_length(head_instruction);
+                    if head_inst.rd() != head_inst.rs1() || head_inst.rs1() == head_inst.rs2() {
+                        return Ok(None);
+                    }
+                    let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                    let next_opcode = extract_opcode(next_instruction);
+                    if next_opcode != insts::OP_SLTU {
+                        return Ok(None);
+                    }
+                    let next_inst = Rtype(next_instruction);
+                    let next_size = instruction_length(next_instruction);
+                    if next_inst.rd() != head_inst.rs2()
+                        || head_inst.rs2() != next_inst.rs2()
+                        || next_inst.rs1() != head_inst.rs1()
+                    {
+                        return Ok(None);
+                    }
+                    let neck_instruction =
+                        self.decode_raw(memory, pc + head_size as u64 + next_size as u64)?;
+                    let neck_opcode = extract_opcode(neck_instruction);
+                    if neck_opcode != insts::OP_ADD {
+                        return Ok(None);
+                    }
+                    let neck_inst = Rtype(neck_instruction);
+                    let neck_size = instruction_length(neck_instruction);
+                    if neck_inst.rd() != neck_inst.rs1()
+                        || neck_inst.rs1() != next_inst.rs1()
+                        || neck_inst.rs2() == head_inst.rs1()
+                        || neck_inst.rs2() == head_inst.rs2()
+                    {
+                        return Ok(None);
+                    }
+                    let body_instruction = self.decode_raw(
+                        memory,
+                        pc + head_size as u64 + next_size as u64 + neck_size as u64,
+                    )?;
+                    let body_opcode = extract_opcode(body_instruction);
+                    if body_opcode != insts::OP_SLTU {
+                        return Ok(None);
+                    }
+                    let body_inst = Rtype(body_instruction);
+                    let body_size = instruction_length(body_instruction);
+                    if body_inst.rd() != body_inst.rs2()
+                        || body_inst.rs2() != neck_inst.rs2()
+                        || body_inst.rs1() != neck_inst.rs1()
+                    {
+                        return Ok(None);
+                    }
+                    let tail_instruction = self.decode_raw(
+                        memory,
+                        pc + head_size as u64
+                            + next_size as u64
+                            + neck_size as u64
+                            + body_size as u64,
+                    )?;
+                    let tail_opcode = extract_opcode(tail_instruction);
+                    if tail_opcode != insts::OP_OR {
+                        return Ok(None);
+                    }
+                    let tail_inst = Rtype(tail_instruction);
+                    let tail_size = instruction_length(tail_instruction);
+                    if tail_inst.rd() != tail_inst.rs1()
+                        || tail_inst.rs1() != head_inst.rs2()
+                        || tail_inst.rs2() != body_inst.rs2()
+                    {
+                        return Ok(None);
+                    }
+                    if head_inst.rd() == ZERO || next_inst.rd() == ZERO || body_inst.rd() == ZERO {
+                        return Ok(None);
+                    }
+                    let fuze_inst = Rtype::new(
+                        insts::OP_ADC,
+                        head_inst.rd(),
+                        next_inst.rd(),
+                        body_inst.rd(),
+                    );
+                    let fuze_size = head_size + next_size + neck_size + body_size + tail_size;
+                    Ok(Some(set_instruction_length_n(fuze_inst.0, fuze_size)))
+                };
+                if let Ok(Some(i)) = rule_adc() {
+                    Ok(i)
+                } else {
+                    Ok(head_instruction)
+                }
+            }
+            insts::OP_SUB => {
+                let mut rule_sbb = || -> Result<Option<Instruction>, Error> {
+                    let head_inst = Rtype(head_instruction);
+                    let head_size = instruction_length(head_instruction);
+                    if head_inst.rd() != head_inst.rs2() || head_inst.rs1() == head_inst.rs2() {
+                        return Ok(None);
+                    }
+                    let next_instruction = self.decode_raw(memory, pc + head_size as u64)?;
+                    let next_opcode = extract_opcode(next_instruction);
+                    if next_opcode != insts::OP_SLTU {
+                        return Ok(None);
+                    }
+                    let next_inst = Rtype(next_instruction);
+                    let next_size = instruction_length(next_instruction);
+                    if next_inst.rd() == head_inst.rs1()
+                        || next_inst.rd() == head_inst.rs2()
+                        || next_inst.rs1() != head_inst.rs1()
+                        || next_inst.rs2() != next_inst.rs2()
+                    {
+                        return Ok(None);
+                    }
+                    let neck_instruction =
+                        self.decode_raw(memory, pc + head_size as u64 + next_size as u64)?;
+                    let neck_opcode = extract_opcode(neck_instruction);
+                    if neck_opcode != insts::OP_SUB {
+                        return Ok(None);
+                    }
+                    let neck_inst = Rtype(neck_instruction);
+                    let neck_size = instruction_length(neck_instruction);
+                    if neck_inst.rd() != head_inst.rs1()
+                        || neck_inst.rs1() != head_inst.rs2()
+                        || neck_inst.rs2() == head_inst.rs1()
+                        || neck_inst.rs2() == head_inst.rs2()
+                        || neck_inst.rs2() == next_inst.rd()
+                    {
+                        return Ok(None);
+                    }
+                    let body_instruction = self.decode_raw(
+                        memory,
+                        pc + head_size as u64 + next_size as u64 + neck_size as u64,
+                    )?;
+                    let body_opcode = extract_opcode(body_instruction);
+                    if body_opcode != insts::OP_SLTU {
+                        return Ok(None);
+                    }
+                    let body_inst = Rtype(body_instruction);
+                    let body_size = instruction_length(body_instruction);
+                    if body_inst.rd() != neck_inst.rs2()
+                        || body_inst.rs1() != head_inst.rs2()
+                        || body_inst.rs2() != head_inst.rs1()
+                    {
+                        return Ok(None);
+                    }
+                    let tail_instruction = self.decode_raw(
+                        memory,
+                        pc + head_size as u64
+                            + next_size as u64
+                            + neck_size as u64
+                            + body_size as u64,
+                    )?;
+                    let tail_opcode = extract_opcode(tail_instruction);
+                    if tail_opcode != insts::OP_OR {
+                        return Ok(None);
+                    }
+                    let tail_inst = Rtype(tail_instruction);
+                    let tail_size = instruction_length(tail_instruction);
+                    if tail_inst.rd() != head_inst.rd()
+                        || tail_inst.rs1() != neck_inst.rs2()
+                        || tail_inst.rs2() != next_inst.rd()
+                    {
+                        return Ok(None);
+                    }
+                    let fuze_inst = R4type::new(
+                        insts::OP_SBB,
+                        head_inst.rs1(),
+                        head_inst.rs2(),
+                        neck_inst.rs2(),
+                        next_inst.rd(),
+                    );
+                    if head_inst.rs1() == ZERO
+                        || head_inst.rs2() == ZERO
+                        || neck_inst.rs2() == ZERO
+                        || next_inst.rd() == ZERO
+                    {
+                        return Ok(None);
+                    }
+                    let fuze_size = head_size + next_size + neck_size + body_size + tail_size;
+                    Ok(Some(set_instruction_length_n(fuze_inst.0, fuze_size)))
+                };
+                if let Ok(Some(i)) = rule_sbb() {
+                    Ok(i)
+                } else {
+                    Ok(head_instruction)
+                }
+            }
             insts::OP_LUI => {
                 let head_inst = Utype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_JALR => {
@@ -145,11 +327,10 @@ impl Decoder {
             insts::OP_AUIPC => {
                 let head_inst = Utype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_JALR => {
@@ -170,11 +351,10 @@ impl Decoder {
             insts::OP_MULH => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_MUL => {
@@ -204,11 +384,10 @@ impl Decoder {
             insts::OP_MULHU => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_MUL => {
@@ -238,11 +417,10 @@ impl Decoder {
             insts::OP_MULHSU => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_MUL => {
@@ -272,11 +450,10 @@ impl Decoder {
             insts::OP_DIV => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_REM => {
@@ -306,11 +483,10 @@ impl Decoder {
             insts::OP_DIVU => {
                 let head_inst = Rtype(head_instruction);
                 let head_size = instruction_length(head_instruction);
-                let next_instruction_opt = self.decode_raw(memory, pc + head_size as u64);
-                if next_instruction_opt.is_err() {
-                    return Ok(head_instruction);
-                }
-                let next_instruction = next_instruction_opt.unwrap();
+                let next_instruction = match self.decode_raw(memory, pc + head_size as u64) {
+                    Ok(ni) => ni,
+                    Err(_) => return Ok(head_instruction),
+                };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
                     insts::OP_REMU => {

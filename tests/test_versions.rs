@@ -7,7 +7,7 @@ use ckb_vm::{
         VERSION0, VERSION1,
     },
     memory::FLAG_FREEZED,
-    Bytes, CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
     SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
 use std::fs;
