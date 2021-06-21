@@ -1061,6 +1061,202 @@ int aot_shr(AotContext* context, riscv_register_t target, AotValue a, AotValue b
   return DASM_S_OK;
 }
 
+int aot_clmul(AotContext* context, riscv_register_t target, AotValue a, AotValue b) {
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  | xor ecx, ecx
+  | xor r10, r10
+  |1:
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+  ret = aot_mov_x64(context, X64_RDX, b);
+  if (ret != DASM_S_OK) { return ret; }
+  | shl rax, cl
+  | shr rdx, cl
+  | xor rax, r10
+  | and rdx, 1
+  | cmovne r10, rax
+  | add rcx, 1
+  | cmp rcx, 64
+  | jne <1
+  | op2_r_x mov, target, r10
+
+  return DASM_S_OK;
+}
+
+int aot_clmulh(AotContext* context, riscv_register_t target, AotValue a, AotValue b) {
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  | push rsi
+  | mov rsi, 1
+  | xor r10, r10
+  |1:
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+  ret = aot_mov_x64(context, X64_RDX, b);
+  if (ret != DASM_S_OK) { return ret; }
+  | mov rcx, 64
+  | sub rcx, rsi
+  | shr rax, cl
+  | mov rcx, rsi
+  | shr rdx, cl
+  | xor rax, r10
+  | and rdx, 1
+  | cmovne r10, rax
+  | add rsi, 1
+  | cmp rsi, 64
+  | jne <1
+  | op2_r_x mov, target, r10
+  | pop rsi
+
+  return DASM_S_OK;
+}
+
+int aot_clmulr(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
+{
+  int ret;
+  uint32_t loc1;
+  dasm_State** Dst = &context->d;
+
+  | push rsi
+  | xor rsi, rsi
+  | xor r10, r10
+  |1:
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+  ret = aot_mov_x64(context, X64_RDX, b);
+  if (ret != DASM_S_OK) { return ret; }
+  | mov rcx, 63
+  | sub rcx, rsi
+  | shr rax, cl
+  | mov rcx, rsi
+  | shr rdx, cl
+  | xor rax, r10
+  | and rdx, 1
+  | cmovne r10, rax
+  | add rsi, 1
+  | cmp rsi, 64
+  | jne <1
+  | op2_r_x mov, target, r10
+  | pop rsi
+
+  return DASM_S_OK;
+}
+
+int aot_orcb(AotContext* context, riscv_register_t target, AotValue a)
+{
+  uint32_t loc1;
+  int ret;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+
+  | xor rdx, rdx
+  | mov64 r10, (uint64_t)0x00000000000000ff
+  | mov r11, r10
+  | and r10, rax
+  | je >1
+  | or rdx, r11
+  |1:
+  | mov64 r10, (uint64_t)0x000000000000ff00
+  | mov r11, r10
+  | and r10, rax
+  | je >2
+  | or rdx, r11
+  |2:
+  | mov64 r10, (uint64_t)0x0000000000ff0000
+  | mov r11, r10
+  | and r10, rax
+  | je >3
+  | or rdx, r11
+  |3:
+  | mov64 r10, (uint64_t)0x00000000ff000000
+  | mov r11, r10
+  | and r10, rax
+  | je >4
+  | or rdx, r11
+  |4:
+  | mov64 r10, (uint64_t)0x000000ff00000000
+  | mov r11, r10
+  | and r10, rax
+  | je >5
+  | or rdx, r11
+  |5:
+  | mov64 r10, (uint64_t)0x0000ff0000000000
+  | mov r11, r10
+  | and r10, rax
+  | je >6
+  | or rdx, r11
+  |6:
+  | mov64 r10, (uint64_t)0x00ff000000000000
+  | mov r11, r10
+  | and r10, rax
+  | je >7
+  | or rdx, r11
+  |7:
+  | mov64 r10, (uint64_t)0xff00000000000000
+  | mov r11, r10
+  | and r10, rax
+  | je >8
+  | or rdx, r11
+  |8:
+  | op2_r_x mov, target, rdx
+
+  return DASM_S_OK;
+}
+
+int aot_rev8(AotContext* context, riscv_register_t target, AotValue a)
+{
+  uint32_t loc1;
+  int ret;
+  dasm_State** Dst = &context->d;
+
+  ret = aot_mov_x64(context, X64_RAX, a);
+  if (ret != DASM_S_OK) { return ret; }
+
+  | xor rdx, rdx
+  | mov64 r10, (uint64_t)0x00000000000000ff
+  | and r10, rax
+  | shl r10, 56
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0x000000000000ff00
+  | and r10, rax
+  | shl r10, 40
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0x0000000000ff0000
+  | and r10, rax
+  | shl r10, 24
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0x00000000ff000000
+  | and r10, rax
+  | shl r10, 8
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0x000000ff00000000
+  | and r10, rax
+  | shr r10, 8
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0x0000ff0000000000
+  | and r10, rax
+  | shr r10, 24
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0x00ff000000000000
+  | and r10, rax
+  | shr r10, 40
+  | or rdx, r10
+  | mov64 r10, (uint64_t)0xff00000000000000
+  | and r10, rax
+  | shr r10, 56
+  | or rdx, r10
+  | op2_r_x mov, target, rdx
+
+  return DASM_S_OK;
+}
+
 int aot_rol(AotContext* context, riscv_register_t target, AotValue a, AotValue b)
 {
   int ret;
@@ -1322,7 +1518,7 @@ int aot_ctz(AotContext* context, riscv_register_t target, AotValue a)
   return DASM_S_OK;
 }
 
-int aot_pcnt(AotContext* context, riscv_register_t target, AotValue a)
+int aot_cpop(AotContext* context, riscv_register_t target, AotValue a)
 {
   uint32_t loc1;
   int ret;

@@ -62,7 +62,15 @@ pub trait Register:
     // The ctz operation counts the number of 0 bits at the LSB end of the argument.
     fn ctz(&self) -> Self;
     // Counts the number of 1 bits.
-    fn pcnt(&self) -> Self;
+    fn cpop(&self) -> Self;
+    // Carry-less multiply (low-part)
+    fn clmul(&self, rhs: &Self) -> Self;
+    // Carry-less multiply (high-part)
+    fn clmulh(&self, rhs: &Self) -> Self;
+    // Carry-less multiply (reversed)
+    fn clmulr(&self, rhs: &Self) -> Self;
+    fn orcb(&self) -> Self;
+    fn rev8(&self) -> Self;
 
     fn signed_shl(&self, rhs: &Self) -> Self;
     fn signed_shr(&self, rhs: &Self) -> Self;
@@ -272,8 +280,68 @@ impl Register for u32 {
         self.trailing_zeros()
     }
 
-    fn pcnt(&self) -> u32 {
+    fn cpop(&self) -> u32 {
         self.count_ones()
+    }
+
+    fn clmul(&self, rhs: &u32) -> u32 {
+        let mut x: u32 = 0;
+        for i in 0..32 {
+            if ((rhs >> i) & 1) != 0 {
+                x ^= self << i;
+            }
+        }
+        x
+    }
+
+    fn clmulh(&self, rhs: &u32) -> u32 {
+        let mut x: u32 = 0;
+        for i in 1..32 {
+            if ((rhs >> i) & 1) != 0 {
+                x ^= self >> (32 - i);
+            }
+        }
+        x
+    }
+
+    fn clmulr(&self, rhs: &u32) -> u32 {
+        let mut x: u32 = 0;
+        for i in 0..32 {
+            if ((rhs >> i) & 1) != 0 {
+                x ^= self >> (31 - i);
+            }
+        }
+        x
+    }
+
+    fn orcb(&self) -> u32 {
+        let mut rr = 0;
+        if self & 0x000000ff != 0 {
+            rr |= 0x000000ff
+        }
+        if self & 0x0000ff00 != 0 {
+            rr |= 0x0000ff00
+        }
+        if self & 0x00ff0000 != 0 {
+            rr |= 0x00ff0000
+        }
+        if self & 0xff000000 != 0 {
+            rr |= 0xff000000
+        }
+        rr
+    }
+
+    fn rev8(&self) -> u32 {
+        let mut r = 0;
+        let a = self & 0x000000ff;
+        r |= a << 24;
+        let a = self & 0x0000ff00;
+        r |= a << 8;
+        let a = self & 0x00ff0000;
+        r |= a >> 8;
+        let a = self & 0xff000000;
+        r |= a >> 24;
+        r
     }
 
     fn rol(&self, rhs: &u32) -> u32 {
@@ -535,27 +603,107 @@ impl Register for u64 {
         self.trailing_zeros() as u64
     }
 
-    fn pcnt(&self) -> u64 {
+    fn cpop(&self) -> u64 {
         self.count_ones() as u64
     }
 
-    fn rol(&self, rhs: &Self) -> u64 {
+    fn clmul(&self, rhs: &u64) -> u64 {
+        let mut x: u64 = 0;
+        for i in 0..64 {
+            if ((rhs >> i) & 1) != 0 {
+                x ^= self << i;
+            }
+        }
+        x
+    }
+
+    fn clmulh(&self, rhs: &u64) -> u64 {
+        let mut x: u64 = 0;
+        for i in 1..64 {
+            if ((rhs >> i) & 1) != 0 {
+                x ^= self >> (64 - i);
+            }
+        }
+        x
+    }
+
+    fn clmulr(&self, rhs: &u64) -> u64 {
+        let mut x: u64 = 0;
+        for i in 0..64 {
+            if ((rhs >> i) & 1) != 0 {
+                x ^= self >> (63 - i);
+            }
+        }
+        x
+    }
+
+    fn orcb(&self) -> u64 {
+        let mut rr = 0;
+        if self & 0x00000000000000ff != 0 {
+            rr |= 0x00000000000000ff
+        }
+        if self & 0x000000000000ff00 != 0 {
+            rr |= 0x000000000000ff00
+        }
+        if self & 0x0000000000ff0000 != 0 {
+            rr |= 0x0000000000ff0000
+        }
+        if self & 0x00000000ff000000 != 0 {
+            rr |= 0x00000000ff000000
+        }
+        if self & 0x000000ff00000000 != 0 {
+            rr |= 0x000000ff00000000
+        }
+        if self & 0x0000ff0000000000 != 0 {
+            rr |= 0x0000ff0000000000
+        }
+        if self & 0x00ff000000000000 != 0 {
+            rr |= 0x00ff000000000000
+        }
+        if self & 0xff00000000000000 != 0 {
+            rr |= 0xff00000000000000
+        }
+        rr
+    }
+
+    fn rev8(&self) -> u64 {
+        let mut r = 0;
+        let a = self & 0x00000000000000ff;
+        r |= a << 56;
+        let a = self & 0x000000000000ff00;
+        r |= a << 40;
+        let a = self & 0x0000000000ff0000;
+        r |= a << 24;
+        let a = self & 0x00000000ff000000;
+        r |= a << 8;
+        let a = self & 0x000000ff00000000;
+        r |= a >> 8;
+        let a = self & 0x0000ff0000000000;
+        r |= a >> 24;
+        let a = self & 0x00ff000000000000;
+        r |= a >> 40;
+        let a = self & 0xff00000000000000;
+        r |= a >> 56;
+        r
+    }
+
+    fn rol(&self, rhs: &u64) -> u64 {
         (*self as u64).rotate_left((*rhs) as u32) as u64
     }
 
-    fn ror(&self, rhs: &Self) -> u64 {
+    fn ror(&self, rhs: &u64) -> u64 {
         (*self as u64).rotate_right((*rhs) as u32) as u64
     }
 
-    fn slo(&self, rhs: &Self) -> u64 {
+    fn slo(&self, rhs: &u64) -> u64 {
         !((!*self).shl(rhs))
     }
 
-    fn sro(&self, rhs: &Self) -> u64 {
+    fn sro(&self, rhs: &u64) -> u64 {
         !((!*self).shr(rhs))
     }
 
-    fn fsl(&self, rhs: &Self, shift: &Self) -> u64 {
+    fn fsl(&self, rhs: &u64, shift: &u64) -> u64 {
         let mut shamt = shift & 127;
         let (a, b) = if shamt >= 64 {
             shamt -= 64;
@@ -570,7 +718,7 @@ impl Register for u64 {
         }
     }
 
-    fn fsr(&self, rhs: &Self, shift: &Self) -> u64 {
+    fn fsr(&self, rhs: &u64, shift: &u64) -> u64 {
         let mut shamt = shift & 127;
         let (a, b) = if shamt >= 64 {
             shamt -= 64;

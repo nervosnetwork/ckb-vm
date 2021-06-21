@@ -82,6 +82,11 @@ extern "C" {
         b: AotValue,
         is_signed: c_int,
     ) -> c_int;
+    fn aot_clmul(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
+    fn aot_clmulh(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
+    fn aot_clmulr(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
+    fn aot_orcb(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
+    fn aot_rev8(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
     fn aot_rol(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_ror(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
     fn aot_slo(c: *mut AotContext, target: u32, a: AotValue, b: AotValue) -> c_int;
@@ -105,7 +110,7 @@ extern "C" {
     ) -> c_int;
     fn aot_clz(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
     fn aot_ctz(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
-    fn aot_pcnt(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
+    fn aot_cpop(c: *mut AotContext, target: u32, a: AotValue) -> c_int;
     fn aot_fsl(c: *mut AotContext, target: u32, a: AotValue, b: AotValue, c: AotValue) -> c_int;
     fn aot_fsr(c: *mut AotContext, target: u32, a: AotValue, b: AotValue, c: AotValue) -> c_int;
 
@@ -365,8 +370,14 @@ impl Emitter {
                     },
                     ActionOp1::Clz => unsafe { aot_clz(self.aot, target_register as u32, a_value) },
                     ActionOp1::Ctz => unsafe { aot_ctz(self.aot, target_register as u32, a_value) },
-                    ActionOp1::Pcnt => unsafe {
-                        aot_pcnt(self.aot, target_register as u32, a_value)
+                    ActionOp1::Cpop => unsafe {
+                        aot_cpop(self.aot, target_register as u32, a_value)
+                    },
+                    ActionOp1::Orcb => unsafe {
+                        aot_orcb(self.aot, target_register as u32, a_value)
+                    },
+                    ActionOp1::Rev8 => unsafe {
+                        aot_rev8(self.aot, target_register as u32, a_value)
                     },
                 };
                 check_aot_result(result)?;
@@ -404,6 +415,15 @@ impl Emitter {
                     },
                     ActionOp2::Eq => unsafe {
                         aot_eq(self.aot, target_register as u32, a_value, b_value)
+                    },
+                    ActionOp2::Clmul => unsafe {
+                        aot_clmul(self.aot, target_register as u32, a_value, b_value)
+                    },
+                    ActionOp2::Clmulh => unsafe {
+                        aot_clmulh(self.aot, target_register as u32, a_value, b_value)
+                    },
+                    ActionOp2::Clmulr => unsafe {
+                        aot_clmulr(self.aot, target_register as u32, a_value, b_value)
                     },
                     ActionOp2::Rol => unsafe {
                         aot_rol(self.aot, target_register as u32, a_value, b_value)
