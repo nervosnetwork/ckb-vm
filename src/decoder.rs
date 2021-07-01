@@ -296,7 +296,9 @@ impl Decoder {
                     insts::OP_JALR => {
                         let next_inst = Itype(next_instruction);
                         if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
-                            let fuze_imm = head_inst.immediate_s() + next_inst.immediate_s();
+                            let fuze_imm = head_inst
+                                .immediate_s()
+                                .wrapping_add(next_inst.immediate_s());
                             let fuze_inst = Utype::new_s(insts::OP_FAR_JUMP_ABS, RA, fuze_imm);
                             let next_size = instruction_length(next_instruction);
                             let fuze_size = head_size + next_size;
@@ -308,7 +310,9 @@ impl Decoder {
                     insts::OP_ADDIW => {
                         let next_inst = Itype(next_instruction);
                         if next_inst.rs1() == next_inst.rd() && next_inst.rd() == head_inst.rd() {
-                            let fuze_imm = head_inst.immediate_s() + next_inst.immediate_s();
+                            let fuze_imm = head_inst
+                                .immediate_s()
+                                .wrapping_add(next_inst.immediate_s());
                             let fuze_inst = Utype::new_s(
                                 insts::OP_LD_SIGN_EXTENDED_32_CONSTANT,
                                 head_inst.rd(),
@@ -336,7 +340,9 @@ impl Decoder {
                     insts::OP_JALR => {
                         let next_inst = Itype(next_instruction);
                         if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
-                            let fuze_imm = head_inst.immediate_s() + next_inst.immediate_s();
+                            let fuze_imm = head_inst
+                                .immediate_s()
+                                .wrapping_add(next_inst.immediate_s());
                             let fuze_inst = Utype::new_s(insts::OP_FAR_JUMP_REL, RA, fuze_imm);
                             let next_size = instruction_length(next_instruction);
                             let fuze_size = head_size + next_size;
