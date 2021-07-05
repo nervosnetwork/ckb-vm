@@ -306,7 +306,7 @@ impl Register for u32 {
 
     fn clmulr(&self, rhs: &u32) -> u32 {
         let mut x: u32 = 0;
-        for i in 0..32 {
+        for i in 0..31 {
             if ((rhs >> i) & 1) != 0 {
                 x ^= self >> (31 - i);
             }
@@ -629,7 +629,7 @@ impl Register for u64 {
 
     fn clmulr(&self, rhs: &u64) -> u64 {
         let mut x: u64 = 0;
-        for i in 0..64 {
+        for i in 0..63 {
             if ((rhs >> i) & 1) != 0 {
                 x ^= self >> (63 - i);
             }

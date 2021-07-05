@@ -1394,7 +1394,7 @@ ckb_vm_x64_execute:
   and $1, TEMP2
   cmovne TEMP1, TEMP3
   add $1, RS3
-  cmp $64, RS3
+  cmp $63, RS3
   jne .clmulr_branch
   WRITE_RD(TEMP3)
   NEXT_INST
