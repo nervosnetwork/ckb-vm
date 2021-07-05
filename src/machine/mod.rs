@@ -90,6 +90,15 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
+    fn add_cycles_no_checking(&mut self, cycles: u64) -> Result<(), Error> {
+        let new_cycles = self
+            .cycles()
+            .checked_add(cycles)
+            .ok_or(Error::InvalidCycles)?;
+        self.set_cycles(new_cycles);
+        Ok(())
+    }
+
     fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
         let version = self.version();
         // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
@@ -472,6 +481,9 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
                 for syscall in &mut self.syscalls {
                     let processed = syscall.ecall(&mut self.inner)?;
                     if processed {
+                        if self.cycles() > self.max_cycles() {
+                            return Err(Error::InvalidCycles);
+                        }
                         return Ok(());
                     }
                 }

@@ -266,3 +266,44 @@ pub fn test_rvc_pageend() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
+
+pub struct OutOfCyclesSyscall {}
+
+impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
+    fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn ecall(&mut self, machine: &mut Mac) -> Result<bool, Error> {
+        let code = &machine.registers()[A7];
+        if code.to_i32() != 1111 {
+            return Ok(false);
+        }
+        machine.add_cycles_no_checking(100)?;
+        let result = machine.registers()[A0]
+            .overflowing_add(&machine.registers()[A1])
+            .overflowing_add(&machine.registers()[A2])
+            .overflowing_add(&machine.registers()[A3])
+            .overflowing_add(&machine.registers()[A4])
+            .overflowing_add(&machine.registers()[A5]);
+        machine.set_register(A0, result);
+        Ok(true)
+    }
+}
+
+#[test]
+pub fn test_outofcycles_in_syscall() {
+    let buffer = fs::read("tests/programs/syscall64").unwrap().into();
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 20);
+    let mut machine = DefaultMachineBuilder::new(core_machine)
+        .instruction_cycle_func(Box::new(|_| 1))
+        .syscall(Box::new(OutOfCyclesSyscall {}))
+        .build();
+    machine
+        .load_program(&buffer, &vec!["syscall".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(machine.cycles(), 108);
+}
