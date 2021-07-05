@@ -9,7 +9,9 @@ pub enum ActionOp1 {
     LogicalNot,
     Clz,
     Ctz,
-    Pcnt,
+    Cpop,
+    Orcb,
+    Rev8,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -23,6 +25,9 @@ pub enum ActionOp2 {
     Bitxor,
     Shl,
     Eq,
+    Clmul,
+    Clmulh,
+    Clmulr,
     Rol,
     Ror,
     Slo,
@@ -282,8 +287,55 @@ impl Register for Value {
         Value::Op1(ActionOp1::Ctz, Rc::new(self.clone()))
     }
 
-    fn pcnt(&self) -> Value {
-        Value::Op1(ActionOp1::Pcnt, Rc::new(self.clone()))
+    fn cpop(&self) -> Value {
+        Value::Op1(ActionOp1::Cpop, Rc::new(self.clone()))
+    }
+
+    fn clmul(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
+            return Value::Imm(imm1.clmul(imm2));
+        }
+        Value::Op2(
+            ActionOp2::Clmul,
+            Rc::new(self.clone()),
+            Rc::new(rhs.clone()),
+        )
+    }
+
+    fn clmulh(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
+            return Value::Imm(imm1.clmulh(imm2));
+        }
+        Value::Op2(
+            ActionOp2::Clmulh,
+            Rc::new(self.clone()),
+            Rc::new(rhs.clone()),
+        )
+    }
+
+    fn clmulr(&self, rhs: &Value) -> Value {
+        if let (Value::Imm(imm1), Value::Imm(imm2)) = (self, rhs) {
+            return Value::Imm(imm1.clmulr(imm2));
+        }
+        Value::Op2(
+            ActionOp2::Clmulr,
+            Rc::new(self.clone()),
+            Rc::new(rhs.clone()),
+        )
+    }
+
+    fn orcb(&self) -> Self {
+        if let Value::Imm(imm1) = self {
+            return Value::Imm(imm1.orcb());
+        }
+        Value::Op1(ActionOp1::Orcb, Rc::new(self.clone()))
+    }
+
+    fn rev8(&self) -> Self {
+        if let Value::Imm(imm1) = self {
+            return Value::Imm(imm1.rev8());
+        }
+        Value::Op1(ActionOp1::Rev8, Rc::new(self.clone()))
     }
 
     fn rol(&self, rhs: &Value) -> Value {
