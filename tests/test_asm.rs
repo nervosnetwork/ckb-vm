@@ -352,4 +352,5 @@ pub fn test_asm_outofcycles_in_syscall() {
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
     assert_eq!(machine.machine.cycles(), 108);
+    assert_eq!(machine.machine.registers()[A0], 39);
 }

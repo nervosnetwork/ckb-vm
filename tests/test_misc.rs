@@ -306,4 +306,5 @@ pub fn test_outofcycles_in_syscall() {
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
     assert_eq!(machine.cycles(), 108);
+    assert_eq!(machine.registers()[A0], 39);
 }
