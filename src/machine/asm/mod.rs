@@ -438,6 +438,7 @@ impl<'a> AsmMachine<'a> {
                 _ => return Err(Error::Asm(result)),
             }
         }
+        debug_assert!(self.machine.cycles() <= self.machine.max_cycles());
         Ok(self.machine.exit_code())
     }
 

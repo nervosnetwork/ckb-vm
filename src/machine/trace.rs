@@ -142,10 +142,19 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
                     .as_ref()
                     .map(|f| f(i))
                     .unwrap_or(0);
-                self.machine.add_cycles(cycles)?;
+                let new_cycles = self
+                    .machine
+                    .cycles()
+                    .checked_add(cycles)
+                    .ok_or(Error::InvalidCycles)?;
+                if new_cycles > self.machine.max_cycles() {
+                    return Err(Error::InvalidCycles);
+                }
+                self.machine.set_cycles(new_cycles);
                 execute(i, self)?;
             }
         }
+        debug_assert!(self.machine.cycles() <= self.machine.max_cycles());
         Ok(self.machine.exit_code())
     }
 }

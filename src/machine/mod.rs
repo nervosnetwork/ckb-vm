@@ -83,18 +83,6 @@ pub trait SupportMachine: CoreMachine {
             .cycles()
             .checked_add(cycles)
             .ok_or(Error::InvalidCycles)?;
-        if new_cycles > self.max_cycles() {
-            return Err(Error::InvalidCycles);
-        }
-        self.set_cycles(new_cycles);
-        Ok(())
-    }
-
-    fn add_cycles_no_checking(&mut self, cycles: u64) -> Result<(), Error> {
-        let new_cycles = self
-            .cycles()
-            .checked_add(cycles)
-            .ok_or(Error::InvalidCycles)?;
         self.set_cycles(new_cycles);
         Ok(())
     }
@@ -571,6 +559,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         while self.running() {
             self.step(&decoder)?;
         }
+        debug_assert!(self.cycles() <= self.max_cycles());
         Ok(self.exit_code())
     }
 
@@ -585,7 +574,14 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             .as_ref()
             .map(|f| f(instruction))
             .unwrap_or(0);
-        self.add_cycles(cycles)?;
+        let new_cycles = self
+            .cycles()
+            .checked_add(cycles)
+            .ok_or(Error::InvalidCycles)?;
+        if new_cycles > self.max_cycles() {
+            return Err(Error::InvalidCycles);
+        }
+        self.set_cycles(new_cycles);
         execute(instruction, self)
     }
 }

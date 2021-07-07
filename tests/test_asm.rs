@@ -324,7 +324,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
         if code.to_i32() != 1111 {
             return Ok(false);
         }
-        machine.add_cycles_no_checking(100)?;
+        machine.add_cycles(100)?;
         let result = machine.registers()[A0]
             .overflowing_add(&machine.registers()[A1])
             .overflowing_add(&machine.registers()[A2])
