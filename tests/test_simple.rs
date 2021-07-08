@@ -87,3 +87,21 @@ pub fn test_simple_loaded_bytes() {
         .unwrap();
     assert_eq!(bytes, 4055);
 }
+
+#[test]
+pub fn test_simple_cycles_overflow() {
+    let buffer = fs::read("tests/programs/simple64").unwrap().into();
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
+    let mut machine =
+        DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
+            .instruction_cycle_func(Box::new(dummy_cycle_func))
+            .build();
+    machine.set_cycles(u64::MAX - 10);
+    machine
+        .load_program(&buffer, &vec!["simple".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::CyclesOverflow);
+}

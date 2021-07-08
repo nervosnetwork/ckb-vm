@@ -354,3 +354,20 @@ pub fn test_asm_outofcycles_in_syscall() {
     assert_eq!(machine.machine.cycles(), 108);
     assert_eq!(machine.machine.registers()[A0], 39);
 }
+
+#[test]
+pub fn test_asm_cycles_overflow() {
+    let buffer = fs::read("tests/programs/simple64").unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
+    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+        .instruction_cycle_func(Box::new(|_| 1))
+        .build();
+    let mut machine = AsmMachine::new(core, None);
+    machine.machine.set_cycles(u64::MAX - 10);
+    machine
+        .load_program(&buffer, &vec!["simple64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::CyclesOverflow);
+}

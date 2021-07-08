@@ -1740,11 +1740,15 @@ int aot_add_cycles(AotContext* context, uint64_t cycles)
   }
   | load_imm rax, cycles
   | add rax, machine->cycles
-  | cmp rax, machine->max_cycles
-  | jna >1
-  ret = aot_exit(context, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED);
+  | jnc >1
+  ret = aot_exit(context, CKB_VM_ASM_RET_CYCLES_OVERFLOW);
   if (ret != DASM_S_OK) { return ret; }
   |1:
+  | cmp rax, machine->max_cycles
+  | jna >2
+  ret = aot_exit(context, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED);
+  if (ret != DASM_S_OK) { return ret; }
+  |2:
   | mov machine->cycles, rax
   return DASM_S_OK;
 }

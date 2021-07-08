@@ -11,9 +11,9 @@ use ckb_vm::{
     Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
     ISA_IMC,
 };
-use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::{fs, u64};
 
 #[test]
 pub fn test_aot_simple64() {
@@ -420,4 +420,25 @@ pub fn test_aot_outofcycles_in_syscall() {
     assert_eq!(result.unwrap_err(), Error::InvalidCycles);
     assert_eq!(machine.machine.cycles(), 108);
     assert_eq!(machine.machine.registers()[A0], 39);
+}
+
+#[test]
+pub fn test_aot_cycles_overflow() {
+    let buffer = fs::read("tests/programs/simple64").unwrap().into();
+    let mut aot_machine =
+        AotCompilingMachine::load(&buffer, Some(Box::new(|_| 1)), ISA_IMC, VERSION1).unwrap();
+    let code = aot_machine.compile().unwrap();
+
+    let mut asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::MAX);
+    asm_core.cycles = u64::MAX - 10;
+    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+        .instruction_cycle_func(Box::new(|_| 1))
+        .build();
+    let mut machine = AsmMachine::new(core, Some(&code));
+    machine
+        .load_program(&buffer, &vec!["simple64".into()])
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::CyclesOverflow);
 }

@@ -364,6 +364,7 @@ ckb_vm_x64_execute:
   je .exit_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
+  jc .exit_cycles_overflow
   cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
@@ -2403,6 +2404,10 @@ ckb_vm_x64_execute:
 .p2align 3
 .exit_max_cycles_exceeded:
   mov $CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cycles_overflow:
+  mov $CKB_VM_ASM_RET_CYCLES_OVERFLOW, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_invalid_permission:
