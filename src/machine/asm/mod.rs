@@ -4,8 +4,8 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::asm::{
-    calculate_slot, Trace, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
-    RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
+    calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
+    RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
     TRACE_ITEM_LENGTH, TRACE_SIZE,
 };
 use ckb_vm_definitions::{
@@ -428,6 +428,7 @@ impl<'a> AsmMachine<'a> {
                 RET_EBREAK => self.machine.ebreak()?,
                 RET_DYNAMIC_JUMP => (),
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
+                RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
                 RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
                 RET_SLOWPATH => {

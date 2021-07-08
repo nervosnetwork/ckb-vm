@@ -82,7 +82,7 @@ pub trait SupportMachine: CoreMachine {
         let new_cycles = self
             .cycles()
             .checked_add(cycles)
-            .ok_or(Error::InvalidCycles)?;
+            .ok_or(Error::CyclesOverflow)?;
         if new_cycles > self.max_cycles() {
             return Err(Error::InvalidCycles);
         }
@@ -94,7 +94,7 @@ pub trait SupportMachine: CoreMachine {
         let new_cycles = self
             .cycles()
             .checked_add(cycles)
-            .ok_or(Error::InvalidCycles)?;
+            .ok_or(Error::CyclesOverflow)?;
         self.set_cycles(new_cycles);
         Ok(())
     }

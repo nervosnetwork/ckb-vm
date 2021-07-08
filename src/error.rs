@@ -11,6 +11,8 @@ pub enum Error {
     OutOfBound,
     #[display(fmt = "max cycles exceeded")]
     InvalidCycles,
+    #[display(fmt = "cycles overflow")]
+    CyclesOverflow,
     #[display(fmt = "invalid instruction {}", "_0")]
     InvalidInstruction(u32),
     #[display(fmt = "invalid syscall {}", "_0")]
