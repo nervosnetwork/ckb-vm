@@ -91,12 +91,20 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
 }
 
 fn check_memory(machine: &mut AsmCoreMachine, page_indices: &(u64, u64)) {
-    let frame = page_indices.0 >> MEMORY_FRAME_PAGE_SHIFTS;
-    let frame_end = page_indices.1 >> MEMORY_FRAME_PAGE_SHIFTS;
-    for i in frame..=frame_end {
-        if machine.frames[i as usize] == 0 {
-            inited_memory(i, machine);
-            machine.frames[i as usize] = 1;
+    if page_indices.0 == page_indices.1 {
+        let frame = page_indices.0 >> MEMORY_FRAME_PAGE_SHIFTS;
+        if machine.frames[frame as usize] == 0 {
+            inited_memory(frame, machine);
+            machine.frames[frame as usize] = 1;
+        }
+    } else {
+        let frame = page_indices.0 >> MEMORY_FRAME_PAGE_SHIFTS;
+        let frame_end = page_indices.1 >> MEMORY_FRAME_PAGE_SHIFTS;
+        for i in frame..=frame_end {
+            if machine.frames[i as usize] == 0 {
+                inited_memory(i, machine);
+                machine.frames[i as usize] = 1;
+            }
         }
     }
 }

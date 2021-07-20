@@ -108,18 +108,29 @@ pub fn check_permission<M: Memory>(
     page_indices: &(u64, u64),
     flag: u8,
 ) -> Result<(), Error> {
-    for page in page_indices.0..=page_indices.1 {
-        let page_flag = memory.fetch_flag(page)?;
+    if page_indices.0 == page_indices.1 {
+        let page_flag = memory.fetch_flag(page_indices.0)?;
         if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
             return Err(Error::InvalidPermission);
+        }
+    } else {
+        for page in page_indices.0..=page_indices.1 {
+            let page_flag = memory.fetch_flag(page)?;
+            if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
+                return Err(Error::InvalidPermission);
+            }
         }
     }
     Ok(())
 }
 
 pub fn set_dirty<M: Memory>(memory: &mut M, page_indices: &(u64, u64)) -> Result<(), Error> {
-    for page in page_indices.0..=page_indices.1 {
-        memory.set_flag(page, FLAG_DIRTY)?
+    if page_indices.0 == page_indices.1 {
+        memory.set_flag(page_indices.0, FLAG_DIRTY)?
+    } else {
+        for page in page_indices.0..=page_indices.1 {
+            memory.set_flag(page, FLAG_DIRTY)?
+        }
     }
     Ok(())
 }
