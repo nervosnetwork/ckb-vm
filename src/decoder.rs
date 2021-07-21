@@ -84,7 +84,12 @@ impl Decoder {
     }
 
     pub fn decode_raw<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
-        let instruction_cache_key = pc as usize % INSTRUCTION_CACHE_SIZE;
+        // since we are using RISCV_MAX_MEMORY as the default key in the instruction cache, have to check out of bound error first
+        if pc as usize >= RISCV_MAX_MEMORY {
+            return Err(Error::OutOfBound);
+        }
+        // according to RISC-V instruction encoding, the lowest bit in PC will always be zero
+        let instruction_cache_key = (pc >> 1) as usize % INSTRUCTION_CACHE_SIZE;
         let cached_instruction = self.instructions_cache[instruction_cache_key];
         if cached_instruction.0 == pc {
             return Ok(cached_instruction.1);
