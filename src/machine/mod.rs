@@ -566,15 +566,18 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         if self.isa() & ISA_MOP != 0 && self.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
-        let decoder = build_decoder::<Inner::REG>(self.isa());
+        let mut decoder = build_decoder::<Inner::REG>(self.isa());
         self.set_running(true);
         while self.running() {
-            self.step(&decoder)?;
+            if self.reset_signal() {
+                decoder.reset_instructions_cache();
+            }
+            self.step(&mut decoder)?;
         }
         Ok(self.exit_code())
     }
 
-    pub fn step(&mut self, decoder: &Decoder) -> Result<(), Error> {
+    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
         let instruction = {
             let pc = self.pc().to_u64();
             let memory = self.memory_mut();
