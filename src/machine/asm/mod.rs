@@ -363,10 +363,11 @@ impl<'a> AsmMachine<'a> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
-        let decoder = build_decoder::<u64>(self.machine.isa());
+        let mut decoder = build_decoder::<u64>(self.machine.isa());
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {
+                decoder.reset_instructions_cache();
                 self.aot_code = None;
             }
             let result = if let Some(aot_code) = &self.aot_code {
@@ -442,7 +443,7 @@ impl<'a> AsmMachine<'a> {
         Ok(self.machine.exit_code())
     }
 
-    pub fn step(&mut self, decoder: &Decoder) -> Result<(), Error> {
+    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
         // Decode only one instruction into a trace
         let pc = *self.machine.pc();
         let slot = calculate_slot(pc);

@@ -200,7 +200,7 @@ impl LabelGatheringMachine {
     }
 
     pub fn gather(&mut self) -> Result<(), Error> {
-        let decoder = build_decoder::<u64>(self.isa());
+        let mut decoder = build_decoder::<u64>(self.isa());
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
             self.pc = Value::from_u64(section_start);
@@ -565,7 +565,7 @@ impl AotCompilingMachine {
     }
 
     pub fn compile(&mut self) -> Result<AotCode, Error> {
-        let decoder = build_decoder::<u64>(self.isa());
+        let mut decoder = build_decoder::<u64>(self.isa());
         let mut instructions = [Instruction::default(); MAXIMUM_INSTRUCTIONS_PER_BLOCK];
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];

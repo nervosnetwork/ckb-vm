@@ -6,14 +6,16 @@ use crate::instructions::{
     InstructionFactory, Itype, R4type, Register, Rtype, Utype,
 };
 use crate::memory::Memory;
-use crate::{Error, ISA_B, ISA_MOP, RISCV_PAGESIZE};
+use crate::{Error, ISA_B, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 
 const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
+const INSTRUCTION_CACHE_SIZE: usize = 4096;
 
-#[derive(Default)]
 pub struct Decoder {
     factories: Vec<InstructionFactory>,
     mop: bool,
+    // use a cache of instructions to avoid decoding the same instruction twice, pc is the key and the instruction is the value
+    instructions_cache: [(u64, u64); INSTRUCTION_CACHE_SIZE],
 }
 
 impl Decoder {
@@ -21,6 +23,7 @@ impl Decoder {
         Decoder {
             factories: vec![],
             mop,
+            instructions_cache: [(RISCV_MAX_MEMORY as u64, 0); INSTRUCTION_CACHE_SIZE],
         }
     }
 
@@ -80,10 +83,21 @@ impl Decoder {
         }
     }
 
-    pub fn decode_raw<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+    pub fn decode_raw<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+        // since we are using RISCV_MAX_MEMORY as the default key in the instruction cache, have to check out of bound error first
+        if pc as usize >= RISCV_MAX_MEMORY {
+            return Err(Error::OutOfBound);
+        }
+        // according to RISC-V instruction encoding, the lowest bit in PC will always be zero
+        let instruction_cache_key = (pc >> 1) as usize % INSTRUCTION_CACHE_SIZE;
+        let cached_instruction = self.instructions_cache[instruction_cache_key];
+        if cached_instruction.0 == pc {
+            return Ok(cached_instruction.1);
+        }
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
             if let Some(instruction) = factory(instruction_bits) {
+                self.instructions_cache[instruction_cache_key] = (pc, instruction);
                 return Ok(instruction);
             }
         }
@@ -97,7 +111,7 @@ impl Decoder {
     // - https://riscv.org/wp-content/uploads/2016/07/Tue1130celio-fusion-finalV2.pdf
     // - https://en.wikichip.org/wiki/macro-operation_fusion#Proposed_fusion_operations
     // - https://carrv.github.io/2017/papers/clark-rv8-carrv2017.pdf
-    pub fn decode_mop<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+    pub fn decode_mop<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         let head_instruction = self.decode_raw(memory, pc)?;
         let head_opcode = extract_opcode(head_instruction);
         match head_opcode {
@@ -523,12 +537,16 @@ impl Decoder {
         }
     }
 
-    pub fn decode<M: Memory>(&self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+    pub fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         if self.mop {
             self.decode_mop(memory, pc)
         } else {
             self.decode_raw(memory, pc)
         }
+    }
+
+    pub fn reset_instructions_cache(&mut self) {
+        self.instructions_cache = [(RISCV_MAX_MEMORY as u64, 0); INSTRUCTION_CACHE_SIZE];
     }
 }
 
