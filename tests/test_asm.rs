@@ -402,10 +402,10 @@ pub fn test_asm_step() {
         .unwrap();
 
     let result = || -> Result<i8, Error> {
-        let decoder = build_decoder::<u64>(ISA_IMC);
+        let mut decoder = build_decoder::<u64>(ISA_IMC);
         machine.machine.set_running(true);
         while machine.machine.running() {
-            machine.step(&decoder)?;
+            machine.step(&mut decoder)?;
         }
         Ok(machine.machine.exit_code())
     }();
