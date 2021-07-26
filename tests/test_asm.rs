@@ -1,6 +1,7 @@
 #![cfg(has_asm)]
 
 use ckb_vm::{
+    decoder::build_decoder,
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
         CoreMachine, VERSION0, VERSION1,
@@ -389,4 +390,26 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
     let result = machine.run();
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::OutOfBound);
+}
+
+pub fn test_asm_step() {
+    let buffer = fs::read("tests/programs/simple64").unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core, None);
+    machine
+        .load_program(&buffer, &vec!["simple64".into()])
+        .unwrap();
+
+    let result = || -> Result<i8, Error> {
+        let decoder = build_decoder::<u64>(ISA_IMC);
+        machine.machine.set_running(true);
+        while machine.machine.running() {
+            machine.step(&decoder)?;
+        }
+        Ok(machine.machine.exit_code())
+    }();
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
 }
