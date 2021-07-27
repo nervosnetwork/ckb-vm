@@ -3,14 +3,15 @@ use std::mem::transmute;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
-use ckb_vm_definitions::asm::{
-    calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
-    RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-    TRACE_ITEM_LENGTH, TRACE_SIZE,
-};
 use ckb_vm_definitions::{
-    instructions::OP_CUSTOM_TRACE_END, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER,
+    asm::{
+        calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
+        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
+        TRACE_ITEM_LENGTH, TRACE_SIZE,
+    },
+    instructions::OP_CUSTOM_TRACE_END,
+    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -23,8 +24,8 @@ use crate::{
     },
     machine::{aot::AotCode, VERSION0},
     memory::{
-        check_permission, fill_page_data, get_page_indices, memset, round_page_down, round_page_up,
-        set_dirty, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
+        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
+        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
@@ -90,15 +91,105 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
     }
 }
 
-fn check_memory(machine: &mut AsmCoreMachine, page_indices: &(u64, u64)) {
-    let frame = page_indices.0 >> MEMORY_FRAME_PAGE_SHIFTS;
-    let frame_end = page_indices.1 >> MEMORY_FRAME_PAGE_SHIFTS;
-    for i in frame..=frame_end {
-        if machine.frames[i as usize] == 0 {
-            inited_memory(i, machine);
-            machine.frames[i as usize] = 1;
+fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
+    let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
+    if machine.frames[frame as usize] == 0 {
+        inited_memory(frame, machine);
+        machine.frames[frame as usize] = 1;
+    }
+}
+
+fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<(), Error> {
+    let page_flag = memory.fetch_flag(page)?;
+    if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
+        return Err(Error::InvalidPermission);
+    }
+    Ok(())
+}
+
+// check whether a memory address is writable or not and mark it as dirty, `size` should be 1, 2, 4 or 8
+fn check_memory_writable(
+    machine: &mut Box<AsmCoreMachine>,
+    addr: u64,
+    size: usize,
+) -> Result<(), Error> {
+    debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
+    let page = addr >> RISCV_PAGE_SHIFTS;
+    if page as usize >= RISCV_PAGESIZE {
+        return Err(Error::OutOfBound);
+    }
+    check_permission(machine, page, FLAG_WRITABLE)?;
+    check_memory(machine, page);
+    machine.set_flag(page, FLAG_DIRTY)?;
+
+    // check next page if neccessary
+    let page_offset = addr as usize % RISCV_PAGESIZE;
+    if page_offset + size > RISCV_PAGESIZE {
+        let page = page + 1;
+        if page as usize >= RISCV_PAGESIZE {
+            return Err(Error::OutOfBound);
+        } else {
+            check_permission(machine, page, FLAG_WRITABLE)?;
+            check_memory(machine, page);
+            machine.set_flag(page, FLAG_DIRTY)?
         }
     }
+    Ok(())
+}
+
+// check whether a memory address is executable, `size` should be 2 or 4
+fn check_memory_executable(
+    machine: &mut Box<AsmCoreMachine>,
+    addr: u64,
+    size: usize,
+) -> Result<(), Error> {
+    debug_assert!(size == 2 || size == 4);
+
+    let page = addr >> RISCV_PAGE_SHIFTS;
+    if page as usize >= RISCV_PAGESIZE {
+        return Err(Error::OutOfBound);
+    }
+    check_permission(machine, page, FLAG_EXECUTABLE)?;
+    check_memory(machine, page);
+
+    // check next page if neccessary
+    let page_offset = addr as usize % RISCV_PAGESIZE;
+    if page_offset + size > RISCV_PAGESIZE {
+        let page = page + 1;
+        if page as usize >= RISCV_PAGESIZE {
+            return Err(Error::OutOfBound);
+        } else {
+            check_permission(machine, page, FLAG_EXECUTABLE)?;
+            check_memory(machine, page);
+        }
+    }
+    Ok(())
+}
+
+// check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
+fn check_memory_inited(
+    machine: &mut Box<AsmCoreMachine>,
+    addr: u64,
+    size: usize,
+) -> Result<(), Error> {
+    debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
+    let page = addr >> RISCV_PAGE_SHIFTS;
+    if page as usize >= RISCV_PAGESIZE {
+        return Err(Error::OutOfBound);
+    }
+    check_memory(machine, page);
+
+    // check next page if neccessary
+    let page_offset = addr as usize % RISCV_PAGESIZE;
+    if page_offset + size > RISCV_PAGESIZE {
+        let page = page + 1;
+        if page as usize >= RISCV_PAGESIZE {
+            return Err(Error::OutOfBound);
+        } else {
+            check_memory(machine, page);
+        }
+    }
+    Ok(())
 }
 
 impl Memory for Box<AsmCoreMachine> {
@@ -174,9 +265,11 @@ impl Memory for Box<AsmCoreMachine> {
             return Ok(());
         }
         let page_indices = get_page_indices(addr, value.len() as u64)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        check_memory(self, &page_indices);
-        set_dirty(self, &page_indices)?;
+        for page in page_indices.0..=page_indices.1 {
+            check_permission(self, page, FLAG_WRITABLE)?;
+            check_memory(self, page);
+            self.set_flag(page, FLAG_DIRTY)?;
+        }
         let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
         slice.copy_from_slice(value);
         Ok(())
@@ -187,9 +280,11 @@ impl Memory for Box<AsmCoreMachine> {
             return Ok(());
         }
         let page_indices = get_page_indices(addr, size)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        check_memory(self, &page_indices);
-        set_dirty(self, &page_indices)?;
+        for page in page_indices.0..=page_indices.1 {
+            check_permission(self, page, FLAG_WRITABLE)?;
+            check_memory(self, page);
+            self.set_flag(page, FLAG_DIRTY)?;
+        }
         memset(
             &mut self.memory[addr as usize..(addr + size) as usize],
             value,
@@ -198,28 +293,28 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
-        let page_indices = get_page_indices(addr, 2)?;
-        check_permission(self, &page_indices, FLAG_EXECUTABLE)?;
-        self.load16(&(addr)).map(|v| v as u16)
+        check_memory_executable(self, addr, 2)?;
+        Ok(LittleEndian::read_u16(
+            &self.memory[addr as usize..addr as usize + 2],
+        ))
     }
 
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
-        let page_indices = get_page_indices(addr, 4)?;
-        check_permission(self, &page_indices, FLAG_EXECUTABLE)?;
-        self.load32(&(addr)).map(|v| v as u32)
+        check_memory_executable(self, addr, 4)?;
+        Ok(LittleEndian::read_u32(
+            &self.memory[addr as usize..addr as usize + 4],
+        ))
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 1)?;
-        check_memory(self, &page_indices);
+        check_memory_inited(self, addr, 1)?;
         Ok(u64::from(self.memory[addr as usize]))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 2)?;
-        check_memory(self, &page_indices);
+        check_memory_inited(self, addr, 2)?;
         Ok(u64::from(LittleEndian::read_u16(
             &self.memory[addr as usize..addr as usize + 2],
         )))
@@ -227,8 +322,7 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 4)?;
-        check_memory(self, &page_indices);
+        check_memory_inited(self, addr, 4)?;
         Ok(u64::from(LittleEndian::read_u32(
             &self.memory[addr as usize..addr as usize + 4],
         )))
@@ -236,8 +330,7 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 8)?;
-        check_memory(self, &page_indices);
+        check_memory_inited(self, addr, 8)?;
         Ok(LittleEndian::read_u64(
             &self.memory[addr as usize..addr as usize + 8],
         ))
@@ -245,20 +338,14 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 1)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        check_memory(self, &page_indices);
-        set_dirty(self, &page_indices)?;
+        check_memory_writable(self, addr, 1)?;
         self.memory[addr as usize] = (*value) as u8;
         Ok(())
     }
 
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 2)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        check_memory(self, &page_indices);
-        set_dirty(self, &page_indices)?;
+        check_memory_writable(self, addr, 2)?;
         LittleEndian::write_u16(
             &mut self.memory[addr as usize..(addr + 2) as usize],
             *value as u16,
@@ -268,10 +355,7 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 4)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        check_memory(self, &page_indices);
-        set_dirty(self, &page_indices)?;
+        check_memory_writable(self, addr, 4)?;
         LittleEndian::write_u32(
             &mut self.memory[addr as usize..(addr + 4) as usize],
             *value as u32,
@@ -281,10 +365,7 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
-        let page_indices = get_page_indices(addr, 8)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        check_memory(self, &page_indices);
-        set_dirty(self, &page_indices)?;
+        check_memory_writable(self, addr, 8)?;
         LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
         Ok(())
     }
