@@ -448,9 +448,8 @@ impl<'a> AsmMachine<'a> {
         let pc = *self.machine.pc();
         let slot = calculate_slot(pc);
         let mut trace = Trace::default();
-        let mut instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+        let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
-        instruction |= u64::from(len) << 24;
         trace.instructions[0] = instruction;
         trace.cycles += self
             .machine
