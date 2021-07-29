@@ -29,10 +29,10 @@ pub struct Trace {
     pub address: u64,
     pub length: u8,
     pub cycles: u64,
-    pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
+    pub instructions: [Instruction; TRACE_ITEM_LENGTH + 2],
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code
-    pub thread: [u64; TRACE_ITEM_LENGTH + 1],
+    pub thread: [u64; TRACE_ITEM_LENGTH + 2],
 }
 
 #[repr(C)]

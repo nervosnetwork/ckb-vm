@@ -158,7 +158,8 @@ pub const OP_LD_SIGN_EXTENDED_32_CONSTANT: InstructionOpcode = 0x75;
 pub const OP_ADC: InstructionOpcode = 0x76;
 pub const OP_SBB: InstructionOpcode = 0x77;
 pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x78;
-pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x79;
+pub const OP_CUSTOM_PPROF: InstructionOpcode = 0x79;
+pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x7a;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
@@ -288,6 +289,7 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize
     "ADC",
     "SBB",
     "CUSTOM_LOAD_IMM",
+    "CUSTOM_PPROF",
     "CUSTOM_TRACE_END",
 ];
 

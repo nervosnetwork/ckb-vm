@@ -121,10 +121,10 @@ impl PProfLogger {
         let slot = calculate_slot(self.pc);
         let trace = &machine.machine.inner.traces[slot];
 
-        let mut end_index = trace.instructions.len() - 2;
+        let mut end_index = trace.instructions.len() - 3;
         for (i, e) in trace.thread.iter().enumerate() {
             if *e == 0 {
-                end_index = i.wrapping_sub(2);
+                end_index = i.wrapping_sub(3);
                 if end_index > i {
                     return;
                 }

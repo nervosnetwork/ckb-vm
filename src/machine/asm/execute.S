@@ -358,15 +358,9 @@ ckb_vm_x64_execute:
   /* The order is important for next 2 lines */
   mov ARG2, RAW_MACHINE
   mov ARG1, MACHINE
-  jmp .prepare_trace_inner
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
 .prepare_trace:
-  PREPCALL
-  movq RAW_MACHINE, ARG1
-  CALL_PPROF_SECTION
-  POSTCALL
-.prepare_trace_inner:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $5, %eax
@@ -496,7 +490,7 @@ ckb_vm_x64_execute:
   subq FLAG, RS1
   addq IMMEDIATE, RS1
   movq RS1, PC_ADDRESS
-  jmp .prepare_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_DIV:
   DECODE_R
@@ -618,7 +612,7 @@ ckb_vm_x64_execute:
   subq FLAG, RS1
   addq IMMEDIATE, RS1
   movq RS1, PC_ADDRESS
-  jmp .prepare_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_JALR:
   mov VERSION_ADDRESS, TEMP1d
@@ -634,7 +628,7 @@ ckb_vm_x64_execute:
   addq IMMEDIATE, TEMP1
   andq $-2, TEMP1
   movq TEMP1, PC_ADDRESS
-  jmp .prepare_trace
+  NEXT_INST
 /* RS2r is used as a temporary register here */
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_JALR_VERSION1:
@@ -645,7 +639,7 @@ ckb_vm_x64_execute:
   addq IMMEDIATE, RS2r
   andq $-2, RS2r
   movq RS2r, PC_ADDRESS
-  jmp .prepare_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LB:
   mov VERSION_ADDRESS, TEMP1d
@@ -2249,7 +2243,7 @@ ckb_vm_x64_execute:
   movq TEMP1, RA_ADDRESS
   andq $-2, RS2r
   movq RS2r, PC_ADDRESS
-  jmp .prepare_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_FAR_JUMP_REL:
   DECODE_U
@@ -2262,7 +2256,7 @@ ckb_vm_x64_execute:
   movq TEMP1, RA_ADDRESS
   andq $-2, RS2r
   movq RS2r, PC_ADDRESS
-  jmp .prepare_trace
+  NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_WIDE_MUL:
   DECODE_R4
@@ -2413,6 +2407,13 @@ ckb_vm_x64_execute:
   orq TEMP2, TEMP1
   WRITE_RS1(TEMP1)
   WRITE_RD(%rcx)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_CUSTOM_PPROF:
+  PREPCALL
+  movq RAW_MACHINE, ARG1
+  CALL_PPROF_SECTION
+  POSTCALL
   NEXT_INST
 .p2align 3
 .exit_out_of_bound:

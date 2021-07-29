@@ -9,8 +9,8 @@ use ckb_vm_definitions::asm::{
     TRACE_ITEM_LENGTH, TRACE_SIZE,
 };
 use ckb_vm_definitions::{
-    instructions::OP_CUSTOM_TRACE_END, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER,
+    instructions::{OP_CUSTOM_PPROF, OP_CUSTOM_TRACE_END},
+    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -97,15 +97,9 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
 pub extern "C" fn pprof_section(n: u64) {
     unsafe {
         let asm_machine = transmute::<u64, *mut AsmMachine>(n);
-        // let asm_machine = &mut *asm_machine;
         if let Some(pprof_logger) = &mut &mut (*asm_machine).pprof_logger {
             pprof_logger.accept(&mut (*asm_machine))
         }
-        // if let Some(pprof_loger) = asm_machine
-        // let pprof_logger_opt = &(*asm_machine).pprof_logger;
-        // if let Some(pprof_logger) = pprof_logger_opt {
-        //     pprof_logger.accept();
-        // }
     }
 }
 
@@ -453,6 +447,13 @@ impl<'a> AsmMachine<'a> {
                             break;
                         }
                     }
+                    trace.instructions[i] = blank_instruction(OP_CUSTOM_PPROF);
+                    trace.thread[i] = unsafe {
+                        u64::from(
+                            *(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_PPROF as isize),
+                        ) + (ckb_vm_asm_labels as *const u32 as u64)
+                    };
+                    i += 1;
                     trace.instructions[i] = blank_instruction(OP_CUSTOM_TRACE_END);
                     trace.thread[i] = unsafe {
                         u64::from(
