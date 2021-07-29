@@ -15,6 +15,9 @@ use ckb_vm_definitions::{
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
 
+pub mod pprof;
+use pprof::PProfLogger;
+
 use crate::{
     decoder::{build_decoder, Decoder},
     instructions::{
@@ -87,6 +90,22 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
         machine.chaos_seed = gen.next_u32();
     } else {
         memset(&mut machine.memory[addr_from..addr_to], 0);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn pprof_section(n: u64) {
+    unsafe {
+        let asm_machine = transmute::<u64, *mut AsmMachine>(n);
+        // let asm_machine = &mut *asm_machine;
+        if let Some(pprof_logger) = &mut &mut (*asm_machine).pprof_logger {
+            pprof_logger.accept(&mut (*asm_machine))
+        }
+        // if let Some(pprof_loger) = asm_machine
+        // let pprof_logger_opt = &(*asm_machine).pprof_logger;
+        // if let Some(pprof_logger) = pprof_logger_opt {
+        //     pprof_logger.accept();
+        // }
     }
 }
 
@@ -334,10 +353,11 @@ impl SupportMachine for Box<AsmCoreMachine> {
 pub struct AsmMachine<'a> {
     pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
     pub aot_code: Option<&'a AotCode>,
+    pub pprof_logger: Option<PProfLogger>,
 }
 
 extern "C" {
-    fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
+    fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, n: u64) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
     fn ckb_vm_asm_labels();
@@ -348,7 +368,11 @@ impl<'a> AsmMachine<'a> {
         machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
         aot_code: Option<&'a AotCode>,
     ) -> Self {
-        Self { machine, aot_code }
+        Self {
+            machine,
+            aot_code,
+            pprof_logger: None,
+        }
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -356,7 +380,11 @@ impl<'a> AsmMachine<'a> {
     }
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        self.machine.load_program(program, args)
+        let mut pprof_logger = PProfLogger::from_data(program).or(Err(Error::ParseError))?;
+        let r = self.machine.load_program(program, args);
+        pprof_logger.pc = *self.machine.pc();
+        self.pprof_logger = Some(pprof_logger);
+        r
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
@@ -379,10 +407,20 @@ impl<'a> AsmMachine<'a> {
                     };
                     f(&mut (**self.machine.inner_mut()), offset_address)
                 } else {
-                    unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                    unsafe {
+                        ckb_vm_x64_execute(
+                            &mut (**self.machine.inner_mut()),
+                            self as *const AsmMachine as u64,
+                        )
+                    }
                 }
             } else {
-                unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                unsafe {
+                    ckb_vm_x64_execute(
+                        &mut (**self.machine.inner_mut()),
+                        self as *const AsmMachine as u64,
+                    )
+                }
             };
             match result {
                 RET_DECODE_TRACE => {
@@ -471,7 +509,12 @@ impl<'a> AsmMachine<'a> {
         trace.length = len;
         self.machine.inner_mut().traces[slot] = trace;
 
-        let result = unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) };
+        let result = unsafe {
+            ckb_vm_x64_execute(
+                &mut (**self.machine.inner_mut()),
+                self as *const AsmMachine as u64,
+            )
+        };
         match result {
             RET_DECODE_TRACE => (),
             RET_ECALL => self.machine.ecall()?,

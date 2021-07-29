@@ -29,6 +29,7 @@
   push %r8; \
   push %r9; \
   push %r10; \
+  push %r13; \
   push %rbp; \
   movq %rsp, %rbp; \
   andq $-16, %rsp; \
@@ -37,6 +38,7 @@
   add $32, %rsp; \
   movq %rbp, %rsp; \
   pop %rbp; \
+  pop %r13; \
   pop %r10; \
   pop %r9; \
   pop %r8; \
@@ -55,12 +57,14 @@
   push %r8; \
   push %r9; \
   push %r10; \
+  push %r13; \
   push %rbp; \
   movq %rsp, %rbp; \
   andq $-16, %rsp
 #define POSTCALL \
   movq %rbp, %rsp; \
   pop %rbp; \
+  pop %r13; \
   pop %r10; \
   pop %r9; \
   pop %r8; \
@@ -75,6 +79,7 @@
 #define ARG_RETd %eax
 
 #define MACHINE %rsi
+#define RAW_MACHINE %r13
 #define TRACE %rbx
 
 /*
@@ -176,10 +181,13 @@
 
 #ifdef __APPLE__
 #define CALL_INITED_MEMORY call _inited_memory
+#define CALL_PPROF_SECTION call _pprof_section
 #elif defined IS_WINDOWS
 #define CALL_INITED_MEMORY call inited_memory
+#define CALL_PPROF_SECTION call pprof_section
 #else
 #define CALL_INITED_MEMORY call inited_memory@plt
+#define CALL_PPROF_SECTION call pprof_section@plt
 #endif
 
 #define CHECK_READ_BOUND_VERSION1(length) \
@@ -346,10 +354,19 @@ ckb_vm_x64_execute:
   push %rbp
   push %rbx
   push %r12
+  push %r13
+  /* The order is important for next 2 lines */
+  mov ARG2, RAW_MACHINE
   mov ARG1, MACHINE
+  jmp .prepare_trace_inner
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
 .prepare_trace:
+  PREPCALL
+  movq RAW_MACHINE, ARG1
+  CALL_PPROF_SECTION
+  POSTCALL
+.prepare_trace_inner:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $5, %eax
@@ -2428,6 +2445,7 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_DECODE_TRACE, ARG_RETd
   jmp .exit
 .exit:
+  pop %r13
   pop %r12
   pop %rbx
   pop %rbp
