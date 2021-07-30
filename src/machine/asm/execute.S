@@ -181,13 +181,13 @@
 
 #ifdef __APPLE__
 #define CALL_INITED_MEMORY call _inited_memory
-#define CALL_PPROF_SECTION call _pprof_section
+#define CALL_PPROF_PROFILE call _pprof_profile
 #elif defined IS_WINDOWS
 #define CALL_INITED_MEMORY call inited_memory
-#define CALL_PPROF_SECTION call pprof_section
+#define CALL_PPROF_PROFILE call pprof_profile
 #else
 #define CALL_INITED_MEMORY call inited_memory@plt
-#define CALL_PPROF_SECTION call pprof_section@plt
+#define CALL_PPROF_PROFILE call pprof_profile@plt
 #endif
 
 #define CHECK_READ_BOUND_VERSION1(length) \
@@ -2412,7 +2412,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_CUSTOM_PPROF:
   PREPCALL
   movq RAW_MACHINE, ARG1
-  CALL_PPROF_SECTION
+  CALL_PPROF_PROFILE
   POSTCALL
   NEXT_INST
 .p2align 3

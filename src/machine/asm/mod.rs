@@ -94,11 +94,11 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
 }
 
 #[no_mangle]
-pub extern "C" fn pprof_section(n: u64) {
+pub extern "C" fn pprof_profile(n: u64) {
     unsafe {
         let asm_machine = transmute::<u64, *mut AsmMachine>(n);
         if let Some(pprof_logger) = &mut &mut (*asm_machine).pprof_logger {
-            pprof_logger.accept(&mut (*asm_machine))
+            pprof_logger.take(&mut (*asm_machine))
         }
     }
 }
@@ -347,6 +347,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
 pub struct AsmMachine<'a> {
     pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
     pub aot_code: Option<&'a AotCode>,
+    pub pprof: bool,
     pub pprof_logger: Option<PProfLogger>,
 }
 
@@ -365,8 +366,13 @@ impl<'a> AsmMachine<'a> {
         Self {
             machine,
             aot_code,
+            pprof: false,
             pprof_logger: None,
         }
+    }
+
+    pub fn set_pprof(&mut self) {
+        self.pprof = true;
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -374,10 +380,12 @@ impl<'a> AsmMachine<'a> {
     }
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        let mut pprof_logger = PProfLogger::from_data(program).or(Err(Error::ParseError))?;
         let r = self.machine.load_program(program, args);
-        pprof_logger.pc = *self.machine.pc();
-        self.pprof_logger = Some(pprof_logger);
+        if self.pprof {
+            let mut pprof_logger = PProfLogger::from_data(program).or(Err(Error::ParseError))?;
+            pprof_logger.pc = *self.machine.pc();
+            self.pprof_logger = Some(pprof_logger);
+        }
         r
     }
 
@@ -447,13 +455,15 @@ impl<'a> AsmMachine<'a> {
                             break;
                         }
                     }
-                    trace.instructions[i] = blank_instruction(OP_CUSTOM_PPROF);
-                    trace.thread[i] = unsafe {
-                        u64::from(
-                            *(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_PPROF as isize),
-                        ) + (ckb_vm_asm_labels as *const u32 as u64)
-                    };
-                    i += 1;
+                    if self.pprof {
+                        trace.instructions[i] = blank_instruction(OP_CUSTOM_PPROF);
+                        trace.thread[i] = unsafe {
+                            u64::from(
+                                *(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_PPROF as isize),
+                            ) + (ckb_vm_asm_labels as *const u32 as u64)
+                        };
+                        i += 1;
+                    }
                     trace.instructions[i] = blank_instruction(OP_CUSTOM_TRACE_END);
                     trace.thread[i] = unsafe {
                         u64::from(
@@ -464,7 +474,14 @@ impl<'a> AsmMachine<'a> {
                     trace.length = (current_pc - pc) as u8;
                     self.machine.inner_mut().traces[slot] = trace;
                 }
-                RET_ECALL => self.machine.ecall()?,
+                RET_ECALL => {
+                    // Since ecall will directly exit the asm execution without executing the
+                    // pprof instruction, we need to manually call pprof_profile here.
+                    if self.pprof {
+                        pprof_profile(self as *const AsmMachine as u64);
+                    }
+                    self.machine.ecall()?
+                }
                 RET_EBREAK => self.machine.ebreak()?,
                 RET_DYNAMIC_JUMP => (),
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),

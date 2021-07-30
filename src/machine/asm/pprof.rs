@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::instructions::{extract_opcode, Utype};
 use crate::machine::asm::AsmMachine;
@@ -52,6 +53,8 @@ pub struct PProfRecordTreeNode {
     parent: Option<Rc<RefCell<PProfRecordTreeNode>>>,
     childs: Vec<Rc<RefCell<PProfRecordTreeNode>>>,
     cycles: u64,
+    tictoc: u128,
+    tictoc_starts: u128,
 }
 
 impl PProfRecordTreeNode {
@@ -62,17 +65,33 @@ impl PProfRecordTreeNode {
             parent: None,
             childs: vec![],
             cycles: 0,
+            tictoc: 0,
+            tictoc_starts: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_micros(),
         }
     }
 
-    pub fn display_flamegraph(&self, prefix: &str, writer: &mut impl std::io::Write) {
+    pub fn display_flamegraph_cycles(&self, prefix: &str, writer: &mut impl std::io::Write) {
         let prefix_name = prefix.to_owned() + self.name.as_str();
         writer
             .write_all(format!("{} {}\n", prefix_name, self.cycles).as_bytes())
             .unwrap();
         for e in &self.childs {
             e.borrow()
-                .display_flamegraph(&(prefix_name.as_str().to_owned() + "; "), writer);
+                .display_flamegraph_cycles(&(prefix_name.as_str().to_owned() + "; "), writer);
+        }
+    }
+
+    pub fn display_flamegraph_tictoc(&self, prefix: &str, writer: &mut impl std::io::Write) {
+        let prefix_name = prefix.to_owned() + self.name.as_str();
+        writer
+            .write_all(format!("{} {}\n", prefix_name, self.tictoc).as_bytes())
+            .unwrap();
+        for e in &self.childs {
+            e.borrow()
+                .display_flamegraph_tictoc(&(prefix_name.as_str().to_owned() + "; "), writer);
         }
     }
 }
@@ -117,7 +136,14 @@ impl PProfLogger {
 }
 
 impl PProfLogger {
-    pub fn accept(&mut self, machine: &mut AsmMachine) {
+    pub fn take(&mut self, machine: &mut AsmMachine) {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_micros();
+        let ela = now - self.tree_node.borrow().tictoc_starts;
+        self.tree_node.borrow_mut().tictoc += ela;
+
         let slot = calculate_slot(self.pc);
         let trace = &machine.machine.inner.traces[slot];
 
@@ -147,6 +173,8 @@ impl PProfLogger {
                 parent: Some(s.tree_node.clone()),
                 childs: vec![],
                 cycles: 0,
+                tictoc: 0,
+                tictoc_starts: 0,
             }));
             s.tree_node.borrow_mut().childs.push(chd.clone());
             s.ra_dict.insert(link, s.tree_node.clone());
@@ -191,5 +219,9 @@ impl PProfLogger {
             }
         }
         self.pc = *machine.machine.pc();
+        self.tree_node.borrow_mut().tictoc_starts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_micros();
     }
 }
