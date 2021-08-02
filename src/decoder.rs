@@ -14,15 +14,17 @@ const INSTRUCTION_CACHE_SIZE: usize = 4096;
 pub struct Decoder {
     factories: Vec<InstructionFactory>,
     mop: bool,
+    version: u32,
     // use a cache of instructions to avoid decoding the same instruction twice, pc is the key and the instruction is the value
     instructions_cache: [(u64, u64); INSTRUCTION_CACHE_SIZE],
 }
 
 impl Decoder {
-    pub fn new(mop: bool) -> Decoder {
+    pub fn new(mop: bool, version: u32) -> Decoder {
         Decoder {
             factories: vec![],
             mop,
+            version,
             instructions_cache: [(RISCV_MAX_MEMORY as u64, 0); INSTRUCTION_CACHE_SIZE],
         }
     }
@@ -96,7 +98,7 @@ impl Decoder {
         }
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
-            if let Some(instruction) = factory(instruction_bits) {
+            if let Some(instruction) = factory(instruction_bits, self.version) {
                 self.instructions_cache[instruction_cache_key] = (pc, instruction);
                 return Ok(instruction);
             }
@@ -550,8 +552,8 @@ impl Decoder {
     }
 }
 
-pub fn build_decoder<R: Register>(isa: u8) -> Decoder {
-    let mut decoder = Decoder::new(isa & ISA_MOP != 0);
+pub fn build_decoder<R: Register>(isa: u8, version: u32) -> Decoder {
+    let mut decoder = Decoder::new(isa & ISA_MOP != 0, version);
     decoder.add_instruction_factory(rvc::factory::<R>);
     decoder.add_instruction_factory(i::factory::<R>);
     decoder.add_instruction_factory(m::factory::<R>);

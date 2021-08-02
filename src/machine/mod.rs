@@ -566,7 +566,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         if self.isa() & ISA_MOP != 0 && self.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
-        let mut decoder = build_decoder::<Inner::REG>(self.isa());
+        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.set_running(true);
         while self.running() {
             if self.reset_signal() {

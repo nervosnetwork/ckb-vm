@@ -25,7 +25,7 @@ pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
     (((i >> 8) & 0xff00) | (i & 0x00ff)) as u16
 }
 
-pub type InstructionFactory = fn(instruction_bits: u32) -> Option<Instruction>;
+pub type InstructionFactory = fn(instruction_bits: u32, version: u32) -> Option<Instruction>;
 
 // Blank instructions need no register indices nor immediates, they only have opcode
 // and module bit set.

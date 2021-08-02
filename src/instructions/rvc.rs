@@ -90,7 +90,7 @@ fn b_immediate(instruction_bits: u32) -> i32 {
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
@@ -178,15 +178,26 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         0b_000_00000000000_01 => {
             let nzimm = immediate(instruction_bits);
             let rd = rd(instruction_bits);
-            if nzimm != 0 && rd != 0 {
+            if rd != 0 {
                 // C.ADDI
-                Some(Itype::new_s(insts::OP_ADDI, rd, rd, nzimm).0)
-            } else if nzimm == 0 && rd == 0 {
-                // C.NOP
-                Some(nop())
+                if nzimm != 0 {
+                    Some(Itype::new_s(insts::OP_ADDI, rd, rd, nzimm).0)
+                } else if version >= 1 {
+                    // HINTs
+                    Some(nop())
+                } else {
+                    None
+                }
             } else {
-                // Invalid instruction
-                None
+                // C.NOP
+                if nzimm == 0 {
+                    Some(nop())
+                } else if version >= 1 {
+                    // HINTs
+                    Some(nop())
+                } else {
+                    None
+                }
             }
         }
         0b_001_00000000000_01 => {
@@ -208,6 +219,9 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
             if rd != 0 {
                 // C.LI
                 Some(Itype::new_s(insts::OP_ADDI, rd, 0, immediate(instruction_bits)).0)
+            } else if version >= 1 {
+                // HINTs
+                Some(nop())
             } else {
                 None
             }
@@ -232,11 +246,16 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                         )
                         .0,
                     )
-                } else if rd != 0 {
-                    // C.LUI
-                    Some(Utype::new_s(insts::OP_LUI, rd, imm).0)
                 } else {
-                    None
+                    // C.LUI
+                    if rd != 0 {
+                        Some(Utype::new_s(insts::OP_LUI, rd, imm).0)
+                    } else if version >= 1 {
+                        // HINTs
+                        Some(nop())
+                    } else {
+                        None
+                    }
                 }
             } else {
                 None
@@ -365,15 +384,14 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
         0b_000_00000000000_10 => {
             let uimm = uimmediate(instruction_bits);
             let rd = rd(instruction_bits);
-            if rd == 0 {
-                // Reserved
-                None
-            } else if uimm != 0 {
+            if rd != 0 && uimm != 0 {
                 // C.SLLI
                 Some(Itype::new(insts::OP_SLLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0)
-            } else {
-                // C.SLLI64
+            } else if version >= 1 {
+                // HINTs
                 Some(nop())
+            } else {
+                None
             }
         }
         0b_010_00000000000_10 => {
@@ -405,28 +423,45 @@ pub fn factory<R: Register>(instruction_bits: u32) -> Option<Instruction> {
                 0b_0_00000_00000_00 => {
                     let rd = rd(instruction_bits);
                     let rs2 = c_rs2(instruction_bits);
-                    if rd == 0 {
-                        None
-                    } else if rs2 == 0 {
-                        // C.JR
-                        Some(Itype::new_s(insts::OP_JALR, 0, rd, 0).0)
+                    if rs2 == 0 {
+                        if rd != 0 {
+                            // C.JR
+                            Some(Itype::new_s(insts::OP_JALR, 0, rd, 0).0)
+                        } else {
+                            // Reserved
+                            None
+                        }
                     } else {
-                        // C.MV
-                        Some(Rtype::new(insts::OP_ADD, rd, 0, rs2).0)
+                        if rd != 0 {
+                            // C.MV
+                            Some(Rtype::new(insts::OP_ADD, rd, 0, rs2).0)
+                        } else if version >= 1 {
+                            // HINTs
+                            Some(nop())
+                        } else {
+                            None
+                        }
                     }
                 }
                 0b_1_00000_00000_00 => {
                     let rd = rd(instruction_bits);
                     let rs2 = c_rs2(instruction_bits);
                     match (rd, rs2) {
-                        // C.BREAK
+                        // C.EBREAK
                         (0, 0) => Some(blank_instruction(insts::OP_EBREAK)),
                         // C.JALR
                         (rs1, 0) => Some(Itype::new_s(insts::OP_JALR, 1, rs1, 0).0),
                         // C.ADD
-                        (rd, rs2) if rd != 0 => Some(Rtype::new(insts::OP_ADD, rd, rd, rs2).0),
-                        // Invalid instruction
-                        _ => None,
+                        (rd, rs2) => {
+                            if rd != 0 {
+                                Some(Rtype::new(insts::OP_ADD, rd, rd, rs2).0)
+                            } else if version >= 1 {
+                                // HINTs
+                                Some(nop())
+                            } else {
+                                None
+                            }
+                        }
                     }
                 }
                 _ => unreachable!(),
