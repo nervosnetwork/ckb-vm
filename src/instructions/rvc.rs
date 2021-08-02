@@ -190,6 +190,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                 }
             } else {
                 // C.NOP
+                #[allow(clippy::if_same_then_else)]
                 if nzimm == 0 {
                     Some(nop())
                 } else if version >= 1 {
