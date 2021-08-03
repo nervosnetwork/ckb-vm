@@ -444,7 +444,7 @@ impl<'a> AsmMachine<'a> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
-        let mut decoder = build_decoder::<u64>(self.machine.isa());
+        let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {

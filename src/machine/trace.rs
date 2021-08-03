@@ -102,7 +102,7 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
-        let mut decoder = build_decoder::<Inner::REG>(self.isa());
+        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
         // to tweak the code here if we choose to use a larger trace size or

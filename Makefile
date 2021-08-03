@@ -22,6 +22,7 @@ fmt:
 clippy_rule = -D warnings \
 	-D clippy::clone_on_ref_ptr \
 	-D clippy::enum_glob_use \
+	-A clippy::collapsible-else-if \
 	-A clippy::upper_case_acronyms \
 	-A clippy::unusual_byte_groupings \
 	-A clippy::inconsistent_digit_grouping \

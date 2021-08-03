@@ -402,7 +402,7 @@ pub fn test_asm_step() {
         .unwrap();
 
     let result = || -> Result<i8, Error> {
-        let mut decoder = build_decoder::<u64>(ISA_IMC);
+        let mut decoder = build_decoder::<u64>(ISA_IMC, VERSION0);
         machine.machine.set_running(true);
         while machine.machine.running() {
             machine.step(&mut decoder)?;

@@ -464,3 +464,19 @@ pub fn test_asm_version1_goblin_overflow_elf() {
     let machine = create_asm_machine("goblin_overflow_elf".to_string(), VERSION1);
     assert_eq!(machine.machine.version(), VERSION1);
 }
+
+#[test]
+pub fn test_asm_version0_cadd_hints() {
+    let mut machine = create_rust_machine("cadd_hints".to_string(), VERSION0);
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::InvalidInstruction(36906));
+}
+
+#[test]
+pub fn test_asm_version1_cadd_hints() {
+    let mut machine = create_rust_machine("cadd_hints".to_string(), VERSION1);
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
