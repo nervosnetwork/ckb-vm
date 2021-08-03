@@ -123,7 +123,7 @@ pub fn test_mop_secp256k1() {
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 684053);
+    assert_eq!(machine.machine.cycles(), 611871);
 
     #[cfg(has_asm)]
     {
@@ -132,7 +132,7 @@ pub fn test_mop_secp256k1() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 684053);
+        assert_eq!(machine.machine.cycles(), 611871);
 
         let code = machine_build::aot_v1_mop_code("benches/data/secp256k1_bench");
         let mut machine_aot =
@@ -140,7 +140,7 @@ pub fn test_mop_secp256k1() {
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 684053);
+        assert_eq!(machine.machine.cycles(), 611871);
     }
 }
 
