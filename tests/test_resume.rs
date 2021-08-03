@@ -17,44 +17,44 @@ use std::io::Read;
 
 #[test]
 fn test_resume_interpreter_with_trace_2_asm() {
-    resume_interpreter_with_trace_2_asm_inner(VERSION1, 4194622);
-    resume_interpreter_with_trace_2_asm_inner(VERSION0, 4194622);
+    resume_interpreter_with_trace_2_asm_inner(VERSION1, 8126917);
+    resume_interpreter_with_trace_2_asm_inner(VERSION0, 8126917);
 }
 
 #[test]
 fn test_resume_aot_2_asm() {
-    resume_aot_2_asm(VERSION1, 4194622);
-    resume_aot_2_asm(VERSION0, 4194622);
+    resume_aot_2_asm(VERSION1, 8126917);
+    resume_aot_2_asm(VERSION0, 8126917);
 }
 
 #[test]
 fn test_resume_interpreter_2_asm() {
-    resume_interpreter_2_asm(VERSION1, 4194622);
-    resume_interpreter_2_asm(VERSION0, 4194622);
+    resume_interpreter_2_asm(VERSION1, 8126917);
+    resume_interpreter_2_asm(VERSION0, 8126917);
 }
 
 #[test]
 fn test_resume_interpreter_2_interpreter() {
-    resume_interpreter_2_interpreter(VERSION1, 4194622);
-    resume_interpreter_2_interpreter(VERSION0, 4194622);
+    resume_interpreter_2_interpreter(VERSION1, 8126917);
+    resume_interpreter_2_interpreter(VERSION0, 8126917);
 }
 
 #[test]
 fn test_resume_asm_2_interpreter() {
-    resume_asm_2_interpreter(VERSION1, 4194622);
-    resume_asm_2_interpreter(VERSION0, 4194622);
+    resume_asm_2_interpreter(VERSION1, 8126917);
+    resume_asm_2_interpreter(VERSION0, 8126917);
 }
 
 #[test]
 fn test_resume_asm_2_asm_2_asm() {
-    resume_asm_2_asm_2_asm(VERSION1, 4194622);
-    resume_asm_2_asm_2_asm(VERSION0, 4194622);
+    resume_asm_2_asm_2_asm(VERSION1, 8126917);
+    resume_asm_2_asm_2_asm(VERSION0, 8126917);
 }
 
 #[test]
 fn test_resume_asm_2_asm() {
-    resume_asm_2_asm(VERSION1, 4194622);
-    resume_asm_2_asm(VERSION0, 4194622);
+    resume_asm_2_asm(VERSION1, 8126917);
+    resume_asm_2_asm(VERSION0, 8126917);
 }
 
 fn dummy_cycle_func(_i: Instruction) -> u64 {
@@ -100,7 +100,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
     let snapshot1 = machine1.snapshot().unwrap();
 
-    let mut machine2 = MachineTy::Asm.build(version, 2000000, None);
+    let mut machine2 = MachineTy::Asm.build(version, 4000000, None);
     machine2
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -111,7 +111,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     assert_eq!(result2.unwrap_err(), Error::InvalidCycles);
     let snapshot2 = machine2.snapshot().unwrap();
 
-    let mut machine3 = MachineTy::Asm.build(version, 2000000, None);
+    let mut machine3 = MachineTy::Asm.build(version, 4000000, None);
     machine3
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();

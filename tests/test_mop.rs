@@ -11,7 +11,7 @@ pub fn test_mop_wide_multiply() {
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 9143110);
+    assert_eq!(machine.machine.cycles(), 9143275);
 
     #[cfg(has_asm)]
     {
@@ -19,7 +19,7 @@ pub fn test_mop_wide_multiply() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 9143110);
+        assert_eq!(machine.machine.cycles(), 9143275);
 
         let code = machine_build::aot_v1_mop_code("tests/programs/mop_wide_multiply");
         let mut machine_aot =
@@ -27,7 +27,7 @@ pub fn test_mop_wide_multiply() {
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 9143110);
+        assert_eq!(machine.machine.cycles(), 9143275);
     }
 }
 
@@ -38,7 +38,7 @@ pub fn test_mop_wide_divide() {
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 6073650);
+    assert_eq!(machine.machine.cycles(), 6073815);
 
     #[cfg(has_asm)]
     {
@@ -46,7 +46,7 @@ pub fn test_mop_wide_divide() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 6073650);
+        assert_eq!(machine.machine.cycles(), 6073815);
 
         let code = machine_build::aot_v1_mop_code("tests/programs/mop_wide_divide");
         let mut machine_aot =
@@ -54,7 +54,7 @@ pub fn test_mop_wide_divide() {
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 6073650);
+        assert_eq!(machine.machine.cycles(), 6073815);
     }
 }
 
