@@ -10,7 +10,8 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4.0"
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = { version="0.4.0", features=["arbitrary-derive"] }
 bytes = "1"
 ckb-vm = { path = "..", features = ["asm"] }
 
@@ -21,5 +22,11 @@ members = ["."]
 [[bin]]
 name = "asm"
 path = "fuzz_targets/asm.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "syscall_exec"
+path = "fuzz_targets/syscall_exec.rs"
 test = false
 doc = false
