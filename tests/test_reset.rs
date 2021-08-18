@@ -58,7 +58,7 @@ fn test_reset_int() {
     let cycles = machine.cycles();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(cycles, 424);
+    assert_eq!(cycles, 775);
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn test_reset_int_with_trace() {
     let cycles = machine.machine.cycles();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(cycles, 424);
+    assert_eq!(cycles, 775);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn test_reset_asm() {
     let cycles = machine.machine.cycles();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(cycles, 424);
+    assert_eq!(cycles, 775);
 }
 
 #[test]
@@ -135,5 +135,5 @@ pub fn test_reset_aot() {
     let cycles = machine.machine.cycles();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
-    assert_eq!(cycles, 424);
+    assert_eq!(cycles, 775);
 }

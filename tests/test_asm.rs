@@ -112,7 +112,7 @@ fn dummy_cycle_func(_i: Instruction) -> u64 {
 #[test]
 pub fn test_asm_simple_cycles() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 517);
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 708);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
@@ -124,14 +124,14 @@ pub fn test_asm_simple_cycles() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
-    assert_eq!(SupportMachine::cycles(&machine.machine), 517);
+    assert_eq!(SupportMachine::cycles(&machine.machine), 708);
 }
 
 #[test]
 pub fn test_asm_simple_max_cycles_reached() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    // Running simple64 should consume 517 cycles using dummy cycle func
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 500);
+    // Running simple64 should consume 708 cycles using dummy cycle func
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 700);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();

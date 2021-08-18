@@ -36,7 +36,7 @@ fn dummy_cycle_func(_i: Instruction) -> u64 {
 #[test]
 pub fn test_simple_cycles() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 517);
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 708);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -48,14 +48,14 @@ pub fn test_simple_cycles() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
-    assert_eq!(SupportMachine::cycles(&machine), 517);
+    assert_eq!(SupportMachine::cycles(&machine), 708);
 }
 
 #[test]
 pub fn test_simple_max_cycles_reached() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    // Running simple64 should consume 517 cycles using dummy cycle func
-    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 500);
+    // Running simple64 should consume 708 cycles using dummy cycle func
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 700);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -85,7 +85,7 @@ pub fn test_simple_loaded_bytes() {
     let bytes = machine
         .load_program(&buffer, &vec!["simple".into()])
         .unwrap();
-    assert_eq!(bytes, 4055);
+    assert_eq!(bytes, 3831);
 }
 
 #[test]
