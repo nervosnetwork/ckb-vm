@@ -18,8 +18,6 @@ use libfuzzer_sys::fuzz_target;
 static CALLER: &[u8] = include_bytes!("../programs/exec_caller");
 static CANDIDATE_CALLEE: &'static [&[u8]] = &[include_bytes!("../programs/exec_callee_1")];
 
-lazy_static! {}
-
 pub struct CustomSyscall {
     argv: Vec<Vec<u8>>,
     opt_candidate_callee: u32,
