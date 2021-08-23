@@ -115,7 +115,7 @@ fn check_memory_writable(
 ) -> Result<(), Error> {
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
-    if page as usize >= RISCV_PAGESIZE {
+    if page as usize >= RISCV_PAGES {
         return Err(Error::OutOfBound);
     }
     check_permission(machine, page, FLAG_WRITABLE)?;
@@ -126,7 +126,7 @@ fn check_memory_writable(
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
-        if page as usize >= RISCV_PAGESIZE {
+        if page as usize >= RISCV_PAGES {
             return Err(Error::OutOfBound);
         } else {
             check_permission(machine, page, FLAG_WRITABLE)?;
@@ -146,7 +146,7 @@ fn check_memory_executable(
     debug_assert!(size == 2 || size == 4);
 
     let page = addr >> RISCV_PAGE_SHIFTS;
-    if page as usize >= RISCV_PAGESIZE {
+    if page as usize >= RISCV_PAGES {
         return Err(Error::OutOfBound);
     }
     check_permission(machine, page, FLAG_EXECUTABLE)?;
@@ -156,7 +156,7 @@ fn check_memory_executable(
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
-        if page as usize >= RISCV_PAGESIZE {
+        if page as usize >= RISCV_PAGES {
             return Err(Error::OutOfBound);
         } else {
             check_permission(machine, page, FLAG_EXECUTABLE)?;
@@ -174,7 +174,7 @@ fn check_memory_inited(
 ) -> Result<(), Error> {
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
-    if page as usize >= RISCV_PAGESIZE {
+    if page as usize >= RISCV_PAGES {
         return Err(Error::OutOfBound);
     }
     check_memory(machine, page);
@@ -183,7 +183,7 @@ fn check_memory_inited(
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
-        if page as usize >= RISCV_PAGESIZE {
+        if page as usize >= RISCV_PAGES {
             return Err(Error::OutOfBound);
         } else {
             check_memory(machine, page);
