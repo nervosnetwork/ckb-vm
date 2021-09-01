@@ -26,7 +26,9 @@ riscv64-unknown-elf-gcc -o mop_ld_signextend_32 mop_ld_signextend_32.c
 riscv64-unknown-elf-as -o mop_ld_signextend_32_overflow_bug.o mop_ld_signextend_32_overflow_bug.S && riscv64-unknown-elf-ld -o mop_ld_signextend_32_overflow_bug mop_ld_signextend_32_overflow_bug.o && rm mop_ld_signextend_32_overflow_bug.o
 riscv64-unknown-elf-as -o mop_random_adc_sbb.o mop_random_adc_sbb.S && riscv64-unknown-elf-ld -o mop_random_adc_sbb mop_random_adc_sbb.o && rm mop_random_adc_sbb.o
 riscv64-unknown-elf-as -o mop_sbb.o mop_sbb.S && riscv64-unknown-elf-ld -o mop_sbb mop_sbb.o && rm mop_sbb.o
+riscv64-unknown-elf-as -o mop_wide_div_zero.o mop_wide_div_zero.S && riscv64-unknown-elf-ld -o mop_wide_div_zero mop_wide_div_zero.o && rm mop_wide_div_zero.o
 riscv64-unknown-elf-gcc -o mop_wide_divide mop_wide_divide.c
+riscv64-unknown-elf-as -o mop_wide_mul_zero.o mop_wide_mul_zero.S && riscv64-unknown-elf-ld -o mop_wide_mul_zero mop_wide_mul_zero.o && rm mop_wide_mul_zero.o
 riscv64-unknown-elf-gcc -o mop_wide_multiply mop_wide_multiply.c
 riscv64-unknown-elf-as -o mulw.o mulw.S && riscv64-unknown-elf-ld -o mulw64 mulw.o && rm mulw.o
 # SKIP: nop

@@ -7,11 +7,16 @@ use ckb_vm::SupportMachine;
 #[test]
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_wide_multiply() {
+    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_wide_multiply");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_multiply", vec![]);
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 9143275);
+    assert_eq!(machine.machine.cycles(), 9192427);
 
     #[cfg(has_asm)]
     {
@@ -19,7 +24,7 @@ pub fn test_mop_wide_multiply() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 9143275);
+        assert_eq!(machine.machine.cycles(), 9192427);
 
         let code = machine_build::aot_v1_mop_code("tests/programs/mop_wide_multiply");
         let mut machine_aot =
@@ -27,18 +32,23 @@ pub fn test_mop_wide_multiply() {
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 9143275);
+        assert_eq!(machine.machine.cycles(), 9192427);
     }
 }
 
 #[test]
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_wide_divide() {
+    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_wide_divide");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_divide", vec![]);
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 6073815);
+    assert_eq!(machine.machine.cycles(), 6106583);
 
     #[cfg(has_asm)]
     {
@@ -46,7 +56,7 @@ pub fn test_mop_wide_divide() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 6073815);
+        assert_eq!(machine.machine.cycles(), 6106583);
 
         let code = machine_build::aot_v1_mop_code("tests/programs/mop_wide_divide");
         let mut machine_aot =
@@ -54,12 +64,17 @@ pub fn test_mop_wide_divide() {
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 6073815);
+        assert_eq!(machine.machine.cycles(), 6106583);
     }
 }
 
 #[test]
 pub fn test_mop_far_jump() {
+    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_far_jump");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_far_jump", vec![]);
     let ret = machine.run();
     assert!(ret.is_ok());
@@ -87,6 +102,11 @@ pub fn test_mop_far_jump() {
 #[test]
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_ld_32_constants() {
+    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_ld_signextend_32");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
     let mut machine = machine_build::int_v1_mop("tests/programs/mop_ld_signextend_32", vec![]);
     let ret = machine.run();
     assert!(ret.is_ok());
@@ -240,7 +260,7 @@ pub fn test_mop_random_adc_sbb() {
 }
 
 #[test]
-pub fn test_mop_mop_ld_signextend_32_overflow_bug() {
+pub fn test_mop_ld_signextend_32_overflow_bug() {
     let mut machine =
         machine_build::int_v1_mop("tests/programs/mop_ld_signextend_32_overflow_bug", vec![]);
     let ret = machine.run();
@@ -262,6 +282,52 @@ pub fn test_mop_mop_ld_signextend_32_overflow_bug() {
             vec![],
             &code,
         );
+        let ret_aot = machine_aot.run();
+        assert!(ret_aot.is_ok());
+        assert_eq!(ret_aot.unwrap(), 0);
+    }
+}
+
+#[test]
+pub fn test_mop_wide_mul_zero() {
+    let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_mul_zero", vec![]);
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_wide_mul_zero", vec![]);
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+
+        let code = machine_build::aot_v1_mop_code("tests/programs/mop_wide_mul_zero");
+        let mut machine_aot =
+            machine_build::aot_v1_mop("tests/programs/mop_wide_mul_zero", vec![], &code);
+        let ret_aot = machine_aot.run();
+        assert!(ret_aot.is_ok());
+        assert_eq!(ret_aot.unwrap(), 0);
+    }
+}
+
+#[test]
+pub fn test_mop_wide_div_zero() {
+    let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_div_zero", vec![]);
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_wide_div_zero", vec![]);
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+
+        let code = machine_build::aot_v1_mop_code("tests/programs/mop_wide_div_zero");
+        let mut machine_aot =
+            machine_build::aot_v1_mop("tests/programs/mop_wide_div_zero", vec![], &code);
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
