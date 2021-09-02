@@ -385,6 +385,7 @@ impl Decoder {
                             && head_inst.rd() != head_inst.rs2()
                             && head_inst.rs1() == next_inst.rs1()
                             && head_inst.rs2() == next_inst.rs2()
+                            && head_inst.rd() != next_inst.rd()
                         {
                             let next_size = instruction_length(next_instruction);
                             let fuze_inst = R4type::new(
@@ -418,6 +419,7 @@ impl Decoder {
                             && head_inst.rd() != head_inst.rs2()
                             && head_inst.rs1() == next_inst.rs1()
                             && head_inst.rs2() == next_inst.rs2()
+                            && head_inst.rd() != next_inst.rd()
                         {
                             let next_size = instruction_length(next_instruction);
                             let fuze_inst = R4type::new(
@@ -451,6 +453,7 @@ impl Decoder {
                             && head_inst.rd() != head_inst.rs2()
                             && head_inst.rs1() == next_inst.rs1()
                             && head_inst.rs2() == next_inst.rs2()
+                            && head_inst.rd() != next_inst.rd()
                         {
                             let next_size = instruction_length(next_instruction);
                             let fuze_inst = R4type::new(
@@ -484,6 +487,7 @@ impl Decoder {
                             && head_inst.rd() != head_inst.rs2()
                             && head_inst.rs1() == next_inst.rs1()
                             && head_inst.rs2() == next_inst.rs2()
+                            && head_inst.rd() != next_inst.rd()
                         {
                             let next_size = instruction_length(next_instruction);
                             let fuze_inst = R4type::new(
@@ -517,6 +521,7 @@ impl Decoder {
                             && head_inst.rd() != head_inst.rs2()
                             && head_inst.rs1() == next_inst.rs1()
                             && head_inst.rs2() == next_inst.rs2()
+                            && head_inst.rd() != next_inst.rd()
                         {
                             let next_size = instruction_length(next_instruction);
                             let fuze_inst = R4type::new(
