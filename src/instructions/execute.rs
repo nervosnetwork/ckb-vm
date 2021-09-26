@@ -912,7 +912,7 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
         .pc()
         .overflowing_add(&Mac::REG::from_u8(instruction_size));
     machine.update_pc(next_pc);
-    execute_instruction(inst, machine)?;
+    let r = execute_instruction(inst, machine);
     machine.commit_pc();
-    Ok(())
+    r
 }
