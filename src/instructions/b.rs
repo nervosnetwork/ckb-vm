@@ -158,7 +158,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                                 insts::OP_SLLIUW,
                                 rd(instruction_bits),
                                 rs1(instruction_bits),
-                                utils::x(instruction_bits, 20, 5, 0),
+                                utils::x(instruction_bits, 20, 6, 0),
                             )
                             .0,
                         )
