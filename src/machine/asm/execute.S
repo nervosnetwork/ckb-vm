@@ -1240,7 +1240,7 @@ ckb_vm_x64_execute:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
-  mov RS2rd, RS2rd
+  mov RS1d, RS1d
   addq RS2r, RS1
   WRITE_RD(RS1)
   NEXT_INST
