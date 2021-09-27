@@ -1139,7 +1139,7 @@ int aot_clmulr(AotContext* context, riscv_register_t target, AotValue a, AotValu
   | and rdx, 1
   | cmovne r10, rax
   | add rsi, 1
-  | cmp rsi, 63
+  | cmp rsi, 64
   | jne <1
   | op2_r_x mov, target, r10
   | pop rsi
