@@ -174,9 +174,8 @@ jobs:
         parameters:
           rustup_toolchain: 'nightly-2021-03-20'
       - script: |
-          rustup install nightly
-          cargo +nightly install cargo-fuzz
-          make fuzz
+          cargo +nightly-2021-03-20 install cargo-fuzz
+          cargo +nightly-2021-03-20 fuzz run asm -- -max_total_time=180
         displayName: Run fuzz
 
   - job: LinuxCodeCoverage
