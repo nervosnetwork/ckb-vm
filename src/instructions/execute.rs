@@ -462,8 +462,8 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let rs2_u = rs2_value.zero_extend(&Mac::REG::from_u8(32));
-            let value = rs1_value.overflowing_add(&rs2_u);
+            let rs1_u = rs1_value.zero_extend(&Mac::REG::from_u8(32));
+            let value = rs2_value.overflowing_add(&rs1_u);
             update_register(machine, i.rd(), value);
         }
         insts::OP_ANDN => {
