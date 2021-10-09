@@ -43,8 +43,10 @@ proptest = "0.9.1"
 
 [[bench]]
 name = "bits_benchmark"
+path = "benches/bits_benchmark.rs"
 harness = false
 
 [[bench]]
 name = "vm_benchmark"
+path = "benches/vm_benchmark.rs"
 harness = false
