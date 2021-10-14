@@ -2,7 +2,7 @@ use bytes::Bytes;
 #[cfg(has_aot)]
 use ckb_vm::machine::aot::AotCompilingMachine;
 #[cfg(has_asm)]
-use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine};
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachineBuilder, VERSION1};
 use ckb_vm::{
     registers::A7, Error, Register, SparseMemory, SupportMachine, Syscalls, TraceMachine,
@@ -92,7 +92,8 @@ fn test_reset_asm() {
     let code = Bytes::from(code_data);
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))
         .build();
@@ -124,7 +125,8 @@ pub fn test_reset_aot() {
     let buffer: Bytes = std::fs::read("tests/programs/reset_caller").unwrap().into();
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))
         .build();

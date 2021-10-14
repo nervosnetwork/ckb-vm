@@ -8,16 +8,21 @@ pub mod trace;
 use std::fmt::{self, Display};
 
 use bytes::Bytes;
+use probe::probe;
 use scroll::Pread;
 
-use super::debugger::Debugger;
-use super::decoder::{build_decoder, Decoder};
-use super::instructions::{execute, Instruction, Register};
-use super::memory::{round_page_down, round_page_up, Memory};
-use super::syscalls::Syscalls;
-use super::{
+use crate::debugger::Debugger;
+use crate::decoder::{build_decoder, Decoder};
+use crate::instructions::{
+    execute, generate_handle_function_list, generate_vcheck_function_list, HandleFunction,
+    Instruction, Register, RegisterFile,
+};
+use crate::memory::{round_page_down, round_page_up, Memory};
+use crate::syscalls::Syscalls;
+use crate::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    Error, DEFAULT_STACK_SIZE, ELEN, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    VLEN,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -29,6 +34,136 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/98
 // * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
+
+pub struct CoprocessorV {
+    register_file: RegisterFile,
+    vstart: u64,
+    vtype: u64,
+    vl: u64,
+    vlenb: u64,
+    vill: bool,
+    vma: bool,
+    vta: bool,
+    vlmul: f64,
+    vsew: u64,
+    vlmax: u64,
+}
+
+impl Default for CoprocessorV {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CoprocessorV {
+    pub fn new() -> Self {
+        let mut r = Self {
+            register_file: RegisterFile::default(),
+            vstart: 0,
+            vtype: 0,
+            vl: 0,
+            vlenb: VLEN as u64 >> 3,
+            vill: false,
+            vma: false,
+            vta: false,
+            vlmul: 0.0,
+            vsew: 0,
+            vlmax: 0,
+        };
+        // Default to illegal configuration
+        r.set_vl(0, 0, 0, u64::MAX);
+        r
+    }
+
+    pub fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.register_file.element_ref(reg, sew, n)
+    }
+
+    pub fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.register_file.element_mut(reg, sew, n)
+    }
+
+    pub fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.register_file.get_bit(reg, n)
+    }
+
+    pub fn set_bit(&mut self, reg: usize, n: usize) {
+        self.register_file.set_bit(reg, n)
+    }
+
+    pub fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.register_file.clr_bit(reg, n)
+    }
+
+    pub fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        if self.vtype != new_type {
+            self.vtype = new_type;
+            self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
+            self.vlmul = match new_type & 0x7 {
+                0b000 => 1.0,
+                0b001 => 2.0,
+                0b010 => 4.0,
+                0b011 => 8.0,
+                0b111 => 0.5,
+                0b110 => 0.25,
+                0b101 => 0.125,
+                _ => 0.0625,
+            };
+            self.vlmax = ((VLEN as u64 / self.vsew) as f64 * self.vlmul) as u64;
+            self.vta = ((new_type >> 6) & 0x1) != 0;
+            self.vma = ((new_type >> 7) & 0x1) != 0;
+            self.vill = self.vlmul == 0.0625
+                || (new_type >> 8) != 0
+                || self.vsew as f64 > if self.vlmul > 1.0 { 1.0 } else { self.vlmul } * ELEN as f64;
+            if self.vill {
+                self.vlmax = 0;
+                self.vtype = 1 << 63;
+            }
+        }
+        if self.vlmax == 0 {
+            self.vl = 0;
+        } else if rd == 0 && rs1 == 0 {
+            self.vl = std::cmp::min(self.vl, self.vlmax);
+        } else if rd != 0 && rs1 == 0 {
+            self.vl = self.vlmax;
+        } else if rs1 != 0 {
+            self.vl = std::cmp::min(avl, self.vlmax);
+        }
+        self.vstart = 0;
+    }
+
+    pub fn vl(&self) -> u64 {
+        self.vl
+    }
+
+    pub fn vlmax(&self) -> u64 {
+        self.vlmax
+    }
+
+    pub fn vsew(&self) -> u64 {
+        self.vsew
+    }
+
+    pub fn vlmul(&self) -> f64 {
+        self.vlmul
+    }
+
+    pub fn vta(&self) -> bool {
+        self.vta
+    }
+
+    pub fn vma(&self) -> bool {
+        self.vma
+    }
+
+    pub fn vill(&self) -> bool {
+        self.vill
+    }
+
+    pub fn vlenb(&self) -> u64 {
+        self.vlenb
+    }
+}
 
 /// This is the core part of RISC-V that only deals with data part, it
 /// is extracted from Machine so we can handle lifetime logic in dynamic
@@ -44,6 +179,10 @@ pub trait CoreMachine {
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
     fn set_register(&mut self, idx: usize, value: Self::REG);
+
+    // Vector extension
+    fn coprocessor_v(&self) -> &CoprocessorV;
+    fn coprocessor_v_mut(&mut self) -> &mut CoprocessorV;
 
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
@@ -293,6 +432,7 @@ pub struct DefaultCoreMachine<R, M> {
     running: bool,
     isa: u8,
     version: u32,
+    coprocessor_v: CoprocessorV,
     #[cfg(feature = "pprof")]
     code: Bytes,
 }
@@ -326,6 +466,14 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
+    }
+
+    fn coprocessor_v(&self) -> &CoprocessorV {
+        &self.coprocessor_v
+    }
+
+    fn coprocessor_v_mut(&mut self) -> &mut CoprocessorV {
+        &mut self.coprocessor_v
     }
 
     fn isa(&self) -> u8 {
@@ -387,7 +535,7 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
     }
 }
 
-impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R> + Default> DefaultCoreMachine<R, M> {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
         Self {
             isa,
@@ -406,7 +554,7 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
     }
 }
 
-pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64;
+pub type InstructionCycleFunc = dyn Fn(Instruction, u64, u64) -> u64;
 
 pub struct DefaultMachine<Inner> {
     inner: Inner,
@@ -451,6 +599,14 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.inner.set_register(idx, value)
+    }
+
+    fn coprocessor_v(&self) -> &CoprocessorV {
+        self.inner.coprocessor_v()
+    }
+
+    fn coprocessor_v_mut(&mut self) -> &mut CoprocessorV {
+        self.inner.coprocessor_v_mut()
     }
 
     fn isa(&self) -> u8 {
@@ -500,6 +656,7 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
 impl<Inner: SupportMachine> Machine for DefaultMachine<Inner> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers()[A7].to_u64();
+        probe!(default, default_machine_syscalls, code);
         match code {
             93 => {
                 // exit
@@ -599,25 +756,39 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
             return Err(Error::InvalidVersion);
         }
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        let vcheck_function_list = generate_vcheck_function_list::<Self>();
+        let handle_function_list = generate_handle_function_list::<Self>();
         self.set_running(true);
         while self.running() {
             if self.reset_signal() {
                 decoder.reset_instructions_cache();
             }
-            self.step(&mut decoder)?;
+            self.step(&mut decoder, &vcheck_function_list, &handle_function_list)?;
         }
         Ok(self.exit_code())
     }
 
-    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+    pub fn step(
+        &mut self,
+        decoder: &mut Decoder,
+        vcheck_function_list: &[HandleFunction<Self>],
+        handle_function_list: &[HandleFunction<Self>],
+    ) -> Result<(), Error> {
         let instruction = {
             let pc = self.pc().to_u64();
             let memory = self.memory_mut();
             decoder.decode(memory, pc)?
         };
-        let cycles = self.instruction_cycle_func()(instruction);
+        let vl = self.inner.coprocessor_v().vl();
+        let sew = self.inner.coprocessor_v().vsew();
+        let cycles = self.instruction_cycle_func()(instruction, vl, sew);
         self.add_cycles(cycles)?;
-        execute(instruction, self)
+        execute(
+            self,
+            &vcheck_function_list,
+            &handle_function_list,
+            instruction,
+        )
     }
 }
 
@@ -632,7 +803,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
-            instruction_cycle_func: Box::new(|_| 0),
+            instruction_cycle_func: Box::new(|_, _, _| 0),
             debugger: None,
             syscalls: vec![],
         }

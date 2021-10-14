@@ -63,10 +63,16 @@ pub enum Error {
     MemWriteOnExecutablePage,
     #[display(fmt = "memory error: write on freezed page")]
     MemWriteOnFreezedPage,
+    #[display(fmt = "rvv trap: {}", "_0")]
+    RVVTrap(String),
     #[display(fmt = "unexpected error")]
     Unexpected(String),
     #[display(fmt = "unimplemented")]
     Unimplemented,
+    #[display(fmt = "vill")]
+    Vill,
+    #[display(fmt = "invalid SEW: {}", "_0")]
+    InvalidSew(String),
 }
 
 impl std::error::Error for Error {}

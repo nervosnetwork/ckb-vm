@@ -1,13 +1,10 @@
-use super::{
-    super::{
-        decoder::build_decoder,
-        instructions::{
-            execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
-        },
-        Error,
-    },
-    CoreMachine, DefaultMachine, Machine, SupportMachine,
+use crate::decoder::build_decoder;
+use crate::instructions::{
+    execute, generate_handle_function_list, generate_vcheck_function_list, instruction_length,
+    is_basic_block_end_instruction, Instruction, Register,
 };
+use crate::machine::{CoprocessorV, CoreMachine, DefaultMachine, Machine, SupportMachine};
+use crate::Error;
 use bytes::Bytes;
 
 // The number of trace items to keep
@@ -74,6 +71,14 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
         self.machine.isa()
     }
 
+    fn coprocessor_v(&self) -> &CoprocessorV {
+        self.machine.coprocessor_v()
+    }
+
+    fn coprocessor_v_mut(&mut self) -> &mut CoprocessorV {
+        self.machine.coprocessor_v_mut()
+    }
+
     fn version(&self) -> u32 {
         self.machine.version()
     }
@@ -103,6 +108,8 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
 
     pub fn run(&mut self) -> Result<i8, Error> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        let vcheck_func_list = generate_vcheck_function_list::<Self>();
+        let handle_func_list = generate_handle_function_list::<Self>();
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
         // to tweak the code here if we choose to use a larger trace size or
@@ -137,9 +144,11 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             }
             for i in 0..self.traces[slot].instruction_count {
                 let i = self.traces[slot].instructions[i as usize];
-                let cycles = self.machine.instruction_cycle_func()(i);
+                let vl = self.coprocessor_v().vl();
+                let sew = self.coprocessor_v().vsew();
+                let cycles = self.machine.instruction_cycle_func()(i, vl, sew);
                 self.machine.add_cycles(cycles)?;
-                execute(i, self)?;
+                execute(self, &vcheck_func_list, &handle_func_list, i)?;
             }
         }
         Ok(self.machine.exit_code())

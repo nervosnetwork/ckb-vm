@@ -3,7 +3,7 @@
 use ckb_vm::{
     decoder::build_decoder,
     machine::{
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine},
         CoreMachine, VERSION0, VERSION1,
     },
     memory::Memory,
@@ -19,7 +19,8 @@ use std::sync::Arc;
 pub fn test_asm_simple64() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["simple".into()])
@@ -56,7 +57,8 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 pub fn test_asm_with_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -90,7 +92,8 @@ pub fn test_asm_ebreak() {
     let value = Arc::new(AtomicU8::new(0));
 
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
         }))
@@ -105,7 +108,7 @@ pub fn test_asm_ebreak() {
     assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction, _: u64, _: u64) -> u64 {
     1
 }
 
@@ -113,7 +116,8 @@ fn dummy_cycle_func(_i: Instruction) -> u64 {
 pub fn test_asm_simple_cycles() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 708);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -132,7 +136,8 @@ pub fn test_asm_simple_max_cycles_reached() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     // Running simple64 should consume 708 cycles using dummy cycle func
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 700);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -148,7 +153,8 @@ pub fn test_asm_simple_max_cycles_reached() {
 pub fn test_asm_trace() {
     let buffer = fs::read("tests/programs/trace64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["simple".into()])
@@ -162,7 +168,8 @@ pub fn test_asm_trace() {
 pub fn test_asm_jump0() {
     let buffer = fs::read("tests/programs/jump0_64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["jump0_64".into()])
@@ -178,7 +185,8 @@ pub fn test_asm_write_large_address() {
         .unwrap()
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
@@ -192,7 +200,8 @@ pub fn test_asm_write_large_address() {
 pub fn test_misaligned_jump64() {
     let buffer = fs::read("tests/programs/misaligned_jump64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["misaligned_jump64".into()])
@@ -205,7 +214,8 @@ pub fn test_misaligned_jump64() {
 pub fn test_mulw64() {
     let buffer = fs::read("tests/programs/mulw64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["mulw64".into()])
@@ -219,7 +229,8 @@ pub fn test_mulw64() {
 pub fn test_invalid_read64() {
     let buffer = fs::read("tests/programs/invalid_read64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["invalid_read64".into()])
@@ -233,7 +244,8 @@ pub fn test_invalid_read64() {
 pub fn test_asm_load_elf_crash_64() {
     let buffer = fs::read("tests/programs/load_elf_crash_64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
@@ -246,7 +258,8 @@ pub fn test_asm_load_elf_crash_64() {
 pub fn test_asm_wxorx_crash_64() {
     let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
@@ -259,7 +272,8 @@ pub fn test_asm_wxorx_crash_64() {
 pub fn test_asm_alloc_many() {
     let buffer = fs::read("tests/programs/alloc_many").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["alloc_many".into()])
@@ -274,7 +288,8 @@ pub fn test_asm_chaos_seed() {
     let mut asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     asm_core1.chaos_mode = 1;
     asm_core1.chaos_seed = 100;
-    let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
+    let asm_glue1 = AsmGlueMachine::new(asm_core1);
+    let core1 = DefaultMachineBuilder::new(asm_glue1).build();
     let mut machine1 = AsmMachine::new(core1, None);
     machine1
         .load_program(&buffer, &vec!["read_memory".into()])
@@ -285,7 +300,8 @@ pub fn test_asm_chaos_seed() {
     let mut asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     asm_core2.chaos_mode = 1;
     asm_core2.chaos_seed = 100;
-    let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
+    let asm_glue2 = AsmGlueMachine::new(asm_core2);
+    let core2 = DefaultMachineBuilder::new(asm_glue2).build();
     let mut machine2 = AsmMachine::new(core2, None);
     machine2
         .load_program(&buffer, &vec!["read_memory".into()])
@@ -303,7 +319,8 @@ pub fn test_asm_chaos_seed() {
 pub fn test_asm_rvc_pageend() {
     let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["rvc_pageend".into()])
@@ -341,8 +358,9 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
 pub fn test_asm_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
-    let core = DefaultMachineBuilder::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
+        .instruction_cycle_func(Box::new(|_, _, _| 1))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -360,8 +378,9 @@ pub fn test_asm_outofcycles_in_syscall() {
 pub fn test_asm_cycles_overflow() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
+        .instruction_cycle_func(Box::new(|_, _, _| 1))
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine.machine.set_cycles(u64::MAX - 10);
@@ -379,8 +398,9 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
         .unwrap()
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
+        .instruction_cycle_func(Box::new(|_, _, _| 1))
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine.machine.set_cycles(u64::MAX - 10);
@@ -395,7 +415,8 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
 pub fn test_asm_step() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["simple64".into()])

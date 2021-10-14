@@ -3,7 +3,7 @@
 use ckb_vm::{
     machine::{
         aot::AotCompilingMachine,
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine},
         CoreMachine, VERSION0, VERSION1,
     },
     memory::Memory,
@@ -21,7 +21,8 @@ pub fn test_aot_simple64() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["simple".into()])
@@ -60,7 +61,8 @@ pub fn test_aot_with_custom_syscall() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
@@ -95,7 +97,8 @@ pub fn test_aot_ebreak() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
         }))
@@ -110,7 +113,7 @@ pub fn test_aot_ebreak() {
     assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction, _: u64, _: u64) -> u64 {
     1
 }
 
@@ -118,7 +121,8 @@ fn dummy_cycle_func(_i: Instruction) -> u64 {
 pub fn test_aot_simple_cycles() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 708);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
     let mut aot_machine =
@@ -141,7 +145,8 @@ pub fn test_aot_simple_max_cycles_reached() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     // Running simple64 should consume 708 cycles using dummy cycle func
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 700);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
         .instruction_cycle_func(Box::new(dummy_cycle_func))
         .build();
     let mut aot_machine =
@@ -163,7 +168,8 @@ pub fn test_aot_trace() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["simple".into()])
@@ -179,7 +185,8 @@ pub fn test_aot_jump0() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["jump0_64".into()])
@@ -197,7 +204,8 @@ pub fn test_aot_write_large_address() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
@@ -213,7 +221,8 @@ pub fn test_aot_misaligned_jump64() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["write_large_address64".into()])
@@ -228,7 +237,8 @@ pub fn test_aot_mulw64() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["mulw64".into()])
@@ -244,7 +254,8 @@ pub fn test_aot_invalid_read64() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["invalid_read64".into()])
@@ -260,7 +271,8 @@ pub fn test_aot_load_elf_crash_64() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
@@ -275,7 +287,8 @@ pub fn test_aot_wxorx_crash_64() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
@@ -315,7 +328,8 @@ pub fn test_aot_alloc_many() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["alloc_many".into()])
@@ -333,7 +347,8 @@ pub fn test_aot_chaos_seed() {
     let mut asm_core1 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     asm_core1.chaos_mode = 1;
     asm_core1.chaos_seed = 100;
-    let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
+    let asm_glue1 = AsmGlueMachine::new(asm_core1);
+    let core1 = DefaultMachineBuilder::new(asm_glue1).build();
     let mut machine1 = AsmMachine::new(core1, Some(Arc::new(code1)));
     machine1
         .load_program(&buffer, &vec!["read_memory".into()])
@@ -346,7 +361,8 @@ pub fn test_aot_chaos_seed() {
     let mut asm_core2 = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     asm_core2.chaos_mode = 1;
     asm_core2.chaos_seed = 100;
-    let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
+    let asm_glue2 = AsmGlueMachine::new(asm_core2);
+    let core2 = DefaultMachineBuilder::new(asm_glue2).build();
     let mut machine2 = AsmMachine::new(core2, Some(Arc::new(code2)));
     machine2
         .load_program(&buffer, &vec!["read_memory".into()])
@@ -366,7 +382,8 @@ pub fn test_aot_rvc_pageend() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine
         .load_program(&buffer, &vec!["rvc_pageend".into()])
@@ -404,11 +421,12 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
 pub fn test_aot_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer, Some(Box::new(|_| 1)), ISA_IMC, VERSION0).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(|_, _, _| 1)), ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
-    let core = DefaultMachineBuilder::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
+        .instruction_cycle_func(Box::new(|_, _, _| 1))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
@@ -426,13 +444,14 @@ pub fn test_aot_outofcycles_in_syscall() {
 pub fn test_aot_cycles_overflow() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer, Some(Box::new(|_| 1)), ISA_IMC, VERSION1).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(|_, _, _| 1)), ISA_IMC, VERSION1).unwrap();
     let code = aot_machine.compile().unwrap();
 
     let mut asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::MAX);
     asm_core.cycles = u64::MAX - 10;
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue)
+        .instruction_cycle_func(Box::new(|_, _, _| 1))
         .build();
     let mut machine = AsmMachine::new(core, Some(Arc::new(code)));
     machine

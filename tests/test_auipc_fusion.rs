@@ -3,18 +3,19 @@ use std::fs;
 use ckb_vm::{
     decoder::{build_decoder, Decoder},
     instructions::{
-        execute, extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
+        execute, extract_opcode, generate_handle_function_list, generate_vcheck_function_list,
+        instruction_length, set_instruction_length_n, Instruction, Utype,
     },
     machine::VERSION1,
-    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
-    SupportMachine, ISA_IMC,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
+    SparseMemory, SupportMachine, ISA_IMC,
 };
 use ckb_vm_definitions::instructions as insts;
 
 #[cfg(has_asm)]
 use ckb_vm::{
     instructions::{blank_instruction, is_basic_block_end_instruction},
-    machine::asm::{AsmCoreMachine, AsmMachine},
+    machine::asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine},
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::{calculate_slot, Trace, TRACE_ITEM_LENGTH};
@@ -65,11 +66,23 @@ pub fn test_rust_auipc_fusion() {
 
     let mut decoder = AuxDecoder::new(build_decoder::<u64>(machine.isa(), machine.version()));
     machine.set_running(true);
+    let vcheck_function_list = generate_vcheck_function_list::<
+        DefaultMachine<DefaultCoreMachine<u64, SparseMemory<u64>>>,
+    >();
+    let handle_function_list = generate_handle_function_list::<
+        DefaultMachine<DefaultCoreMachine<u64, SparseMemory<u64>>>,
+    >();
     while machine.running() {
         let pc = *machine.pc();
         let i = decoder.decode(machine.memory_mut(), pc).expect("decode");
 
-        execute(i, &mut machine).expect("execute");
+        execute(
+            &mut machine,
+            &vcheck_function_list,
+            &handle_function_list,
+            i,
+        )
+        .expect("execute");
     }
 
     let result = machine.exit_code();
@@ -88,7 +101,8 @@ pub fn test_asm_auipc_fusion() {
         .into();
 
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
@@ -111,7 +125,11 @@ pub fn test_asm_auipc_fusion() {
         let end_instruction = is_basic_block_end_instruction(instruction);
         current_pc += u64::from(instruction_length(instruction));
         trace.instructions[i] = instruction;
-        trace.cycles += machine.machine.instruction_cycle_func()(instruction);
+        trace.cycles += machine.machine.instruction_cycle_func()(
+            instruction,
+            machine.machine.coprocessor_v().vl(),
+            machine.machine.coprocessor_v().vsew(),
+        );
         let opcode = extract_opcode(instruction);
         // Here we are calculating the absolute address used in direct threading
         // from label offsets.
@@ -133,7 +151,7 @@ pub fn test_asm_auipc_fusion() {
     };
     trace.address = pc;
     trace.length = (current_pc - pc) as u8;
-    machine.machine.inner_mut().traces[slot] = trace;
+    machine.machine.inner_mut().imc.traces[slot] = trace;
 
     let result = machine.run().expect("run");
     assert_eq!(result, 0);

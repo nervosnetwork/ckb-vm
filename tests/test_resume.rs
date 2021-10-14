@@ -6,7 +6,7 @@ use ckb_vm::machine::{aot::AotCompilingMachine, asm::AotCode};
 use bytes::Bytes;
 use ckb_vm::{
     machine::{
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine},
         trace::TraceMachine,
         DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1,
     },
@@ -67,7 +67,7 @@ fn test_resume_asm_2_asm() {
     resume_asm_2_asm(VERSION0, 8126917);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction, _: u64, _: u64) -> u64 {
     1
 }
 
@@ -286,7 +286,8 @@ impl MachineTy {
         match self {
             MachineTy::Asm => {
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
-                let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
+                let asm_glue1 = AsmGlueMachine::new(asm_core1);
+                let core1 = DefaultMachineBuilder::new(asm_glue1)
                     .instruction_cycle_func(Box::new(dummy_cycle_func))
                     .build();
                 Machine::Asm(AsmMachine::new(core1, None))
@@ -390,7 +391,8 @@ impl AotMachine {
         program: Option<std::sync::Arc<AotCode>>,
     ) -> AotMachine {
         let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
-        let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
+        let asm_glue1 = AsmGlueMachine::new(asm_core1);
+        let core1 = DefaultMachineBuilder::new(asm_glue1)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
         AotMachine(AsmMachine::new(core1, program))

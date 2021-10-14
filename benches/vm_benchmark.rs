@@ -6,7 +6,7 @@ use bytes::Bytes;
 use ckb_vm::{
     machine::{
         aot::AotCompilingMachine,
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine},
         DefaultMachineBuilder, VERSION0, VERSION1,
     },
     ISA_B, ISA_IMC, ISA_MOP,
@@ -40,7 +40,8 @@ fn asm_benchmark(c: &mut Criterion) {
 
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-            let core = DefaultMachineBuilder::new(asm_core).build();
+            let asm_glue = AsmGlueMachine::new(asm_core);
+            let core = DefaultMachineBuilder::new(asm_glue).build();
             let mut machine = AsmMachine::new(core, None);
             machine.load_program(&buffer, &args[..]).unwrap();
             machine.run().unwrap()
@@ -62,7 +63,8 @@ fn aot_benchmark(c: &mut Criterion) {
 
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-            let core = DefaultMachineBuilder::new(asm_core).build();
+            let asm_glue = AsmGlueMachine::new(asm_core);
+            let core = DefaultMachineBuilder::new(asm_glue).build();
             let mut machine = AsmMachine::new(core, Some(result.clone()));
             machine.load_program(&buffer, &args[..]).unwrap();
             machine.run().unwrap()
@@ -94,7 +96,8 @@ fn mop_benchmark(c: &mut Criterion) {
                                       "bar"].into_iter().map(|a| a.into()).collect();
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
-            let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            let asm_glue = AsmGlueMachine::new(asm_core);
+            let core = DefaultMachineBuilder::new(asm_glue)
                 .build();
             let mut machine = AsmMachine::new(core, None);
             machine.load_program(&buffer, &args).unwrap();

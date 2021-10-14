@@ -5,7 +5,7 @@ use ckb_vm::machine::{aot::AotCompilingMachine, asm::AotCode};
 
 use ckb_vm::{
     machine::{
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{AsmCoreMachine, AsmGlueMachine, AsmMachine},
         VERSION0, VERSION1,
     },
     memory::{FLAG_DIRTY, FLAG_FREEZED},
@@ -35,7 +35,8 @@ fn create_asm_machine(program: String, version: u32) -> AsmMachine {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     machine
         .load_program(&buffer, &vec![program.into()])
@@ -56,7 +57,8 @@ fn create_aot_machine(program: String, code: AotCode, version: u32) -> AsmMachin
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     machine
         .load_program(&buffer, &vec![program.into()])
@@ -405,7 +407,8 @@ pub fn test_asm_version0_unaligned64() {
         .unwrap()
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, None);
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
@@ -429,7 +432,8 @@ pub fn test_aot_version0_unaligned64() {
         .unwrap()
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
+    let asm_glue = AsmGlueMachine::new(asm_core);
+    let core = DefaultMachineBuilder::new(asm_glue).build();
     let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
