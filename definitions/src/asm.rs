@@ -1,12 +1,12 @@
 use crate::{
     instructions::Instruction, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGES,
+    RISCV_PAGES, VLEN,
 };
 use std::alloc::{alloc, Layout};
 
 // The number of trace items to keep
-pub const TRACE_SIZE: usize = 8192;
-pub const TRACE_ITEM_LENGTH: usize = 16;
+pub const TRACE_SIZE: usize = 4096;
+pub const TRACE_ITEM_LENGTH: usize = 31;
 
 pub const RET_DECODE_TRACE: u8 = 1;
 pub const RET_ECALL: u8 = 2;
@@ -17,6 +17,7 @@ pub const RET_CYCLES_OVERFLOW: u8 = 6;
 pub const RET_OUT_OF_BOUND: u8 = 7;
 pub const RET_INVALID_PERMISSION: u8 = 8;
 pub const RET_SLOWPATH: u8 = 9;
+pub const RET_SLOWPATH_TRACE: u8 = 10;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
@@ -28,6 +29,8 @@ pub fn calculate_slot(addr: u64) -> usize {
 pub struct Trace {
     pub address: u64,
     pub length: u8,
+    pub last_inst_length: u8,
+    pub slowpath: u8,
     pub cycles: u64,
     pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
     // We are using direct threaded code here:
@@ -52,6 +55,23 @@ pub struct AsmCoreMachine {
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
+
+    pub register_file: [u8; 4 * VLEN],
+    pub vstart: u64,
+    pub vxsat: bool,
+    pub vxrm: u8,
+    pub vcsr: u64,
+    pub vtype: u64,
+    pub vl: u64,
+    pub vlenb: u64,
+
+    pub vill: bool,
+    pub vma: bool,
+    pub vta: bool,
+    pub vlmul: f64,
+    pub vsew: u64,
+
+    pub vlmax: u64,
 }
 
 impl AsmCoreMachine {
@@ -85,6 +105,8 @@ impl AsmCoreMachine {
             machine.traces[i] = Trace::default();
         }
         machine.frames = [0; MEMORY_FRAMES];
+        machine.register_file = [0; 4 * VLEN];
+        machine.vlenb = VLEN as u64 >> 3;
         machine
     }
 }

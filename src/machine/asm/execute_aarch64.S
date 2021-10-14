@@ -246,7 +246,7 @@ ckb_vm_x64_execute:
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
   mov TEMP3, TEMP2
   lsr TEMP2, TEMP2, 2
-  and TEMP2, TEMP2, 8191
+  and TEMP2, TEMP2, 4095
   mov TEMP1, CKB_VM_ASM_TRACE_STRUCT_SIZE
   mul TEMP2, TEMP2, TEMP1
   add TRACE, MACHINE, TEMP2
@@ -258,6 +258,9 @@ ckb_vm_x64_execute:
   ldrb TEMP3w, [TRACE, CKB_VM_ASM_TRACE_OFFSET_LENGTH]
   cmp TEMP3w, 0
   beq .exit_trace
+  ldrb TEMP2w, [TRACE, CKB_VM_ASM_TRACE_OFFSET_SLOWPATH]
+  cmp TEMP2w, 0
+  bne .exit_slowpath_trace
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES]
   ldr TEMP1, [TRACE, CKB_VM_ASM_TRACE_OFFSET_CYCLES]
   add TEMP2, TEMP2, TEMP1
@@ -1620,6 +1623,10 @@ ckb_vm_x64_execute:
 .exit_slowpath:
   DECODE_U
   mov x0, CKB_VM_ASM_RET_SLOWPATH
+  b .exit
+.exit_slowpath_trace:
+  DECODE_U
+  mov x0, CKB_VM_ASM_RET_SLOWPATH_TRACE
   b .exit
 .exit:
   ldp x23, x30, [sp, 32]

@@ -184,6 +184,44 @@ impl<R: Register> Memory for SparseMemory<R> {
         Ok(())
     }
 
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Vec<u8>, Error> {
+        let mut current_addr = addr;
+        let mut current_size = size;
+        let mut r: Vec<u8> = Vec::new();
+        loop {
+            if current_size >= 8 {
+                let e = self.load64(&Self::REG::from_u64(current_addr))?.to_u64();
+                r.extend_from_slice(&e.to_le_bytes());
+                current_addr += 8;
+                current_size -= 8;
+                continue;
+            }
+            if current_size >= 4 {
+                let e = self.load32(&Self::REG::from_u64(current_addr))?.to_u32();
+                r.extend_from_slice(&e.to_le_bytes());
+                current_addr += 4;
+                current_size -= 4;
+                continue;
+            }
+            if current_size >= 2 {
+                let e = self.load16(&Self::REG::from_u64(current_addr))?.to_u16();
+                r.extend_from_slice(&e.to_le_bytes());
+                current_addr += 2;
+                current_size -= 2;
+                continue;
+            }
+            if current_size >= 1 {
+                let e = self.load8(&Self::REG::from_u64(current_addr))?.to_u8();
+                r.push(e);
+                current_addr += 1;
+                current_size -= 1;
+                continue;
+            }
+            break;
+        }
+        Ok(r)
+    }
+
     fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         self.store_bytes(addr.to_u64(), &[value.to_u8()])
     }

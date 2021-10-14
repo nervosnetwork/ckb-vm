@@ -2,13 +2,13 @@ use ckb_vm_definitions::{
     asm::{
         AsmCoreMachine, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH,
+        RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES_LEVEL1, MAXIMUM_LEVEL1_OPCODE},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
     MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS, VLEN,
 };
 use std::mem::{size_of, zeroed};
 
@@ -41,6 +41,8 @@ fn main() {
         "#define CKB_VM_ASM_MAXIMUM_TRACE_ADDRESS_LENGTH {}",
         TRACE_ITEM_LENGTH * 4
     );
+    println!("#define CKB_VM_ASM_TRACE_SIZE {}", TRACE_SIZE);
+    println!("#define CKB_VM_ASM_VLEN {}", VLEN);
     println!();
 
     println!("#define CKB_VM_ASM_RET_DECODE_TRACE {}", RET_DECODE_TRACE);
@@ -61,6 +63,10 @@ fn main() {
         RET_INVALID_PERMISSION
     );
     println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
+    println!(
+        "#define CKB_VM_ASM_RET_SLOWPATH_TRACE {}",
+        RET_SLOWPATH_TRACE
+    );
     println!();
 
     println!("#define CKB_VM_ASM_REGISTER_RA {}", RA);
@@ -106,6 +112,10 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_THREAD {}",
         (&t.thread as *const u64 as usize) - t_address
+    );
+    println!(
+        "#define CKB_VM_ASM_TRACE_OFFSET_SLOWPATH {}",
+        (&t.slowpath as *const u8 as usize) - t_address
     );
     println!();
 
@@ -185,6 +195,8 @@ fn main() {
     for _ in MAXIMUM_LEVEL1_OPCODE + 1..0xF0 {
         println!("\t.long\t.CKB_VM_ASM_LABEL_OP_UNLOADED - .CKB_VM_ASM_LABEL_TABLE");
     }
-    println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
+    for _ in 0..16 {
+        println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
+    }
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
 }

@@ -2,9 +2,9 @@ use crate::{
     decoder::{build_decoder, Decoder},
     instructions::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction,
+        is_basic_block_end_instruction, is_slowpath_instruction,
     },
-    machine::VERSION0,
+    machine::{execute, generate_handle_function_list, VERSION0},
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -12,6 +12,8 @@ use crate::{
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
+use probe::probe;
+pub mod v_trace;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -19,11 +21,11 @@ use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    ELEN, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS, VLEN,
 };
 use libc::c_uchar;
 use memmap::Mmap;
@@ -71,6 +73,104 @@ impl CoreMachine for Box<AsmCoreMachine> {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * n;
+        let i1 = i0 + lb;
+        &self.register_file[i0..i1]
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * n;
+        let i1 = i0 + lb;
+        &mut self.register_file[i0..i1]
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        let n = reg * VLEN + n;
+        (self.register_file[n / 8] << (7 - n % 8) >> 7) != 0
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        let n = reg * VLEN + n;
+        self.register_file[n / 8] |= 1 << (n % 8)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        let n = reg * VLEN + n;
+        self.register_file[n / 8] &= !(1 << (n % 8))
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        if self.vtype != new_type {
+            self.vtype = new_type;
+            self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
+            self.vlmul = match new_type & 0x7 {
+                0b000 => 1.0,
+                0b001 => 2.0,
+                0b010 => 4.0,
+                0b011 => 8.0,
+                0b111 => 0.5,
+                0b110 => 0.25,
+                0b101 => 0.125,
+                _ => 0.0625,
+            };
+            self.vlmax = ((VLEN as u64 / self.vsew) as f64 * self.vlmul) as u64;
+            self.vta = ((new_type >> 6) & 0x1) != 0;
+            self.vma = ((new_type >> 7) & 0x1) != 0;
+            self.vill = self.vlmul == 0.0625
+                || (new_type >> 8) != 0
+                || self.vsew as f64 > if self.vlmul > 1.0 { 1.0 } else { self.vlmul } * ELEN as f64;
+            if self.vill {
+                self.vlmax = 0;
+                self.vtype = 1 << 63;
+            }
+        }
+        if self.vlmax == 0 {
+            self.vl = 0;
+        } else if rd == 0 && rs1 == 0 {
+            self.vl = std::cmp::min(self.vl, self.vlmax);
+        } else if rd != 0 && rs1 == 0 {
+            self.vl = self.vlmax;
+        } else if rs1 != 0 {
+            self.vl = std::cmp::min(avl, self.vlmax);
+        }
+        self.vstart = 0;
+    }
+
+    fn vl(&self) -> u64 {
+        self.vl
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.vlmax
+    }
+
+    fn vsew(&self) -> u64 {
+        self.vsew
+    }
+
+    fn vlmul(&self) -> f64 {
+        self.vlmul
+    }
+
+    fn vta(&self) -> bool {
+        self.vta
+    }
+
+    fn vma(&self) -> bool {
+        self.vma
+    }
+
+    fn vill(&self) -> bool {
+        self.vill
+    }
+
+    fn vlenb(&self) -> u64 {
+        self.vlenb
+    }
 }
 
 // This function is exported for asm and aot machine.
@@ -92,7 +192,7 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
     }
 }
 
-fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
+pub(crate) fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
     let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
     if machine.frames[frame as usize] == 0 {
         inited_memory(frame, machine);
@@ -100,7 +200,11 @@ fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
     }
 }
 
-fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<(), Error> {
+pub(crate) fn check_permission<M: Memory>(
+    memory: &mut M,
+    page: u64,
+    flag: u8,
+) -> Result<(), Error> {
     let page_flag = memory.fetch_flag(page)?;
     if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
         return Err(Error::MemWriteOnExecutablePage);
@@ -167,13 +271,13 @@ fn check_memory_executable(
     Ok(())
 }
 
-// check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
-fn check_memory_inited(
+// check whether a memory address is initialized, `size` should be le RISCV_PAGESIZE
+pub(crate) fn check_memory_inited(
     machine: &mut Box<AsmCoreMachine>,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
-    debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
+    debug_assert!(size <= RISCV_PAGESIZE);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= RISCV_PAGES {
         return Err(Error::MemOutOfBound);
@@ -291,6 +395,11 @@ impl Memory for Box<AsmCoreMachine> {
             value,
         );
         Ok(())
+    }
+
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Vec<u8>, Error> {
+        check_memory_inited(self, addr, size as usize)?;
+        Ok(self.memory[addr as usize..(addr + size) as usize].to_vec())
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
@@ -438,10 +547,10 @@ pub struct AsmMachine {
 }
 
 extern "C" {
-    fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
-    fn ckb_vm_asm_labels();
+    pub fn ckb_vm_asm_labels();
 }
 
 impl AsmMachine {
@@ -449,7 +558,10 @@ impl AsmMachine {
         machine: DefaultMachine<Box<AsmCoreMachine>>,
         aot_code: Option<Arc<AotCode>>,
     ) -> Self {
-        Self { machine, aot_code }
+        let mut r = Self { machine, aot_code };
+        // Default to illegal configuration
+        r.machine.set_vl(0, 0, 0, u64::MAX);
+        r
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -465,6 +577,8 @@ impl AsmMachine {
             return Err(Error::InvalidVersion);
         }
         let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        let handle_function_list =
+            generate_handle_function_list::<DefaultMachine<Box<AsmCoreMachine>>>();
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {
@@ -487,6 +601,7 @@ impl AsmMachine {
             };
             match result {
                 RET_DECODE_TRACE => {
+                    probe!(default, decode_trace_begin);
                     let pc = *self.machine.pc();
                     let slot = calculate_slot(pc);
                     let mut trace = Trace::default();
@@ -496,12 +611,17 @@ impl AsmMachine {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
+                        if trace.slowpath == 0 && is_slowpath_instruction(instruction) {
+                            trace.slowpath = 1;
+                        }
                         trace.instructions[i] = instruction;
+                        // don't count cycles in trace for RVV instructions. They
+                        // will be counted in slow path.
                         trace.cycles += self
                             .machine
                             .instruction_cycle_func()
                             .as_ref()
-                            .map(|f| f(instruction))
+                            .map(|f| f(instruction, 0, 0, true))
                             .unwrap_or(0);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
@@ -525,6 +645,7 @@ impl AsmMachine {
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
                     self.machine.inner_mut().traces[slot] = trace;
+                    probe!(default, trace_instruction_count, i as isize);
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
@@ -536,7 +657,39 @@ impl AsmMachine {
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                    execute_instruction(instruction, &mut self.machine)?;
+                    let cycles = self
+                        .machine
+                        .instruction_cycle_func()
+                        .as_ref()
+                        .map(|f| f(instruction, self.machine.vl(), self.machine.vsew(), false))
+                        .unwrap_or(0);
+                    self.machine.add_cycles(cycles)?;
+                    execute_instruction(&mut self.machine, &handle_function_list, instruction)?;
+                    probe!(default, slow_path, cycles as isize);
+                }
+                RET_SLOWPATH_TRACE => {
+                    let pc = *self.machine.pc();
+                    let slot = calculate_slot(pc);
+                    let cycles = self.machine.inner_mut().traces[slot].cycles;
+                    self.machine.add_cycles(cycles)?;
+                    for instruction in self.machine.inner_mut().traces[slot].instructions {
+                        if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                            break;
+                        }
+                        if is_slowpath_instruction(instruction) {
+                            let cycles = self
+                                .machine
+                                .instruction_cycle_func()
+                                .as_ref()
+                                .map(|f| {
+                                    f(instruction, self.machine.vl(), self.machine.vsew(), false)
+                                })
+                                .unwrap_or(0);
+                            self.machine.add_cycles(cycles)?;
+                        }
+                        execute(&mut self.machine, &handle_function_list, instruction)?;
+                    }
+                    probe!(default, slow_path_trace, 1);
                 }
                 _ => return Err(Error::Asm(result)),
             }
@@ -545,6 +698,8 @@ impl AsmMachine {
     }
 
     pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+        let handle_function_list =
+            generate_handle_function_list::<DefaultMachine<Box<AsmCoreMachine>>>();
         // Decode only one instruction into a trace
         let pc = *self.machine.pc();
         let slot = calculate_slot(pc);
@@ -552,11 +707,13 @@ impl AsmMachine {
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
         trace.instructions[0] = instruction;
+        let vl = self.machine.vl();
+        let sew = self.machine.vsew();
         trace.cycles += self
             .machine
             .instruction_cycle_func()
             .as_ref()
-            .map(|f| f(instruction))
+            .map(|f| f(instruction, vl, sew, false))
             .unwrap_or(0);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {
@@ -583,7 +740,19 @@ impl AsmMachine {
             RET_SLOWPATH => {
                 let pc = *self.machine.pc() - 4;
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                execute_instruction(instruction, &mut self.machine)?;
+                execute_instruction(&mut self.machine, &handle_function_list, instruction)?;
+            }
+            RET_SLOWPATH_TRACE => {
+                let pc = *self.machine.pc();
+                let slot = calculate_slot(pc);
+                let cycles = self.machine.inner_mut().traces[slot].cycles;
+                self.machine.add_cycles(cycles)?;
+                for instruction in self.machine.inner_mut().traces[slot].instructions {
+                    if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                        break;
+                    }
+                    execute(&mut self.machine, &handle_function_list, instruction)?;
+                }
             }
             _ => return Err(Error::Asm(result)),
         }

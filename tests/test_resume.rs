@@ -67,7 +67,7 @@ fn test_resume_asm_2_asm() {
     resume_asm_2_asm(VERSION0, 8126917);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction, _: u64, _: u64, _: bool) -> u64 {
     1
 }
 

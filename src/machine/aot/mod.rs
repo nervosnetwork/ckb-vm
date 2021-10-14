@@ -9,11 +9,11 @@ use bytes::Bytes;
 use memmap::MmapMut;
 use scroll::Pread;
 
-use super::super::{
+use crate::{
     decoder::build_decoder,
     instructions::{
-        ast::Value, execute, instruction_length, is_basic_block_end_instruction,
-        is_slowpath_instruction, Instruction,
+        ast::Value, execute, generate_handle_function_list, instruction_length,
+        is_basic_block_end_instruction, is_slowpath_instruction, HandleFunction, Instruction,
     },
     machine::{asm::AotCode, elf_adaptor, SupportMachine, VERSION1},
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
@@ -199,6 +199,7 @@ impl LabelGatheringMachine {
 
     pub fn gather(&mut self) -> Result<(), Error> {
         let mut decoder = build_decoder::<u64>(self.isa(), self.version());
+        let handle_function_list = generate_handle_function_list::<Self>();
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
             self.pc = Value::from_u64(section_start);
@@ -210,10 +211,13 @@ impl LabelGatheringMachine {
                         if start_of_basic_block {
                             self.labels.insert(pc);
                         }
-                        start_of_basic_block = is_basic_block_end_instruction(instruction);
+                        start_of_basic_block = is_basic_block_end_instruction(instruction)
+                            || is_slowpath_instruction(instruction);
                         let next_pc = pc + u64::from(instruction_length(instruction));
                         self.update_pc(Value::from_u64(next_pc));
-                        execute(instruction, self)?;
+                        if !is_slowpath_instruction(instruction) {
+                            execute(self, &handle_function_list, instruction)?;
+                        }
                         for label in self.labels_to_test.drain(..) {
                             if label != next_pc && label < section_end && label >= section_start {
                                 self.labels.insert(label);
@@ -330,6 +334,62 @@ impl CoreMachine for LabelGatheringMachine {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
+    fn get_bit(&self, _reg: usize, _n: usize) -> bool {
+        unreachable!()
+    }
+
+    fn set_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn clr_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
+        unreachable!()
+    }
+
+    fn vl(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmax(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vsew(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmul(&self) -> f64 {
+        unreachable!()
+    }
+
+    fn vta(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vma(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vill(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vlenb(&self) -> u64 {
+        unreachable!()
+    }
 }
 
 impl Machine for LabelGatheringMachine {
@@ -377,6 +437,10 @@ impl Memory for LabelGatheringMachine {
     }
 
     fn store_bytes(&mut self, _addr: u64, _value: &[u8]) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn load_bytes(&mut self, _addr: u64, _size: u64) -> Result<Vec<u8>, Error> {
         Err(Error::Unimplemented)
     }
 
@@ -484,7 +548,11 @@ impl AotCompilingMachine {
         mem::replace(&mut self.writes, vec![])
     }
 
-    fn emit_block(&mut self, instructions: &[Instruction]) -> Result<(), Error> {
+    fn emit_block(
+        &mut self,
+        instructions: &[Instruction],
+        handle_function_list: &[Option<HandleFunction<Self>>],
+    ) -> Result<(), Error> {
         let mut cycles = 0;
         // A block is split into 2 parts:
         //
@@ -498,11 +566,12 @@ impl AotCompilingMachine {
         // together to emit correct native code.
         let mut initial_writes = vec![];
 
+        // TODO: support RVV
         for instruction in instructions.iter() {
             cycles += self
                 .instruction_cycle_func
                 .as_ref()
-                .map(|f| f(*instruction))
+                .map(|f| f(*instruction, 0, 0, true))
                 .unwrap_or(0);
         }
         self.emitter.emit_add_cycles(cycles)?;
@@ -516,7 +585,7 @@ impl AotCompilingMachine {
             if is_slowpath_instruction(*instruction) {
                 self.writes.push(Write::Slowpath);
             } else {
-                execute(*instruction, self)?;
+                execute(self, &handle_function_list, *instruction)?;
             }
             self.pc = Value::from_u64(pc + u64::from(length));
         }
@@ -553,6 +622,7 @@ impl AotCompilingMachine {
 
     pub fn compile(&mut self) -> Result<AotCode, Error> {
         let mut decoder = build_decoder::<u64>(self.isa(), self.version());
+        let handle_function_list = generate_handle_function_list::<Self>();
         let mut instructions = [Instruction::default(); MAXIMUM_INSTRUCTIONS_PER_BLOCK];
         for i in 0..self.sections.len() {
             let (section_start, section_end) = self.sections[i];
@@ -577,12 +647,13 @@ impl AotCompilingMachine {
                     count += 1;
                     current_pc += u64::from(instruction_length(instruction));
                     if is_basic_block_end_instruction(instruction)
+                        || is_slowpath_instruction(instruction)
                         || self.addresses_to_labels.contains_key(&current_pc)
                     {
                         break;
                     }
                 }
-                self.emit_block(&instructions[0..count])?;
+                self.emit_block(&instructions[0..count], &handle_function_list)?;
             }
         }
         let encoded_size = self.emitter.link()?;
@@ -667,6 +738,62 @@ impl CoreMachine for AotCompilingMachine {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
+    fn get_bit(&self, _reg: usize, _n: usize) -> bool {
+        unreachable!()
+    }
+
+    fn set_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn clr_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
+        unreachable!()
+    }
+
+    fn vl(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmax(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vsew(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmul(&self) -> f64 {
+        unreachable!()
+    }
+
+    fn vta(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vma(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vill(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vlenb(&self) -> u64 {
+        unreachable!()
+    }
 }
 
 impl Machine for AotCompilingMachine {
@@ -712,6 +839,10 @@ impl Memory for AotCompilingMachine {
     }
 
     fn store_bytes(&mut self, _addr: u64, _value: &[u8]) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn load_bytes(&mut self, _addr: u64, _size: u64) -> Result<Vec<u8>, Error> {
         Err(Error::Unimplemented)
     }
 

@@ -33,6 +33,9 @@ serde = { version = "1.0", features = ["derive"] }
 ckb-vm-definitions = { path = "definitions", version = "=0.21.4" }
 derive_more = "0.99.2"
 rand = "0.7.3"
+eint = "0.1.9"
+probe = "0.3"
+lru = "0.7.8"
 
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]
@@ -55,3 +58,6 @@ harness = false
 name = "vm_benchmark"
 path = "benches/vm_benchmark.rs"
 harness = false
+
+[profile.release]
+debug = true

@@ -5,10 +5,10 @@ use ckb_vm::machine::{aot::AotCompilingMachine, asm::AotCode};
 
 use bytes::Bytes;
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1};
-use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP};
+use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP, ISA_V};
 use ckb_vm::{Instruction, SparseMemory, WXorXMemory};
 
-pub fn instruction_cycle_func(_: Instruction) -> u64 {
+pub fn instruction_cycle_func(_: Instruction, _: u64, _: u64, _: bool) -> u64 {
     1
 }
 
@@ -124,5 +124,62 @@ pub fn int_v1_mop(
     let mut argv = vec![Bytes::from("main")];
     argv.extend_from_slice(&args);
     machine.load_program(&buffer, &argv).unwrap();
+    machine
+}
+
+#[cfg(has_asm)]
+pub fn asm_v1_imcv(path: &str) -> AsmMachine {
+    let buffer: Bytes = std::fs::read(path).unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_V, VERSION1, u64::max_value());
+    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+        .instruction_cycle_func(Box::new(instruction_cycle_func))
+        .build();
+    let mut machine = AsmMachine::new(core, None);
+    machine
+        .load_program(&buffer, &vec![Bytes::from("main")])
+        .unwrap();
+    machine
+}
+
+#[cfg(has_aot)]
+pub fn aot_v1_imcv_code(path: &str) -> AotCode {
+    let buffer: Bytes = std::fs::read(path).unwrap().into();
+    let mut aot_machine =
+        AotCompilingMachine::load(&buffer, None, ISA_IMC | ISA_V, VERSION1).unwrap();
+    aot_machine.compile().unwrap()
+}
+
+#[cfg(has_aot)]
+pub fn aot_v1_imcv(path: &str, code: AotCode) -> AsmMachine {
+    let buffer: Bytes = std::fs::read(path).unwrap().into();
+
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_V, VERSION1, u64::max_value());
+    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+        .instruction_cycle_func(Box::new(instruction_cycle_func))
+        .build();
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
+    machine
+        .load_program(&buffer, &vec![Bytes::from("main")])
+        .unwrap();
+    machine
+}
+
+pub fn int_v1_imcv(
+    path: &str,
+) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>> {
+    let buffer: Bytes = std::fs::read(path).unwrap().into();
+    let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+        ISA_IMC | ISA_V,
+        VERSION1,
+        u64::max_value(),
+    );
+    let mut machine = TraceMachine::new(
+        DefaultMachineBuilder::new(core_machine)
+            .instruction_cycle_func(Box::new(instruction_cycle_func))
+            .build(),
+    );
+    machine
+        .load_program(&buffer, &vec![Bytes::from("main")])
+        .unwrap();
     machine
 }

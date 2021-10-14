@@ -111,8 +111,24 @@ typedef struct {
   uint8_t memory[CKB_VM_ASM_RISCV_MAX_MEMORY];
   uint8_t frames[CKB_VM_ASM_MEMORY_FRAMES];
   /* We won't access traces here */
-  uint8_t _traces[CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE -
-                  CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES];
+  uint8_t _traces[CKB_VM_ASM_TRACE_STRUCT_SIZE * CKB_VM_ASM_TRACE_SIZE];
+  /* RVV */
+  uint8_t _register_file[4 * CKB_VM_ASM_VLEN];
+  uint64_t _vstart;
+  uint8_t _vxsat;
+  uint8_t _vxrm;
+  uint64_t _vcsr;
+  uint64_t _vtype;
+  uint64_t _vl;
+  uint64_t _vlenb;
+
+  uint8_t _vill;
+  uint8_t _vma;
+  uint8_t _vta;
+  int32_t _vlmul;
+  uint64_t _vsew;
+
+  uint64_t _vlmax;
 } AsmMachine;
 
 extern void inited_memory(uint64_t frame_index, AsmMachine* machine);

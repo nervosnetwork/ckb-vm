@@ -1,13 +1,10 @@
-use super::{
-    super::{
-        decoder::build_decoder,
-        instructions::{
-            execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
-        },
-        Error,
-    },
-    CoreMachine, DefaultMachine, Machine, SupportMachine,
+use crate::decoder::build_decoder;
+use crate::instructions::{
+    execute, generate_handle_function_list, instruction_length, is_basic_block_end_instruction,
+    Instruction, Register,
 };
+use crate::machine::{CoreMachine, DefaultMachine, Machine, SupportMachine};
+use crate::Error;
 use bytes::Bytes;
 
 // The number of trace items to keep
@@ -70,6 +67,62 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
         self.machine.set_register(idx, value)
     }
 
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.machine.element_ref(reg, sew, n)
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.machine.element_mut(reg, sew, n)
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.machine.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.machine.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.machine.clr_bit(reg, n)
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        self.machine.set_vl(rd, rs1, avl, new_type)
+    }
+
+    fn vl(&self) -> u64 {
+        self.machine.vl()
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.machine.vlmax()
+    }
+
+    fn vsew(&self) -> u64 {
+        self.machine.vsew()
+    }
+
+    fn vlmul(&self) -> f64 {
+        self.machine.vlmul()
+    }
+
+    fn vta(&self) -> bool {
+        self.machine.vta()
+    }
+
+    fn vma(&self) -> bool {
+        self.machine.vma()
+    }
+
+    fn vill(&self) -> bool {
+        self.machine.vill()
+    }
+
+    fn vlenb(&self) -> u64 {
+        self.machine.vlenb()
+    }
+
     fn isa(&self) -> u8 {
         self.machine.isa()
     }
@@ -103,6 +156,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
 
     pub fn run(&mut self) -> Result<i8, Error> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        let handle_func_list = generate_handle_function_list::<Self>();
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
         // to tweak the code here if we choose to use a larger trace size or
@@ -137,14 +191,16 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             }
             for i in 0..self.traces[slot].instruction_count {
                 let i = self.traces[slot].instructions[i as usize];
+                let vl = self.machine.vl();
+                let sew = self.vsew();
                 let cycles = self
                     .machine
                     .instruction_cycle_func()
                     .as_ref()
-                    .map(|f| f(i))
+                    .map(|f| f(i, vl, sew, false))
                     .unwrap_or(0);
                 self.machine.add_cycles(cycles)?;
-                execute(i, self)?;
+                execute(self, &handle_func_list, i)?;
             }
         }
         Ok(self.machine.exit_code())

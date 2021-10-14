@@ -350,7 +350,7 @@ ckb_vm_x64_execute:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
-  andq $8191, %rax
+  andq $4095, %rax
   imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
   lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
@@ -359,6 +359,9 @@ ckb_vm_x64_execute:
   movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
   cmp $0, %rdx
   je .exit_trace
+  movzbl CKB_VM_ASM_TRACE_OFFSET_SLOWPATH(TRACE), %eax
+  cmp $0, %eax
+  jne .exit_slowpath_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
   jc .exit_cycles_overflow
@@ -2022,6 +2025,10 @@ ckb_vm_x64_execute:
 .p2align 3
 .exit_slowpath:
   mov $CKB_VM_ASM_RET_SLOWPATH, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_slowpath_trace:
+  mov $CKB_VM_ASM_RET_SLOWPATH_TRACE, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_trace:
