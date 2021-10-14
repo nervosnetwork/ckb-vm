@@ -1,7 +1,7 @@
 [package]
 name = "ckb-vm"
 description = "CKB's Virtual machine"
-version = "0.20.0-rc6"
+version = "0.20.1"
 license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
 edition = "2018"
@@ -25,9 +25,10 @@ goblin_v023 = { package = "goblin", version = "=0.2.3" }
 goblin_v040 = { package = "goblin", version = "=0.4.0" }
 scroll = "0.10"
 serde = { version = "1.0", features = ["derive"] }
-ckb-vm-definitions = { path = "definitions", version = "0.20.0-rc6" }
+ckb-vm-definitions = { path = "definitions", version = "0.20.1" }
 derive_more = "0.99.2"
 rand = "0.7.3"
+uintxx = { path="uintxx" }
 
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]

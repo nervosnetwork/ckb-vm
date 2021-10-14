@@ -37,6 +37,8 @@ pub enum Error {
     Unexpected,
     #[display(fmt = "unimplemented")]
     Unimplemented,
+    #[display(fmt = "vill")]
+    Vill,
 }
 
 impl StdError for Error {}

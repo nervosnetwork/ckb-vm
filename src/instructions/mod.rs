@@ -8,8 +8,11 @@ pub mod b;
 pub mod i;
 pub mod m;
 pub mod rvc;
+pub mod v;
+pub mod v_register;
 
 pub use self::register::Register;
+pub use self::v_register::{VRegister, U1024, U256, U512};
 use super::Error;
 pub use ckb_vm_definitions::instructions::{
     self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
@@ -18,6 +21,7 @@ pub use execute::{execute, execute_instruction};
 
 type RegisterIndex = usize;
 type Immediate = i32;
+type SImmediate = Immediate;
 type UImmediate = u32;
 
 #[inline(always)]
@@ -244,6 +248,138 @@ impl R4type {
 
     pub fn rs3(self) -> RegisterIndex {
         (self.0 >> 48) as u8 as RegisterIndex
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VVtype(pub Instruction);
+
+impl VVtype {
+    pub fn new(
+        op: InstructionOpcode,
+        vd: RegisterIndex,
+        vs1: RegisterIndex,
+        vs2: RegisterIndex,
+        vm: bool,
+    ) -> Self {
+        let a = u64::from(op as u8);
+        let b = u64::from(op) >> 8 << 16;
+        let c = u64::from(vd as u8) << 8;
+        let d = u64::from(vs1 as u8) << 32;
+        let e = u64::from(vs2 as u8) << 40;
+        let f = if vm { 1u64 << 28 } else { 0 };
+        VVtype(a | b | c | d | e | f)
+    }
+
+    pub fn op(self) -> InstructionOpcode {
+        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+    }
+
+    pub fn vd(self) -> RegisterIndex {
+        (self.0 >> 8) as u8 as RegisterIndex
+    }
+
+    pub fn vs1(self) -> RegisterIndex {
+        (self.0 >> 32) as u8 as RegisterIndex
+    }
+
+    pub fn vs2(self) -> RegisterIndex {
+        (self.0 >> 40) as u8 as RegisterIndex
+    }
+
+    pub fn vm(self) -> bool {
+        self.0 & 1u64 << 28 != 0
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VXtype(pub Instruction);
+
+impl VXtype {
+    pub fn new(
+        op: InstructionOpcode,
+        vd: RegisterIndex,
+        rs1: RegisterIndex,
+        vs2: RegisterIndex,
+        vm: bool,
+    ) -> Self {
+        let a = u64::from(op as u8);
+        let b = u64::from(op) >> 8 << 16;
+        let c = u64::from(vd as u8) << 8;
+        let d = u64::from(rs1 as u8) << 32;
+        let e = u64::from(vs2 as u8) << 40;
+        let f = if vm { 1u64 << 28 } else { 0 };
+        VXtype(a | b | c | d | e | f)
+    }
+
+    pub fn op(self) -> InstructionOpcode {
+        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+    }
+
+    pub fn vd(self) -> RegisterIndex {
+        (self.0 >> 8) as u8 as RegisterIndex
+    }
+
+    pub fn rs1(self) -> RegisterIndex {
+        (self.0 >> 32) as u8 as RegisterIndex
+    }
+
+    pub fn vs2(self) -> RegisterIndex {
+        (self.0 >> 40) as u8 as RegisterIndex
+    }
+
+    pub fn vm(self) -> bool {
+        self.0 & 1u64 << 28 != 0
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct VItype(pub Instruction);
+
+impl VItype {
+    pub fn new(
+        op: InstructionOpcode,
+        vd: RegisterIndex,
+        vs2: RegisterIndex,
+        imm: UImmediate,
+        vm: bool,
+    ) -> Self {
+        let a = u64::from(op as u8);
+        let b = u64::from(op) >> 8 << 16;
+        let c = u64::from(vd as u8) << 8;
+        let d = u64::from(vs2 as u8) << 32;
+        let e = u64::from(imm) << 40;
+        let f = if vm { 1u64 << 28 } else { 0 };
+        VItype(a | b | c | d | e | f)
+    }
+
+    pub fn op(self) -> InstructionOpcode {
+        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+    }
+
+    pub fn vd(self) -> RegisterIndex {
+        (self.0 >> 8) as u8 as RegisterIndex
+    }
+
+    pub fn vs2(self) -> RegisterIndex {
+        (self.0 >> 32) as u8 as RegisterIndex
+    }
+
+    pub fn immediate_u(self) -> UImmediate {
+        (self.0 >> 40) as u8 as u32
+    }
+
+    pub fn immediate_s(self) -> SImmediate {
+        let u = self.immediate_u() as i32;
+        if u >= 16 {
+            u - 32
+        } else {
+            u
+        }
+    }
+
+    pub fn vm(self) -> bool {
+        self.0 & 1u64 << 28 != 0
     }
 }
 

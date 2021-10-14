@@ -80,6 +80,10 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         self.inner.execute_load32(addr)
     }
 
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Vec<u8>, Error> {
+        self.inner.load_bytes(addr, size)
+    }
+
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         self.inner.load8(addr)
     }

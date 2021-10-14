@@ -12,13 +12,13 @@ use scroll::Pread;
 
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, Decoder};
-use super::instructions::{execute, Instruction, Register};
+use super::instructions::{execute, Instruction, Register, VRegister};
 use super::memory::{round_page_down, round_page_up, Memory, FLAG_DIRTY};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGES,
+    RISCV_PAGES, VLEN,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -45,6 +45,18 @@ pub trait CoreMachine {
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
     fn set_register(&mut self, idx: usize, value: Self::REG);
+
+    // Vector extension
+    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32);
+    fn get_vl(&self) -> u32;
+    fn get_vsew(&self) -> u32;
+    fn get_vlmul(&self) -> i32;
+    fn get_vta(&self) -> bool;
+    fn get_vma(&self) -> bool;
+    fn get_vill(&self) -> bool;
+    fn vregisters(&self) -> &[VRegister];
+    fn set_vregister(&mut self, idx: usize, value: VRegister);
+    fn get_vregister(&mut self, idx: usize) -> &mut VRegister;
 
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
@@ -282,6 +294,14 @@ pub struct DefaultCoreMachine<R, M> {
     running: bool,
     isa: u8,
     version: u32,
+
+    vregisters: [VRegister; 32],
+    vl: u32,
+    vtype_vill: bool,
+    vtype_vma: bool,
+    vtype_vta: bool,
+    vtype_lmul: i32,
+    vtype_sew: u32,
 }
 
 impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -313,6 +333,86 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
+    }
+
+    fn get_vl(&self) -> u32 {
+        return self.vl;
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
+        self.vtype_sew = 1 << (((new_type >> 3) & 0x7) + 3);
+        self.vtype_lmul = match new_type & 0x7 {
+            0b_000 => 1,
+            0b_001 => 2,
+            0b_010 => 4,
+            0b_011 => 8,
+            0b_111 => -2,
+            0b_110 => -4,
+            0b_101 => -8,
+            0b_100 => -16, // reserved
+            _ => unreachable!(),
+        };
+        let vlmax = if self.vtype_lmul >= 0 {
+            (VLEN / self.vtype_sew) * (self.vtype_lmul as u32)
+        } else {
+            (VLEN / self.vtype_sew) / ((-self.vtype_lmul) as u32)
+        };
+        self.vtype_vta = ((new_type >> 6) & 0x1) != 0;
+        self.vtype_vma = ((new_type >> 7) & 0x1) != 0;
+        self.vtype_vill = (new_type >> 8) != 0
+            || if self.vtype_lmul < 0 {
+                self.vtype_sew > VLEN / (-self.vtype_lmul) as u32
+            } else {
+                false
+            };
+
+        self.vl = if vlmax == 0 {
+            0
+        } else if rd == 0 && rs1 == 0 {
+            std::cmp::min(self.vl, vlmax)
+        } else if rd != 0 && rs1 == 0 {
+            vlmax
+        } else if rs1 != 0 {
+            std::cmp::min(reqvl.to_u32(), vlmax)
+        } else {
+            self.vl
+        };
+        // println!(
+        //     "set_vl vl={:?} sew={:?} lmul={:?}",
+        //     self.vl, self.vtype_sew, self.vtype_lmul
+        // );
+    }
+
+    fn get_vsew(&self) -> u32 {
+        self.vtype_sew
+    }
+
+    fn get_vlmul(&self) -> i32 {
+        self.vtype_lmul
+    }
+
+    fn get_vta(&self) -> bool {
+        self.vtype_vta
+    }
+
+    fn get_vma(&self) -> bool {
+        self.vtype_vma
+    }
+
+    fn get_vill(&self) -> bool {
+        self.vtype_vill
+    }
+
+    fn vregisters(&self) -> &[VRegister] {
+        &self.vregisters
+    }
+
+    fn set_vregister(&mut self, idx: usize, value: VRegister) {
+        self.vregisters[idx] = value;
+    }
+
+    fn get_vregister(&mut self, idx: usize) -> &mut VRegister {
+        &mut self.vregisters[idx]
     }
 
     fn isa(&self) -> u8 {
@@ -426,6 +526,46 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.inner.set_register(idx, value)
+    }
+
+    fn get_vregister(&mut self, idx: usize) -> &mut VRegister {
+        self.inner.get_vregister(idx)
+    }
+
+    fn get_vl(&self) -> u32 {
+        self.inner.get_vl()
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
+        self.inner.set_vl(rd, rs1, reqvl, new_type)
+    }
+
+    fn get_vsew(&self) -> u32 {
+        self.inner.get_vsew()
+    }
+
+    fn get_vlmul(&self) -> i32 {
+        self.inner.get_vlmul()
+    }
+
+    fn get_vta(&self) -> bool {
+        self.inner.get_vta()
+    }
+
+    fn get_vma(&self) -> bool {
+        self.inner.get_vma()
+    }
+
+    fn get_vill(&self) -> bool {
+        self.inner.get_vill()
+    }
+
+    fn vregisters(&self) -> &[VRegister] {
+        self.inner.vregisters()
+    }
+
+    fn set_vregister(&mut self, idx: usize, value: VRegister) {
+        self.inner.set_vregister(idx, value)
     }
 
     fn isa(&self) -> u8 {

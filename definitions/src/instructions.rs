@@ -5,12 +5,16 @@
 // |           | rs2 | rs1 | flg | op2 | rd  | op  | R-type
 // +-----+-----+-----+-----+-----+-----+-----+-----+
 // |     | rs3 | rs2 | rs1 | flg | op2 | rd  | op  | R4-type
+// +-----+-----+-----+-----+-----+-----+-----+-----+
+// |   uimm    | rs2 | rs1 | flg | op2 | rd  | op  | RU-type
 // +-----------+-----------------------------------+
 // |    immediate    | rs1 | flg | op2 | rd  | op  | I-type
 // +-----------------------------------------------+
 // |    immediate    | rs1 | flg | op2 | rs2 | op  | S-type/B-type
 // +-----------------+-----------------------------+
 // |       immediate       | flg | op2 | rd  | op  | U-type/J-type
+// +-----------------+-----------------------------+
+// |           | imm | vs2 | flg | op2 | rd  | op  | VI-type
 // +-----+-----+-----+-----+-----+-----+-----+-----+
 //
 // +flg+ here means a combination of flags, Its format is as follows:
@@ -159,12 +163,79 @@ pub const OP_ADC: InstructionOpcode = 0x76;
 pub const OP_SBB: InstructionOpcode = 0x77;
 pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x78;
 pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x79;
+// V
+pub const OP_VSETVLI: InstructionOpcode = 0x00f0;
+pub const OP_VSETIVLI: InstructionOpcode = 0x01f0;
+pub const OP_VSETVL: InstructionOpcode = 0x02f0;
+pub const OP_VLE8_V: InstructionOpcode = 0x03f0;
+pub const OP_VLE16_V: InstructionOpcode = 0x04f0;
+pub const OP_VLE32_V: InstructionOpcode = 0x05f0;
+pub const OP_VLE64_V: InstructionOpcode = 0x06f0;
+pub const OP_VLE128_V: InstructionOpcode = 0x07f0;
+pub const OP_VLE256_V: InstructionOpcode = 0x08f0;
+pub const OP_VLE512_V: InstructionOpcode = 0x09f0;
+pub const OP_VLE1024_V: InstructionOpcode = 0x0af0;
+pub const OP_VSE8_V: InstructionOpcode = 0x0bf0;
+pub const OP_VSE16_V: InstructionOpcode = 0x0cf0;
+pub const OP_VSE32_V: InstructionOpcode = 0x0df0;
+pub const OP_VSE64_V: InstructionOpcode = 0x0ef0;
+pub const OP_VSE128_V: InstructionOpcode = 0x0ff0;
+pub const OP_VSE256_V: InstructionOpcode = 0x10f0;
+pub const OP_VSE512_V: InstructionOpcode = 0x11f0;
+pub const OP_VSE1024_V: InstructionOpcode = 0x12f0;
+pub const OP_VADD_VV: InstructionOpcode = 0x13f0;
+pub const OP_VADD_VX: InstructionOpcode = 0x14f0;
+pub const OP_VADD_VI: InstructionOpcode = 0x15f0;
+pub const OP_VSUB_VV: InstructionOpcode = 0x16f0;
+pub const OP_VSUB_VX: InstructionOpcode = 0x17f0;
+pub const OP_VRSUB_VX: InstructionOpcode = 0x18f0;
+pub const OP_VRSUB_VI: InstructionOpcode = 0x19f0;
+pub const OP_VMUL_VV: InstructionOpcode = 0x1af0;
+pub const OP_VMUL_VX: InstructionOpcode = 0x1bf0;
+pub const OP_VDIV_VV: InstructionOpcode = 0x1cf0;
+pub const OP_VDIV_VX: InstructionOpcode = 0x1df0;
+pub const OP_VDIVU_VV: InstructionOpcode = 0x1ef0;
+pub const OP_VDIVU_VX: InstructionOpcode = 0x1ff0;
+pub const OP_VREM_VV: InstructionOpcode = 0x20f0;
+pub const OP_VREM_VX: InstructionOpcode = 0x21f0;
+pub const OP_VREMU_VV: InstructionOpcode = 0x22f0;
+pub const OP_VREMU_VX: InstructionOpcode = 0x23f0;
+pub const OP_VSLL_VV: InstructionOpcode = 0x24f0;
+pub const OP_VSLL_VX: InstructionOpcode = 0x25f0;
+pub const OP_VSLL_VI: InstructionOpcode = 0x26f0;
+pub const OP_VSRL_VV: InstructionOpcode = 0x27f0;
+pub const OP_VSRL_VX: InstructionOpcode = 0x28f0;
+pub const OP_VSRL_VI: InstructionOpcode = 0x29f0;
+pub const OP_VSRA_VV: InstructionOpcode = 0x2af0;
+pub const OP_VSRA_VX: InstructionOpcode = 0x2bf0;
+pub const OP_VSRA_VI: InstructionOpcode = 0x2cf0;
+pub const OP_VMSEQ_VV: InstructionOpcode = 0x2df0;
+pub const OP_VMSEQ_VX: InstructionOpcode = 0x2ef0;
+pub const OP_VMSEQ_VI: InstructionOpcode = 0x2ff0;
+pub const OP_VMSNE_VV: InstructionOpcode = 0x30f0;
+pub const OP_VMSNE_VX: InstructionOpcode = 0x31f0;
+pub const OP_VMSNE_VI: InstructionOpcode = 0x32f0;
+pub const OP_VMSLTU_VV: InstructionOpcode = 0x33f0;
+pub const OP_VMSLTU_VX: InstructionOpcode = 0x34f0;
+pub const OP_VMSLT_VV: InstructionOpcode = 0x35f0;
+pub const OP_VMSLT_VX: InstructionOpcode = 0x36f0;
+pub const OP_VMSLEU_VV: InstructionOpcode = 0x37f0;
+pub const OP_VMSLEU_VX: InstructionOpcode = 0x38f0;
+pub const OP_VMSLEU_VI: InstructionOpcode = 0x39f0;
+pub const OP_VMSLE_VV: InstructionOpcode = 0x3af0;
+pub const OP_VMSLE_VX: InstructionOpcode = 0x3bf0;
+pub const OP_VMSLE_VI: InstructionOpcode = 0x3cf0;
+pub const OP_VMSGTU_VX: InstructionOpcode = 0x3df0;
+pub const OP_VMSGTU_VI: InstructionOpcode = 0x3ef0;
+pub const OP_VMSGT_VX: InstructionOpcode = 0x3ff0;
+pub const OP_VMSGT_VI: InstructionOpcode = 0x40f0;
+pub const OP_VFIRST_M: InstructionOpcode = 0x41f0;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
-pub const LEVEL2_B_OPCODE: InstructionOpcode = 0xF0;
-pub const MINIMAL_LEVEL2_B_OPCODE2: InstructionOpcode = 0x00;
-pub const MAXIMUM_LEVEL2_B_OPCODE2: InstructionOpcode = 0x00;
+pub const LEVEL2_V_OPCODE: InstructionOpcode = 0xf0;
+pub const MINIMAL_LEVEL2_OPCODE: InstructionOpcode = 0x00;
+pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0x41;
 
 pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize + 1] = [
     "UNLOADED",
@@ -291,6 +362,80 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize
     "CUSTOM_TRACE_END",
 ];
 
+pub const INSTRUCTION_OPCODE_NAMES_LEVEL2: [&str;
+    (MAXIMUM_LEVEL2_OPCODE - MINIMAL_LEVEL2_OPCODE) as usize + 1] = [
+    "VSETVLI",
+    "VSETIVLI",
+    "VSETVL",
+    "VLE8_V",
+    "VLE16_V",
+    "VLE32_V",
+    "VLE64_V",
+    "VLE128_V",
+    "VLE256_V",
+    "VLE512_V",
+    "VLE1024_V",
+    "VSE8_V",
+    "VSE16_V",
+    "VSE32_V",
+    "VSE64_V",
+    "VSE128_V",
+    "VSE256_V",
+    "VSE512_V",
+    "VSE1024_V",
+    "VADD_VV",
+    "VADD_VX",
+    "VADD_VI",
+    "VSUB_VV",
+    "VSUB_VX",
+    "VRSUB_VX",
+    "VRSUB_VI",
+    "VMUL_VV",
+    "VMUL_VX",
+    "VDIV_VV",
+    "VDIV_VX",
+    "VDIVU_VV",
+    "VDIVU_VX",
+    "VREM_VV",
+    "VREM_VX",
+    "VREMU_VV",
+    "VREMU_VX",
+    "VSLL_VV",
+    "VSLL_VX",
+    "VSLL_VI",
+    "VSRL_VV",
+    "VSRL_VX",
+    "VSRL_VI",
+    "VSRA_VV",
+    "VSRA_VX",
+    "VSRA_VI",
+    "VMSEQ_VV",
+    "VMSEQ_VX",
+    "VMSEQ_VI",
+    "VMSNE_VV",
+    "VMSNE_VX",
+    "VMSNE_VI",
+    "VMSLTU_VV",
+    "VMSLTU_VX",
+    "VMSLT_VV",
+    "VMSLT_VX",
+    "VMSLEU_VV",
+    "VMSLEU_VX",
+    "VMSLEU_VI",
+    "VMSLE_VV",
+    "VMSLE_VX",
+    "VMSLE_VI",
+    "VMSGTU_VX",
+    "VMSGTU_VI",
+    "VMSGT_VX",
+    "VMSGT_VI",
+    "VFIRST_M",
+];
+
 pub fn instruction_opcode_name(i: InstructionOpcode) -> &'static str {
-    INSTRUCTION_OPCODE_NAMES_LEVEL1[i as usize]
+    if i >= 0xf0 {
+        INSTRUCTION_OPCODE_NAMES_LEVEL2[i as usize >> 8]
+    } else {
+        INSTRUCTION_OPCODE_NAMES_LEVEL1[i as usize]
+    }
 }

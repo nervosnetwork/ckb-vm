@@ -2,9 +2,22 @@ use super::{
     super::{machine::Machine, Error},
     common, extract_opcode, instruction_length,
     utils::update_register,
-    Instruction, Itype, R4type, Register, Rtype, Stype, Utype,
+    Instruction, Itype, R4type, Register, Rtype, Stype, Utype, VItype, VRegister, VVtype, VXtype,
+    U1024, U256, U512,
 };
-use ckb_vm_definitions::{instructions as insts, registers::RA};
+use crate::instructions::v_register::{
+    vfunc_add_vi, vfunc_add_vv, vfunc_add_vx, vfunc_div_vv, vfunc_div_vx, vfunc_divu_vv,
+    vfunc_divu_vx, vfunc_mseq_vi, vfunc_mseq_vv, vfunc_mseq_vx, vfunc_msgt_vi, vfunc_msgt_vx,
+    vfunc_msgtu_vi, vfunc_msgtu_vx, vfunc_msle_vi, vfunc_msle_vv, vfunc_msle_vx, vfunc_msleu_vi,
+    vfunc_msleu_vv, vfunc_msleu_vx, vfunc_mslt_vv, vfunc_mslt_vx, vfunc_msltu_vv, vfunc_msltu_vx,
+    vfunc_msne_vi, vfunc_msne_vv, vfunc_msne_vx, vfunc_mul_vv, vfunc_mul_vx, vfunc_rem_vv,
+    vfunc_rem_vx, vfunc_remu_vv, vfunc_remu_vx, vfunc_rsub_vi, vfunc_rsub_vx, vfunc_sll_vi,
+    vfunc_sll_vv, vfunc_sra_vi, vfunc_sra_vv, vfunc_srl_vi, vfunc_srl_vv, vfunc_sub_vv,
+    vfunc_sub_vx,
+};
+use crate::memory::Memory;
+use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
+use uintxx::{Element, U128, U16, U32, U64, U8};
 
 pub fn execute_instruction<Mac: Machine>(
     inst: Instruction,
@@ -900,6 +913,1080 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Utype(inst);
             let value = Mac::REG::from_i32(i.immediate_s());
             update_register(machine, i.rd(), value);
+        }
+        insts::OP_VSETVLI => {
+            let i = Itype(inst);
+            common::set_vl(
+                machine,
+                i.rd(),
+                i.rs1(),
+                machine.registers()[i.rs1()].to_u32(),
+                i.immediate(),
+            )?;
+        }
+        insts::OP_VSETIVLI => {
+            let i = Itype(inst);
+            common::set_vl(machine, i.rd(), 33, i.rs1() as u32, i.immediate())?;
+        }
+        insts::OP_VSETVL => {
+            let i = Rtype(inst);
+            common::set_vl(
+                machine,
+                i.rd(),
+                i.rs1(),
+                machine.registers()[i.rs1()].to_u32(),
+                machine.registers()[i.rs2()].to_u32(),
+            )?;
+        }
+        insts::OP_VLE8_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 256;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 1));
+                let elem = machine.memory_mut().load8(&addr)?.to_u8();
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U8(ref mut data) = vreg {
+                    data[i as usize % 256] = U8(elem);
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE16_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 128;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 2));
+                let elem = machine.memory_mut().load16(&addr)?.to_u16();
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U16(ref mut data) = vreg {
+                    data[i as usize % 128] = U16(elem);
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE32_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 64;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 4));
+                let elem = machine.memory_mut().load32(&addr)?.to_u32();
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U32(ref mut data) = vreg {
+                    data[i as usize % 64] = U32(elem);
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE64_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 32;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 8));
+                let elem = machine.memory_mut().load64(&addr)?.to_u64();
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U64(ref mut data) = vreg {
+                    data[i as usize % 32] = U64(elem);
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE128_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let mut buf = [0u8; 16];
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 16;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 16));
+                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 16)?);
+                let elem = u128::from_le_bytes(buf);
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U128(ref mut data) = vreg {
+                    data[i as usize % 16] = U128(elem);
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE256_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let mut buf = [0u8; 32];
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 8;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 32));
+                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 32)?);
+                let elem = U256::from_le_bytes(buf);
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U256(ref mut data) = vreg {
+                    data[i as usize % 8] = elem;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE512_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let mut buf = [0u8; 64];
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 4;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 64));
+                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 64)?);
+                let elem = U512::from_le_bytes(buf);
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U512(ref mut data) = vreg {
+                    data[i as usize % 4] = elem;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VLE1024_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let mut buf = [0u8; 128];
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / 2;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 128));
+                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 128)?);
+                let elem = U1024::from_le_bytes(buf);
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U1024(ref mut data) = vreg {
+                    data[i as usize % 2] = elem;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE8_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 8;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U8(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE16_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 16;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U16(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE32_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 32;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U32(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE64_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 64;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U64(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE128_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 128;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U128(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE256_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 256;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U256(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE512_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 512;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U512(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSE1024_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 1024;
+            for i in 0..machine.get_vl() {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U1024(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VADD_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_add_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VADD_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_add_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VADD_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_add_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSUB_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sub_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSUB_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sub_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VRSUB_VX => {
+            let i = Rtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.rs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.rd() + j as usize);
+                vfunc_rsub_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VRSUB_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_rsub_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMUL_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mul_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMUL_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mul_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VDIVU_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_divu_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VDIVU_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_divu_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VDIV_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_div_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VDIV_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_div_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VREMU_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_remu_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VREMU_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_remu_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VREM_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_rem_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VREM_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_rem_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSLL_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sll_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSLL_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u32();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sll_vi(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSLL_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_u();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sll_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSRL_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_srl_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSRL_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u32();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_srl_vi(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSRL_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_u();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_srl_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSRA_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sra_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSRA_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u32();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sra_vi(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VSRA_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_u();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_sra_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSEQ_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mseq_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSEQ_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mseq_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSEQ_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mseq_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSNE_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msne_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSNE_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msne_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSNE_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msne_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLTU_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msltu_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLTU_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msltu_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLT_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mslt_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLT_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_mslt_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLEU_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msleu_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLEU_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msleu_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLEU_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msleu_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLE_VV => {
+            let i = VVtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msle_vv(&vs2, &vs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLE_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msle_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSLE_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msle_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSGTU_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msgtu_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSGTU_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msgtu_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSGT_VX => {
+            let i = VXtype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msgt_vx(&vs2, rs1, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VMSGT_VI => {
+            let i = VItype(inst);
+            let vlmax = VLEN / machine.get_vsew();
+            for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
+                let num = if machine.get_vl() > vlmax {
+                    vlmax
+                } else {
+                    machine.get_vl()
+                };
+                let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+                let imm = i.immediate_s();
+                let mut vd = machine.get_vregister(i.vd() + j as usize);
+                vfunc_msgt_vi(&vs2, imm, &mut vd, num as usize)?;
+            }
+        }
+        insts::OP_VFIRST_M => {
+            let i = Rtype(inst);
+            let vs2 = machine.vregisters()[i.rs2() as usize];
+            let mut r = u64::MAX;
+            match vs2 {
+                VRegister::U1024(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if e == &U1024::from(1u8) {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U512(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if e == &U512::from(1u8) {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U256(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if e == &U256::from(1u8) {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U128(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if *e == U128::ONE {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U64(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if *e == U64::ONE {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U32(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if *e == U32::ONE {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U16(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if *e == U16::ONE {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+                VRegister::U8(data) => {
+                    for (j, e) in data.iter().enumerate() {
+                        if *e == U8::ONE {
+                            r = j as u64;
+                            break;
+                        }
+                    }
+                }
+            }
+            update_register(machine, i.rd(), Mac::REG::from_u64(r));
         }
         _ => return Err(Error::InvalidOp(op)),
     };

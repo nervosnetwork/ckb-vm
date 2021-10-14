@@ -3,6 +3,7 @@ use super::{
         decoder::build_decoder,
         instructions::{
             execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
+            VRegister,
         },
         Error,
     },
@@ -68,6 +69,46 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.machine.set_register(idx, value)
+    }
+
+    fn get_vl(&self) -> u32 {
+        self.machine.get_vl()
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
+        self.machine.set_vl(rd, rs1, reqvl, new_type)
+    }
+
+    fn get_vsew(&self) -> u32 {
+        self.machine.get_vsew()
+    }
+
+    fn get_vlmul(&self) -> i32 {
+        self.machine.get_vlmul()
+    }
+
+    fn get_vta(&self) -> bool {
+        self.machine.get_vta()
+    }
+
+    fn get_vma(&self) -> bool {
+        self.machine.get_vma()
+    }
+
+    fn get_vill(&self) -> bool {
+        self.machine.get_vill()
+    }
+
+    fn vregisters(&self) -> &[VRegister] {
+        self.machine.vregisters()
+    }
+
+    fn set_vregister(&mut self, idx: usize, value: VRegister) {
+        self.machine.set_vregister(idx, value)
+    }
+
+    fn get_vregister(&mut self, idx: usize) -> &mut VRegister {
+        self.machine.get_vregister(idx)
     }
 
     fn isa(&self) -> u8 {
