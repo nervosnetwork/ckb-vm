@@ -70,6 +70,58 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.set_register(idx, value)
     }
 
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.machine.element_ref(reg, sew, n)
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.machine.element_mut(reg, sew, n)
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.machine.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.machine.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.machine.clr_bit(reg, n)
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        self.machine.set_vl(rd, rs1, avl, new_type)
+    }
+
+    fn vl(&self) -> u64 {
+        self.machine.vl()
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.machine.vlmax()
+    }
+
+    fn vsew(&self) -> u64 {
+        self.machine.vsew()
+    }
+
+    fn vlmul(&self) -> i32 {
+        self.machine.vlmul()
+    }
+
+    fn vta(&self) -> bool {
+        self.machine.vta()
+    }
+
+    fn vma(&self) -> bool {
+        self.machine.vma()
+    }
+
+    fn vill(&self) -> bool {
+        self.machine.vill()
+    }
+
     fn isa(&self) -> u8 {
         self.machine.isa()
     }

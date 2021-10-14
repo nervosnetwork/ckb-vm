@@ -2,9 +2,3012 @@ use super::{
     super::{machine::Machine, Error},
     common, extract_opcode, instruction_length,
     utils::update_register,
-    Instruction, Itype, R4type, Register, Rtype, Stype, Utype,
+    Instruction, Itype, R4type, Register, Rtype, Stype, Utype, VItype, VVtype, VXtype,
 };
-use ckb_vm_definitions::{instructions as insts, registers::RA};
+use crate::instructions::v_alu as alu;
+use crate::memory::Memory;
+use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
+pub use eint::{Eint, E1024, E128, E16, E2048, E256, E32, E512, E64, E8};
+
+macro_rules! ld {
+    ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
+        let i = VXtype($inst);
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        let stride = if $stride != 0 {
+            $machine.registers()[i.vs2()].to_u64()
+        } else {
+            $size
+        };
+        for j in 0..$vl {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+                continue;
+            }
+            let data = $machine.memory_mut().load_bytes(addr + stride * j, $size)?;
+            $machine
+                .element_mut(vd, $size << 3, j as usize)
+                .copy_from_slice(&data);
+        }
+    };
+}
+
+macro_rules! ld_index {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let offset = E8::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                16 => {
+                    let offset = E16::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                32 => {
+                    let offset = E32::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                64 => {
+                    let offset = E64::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                128 => {
+                    let offset = E128::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                256 => {
+                    let offset = E256::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                512 => {
+                    let offset = E512::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                1024 => {
+                    let offset = E1024::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    $machine
+                        .element_mut(vd, sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in ld_index",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! ld_whole {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VXtype($inst);
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        let data = $machine.memory_mut().load_bytes(addr, $size)?;
+        $machine
+            .element_mut(i.vd(), $size << 3, 0)
+            .copy_from_slice(&data);
+    };
+}
+
+macro_rules! sd {
+    ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
+        let i = VXtype($inst);
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        let stride = if $stride != 0 {
+            $machine.registers()[i.vs2()].to_u64()
+        } else {
+            $size
+        };
+        for j in 0..$vl {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+                continue;
+            }
+            let data = $machine.element_ref(vd, $size << 3, j as usize).to_vec();
+            $machine
+                .memory_mut()
+                .store_bytes(addr + stride * j, &data)?;
+        }
+    };
+}
+
+macro_rules! sd_index {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let offset = E8::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                16 => {
+                    let offset = E16::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                32 => {
+                    let offset = E32::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                64 => {
+                    let offset = E64::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                128 => {
+                    let offset = E128::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                256 => {
+                    let offset = E256::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                512 => {
+                    let offset = E512::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                1024 => {
+                    let offset = E1024::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let data = $machine.element_ref(vd, sew, j as usize).to_vec();
+                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in sd_index",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! sd_whole {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VXtype($inst);
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        let data = $machine.element_ref(i.vd(), $size << 3, 0).to_vec();
+        $machine.memory_mut().store_bytes(addr, &data)?;
+    };
+}
+
+macro_rules! v_vv_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vv_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vv_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! v_vv_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vv_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! v_vx_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vx_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vx_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vx_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! v_vx_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vx_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! v_vi_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from(i.immediate_s())
+                    } else {
+                        E8::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from(i.immediate_s())
+                    } else {
+                        E16::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from(i.immediate_s())
+                    } else {
+                        E32::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from(i.immediate_s())
+                    } else {
+                        E64::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from(i.immediate_s())
+                    } else {
+                        E128::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from(i.immediate_s())
+                    } else {
+                        E256::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from(i.immediate_s())
+                    } else {
+                        E512::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from(i.immediate_s())
+                    } else {
+                        E1024::from(i.immediate_u())
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vi_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vi_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vi_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! v_vi_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vi_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! m_vv_loop {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! m_vv_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        m_vv_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! m_vv_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        m_vv_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! m_vx_loop {
+    ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vx_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! m_vx_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vx_loop!($inst, $machine, $cond, 1);
+    };
+}
+
+macro_rules! m_vx_loop_u {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vx_loop!($inst, $machine, $cond, 0);
+    };
+}
+
+macro_rules! m_vi_loop {
+    ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from(i.immediate_s())
+                    } else {
+                        E8::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from(i.immediate_s())
+                    } else {
+                        E16::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from(i.immediate_s())
+                    } else {
+                        E32::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from(i.immediate_s())
+                    } else {
+                        E64::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from(i.immediate_s())
+                    } else {
+                        E128::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from(i.immediate_s())
+                    } else {
+                        E256::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from(i.immediate_s())
+                    } else {
+                        E512::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from(i.immediate_s())
+                    } else {
+                        E1024::from(i.immediate_u())
+                    };
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vi_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! m_vi_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vi_loop!($inst, $machine, $cond, 1);
+    };
+}
+
+macro_rules! m_vi_loop_u {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vi_loop!($inst, $machine, $cond, 0);
+    };
+}
+
+macro_rules! m_mm_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        for j in 0..$machine.vl() as usize {
+            let b = $machine.get_bit(i.vs2(), j);
+            let a = $machine.get_bit(i.vs1(), j);
+            if $body(b, a) {
+                $machine.set_bit(i.vd(), j);
+            } else {
+                $machine.clr_bit(i.vd(), j);
+            }
+        }
+    };
+}
+
+macro_rules! w_vv_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! w_vv_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        w_vv_loop!($inst, $machine, $cond);
+    };
+}
+
+macro_rules! w_vv_loop_u {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        w_vv_loop!($inst, $machine, $cond);
+    };
+}
+
+macro_rules! w_vx_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let (lo, hi) = $body(b, a);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vx_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! w_vx_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vx_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! w_vx_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vx_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! w_wv_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E16::from(E8::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E16::from(E8::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                16 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E32::from(E16::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E32::from(E16::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                32 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E64::from(E32::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E64::from(E32::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                64 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E128::from(E64::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E128::from(E64::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                128 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E256::from(E128::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E256::from(E128::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                256 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E512::from(E256::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E512::from(E256::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                512 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E1024::from(E512::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E1024::from(E512::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                1024 => {
+                    let b = E2048::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E2048::from(E1024::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E2048::from(E1024::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_wv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! w_wv_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_wv_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! w_wv_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_wv_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! w_wx_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E16::from(E8::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E16::from(E8::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                16 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E32::from(E16::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E32::from(E16::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                32 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E64::from(E32::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E64::from(E32::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                64 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E128::from(E64::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E128::from(E64::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                128 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E256::from(E128::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E256::from(E128::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                256 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E512::from(E256::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E512::from(E256::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                512 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E1024::from(E512::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E1024::from(E512::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                1024 => {
+                    let b = E2048::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E2048::from(E1024::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E2048::from(E1024::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_wv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! w_wx_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_wx_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! w_wx_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_wx_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! v_wv_loop {
+    ($inst:expr, $machine:expr, $body:expr, $size:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E16::from(E8::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E16::from(E8::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E32::from(E16::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E32::from(E16::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E64::from(E32::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E64::from(E32::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E128::from(E64::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E128::from(E64::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E256::from(E128::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E256::from(E128::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E512::from(E256::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E512::from(E256::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E1024::from(E512::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E1024::from(E512::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E2048::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $size != 0 {
+                        E2048::from(E1024::get($machine.element_ref(i.vs1(), sew, j))).lo_sext()
+                    } else {
+                        E2048::from(E1024::get($machine.element_ref(i.vs1(), sew, j)))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_wv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_wv_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_wv_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! v_wx_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E16::from(E8::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E16::from(E8::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E32::from(E16::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E32::from(E16::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E64::from(E32::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E64::from(E32::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E128::from(E64::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E128::from(E64::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E256::from(E128::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E256::from(E128::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E512::from(E256::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E512::from(E256::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E1024::from(E512::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E1024::from(E512::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E2048::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E2048::from(E1024::from($machine.registers()[i.rs1()].to_i64())).lo_sext()
+                    } else {
+                        E2048::from(E1024::from($machine.registers()[i.rs1()].to_u64()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_wx_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_wx_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_wx_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! v_wi_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E16::from(E8::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E16::from(E8::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E32::from(E16::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E32::from(E16::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E64::from(E32::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E64::from(E32::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E128::from(E64::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E128::from(E64::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E256::from(E128::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E256::from(E128::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E512::from(E256::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E512::from(E256::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E1024::from(E512::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E1024::from(E512::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E2048::get($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = if $sign != 0 {
+                        E2048::from(E1024::from(i.immediate_s())).lo_sext()
+                    } else {
+                        E2048::from(E1024::from(i.immediate_u()))
+                    };
+                    let r = $body(b, a);
+                    r.put_lo($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_wi_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_wi_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_wi_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! v_vvm_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vvm_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vvm_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vvm_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! v_vxm_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vxm_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vxm_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vxm_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! v_vim_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from(i.immediate_s())
+                    } else {
+                        E8::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from(i.immediate_s())
+                    } else {
+                        E16::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from(i.immediate_s())
+                    } else {
+                        E32::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from(i.immediate_s())
+                    } else {
+                        E64::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from(i.immediate_s())
+                    } else {
+                        E128::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from(i.immediate_s())
+                    } else {
+                        E256::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from(i.immediate_s())
+                    } else {
+                        E512::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from(i.immediate_s())
+                    } else {
+                        E1024::from(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vim_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vim_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vim_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! m_vvm_loop {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vvm_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! m_vvm_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        m_vvm_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! m_vxm_loop {
+    ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vxm_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! m_vxm_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vxm_loop!($inst, $machine, $cond, 1);
+    };
+}
+
+macro_rules! m_vim_loop {
+    ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from(i.immediate_s())
+                    } else {
+                        E8::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from(i.immediate_s())
+                    } else {
+                        E16::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from(i.immediate_s())
+                    } else {
+                        E32::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from(i.immediate_s())
+                    } else {
+                        E64::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from(i.immediate_s())
+                    } else {
+                        E128::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from(i.immediate_s())
+                    } else {
+                        E256::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from(i.immediate_s())
+                    } else {
+                        E512::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from(i.immediate_s())
+                    } else {
+                        E1024::from(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vim_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! m_vim_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vim_loop!($inst, $machine, $cond, 1);
+    };
+}
+
+macro_rules! v_vv_loop_destructive {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E8::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E16::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E32::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E64::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E128::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E256::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E512::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E1024::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vv_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vv_loop_destructive_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vv_loop_destructive!($inst, $machine, $body);
+    };
+}
+
+macro_rules! v_vx_loop_destructive {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E8::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E16::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E32::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E64::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E128::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E256::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E512::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E1024::get($machine.element_ref(i.vd(), sew, j));
+                    let r = $body(b, a, c);
+                    r.put($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vx_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vx_loop_destructive_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vx_loop_destructive!($inst, $machine, $body, 1);
+    };
+}
+
+// macro_rules! v_vx_loop_destructive_u {
+//     ($inst:expr, $machine:expr, $body:expr) => {
+//         v_vx_loop_destructive!($inst, $machine, $body, 0);
+//     };
+// }
+
+macro_rules! w_vv_loop_destructive {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E8::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E16::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E32::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E64::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E128::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E256::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E512::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
+                    let c = E1024::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vv_loop_destructive",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! w_vv_loop_destructive_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vv_loop_destructive!($inst, $machine, $body);
+    };
+}
+
+macro_rules! w_vx_loop_destructive {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E8::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E8::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E8::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E16::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E16::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E16::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E32::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E32::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E32::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E64::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E64::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E64::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E128::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E128::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E128::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E256::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E256::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E256::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E512::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E512::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E512::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        E1024::from($machine.registers()[i.rs1()].to_i64())
+                    } else {
+                        E1024::from($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let c = E1024::get($machine.element_ref(i.vd(), sew, j));
+                    let (lo, hi) = $body(b, a, c);
+                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vx_loop_destructive",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! w_vx_loop_destructive_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vx_loop_destructive!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! v_vs_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        let vs1 = $machine.element_ref(i.vs1(), sew, 0).to_vec();
+        $machine.element_mut(i.vd(), sew, 0).copy_from_slice(&vs1);
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => {
+                    let b = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E8::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                16 => {
+                    let b = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E16::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                32 => {
+                    let b = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E32::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                64 => {
+                    let b = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E64::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                128 => {
+                    let b = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E128::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                256 => {
+                    let b = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E256::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                512 => {
+                    let b = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E512::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                1024 => {
+                    let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = E1024::get($machine.element_ref(i.vd(), sew, 0));
+                    let r = $body(b, a);
+                    r.put($machine.element_mut(i.vd(), sew, 0));
+                }
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vs_loop",
+                        sew
+                    )));
+                }
+            }
+        }
+    };
+}
+
+macro_rules! v_vs_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vs_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! w_vs_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        match sew {
+            8 => {
+                let b = E8::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E16::from(b).lo_sext()
+                } else {
+                    E16::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E8::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E16::from(a).lo_sext()
+                    } else {
+                        E16::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            16 => {
+                let b = E16::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E32::from(b).lo_sext()
+                } else {
+                    E32::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E16::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E32::from(a).lo_sext()
+                    } else {
+                        E32::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            32 => {
+                let b = E32::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E64::from(b).lo_sext()
+                } else {
+                    E64::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E32::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E64::from(a).lo_sext()
+                    } else {
+                        E64::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            64 => {
+                let b = E64::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E128::from(b).lo_sext()
+                } else {
+                    E128::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E64::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E128::from(a).lo_sext()
+                    } else {
+                        E128::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            128 => {
+                let b = E128::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E256::from(b).lo_sext()
+                } else {
+                    E256::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E128::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E256::from(a).lo_sext()
+                    } else {
+                        E256::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            256 => {
+                let b = E256::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E512::from(b).lo_sext()
+                } else {
+                    E512::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E256::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E512::from(a).lo_sext()
+                    } else {
+                        E512::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            512 => {
+                let b = E512::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E1024::from(b).lo_sext()
+                } else {
+                    E1024::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E512::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E1024::from(a).lo_sext()
+                    } else {
+                        E1024::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            1024 => {
+                let b = E1024::get($machine.element_ref(i.vs1(), sew, 0));
+                let mut b = if $sign != 0 && b.is_negative() {
+                    E2048::from(b).lo_sext()
+                } else {
+                    E2048::from(b)
+                };
+                for j in 0..$machine.vl() as usize {
+                    if i.vm() == 0 && !$machine.get_bit(0, j) {
+                        continue;
+                    }
+                    let a = E1024::get($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 && a.is_negative() {
+                        E2048::from(a).lo_sext()
+                    } else {
+                        E2048::from(a)
+                    };
+                    b = $body(b, a);
+                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                }
+            }
+            _ => {
+                return Err(Error::InvalidSew(format!(
+                    "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vs_loop",
+                    sew
+                )));
+            }
+        }
+    };
+}
+
+macro_rules! w_vs_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vs_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! w_vs_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vs_loop!($inst, $machine, $body, 0);
+    };
+}
+
+macro_rules! v_vv_loop_ext_s {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            let mut b = $machine.element_ref(i.vs2(), sew / $size, j).to_vec();
+            if b.last().unwrap() > &127 {
+                b.resize(sew as usize >> 3, 0xff);
+            } else {
+                b.resize(sew as usize >> 3, 0x00);
+            }
+            $machine.element_mut(i.vd(), sew, j).copy_from_slice(&b);
+        }
+    };
+}
+
+macro_rules! v_vv_loop_ext_u {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            let mut b = $machine.element_ref(i.vs2(), sew / $size, j).to_vec();
+            b.resize(sew as usize >> 3, 0x00);
+            $machine.element_mut(i.vd(), sew, j).copy_from_slice(&b);
+        }
+    };
+}
 
 pub fn execute_instruction<Mac: Machine>(
     inst: Instruction,
@@ -86,14 +3089,14 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt_s(rs2_value);
+            let value = rs1_value.lt_s(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_SLTU => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt(rs2_value);
+            let value = rs1_value.lt(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_LB => {
@@ -263,10 +3266,10 @@ pub fn execute_instruction<Mac: Machine>(
             let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.eq(rs2_value);
+            let condition = rs1_value.eq(&rs2_value);
             let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
             machine.update_pc(new_pc);
         }
@@ -275,10 +3278,10 @@ pub fn execute_instruction<Mac: Machine>(
             let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ne(rs2_value);
+            let condition = rs1_value.ne(&rs2_value);
             let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
             machine.update_pc(new_pc);
         }
@@ -287,10 +3290,10 @@ pub fn execute_instruction<Mac: Machine>(
             let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.lt_s(rs2_value);
+            let condition = rs1_value.lt_s(&rs2_value);
             let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
             machine.update_pc(new_pc);
         }
@@ -299,10 +3302,10 @@ pub fn execute_instruction<Mac: Machine>(
             let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ge_s(rs2_value);
+            let condition = rs1_value.ge_s(&rs2_value);
             let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
             machine.update_pc(new_pc);
         }
@@ -311,10 +3314,10 @@ pub fn execute_instruction<Mac: Machine>(
             let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.lt(rs2_value);
+            let condition = rs1_value.lt(&rs2_value);
             let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
             machine.update_pc(new_pc);
         }
@@ -323,10 +3326,10 @@ pub fn execute_instruction<Mac: Machine>(
             let pc = machine.pc();
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ge(rs2_value);
+            let condition = rs1_value.ge(&rs2_value);
             let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
+                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
             );
             machine.update_pc(new_pc);
         }
@@ -361,7 +3364,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul(rs2_value);
+            let value = rs1_value.overflowing_mul(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_MULW => {
@@ -377,28 +3380,28 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul_high_signed(rs2_value);
+            let value = rs1_value.overflowing_mul_high_signed(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_MULHSU => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul_high_signed_unsigned(rs2_value);
+            let value = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_MULHU => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul_high_unsigned(rs2_value);
+            let value = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_DIV => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_div_signed(rs2_value);
+            let value = rs1_value.overflowing_div_signed(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_DIVW => {
@@ -414,7 +3417,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_div(rs2_value);
+            let value = rs1_value.overflowing_div(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_DIVUW => {
@@ -430,7 +3433,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_rem_signed(rs2_value);
+            let value = rs1_value.overflowing_rem_signed(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_REMW => {
@@ -446,7 +3449,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_rem(rs2_value);
+            let value = rs1_value.overflowing_rem(&rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_REMUW => {
@@ -601,28 +3604,28 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.ge_s(rs2_value).cond(rs1_value, rs2_value);
+            let value = rs1_value.ge_s(&rs2_value).cond(&rs1_value, &rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_MAXU => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.ge(rs2_value).cond(rs1_value, rs2_value);
+            let value = rs1_value.ge(&rs2_value).cond(&rs1_value, &rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_MIN => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt_s(rs2_value).cond(rs1_value, rs2_value);
+            let value = rs1_value.lt_s(&rs2_value).cond(&rs1_value, &rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_MINU => {
             let i = Rtype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt(rs2_value).cond(rs1_value, rs2_value);
+            let value = rs1_value.lt(&rs2_value).cond(&rs1_value, &rs2_value);
             update_register(machine, i.rd(), value);
         }
         insts::OP_ORCB => {
@@ -786,8 +3789,8 @@ pub fn execute_instruction<Mac: Machine>(
             let i = R4type(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_mul_high_signed(rs2_value);
-            let value_l = rs1_value.overflowing_mul(rs2_value);
+            let value_h = rs1_value.overflowing_mul_high_signed(&rs2_value);
+            let value_l = rs1_value.overflowing_mul(&rs2_value);
             update_register(machine, i.rd(), value_h);
             update_register(machine, i.rs3(), value_l);
         }
@@ -795,8 +3798,8 @@ pub fn execute_instruction<Mac: Machine>(
             let i = R4type(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_mul_high_unsigned(rs2_value);
-            let value_l = rs1_value.overflowing_mul(rs2_value);
+            let value_h = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
+            let value_l = rs1_value.overflowing_mul(&rs2_value);
             update_register(machine, i.rd(), value_h);
             update_register(machine, i.rs3(), value_l);
         }
@@ -804,8 +3807,8 @@ pub fn execute_instruction<Mac: Machine>(
             let i = R4type(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_mul_high_signed_unsigned(rs2_value);
-            let value_l = rs1_value.overflowing_mul(rs2_value);
+            let value_h = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
+            let value_l = rs1_value.overflowing_mul(&rs2_value);
             update_register(machine, i.rd(), value_h);
             update_register(machine, i.rs3(), value_l);
         }
@@ -813,8 +3816,8 @@ pub fn execute_instruction<Mac: Machine>(
             let i = R4type(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_div_signed(rs2_value);
-            let value_l = rs1_value.overflowing_rem_signed(rs2_value);
+            let value_h = rs1_value.overflowing_div_signed(&rs2_value);
+            let value_l = rs1_value.overflowing_rem_signed(&rs2_value);
             update_register(machine, i.rd(), value_h);
             update_register(machine, i.rs3(), value_l);
         }
@@ -822,8 +3825,8 @@ pub fn execute_instruction<Mac: Machine>(
             let i = R4type(inst);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_div(rs2_value);
-            let value_l = rs1_value.overflowing_rem(rs2_value);
+            let value_h = rs1_value.overflowing_div(&rs2_value);
+            let value_l = rs1_value.overflowing_rem(&rs2_value);
             update_register(machine, i.rd(), value_h);
             update_register(machine, i.rs3(), value_l);
         }
@@ -850,19 +3853,19 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Rtype(inst);
             let rd_value = &machine.registers()[i.rd()];
             let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.overflowing_add(rs1_value);
+            let r = rd_value.overflowing_add(&rs1_value);
             update_register(machine, i.rd(), r);
             let rd_value = &machine.registers()[i.rd()];
             let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.lt(rs1_value);
+            let r = rd_value.lt(&rs1_value);
             update_register(machine, i.rs1(), r);
             let rd_value = &machine.registers()[i.rd()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let r = rd_value.overflowing_add(rs2_value);
+            let r = rd_value.overflowing_add(&rs2_value);
             update_register(machine, i.rd(), r);
             let rd_value = &machine.registers()[i.rd()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let r = rd_value.lt(rs2_value);
+            let r = rd_value.lt(&rs2_value);
             update_register(machine, i.rs2(), r);
             let rs1_value = machine.registers()[i.rs1()].clone();
             let rs2_value = machine.registers()[i.rs2()].clone();
@@ -873,19 +3876,19 @@ pub fn execute_instruction<Mac: Machine>(
             let i = R4type(inst);
             let rd_value = &machine.registers()[i.rd()];
             let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.overflowing_sub(rs1_value);
+            let r = rd_value.overflowing_sub(&rs1_value);
             update_register(machine, i.rs1(), r);
             let rd_value = &machine.registers()[i.rd()];
             let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.lt(rs1_value);
+            let r = rd_value.lt(&rs1_value);
             update_register(machine, i.rs3(), r);
             let rs1_value = &machine.registers()[i.rs1()];
             let rs2_value = &machine.registers()[i.rs2()];
-            let r = rs1_value.overflowing_sub(rs2_value);
+            let r = rs1_value.overflowing_sub(&rs2_value);
             update_register(machine, i.rd(), r);
             let rd_value = &machine.registers()[i.rd()];
             let rs1_value = &machine.registers()[i.rs1()];
-            let r = rs1_value.lt(rd_value);
+            let r = rs1_value.lt(&rd_value);
             update_register(machine, i.rs2(), r);
             let rs2_value = machine.registers()[i.rs2()].clone();
             let rs3_value = machine.registers()[i.rs3()].clone();
@@ -900,6 +3903,1261 @@ pub fn execute_instruction<Mac: Machine>(
             let i = Utype(inst);
             let value = Mac::REG::from_i32(i.immediate_s());
             update_register(machine, i.rd(), value);
+        }
+        insts::OP_VSETVLI => {
+            let i = Itype(inst);
+            common::set_vl(
+                machine,
+                i.rd(),
+                i.rs1(),
+                machine.registers()[i.rs1()].to_u64(),
+                i.immediate_u() as u64,
+            )?;
+        }
+        insts::OP_VSETIVLI => {
+            let i = Itype(inst);
+            common::set_vl(machine, i.rd(), 33, i.rs1() as u64, i.immediate_u() as u64)?;
+        }
+        insts::OP_VSETVL => {
+            let i = Rtype(inst);
+            common::set_vl(
+                machine,
+                i.rd(),
+                i.rs1(),
+                machine.registers()[i.rs1()].to_u64(),
+                machine.registers()[i.rs2()].to_u64(),
+            )?;
+        }
+        insts::OP_VLM_V => {
+            ld!(inst, machine, (machine.vl() + 7) / 8, 0, 1, 0);
+        }
+        insts::OP_VLE8_V => {
+            ld!(inst, machine, machine.vl(), 0, 1, 1);
+        }
+        insts::OP_VLE16_V => {
+            ld!(inst, machine, machine.vl(), 0, 2, 1);
+        }
+        insts::OP_VLE32_V => {
+            ld!(inst, machine, machine.vl(), 0, 4, 1);
+        }
+        insts::OP_VLE64_V => {
+            ld!(inst, machine, machine.vl(), 0, 8, 1);
+        }
+        insts::OP_VLE128_V => {
+            ld!(inst, machine, machine.vl(), 0, 16, 1);
+        }
+        insts::OP_VLE256_V => {
+            ld!(inst, machine, machine.vl(), 0, 32, 1);
+        }
+        insts::OP_VLE512_V => {
+            ld!(inst, machine, machine.vl(), 0, 64, 1);
+        }
+        insts::OP_VLE1024_V => {
+            ld!(inst, machine, machine.vl(), 0, 128, 1);
+        }
+        insts::OP_VSM_V => {
+            sd!(inst, machine, (machine.vl() + 7) / 8, 0, 1, 0);
+        }
+        insts::OP_VSE8_V => {
+            sd!(inst, machine, machine.vl(), 0, 1, 1);
+        }
+        insts::OP_VSE16_V => {
+            sd!(inst, machine, machine.vl(), 0, 2, 1);
+        }
+        insts::OP_VSE32_V => {
+            sd!(inst, machine, machine.vl(), 0, 4, 1);
+        }
+        insts::OP_VSE64_V => {
+            sd!(inst, machine, machine.vl(), 0, 8, 1);
+        }
+        insts::OP_VSE128_V => {
+            sd!(inst, machine, machine.vl(), 0, 16, 1);
+        }
+        insts::OP_VSE256_V => {
+            sd!(inst, machine, machine.vl(), 0, 32, 1);
+        }
+        insts::OP_VSE512_V => {
+            sd!(inst, machine, machine.vl(), 0, 64, 1);
+        }
+        insts::OP_VSE1024_V => {
+            sd!(inst, machine, machine.vl(), 0, 128, 1);
+        }
+        insts::OP_VADD_VV => {
+            v_vv_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VADD_VX => {
+            v_vx_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VADD_VI => {
+            v_vi_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VSUB_VV => {
+            v_vv_loop_s!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VSUB_VX => {
+            v_vx_loop_s!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VRSUB_VX => {
+            v_vx_loop_s!(inst, machine, alu::rsub);
+        }
+        insts::OP_VRSUB_VI => {
+            v_vi_loop_s!(inst, machine, alu::rsub);
+        }
+        insts::OP_VMUL_VV => {
+            v_vv_loop_s!(inst, machine, Eint::wrapping_mul);
+        }
+        insts::OP_VMUL_VX => {
+            v_vx_loop_s!(inst, machine, Eint::wrapping_mul);
+        }
+        insts::OP_VMULH_VV => {
+            v_vv_loop_s!(inst, machine, alu::mulh);
+        }
+        insts::OP_VMULH_VX => {
+            v_vx_loop_s!(inst, machine, alu::mulh);
+        }
+        insts::OP_VMULHU_VV => {
+            v_vv_loop_u!(inst, machine, alu::mulhu);
+        }
+        insts::OP_VMULHU_VX => {
+            v_vx_loop_u!(inst, machine, alu::mulhu);
+        }
+        insts::OP_VMULHSU_VV => {
+            v_vv_loop_u!(inst, machine, alu::mulhsu);
+        }
+        insts::OP_VMULHSU_VX => {
+            v_vx_loop_u!(inst, machine, alu::mulhsu);
+        }
+        insts::OP_VDIVU_VV => {
+            v_vv_loop_u!(inst, machine, Eint::wrapping_div_u);
+        }
+        insts::OP_VDIVU_VX => {
+            v_vx_loop_u!(inst, machine, Eint::wrapping_div_u);
+        }
+        insts::OP_VDIV_VV => {
+            v_vv_loop_s!(inst, machine, Eint::wrapping_div_s);
+        }
+        insts::OP_VDIV_VX => {
+            v_vx_loop_s!(inst, machine, Eint::wrapping_div_s);
+        }
+        insts::OP_VREMU_VV => {
+            v_vv_loop_u!(inst, machine, Eint::wrapping_rem_u);
+        }
+        insts::OP_VREMU_VX => {
+            v_vx_loop_u!(inst, machine, Eint::wrapping_rem_u);
+        }
+        insts::OP_VREM_VV => {
+            v_vv_loop_s!(inst, machine, Eint::wrapping_rem_s);
+        }
+        insts::OP_VREM_VX => {
+            v_vx_loop_s!(inst, machine, Eint::wrapping_rem_s);
+        }
+        insts::OP_VSLL_VV => {
+            v_vv_loop_u!(inst, machine, alu::sll);
+        }
+        insts::OP_VSLL_VX => {
+            v_vx_loop_u!(inst, machine, alu::sll);
+        }
+        insts::OP_VSLL_VI => {
+            v_vi_loop_u!(inst, machine, alu::sll);
+        }
+        insts::OP_VSRL_VV => {
+            v_vv_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSRL_VX => {
+            v_vx_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSRL_VI => {
+            v_vi_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSRA_VV => {
+            v_vv_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSRA_VX => {
+            v_vx_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSRA_VI => {
+            v_vi_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VMSEQ_VV => {
+            m_vv_loop_s!(inst, machine, alu::seq);
+        }
+        insts::OP_VMSEQ_VX => {
+            m_vx_loop_s!(inst, machine, alu::seq);
+        }
+        insts::OP_VMSEQ_VI => {
+            m_vi_loop_s!(inst, machine, alu::seq);
+        }
+        insts::OP_VMSNE_VV => {
+            m_vv_loop_s!(inst, machine, alu::sne);
+        }
+        insts::OP_VMSNE_VX => {
+            m_vx_loop_s!(inst, machine, alu::sne);
+        }
+        insts::OP_VMSNE_VI => {
+            m_vi_loop_s!(inst, machine, alu::sne);
+        }
+        insts::OP_VMSLTU_VV => {
+            m_vv_loop_u!(inst, machine, alu::sltu);
+        }
+        insts::OP_VMSLTU_VX => {
+            m_vx_loop_u!(inst, machine, alu::sltu);
+        }
+        insts::OP_VMSLT_VV => {
+            m_vv_loop_s!(inst, machine, alu::slt);
+        }
+        insts::OP_VMSLT_VX => {
+            m_vx_loop_s!(inst, machine, alu::slt);
+        }
+        insts::OP_VMSLEU_VV => {
+            m_vv_loop_u!(inst, machine, alu::sleu);
+        }
+        insts::OP_VMSLEU_VX => {
+            m_vx_loop_u!(inst, machine, alu::sleu);
+        }
+        insts::OP_VMSLEU_VI => {
+            m_vi_loop_u!(inst, machine, alu::sleu);
+        }
+        insts::OP_VMSLE_VV => {
+            m_vv_loop_s!(inst, machine, alu::sle);
+        }
+        insts::OP_VMSLE_VX => {
+            m_vx_loop_s!(inst, machine, alu::sle);
+        }
+        insts::OP_VMSLE_VI => {
+            m_vi_loop_s!(inst, machine, alu::sle);
+        }
+        insts::OP_VMSGTU_VX => {
+            m_vx_loop_u!(inst, machine, alu::sgtu);
+        }
+        insts::OP_VMSGTU_VI => {
+            m_vi_loop_u!(inst, machine, alu::sgtu);
+        }
+        insts::OP_VMSGT_VX => {
+            m_vx_loop_s!(inst, machine, alu::sgt);
+        }
+        insts::OP_VMSGT_VI => {
+            m_vi_loop_s!(inst, machine, alu::sgt);
+        }
+        insts::OP_VMAXU_VV => {
+            v_vv_loop_u!(inst, machine, alu::maxu);
+        }
+        insts::OP_VMAXU_VX => {
+            v_vx_loop_u!(inst, machine, alu::maxu);
+        }
+        insts::OP_VMAX_VV => {
+            v_vv_loop_s!(inst, machine, alu::max);
+        }
+        insts::OP_VMAX_VX => {
+            v_vx_loop_s!(inst, machine, alu::max);
+        }
+        insts::OP_VMINU_VV => {
+            v_vv_loop_u!(inst, machine, alu::minu);
+        }
+        insts::OP_VMINU_VX => {
+            v_vx_loop_u!(inst, machine, alu::minu);
+        }
+        insts::OP_VMIN_VV => {
+            v_vv_loop_s!(inst, machine, alu::min);
+        }
+        insts::OP_VMIN_VX => {
+            v_vx_loop_s!(inst, machine, alu::min);
+        }
+        insts::OP_VAND_VV => {
+            v_vv_loop_s!(inst, machine, alu::and);
+        }
+        insts::OP_VOR_VV => {
+            v_vv_loop_s!(inst, machine, alu::or);
+        }
+        insts::OP_VXOR_VV => {
+            v_vv_loop_s!(inst, machine, alu::xor);
+        }
+        insts::OP_VAND_VX => {
+            v_vx_loop_s!(inst, machine, alu::and);
+        }
+        insts::OP_VOR_VX => {
+            v_vx_loop_s!(inst, machine, alu::or);
+        }
+        insts::OP_VXOR_VX => {
+            v_vx_loop_s!(inst, machine, alu::xor);
+        }
+        insts::OP_VAND_VI => {
+            v_vi_loop_s!(inst, machine, alu::and);
+        }
+        insts::OP_VOR_VI => {
+            v_vi_loop_s!(inst, machine, alu::or);
+        }
+        insts::OP_VXOR_VI => {
+            v_vi_loop_s!(inst, machine, alu::xor);
+        }
+        insts::OP_VMV1R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 1, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VMV2R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 2, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 2, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VMV4R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 4, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 4, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VMV8R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 8, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 8, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VSADDU_VV => {
+            v_vv_loop_u!(inst, machine, alu::saddu);
+        }
+        insts::OP_VSADDU_VX => {
+            v_vx_loop_u!(inst, machine, alu::saddu);
+        }
+        insts::OP_VSADDU_VI => {
+            v_vi_loop_u!(inst, machine, alu::saddu);
+        }
+        insts::OP_VSADD_VV => {
+            v_vv_loop_s!(inst, machine, alu::sadd);
+        }
+        insts::OP_VSADD_VX => {
+            v_vx_loop_s!(inst, machine, alu::sadd);
+        }
+        insts::OP_VSADD_VI => {
+            v_vi_loop_s!(inst, machine, alu::sadd);
+        }
+        insts::OP_VSSUBU_VV => {
+            v_vv_loop_u!(inst, machine, alu::ssubu);
+        }
+        insts::OP_VSSUBU_VX => {
+            v_vx_loop_u!(inst, machine, alu::ssubu);
+        }
+        insts::OP_VSSUB_VV => {
+            v_vv_loop_s!(inst, machine, alu::ssub);
+        }
+        insts::OP_VSSUB_VX => {
+            v_vx_loop_s!(inst, machine, alu::ssub);
+        }
+        insts::OP_VWADDU_VV => {
+            w_vv_loop_u!(inst, machine, Eint::widening_add_u);
+        }
+        insts::OP_VWADDU_VX => {
+            w_vx_loop_u!(inst, machine, Eint::widening_add_u);
+        }
+        insts::OP_VWADDU_WV => {
+            w_wv_loop_u!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWADDU_WX => {
+            w_wx_loop_u!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWADD_WX => {
+            w_wx_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWADD_VV => {
+            w_vv_loop_s!(inst, machine, Eint::widening_add_s);
+        }
+        insts::OP_VWADD_VX => {
+            w_vx_loop_s!(inst, machine, Eint::widening_add_s);
+        }
+        insts::OP_VWADD_WV => {
+            w_wv_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWSUBU_VV => {
+            w_vv_loop_u!(inst, machine, Eint::widening_sub_u);
+        }
+        insts::OP_VWSUBU_WV => {
+            w_wv_loop_u!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWSUBU_VX => {
+            w_vx_loop_u!(inst, machine, Eint::widening_sub_u);
+        }
+        insts::OP_VWSUB_VV => {
+            w_vv_loop_s!(inst, machine, Eint::widening_sub_s);
+        }
+        insts::OP_VWSUB_VX => {
+            w_vx_loop_s!(inst, machine, Eint::widening_sub_s);
+        }
+        insts::OP_VWSUB_WV => {
+            w_wv_loop_s!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWSUBU_WX => {
+            w_wx_loop_u!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWSUB_WX => {
+            w_wx_loop_s!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWMULU_VV => {
+            w_vv_loop_u!(inst, machine, Eint::widening_mul_u);
+        }
+        insts::OP_VWMULU_VX => {
+            w_vx_loop_u!(inst, machine, Eint::widening_mul_u);
+        }
+        insts::OP_VWMULSU_VV => {
+            w_vv_loop_u!(inst, machine, Eint::widening_mul_su);
+        }
+        insts::OP_VWMULSU_VX => {
+            w_vx_loop_u!(inst, machine, Eint::widening_mul_su);
+        }
+        insts::OP_VWMUL_VV => {
+            w_vv_loop_s!(inst, machine, Eint::widening_mul_s);
+        }
+        insts::OP_VWMUL_VX => {
+            w_vx_loop_s!(inst, machine, Eint::widening_mul_s);
+        }
+        insts::OP_VAADD_VV => {
+            v_vv_loop_s!(inst, machine, Eint::average_add_s);
+        }
+        insts::OP_VAADD_VX => {
+            v_vx_loop_s!(inst, machine, Eint::average_add_s);
+        }
+        insts::OP_VAADDU_VV => {
+            v_vv_loop_u!(inst, machine, Eint::average_add_u);
+        }
+        insts::OP_VAADDU_VX => {
+            v_vx_loop_u!(inst, machine, Eint::average_add_u);
+        }
+        insts::OP_VASUB_VV => {
+            v_vv_loop_s!(inst, machine, Eint::average_sub_s);
+        }
+        insts::OP_VASUB_VX => {
+            v_vx_loop_s!(inst, machine, Eint::average_sub_s);
+        }
+        insts::OP_VASUBU_VV => {
+            v_vv_loop_u!(inst, machine, Eint::average_sub_u);
+        }
+        insts::OP_VASUBU_VX => {
+            v_vx_loop_u!(inst, machine, Eint::average_sub_u);
+        }
+        insts::OP_VMV_V_V => {
+            v_vv_loop_s!(inst, machine, alu::mv);
+        }
+        insts::OP_VMV_V_X => {
+            v_vx_loop_s!(inst, machine, alu::mv);
+        }
+        insts::OP_VMV_V_I => {
+            v_vi_loop_s!(inst, machine, alu::mv);
+        }
+        insts::OP_VZEXT_VF2 => {
+            v_vv_loop_ext_u!(inst, machine, 2);
+        }
+        insts::OP_VZEXT_VF4 => {
+            v_vv_loop_ext_u!(inst, machine, 4);
+        }
+        insts::OP_VZEXT_VF8 => {
+            v_vv_loop_ext_u!(inst, machine, 8);
+        }
+        insts::OP_VSEXT_VF2 => {
+            v_vv_loop_ext_s!(inst, machine, 2);
+        }
+        insts::OP_VSEXT_VF4 => {
+            v_vv_loop_ext_s!(inst, machine, 4);
+        }
+        insts::OP_VSEXT_VF8 => {
+            v_vv_loop_ext_s!(inst, machine, 8);
+        }
+        insts::OP_VNSRL_WV => {
+            v_wv_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNSRL_WX => {
+            v_wx_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNSRL_WI => {
+            v_wi_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNSRA_WV => {
+            v_wv_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNSRA_WX => {
+            v_wx_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNSRA_WI => {
+            v_wi_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VMADC_VV => {
+            m_vv_loop_s!(inst, machine, alu::madc);
+        }
+        insts::OP_VMADC_VX => {
+            m_vx_loop_s!(inst, machine, alu::madc);
+        }
+        insts::OP_VMADC_VI => {
+            m_vi_loop_s!(inst, machine, alu::madc);
+        }
+        insts::OP_VMSBC_VV => {
+            m_vv_loop_s!(inst, machine, alu::msbc);
+        }
+        insts::OP_VMSBC_VX => {
+            m_vx_loop_s!(inst, machine, alu::msbc);
+        }
+        insts::OP_VADC_VVM => {
+            v_vvm_loop_s!(inst, machine, alu::adc);
+        }
+        insts::OP_VADC_VXM => {
+            v_vxm_loop_s!(inst, machine, alu::adc);
+        }
+        insts::OP_VADC_VIM => {
+            v_vim_loop_s!(inst, machine, alu::adc);
+        }
+        insts::OP_VMADC_VVM => {
+            m_vvm_loop_s!(inst, machine, alu::madcm);
+        }
+        insts::OP_VMADC_VXM => {
+            m_vxm_loop_s!(inst, machine, alu::madcm);
+        }
+        insts::OP_VMADC_VIM => {
+            m_vim_loop_s!(inst, machine, alu::madcm);
+        }
+        insts::OP_VSBC_VVM => {
+            v_vvm_loop_s!(inst, machine, alu::sbc);
+        }
+        insts::OP_VSBC_VXM => {
+            v_vxm_loop_s!(inst, machine, alu::sbc);
+        }
+        insts::OP_VMSBC_VVM => {
+            m_vvm_loop_s!(inst, machine, alu::msbcm);
+        }
+        insts::OP_VMSBC_VXM => {
+            m_vxm_loop_s!(inst, machine, alu::msbcm);
+        }
+        insts::OP_VMAND_MM => {
+            m_mm_loop!(inst, machine, |b, a| b & a);
+        }
+        insts::OP_VMNAND_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b & a));
+        }
+        insts::OP_VMANDNOT_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b & !a);
+        }
+        insts::OP_VMXOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b ^ a);
+        }
+        insts::OP_VMOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b | a);
+        }
+        insts::OP_VMNOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b | a));
+        }
+        insts::OP_VMORNOT_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b | !a);
+        }
+        insts::OP_VMXNOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
+        }
+        insts::OP_VLSE8_V => {
+            ld!(inst, machine, machine.vl(), 1, 1, 1);
+        }
+        insts::OP_VLSE16_V => {
+            ld!(inst, machine, machine.vl(), 1, 2, 1);
+        }
+        insts::OP_VLSE32_V => {
+            ld!(inst, machine, machine.vl(), 1, 4, 1);
+        }
+        insts::OP_VLSE64_V => {
+            ld!(inst, machine, machine.vl(), 1, 8, 1);
+        }
+        insts::OP_VLSE128_V => {
+            ld!(inst, machine, machine.vl(), 1, 16, 1);
+        }
+        insts::OP_VLSE256_V => {
+            ld!(inst, machine, machine.vl(), 1, 32, 1);
+        }
+        insts::OP_VLSE512_V => {
+            ld!(inst, machine, machine.vl(), 1, 64, 1);
+        }
+        insts::OP_VLSE1024_V => {
+            ld!(inst, machine, machine.vl(), 1, 128, 1);
+        }
+        insts::OP_VSSE8_V => {
+            sd!(inst, machine, machine.vl(), 1, 1, 1);
+        }
+        insts::OP_VSSE16_V => {
+            sd!(inst, machine, machine.vl(), 1, 2, 1);
+        }
+        insts::OP_VSSE32_V => {
+            sd!(inst, machine, machine.vl(), 1, 4, 1);
+        }
+        insts::OP_VSSE64_V => {
+            sd!(inst, machine, machine.vl(), 1, 8, 1);
+        }
+        insts::OP_VSSE128_V => {
+            sd!(inst, machine, machine.vl(), 1, 16, 1);
+        }
+        insts::OP_VSSE256_V => {
+            sd!(inst, machine, machine.vl(), 1, 32, 1);
+        }
+        insts::OP_VSSE512_V => {
+            sd!(inst, machine, machine.vl(), 1, 64, 1);
+        }
+        insts::OP_VSSE1024_V => {
+            sd!(inst, machine, machine.vl(), 1, 128, 1);
+        }
+        insts::OP_VLUXEI8_V => {
+            ld_index!(inst, machine, 8);
+        }
+        insts::OP_VLUXEI16_V => {
+            ld_index!(inst, machine, 16);
+        }
+        insts::OP_VLUXEI32_V => {
+            ld_index!(inst, machine, 32);
+        }
+        insts::OP_VLUXEI64_V => {
+            ld_index!(inst, machine, 64);
+        }
+        insts::OP_VLOXEI8_V => {
+            ld_index!(inst, machine, 8);
+        }
+        insts::OP_VLOXEI16_V => {
+            ld_index!(inst, machine, 16);
+        }
+        insts::OP_VLOXEI32_V => {
+            ld_index!(inst, machine, 32);
+        }
+        insts::OP_VLOXEI64_V => {
+            ld_index!(inst, machine, 64);
+        }
+        insts::OP_VSUXEI8_V => {
+            sd_index!(inst, machine, 8);
+        }
+        insts::OP_VSUXEI16_V => {
+            sd_index!(inst, machine, 16);
+        }
+        insts::OP_VSUXEI32_V => {
+            sd_index!(inst, machine, 32);
+        }
+        insts::OP_VSUXEI64_V => {
+            sd_index!(inst, machine, 64);
+        }
+        insts::OP_VSOXEI8_V => {
+            sd_index!(inst, machine, 8);
+        }
+        insts::OP_VSOXEI16_V => {
+            sd_index!(inst, machine, 16);
+        }
+        insts::OP_VSOXEI32_V => {
+            sd_index!(inst, machine, 32);
+        }
+        insts::OP_VSOXEI64_V => {
+            sd_index!(inst, machine, 64);
+        }
+        insts::OP_VL1RE8_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 8);
+        }
+        insts::OP_VL1RE16_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 16);
+        }
+        insts::OP_VL1RE32_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 32);
+        }
+        insts::OP_VL1RE64_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 64);
+        }
+        insts::OP_VL2RE8_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 4);
+        }
+        insts::OP_VL2RE16_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 8);
+        }
+        insts::OP_VL2RE32_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 16);
+        }
+        insts::OP_VL2RE64_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 32);
+        }
+        insts::OP_VL4RE8_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 2);
+        }
+        insts::OP_VL4RE16_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 4);
+        }
+        insts::OP_VL4RE32_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 8);
+        }
+        insts::OP_VL4RE64_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 16);
+        }
+        insts::OP_VL8RE8_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 1);
+        }
+        insts::OP_VL8RE16_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 2);
+        }
+        insts::OP_VL8RE32_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 4);
+        }
+        insts::OP_VL8RE64_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 8);
+        }
+        insts::OP_VS1R_V => {
+            sd_whole!(inst, machine, VLEN as u64 / 8);
+        }
+        insts::OP_VS2R_V => {
+            sd_whole!(inst, machine, VLEN as u64 / 4);
+        }
+        insts::OP_VS4R_V => {
+            sd_whole!(inst, machine, VLEN as u64 / 2);
+        }
+        insts::OP_VS8R_V => {
+            sd_whole!(inst, machine, VLEN as u64 / 1);
+        }
+        insts::OP_VMACC_VV => {
+            v_vv_loop_destructive_s!(inst, machine, alu::macc);
+        }
+        insts::OP_VMACC_VX => {
+            v_vx_loop_destructive_s!(inst, machine, alu::macc);
+        }
+        insts::OP_VNMSAC_VV => {
+            v_vv_loop_destructive_s!(inst, machine, alu::nmsac);
+        }
+        insts::OP_VNMSAC_VX => {
+            v_vx_loop_destructive_s!(inst, machine, alu::nmsac);
+        }
+        insts::OP_VMADD_VX => {
+            v_vx_loop_destructive_s!(inst, machine, alu::madd);
+        }
+        insts::OP_VNMSUB_VV => {
+            v_vv_loop_destructive_s!(inst, machine, alu::nmsub);
+        }
+        insts::OP_VNMSUB_VX => {
+            v_vx_loop_destructive_s!(inst, machine, alu::nmsub);
+        }
+        insts::OP_VSSRL_VV => {
+            v_vv_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSSRL_VX => {
+            v_vx_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSSRL_VI => {
+            v_vi_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSSRA_VV => {
+            v_vv_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSSRA_VX => {
+            v_vx_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSSRA_VI => {
+            v_vi_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSMUL_VV => {
+            // TODO
+            return Err(Error::InvalidOp(op));
+        }
+        insts::OP_VSMUL_VX => {
+            // TODO
+            return Err(Error::InvalidOp(op));
+        }
+        insts::OP_VWMACCU_VV => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmaccu);
+        }
+        insts::OP_VWMACCU_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmaccu);
+        }
+        insts::OP_VWMACC_VV => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmacc);
+        }
+        insts::OP_VWMACC_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmacc);
+        }
+        insts::OP_VWMACCSU_VV => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmaccsu);
+        }
+        insts::OP_VWMACCSU_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmaccsu);
+        }
+        insts::OP_VWMACCUS_VX => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmaccus);
+        }
+        insts::OP_VMERGE_VVM => {
+            v_vvm_loop_s!(inst, machine, alu::merge);
+        }
+        insts::OP_VMERGE_VXM => {
+            v_vxm_loop_s!(inst, machine, alu::merge);
+        }
+        insts::OP_VMERGE_VIM => {
+            v_vim_loop_s!(inst, machine, alu::merge);
+        }
+        insts::OP_VNCLIPU_WV => {
+            v_wv_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNCLIPU_WX => {
+            v_wx_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNCLIPU_WI => {
+            v_wi_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNCLIP_WV => {
+            v_wv_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNCLIP_WX => {
+            v_wx_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNCLIP_WI => {
+            v_wi_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VREDSUM_VS => {
+            v_vs_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VREDAND_VS => {
+            v_vs_loop_s!(inst, machine, alu::and);
+        }
+        insts::OP_VREDOR_VS => {
+            v_vs_loop_s!(inst, machine, alu::or);
+        }
+        insts::OP_VREDXOR_VS => {
+            v_vs_loop_s!(inst, machine, alu::xor);
+        }
+        insts::OP_VREDMINU_VS => {
+            v_vs_loop_s!(inst, machine, alu::minu);
+        }
+        insts::OP_VREDMIN_VS => {
+            v_vs_loop_s!(inst, machine, alu::min);
+        }
+        insts::OP_VREDMAXU_VS => {
+            v_vs_loop_s!(inst, machine, alu::maxu);
+        }
+        insts::OP_VREDMAX_VS => {
+            v_vs_loop_s!(inst, machine, alu::max);
+        }
+        insts::OP_VWREDSUMU_VS => {
+            w_vs_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWREDSUM_VS => {
+            w_vs_loop_u!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VMSBF_M => {
+            let i = VVtype(inst);
+            let mut found_first_mask = false;
+            for j in 0..VLEN {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
+                    continue;
+                }
+                let m = machine.get_bit(i.vs2(), j);
+                if !found_first_mask && m {
+                    found_first_mask = true;
+                }
+                if found_first_mask {
+                    machine.clr_bit(i.vd(), j);
+                } else {
+                    machine.set_bit(i.vd(), j);
+                }
+            }
+        }
+        insts::OP_VMSOF_M => {
+            let i = VVtype(inst);
+            let mut found_first_mask = false;
+            for j in 0..VLEN {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
+                    continue;
+                }
+                let m = machine.get_bit(i.vs2(), j);
+                if !found_first_mask && m {
+                    found_first_mask = true;
+                    machine.set_bit(i.vd(), j);
+                    continue;
+                }
+            }
+        }
+        insts::OP_VMSIF_M => {
+            let i = VVtype(inst);
+            let mut found_first_mask = false;
+            for j in 0..VLEN {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
+                    continue;
+                }
+                let m = machine.get_bit(i.vs2(), j);
+                if !found_first_mask && m {
+                    found_first_mask = true;
+                    machine.set_bit(i.vd(), j);
+                    continue;
+                }
+                if found_first_mask {
+                    machine.clr_bit(i.vd(), j);
+                } else {
+                    machine.set_bit(i.vd(), j);
+                }
+            }
+        }
+        insts::OP_VIOTA_M => {
+            // TODO
+            return Err(Error::InvalidOp(op));
+        }
+        insts::OP_VID_V => {
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            for j in 0..VLEN {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
+                    continue;
+                }
+                match sew {
+                    8 => E8::from(j as u8).put(machine.element_mut(i.vd(), sew, j)),
+                    16 => E16::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    32 => E32::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    64 => E64::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    128 => E128::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    256 => E256::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    512 => E512::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    1024 => E1024::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    _ => return Err(Error::Unexpected("".into())),
+                }
+            }
+        }
+        insts::OP_VMV_X_S => {
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            let r = match sew {
+                8 => E8::get(machine.element_ref(i.vs2(), sew, 0)).0 as i8 as i64 as u64,
+                16 => E16::get(machine.element_ref(i.vs2(), sew, 0)).0 as i16 as i64 as u64,
+                32 => E32::get(machine.element_ref(i.vs2(), sew, 0)).0 as i32 as i64 as u64,
+                64 => E64::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                128 => E128::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                256 => E256::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                512 => E512::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                1024 => E1024::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                _ => return Err(Error::Unexpected("".into())),
+            };
+            update_register(machine, i.vd(), Mac::REG::from_u64(r));
+        }
+        insts::OP_VMV_S_X => {
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            match sew {
+                8 => E8::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                16 => E16::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                32 => E32::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                64 => E64::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                128 => E128::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                256 => E256::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                512 => E512::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                    i.vd(),
+                    sew,
+                    0,
+                )),
+                1024 => E1024::from(machine.registers()[i.vs2()].to_u64())
+                    .put(machine.element_mut(i.vd(), sew, 0)),
+                _ => return Err(Error::Unexpected("".into())),
+            };
+        }
+        insts::OP_VCOMPRESS_VM => {
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            let mut k = 0;
+            for j in 0..VLEN as usize {
+                if machine.get_bit(i.vs1(), j) {
+                    let data = machine.element_ref(i.vs2(), sew, j).to_vec();
+                    machine.element_mut(i.vd(), sew, k).copy_from_slice(&data);
+                    k += 1;
+                }
+            }
+        }
+        insts::OP_VSLIDE1UP_VX => {
+            let i = VXtype(inst);
+            let sew = machine.vsew();
+            match sew {
+                8 => {
+                    let vd0 = E8::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                16 => {
+                    let vd0 = E16::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                32 => {
+                    let vd0 = E32::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                64 => {
+                    let vd0 = E64::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                128 => {
+                    let vd0 = E128::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                256 => {
+                    let vd0 = E256::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                512 => {
+                    let vd0 = E512::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                1024 => {
+                    let vd0 = E1024::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                _ => return Err(Error::Unexpected("".into())),
+            }
+            for j in 1..machine.vl() {
+                if i.vm() == 0 && machine.get_bit(0, j as usize) {
+                    continue;
+                }
+                let data = machine.element_ref(i.vs2(), sew, (j - 1) as usize).to_vec();
+                machine
+                    .element_mut(i.vd(), sew, j as usize)
+                    .copy_from_slice(&data);
+            }
+        }
+        insts::OP_VSLIDEUP_VX => {
+            let i = VXtype(inst);
+            let sew = machine.vsew();
+            let offset = machine.registers()[i.rs1()].to_u64();
+            if offset < machine.vl() {
+                for j in offset..machine.vl() {
+                    if i.vm() == 0 && machine.get_bit(0, j as usize) {
+                        continue;
+                    }
+                    let data = machine
+                        .element_ref(i.vs2(), sew, (j - offset) as usize)
+                        .to_vec();
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+            }
+        }
+        insts::OP_VSLIDEUP_VI => {
+            let i = VItype(inst);
+            let sew = machine.vsew();
+            let offset = i.immediate_u() as u64;
+            if offset < machine.vl() {
+                for j in offset..machine.vl() {
+                    if i.vm() == 0 && machine.get_bit(0, j as usize) {
+                        continue;
+                    }
+                    let data = machine
+                        .element_ref(i.vs2(), sew, (j - offset) as usize)
+                        .to_vec();
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&data);
+                }
+            }
+        }
+        insts::OP_VSLIDE1DOWN_VX => {
+            let i = VXtype(inst);
+            let sew = machine.vsew();
+            match sew {
+                8 => {
+                    let vd0 = E8::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                16 => {
+                    let vd0 = E16::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                32 => {
+                    let vd0 = E32::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                64 => {
+                    let vd0 = E64::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                128 => {
+                    let vd0 = E128::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                256 => {
+                    let vd0 = E256::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                512 => {
+                    let vd0 = E512::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                1024 => {
+                    let vd0 = E1024::from(machine.registers()[i.rs1()].to_u64());
+                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                }
+                _ => return Err(Error::Unexpected("".into())),
+            }
+            for j in 0..machine.vl() {
+                if i.vm() == 0 && machine.get_bit(0, j as usize) {
+                    continue;
+                }
+                if (j + 1) < machine.vlmax() {
+                    let data = machine.element_ref(i.vs2(), sew, j as usize + 1).to_vec();
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&data);
+                } else {
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&vec![0; sew as usize >> 3]);
+                }
+            }
+        }
+        insts::OP_VSLIDEDOWN_VX => {
+            let i = VXtype(inst);
+            let sew = machine.vsew();
+            let offset = machine.registers()[i.rs1()].to_u64();
+            for j in 0..machine.vl() {
+                if i.vm() == 0 && machine.get_bit(0, j as usize) {
+                    continue;
+                }
+                if (j + offset) < machine.vlmax() {
+                    let data = machine
+                        .element_ref(i.vs2(), sew, (j + offset) as usize)
+                        .to_vec();
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&data);
+                } else {
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&vec![0; sew as usize >> 3]);
+                }
+            }
+        }
+        insts::OP_VSLIDEDOWN_VI => {
+            let i = VItype(inst);
+            let sew = machine.vsew();
+            let offset = i.immediate_u() as u64;
+            for j in 0..machine.vl() {
+                if i.vm() == 0 && machine.get_bit(0, j as usize) {
+                    continue;
+                }
+                if (j + offset) < machine.vlmax() {
+                    let data = machine
+                        .element_ref(i.vs2(), sew, (j + offset) as usize)
+                        .to_vec();
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&data);
+                } else {
+                    machine
+                        .element_mut(i.vd(), sew, j as usize)
+                        .copy_from_slice(&vec![0; sew as usize >> 3]);
+                }
+            }
+        }
+        insts::OP_VRGATHER_VV => {
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            for j in 0..machine.vl() as usize {
+                if i.vm() == 0 && machine.get_bit(0, j) {
+                    continue;
+                }
+                let mut data = machine.element_ref(i.vs1(), sew, j).to_vec();
+                data.resize(8, 0);
+                let index = E64::get(&data).u64();
+                if index < machine.vlmax() {
+                    let data = machine.element_ref(i.vs2(), sew, index as usize).to_vec();
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                } else {
+                    let data = vec![0; sew as usize >> 3];
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                }
+            }
+        }
+        insts::OP_VRGATHER_VX => {
+            let i = VXtype(inst);
+            let sew = machine.vsew();
+            for j in 0..machine.vl() as usize {
+                if i.vm() == 0 && machine.get_bit(0, j) {
+                    continue;
+                }
+                let index = machine.registers()[i.rs1()].to_u64();
+                if index < machine.vlmax() {
+                    let data = machine.element_ref(i.vs2(), sew, index as usize).to_vec();
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                } else {
+                    let data = vec![0; sew as usize >> 3];
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                }
+            }
+        }
+        insts::OP_VRGATHER_VI => {
+            let i = VItype(inst);
+            let sew = machine.vsew();
+            for j in 0..machine.vl() as usize {
+                if i.vm() == 0 && machine.get_bit(0, j) {
+                    continue;
+                }
+                let index = i.immediate_u() as u64;
+                if index < machine.vlmax() {
+                    let data = machine.element_ref(i.vs2(), sew, index as usize).to_vec();
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                } else {
+                    let data = vec![0; sew as usize >> 3];
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                }
+            }
+        }
+        insts::OP_VRGATHEREI16_VV => {
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            for j in 0..machine.vl() as usize {
+                if i.vm() == 0 && machine.get_bit(0, j) {
+                    continue;
+                }
+                let index = E16::get(&machine.element_ref(i.vs1(), 16, j).to_vec()).u64();
+                if index < machine.vlmax() {
+                    let data = machine.element_ref(i.vs2(), sew, index as usize).to_vec();
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                } else {
+                    let data = vec![0; sew as usize >> 3];
+                    machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
+                }
+            }
+        }
+        insts::OP_VFIRST_M => {
+            let i = VVtype(inst);
+            let m = if i.vm() == 0 {
+                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
+                    & E2048::get(machine.element_ref(0, VLEN as u64, 0))
+            } else {
+                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
+            } & (E2048::MAX_U >> (VLEN as u32 - machine.vl() as u32));
+            let r = m.ctz();
+            if r == 2048 {
+                update_register(machine, i.vd(), Mac::REG::from_u64(0xffff_ffff_ffff_ffff));
+            } else {
+                update_register(machine, i.vd(), Mac::REG::from_u32(r));
+            }
+        }
+        insts::OP_VCPOP_M => {
+            let i = VVtype(inst);
+            let m = if i.vm() == 0 {
+                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
+                    & E2048::get(machine.element_ref(0, VLEN as u64, 0))
+            } else {
+                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
+            } & (E2048::MAX_U >> (VLEN as u32 - machine.vl() as u32));
+            let r = m.cpop();
+            update_register(machine, i.vd(), Mac::REG::from_u32(r));
         }
         _ => return Err(Error::InvalidOp(op)),
     };
