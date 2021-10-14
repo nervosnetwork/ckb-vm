@@ -3,7 +3,7 @@ use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
-use std::io::{Cursor, Seek, SeekFrom};
+use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -194,5 +194,16 @@ impl<R: Register> Memory for FlatMemory<R> {
         set_dirty(self, &page_indices)?;
         memset(&mut self[addr as usize..(addr + size) as usize], value);
         Ok(())
+    }
+
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Vec<u8>, Error> {
+        if addr.checked_add(size).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
+            return Err(Error::MemOutOfBound);
+        }
+        let mut reader = Cursor::new(&self.data);
+        reader.seek(SeekFrom::Start(addr))?;
+        let mut v = Vec::with_capacity(size as usize);
+        reader.read_exact(&mut v)?;
+        Ok(v)
     }
 }

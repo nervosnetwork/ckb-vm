@@ -12,12 +12,12 @@ use scroll::Pread;
 
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, Decoder};
-use super::instructions::{execute, Instruction, Register};
+use super::instructions::{execute, Instruction, Register, RegisterFile};
 use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, VLEN,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -44,6 +44,21 @@ pub trait CoreMachine {
     fn memory_mut(&mut self) -> &mut Self::MEM;
     fn registers(&self) -> &[Self::REG];
     fn set_register(&mut self, idx: usize, value: Self::REG);
+
+    // Vector extension
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8];
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8];
+    fn get_bit(&self, reg: usize, n: usize) -> bool;
+    fn set_bit(&mut self, reg: usize, n: usize);
+    fn clr_bit(&mut self, reg: usize, n: usize);
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64);
+    fn vl(&self) -> u64;
+    fn vlmax(&self) -> u64;
+    fn vsew(&self) -> u64;
+    fn vlmul(&self) -> i32;
+    fn vta(&self) -> bool;
+    fn vma(&self) -> bool;
+    fn vill(&self) -> bool;
 
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
@@ -276,6 +291,17 @@ pub struct DefaultCoreMachine<R, M> {
     running: bool,
     isa: u8,
     version: u32,
+
+    register_file: RegisterFile,
+    vlmax: u64,
+    vl: u64,
+    vtype: u64,
+    vill: bool,
+    vma: bool,
+    vta: bool,
+    vlmul: i32,
+    vsew: u64,
+    vstart: u64,
 }
 
 impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -307,6 +333,99 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
+    }
+
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.register_file.element_ref(reg, sew, n)
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.register_file.element_mut(reg, sew, n)
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.register_file.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.register_file.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.register_file.clr_bit(reg, n)
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        if self.vtype != new_type {
+            self.vtype = new_type;
+            self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
+            self.vlmul = match new_type & 0x7 {
+                0b000 => 1,
+                0b001 => 2,
+                0b010 => 4,
+                0b011 => 8,
+                0b111 => -2,
+                0b110 => -4,
+                0b101 => -8,
+                _ => -16,
+            };
+            self.vlmax = if self.vlmul >= 0 {
+                (VLEN as u64 / self.vsew) * (self.vlmul.abs() as u64)
+            } else {
+                (VLEN as u64 / self.vsew) / (self.vlmul.abs() as u64)
+            };
+            self.vta = ((new_type >> 6) & 0x1) != 0;
+            self.vma = ((new_type >> 7) & 0x1) != 0;
+            self.vill = self.vlmul == -16
+                || (new_type >> 8) != 0
+                || if self.vlmul < 0 {
+                    self.vsew > VLEN as u64 / self.vlmul.abs() as u64
+                } else {
+                    self.vsew > VLEN as u64
+                };
+            if self.vill {
+                self.vlmax = 0;
+                self.vtype = 1 << 63;
+            }
+        }
+        if self.vlmax == 0 {
+            self.vl = 0;
+        } else if rd == 0 && rs1 == 0 {
+            self.vl = std::cmp::min(self.vl, self.vlmax);
+        } else if rd != 0 && rs1 == 0 {
+            self.vl = self.vlmax;
+        } else if rs1 != 0 {
+            self.vl = std::cmp::min(avl, self.vlmax);
+        }
+        self.vstart = 0;
+    }
+
+    fn vl(&self) -> u64 {
+        self.vl
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.vlmax
+    }
+
+    fn vsew(&self) -> u64 {
+        self.vsew
+    }
+
+    fn vlmul(&self) -> i32 {
+        self.vlmul
+    }
+
+    fn vta(&self) -> bool {
+        self.vta
+    }
+
+    fn vma(&self) -> bool {
+        self.vma
+    }
+
+    fn vill(&self) -> bool {
+        self.vill
     }
 
     fn isa(&self) -> u8 {
@@ -355,14 +474,17 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
     }
 }
 
-impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R> + Default> DefaultCoreMachine<R, M> {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
-        Self {
+        let mut r = Self {
             isa,
             version,
             max_cycles,
             ..Default::default()
-        }
+        };
+        // Default to illegal configuration
+        r.set_vl(0, 0, 0, u64::MAX);
+        r
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -420,6 +542,58 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.inner.set_register(idx, value)
+    }
+
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.inner.element_ref(reg, sew, n)
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.inner.element_mut(reg, sew, n)
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.inner.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.inner.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.inner.clr_bit(reg, n)
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        self.inner.set_vl(rd, rs1, avl, new_type)
+    }
+
+    fn vl(&self) -> u64 {
+        self.inner.vl()
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.inner.vlmax()
+    }
+
+    fn vsew(&self) -> u64 {
+        self.inner.vsew()
+    }
+
+    fn vlmul(&self) -> i32 {
+        self.inner.vlmul()
+    }
+
+    fn vta(&self) -> bool {
+        self.inner.vta()
+    }
+
+    fn vma(&self) -> bool {
+        self.inner.vma()
+    }
+
+    fn vill(&self) -> bool {
+        self.inner.vill()
     }
 
     fn isa(&self) -> u8 {

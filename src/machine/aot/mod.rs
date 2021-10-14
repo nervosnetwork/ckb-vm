@@ -9,7 +9,7 @@ use bytes::Bytes;
 use memmap::MmapMut;
 use scroll::Pread;
 
-use super::super::{
+use crate::{
     decoder::build_decoder,
     instructions::{
         ast::Value, execute, instruction_length, is_basic_block_end_instruction,
@@ -213,7 +213,9 @@ impl LabelGatheringMachine {
                         start_of_basic_block = is_basic_block_end_instruction(instruction);
                         let next_pc = pc + u64::from(instruction_length(instruction));
                         self.update_pc(Value::from_u64(next_pc));
-                        execute(instruction, self)?;
+                        if !is_slowpath_instruction(instruction) {
+                            execute(instruction, self)?;
+                        }
                         for label in self.labels_to_test.drain(..) {
                             if label != next_pc && label < section_end && label >= section_start {
                                 self.labels.insert(label);
@@ -330,6 +332,58 @@ impl CoreMachine for LabelGatheringMachine {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
+    fn get_bit(&self, _reg: usize, _n: usize) -> bool {
+        unreachable!()
+    }
+
+    fn set_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn clr_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
+        unreachable!()
+    }
+
+    fn vl(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmax(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vsew(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmul(&self) -> i32 {
+        unreachable!()
+    }
+
+    fn vta(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vma(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vill(&self) -> bool {
+        unreachable!()
+    }
 }
 
 impl Machine for LabelGatheringMachine {
@@ -377,6 +431,10 @@ impl Memory for LabelGatheringMachine {
     }
 
     fn store_bytes(&mut self, _addr: u64, _value: &[u8]) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn load_bytes(&mut self, _addr: u64, _size: u64) -> Result<Vec<u8>, Error> {
         Err(Error::Unimplemented)
     }
 
@@ -667,6 +725,58 @@ impl CoreMachine for AotCompilingMachine {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
+    fn get_bit(&self, _reg: usize, _n: usize) -> bool {
+        unreachable!()
+    }
+
+    fn set_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn clr_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
+        unreachable!()
+    }
+
+    fn vl(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmax(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vsew(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn vlmul(&self) -> i32 {
+        unreachable!()
+    }
+
+    fn vta(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vma(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vill(&self) -> bool {
+        unreachable!()
+    }
 }
 
 impl Machine for AotCompilingMachine {
@@ -712,6 +822,10 @@ impl Memory for AotCompilingMachine {
     }
 
     fn store_bytes(&mut self, _addr: u64, _value: &[u8]) -> Result<(), Error> {
+        Err(Error::Unimplemented)
+    }
+
+    fn load_bytes(&mut self, _addr: u64, _size: u64) -> Result<Vec<u8>, Error> {
         Err(Error::Unimplemented)
     }
 

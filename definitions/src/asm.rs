@@ -52,6 +52,17 @@ pub struct AsmCoreMachine {
     pub memory: [u8; RISCV_MAX_MEMORY],
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
+
+    pub register_file: [u8; 8192],
+    pub vlmax: u64,
+    pub vl: u64,
+    pub vtype: u64,
+    pub vill: bool,
+    pub vma: bool,
+    pub vta: bool,
+    pub vlmul: i32,
+    pub vsew: u64,
+    pub vstart: u64,
 }
 
 impl AsmCoreMachine {

@@ -10,8 +10,8 @@ use ckb_vm_definitions::{
         TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    ELEN, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS, VLEN,
 };
 use libc::c_uchar;
 use memmap::Mmap;
@@ -71,6 +71,108 @@ impl CoreMachine for Box<AsmCoreMachine> {
 
     fn version(&self) -> u32 {
         self.version
+    }
+
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * n;
+        let i1 = i0 + lb;
+        &self.register_file[i0..i1]
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * n;
+        let i1 = i0 + lb;
+        &mut self.register_file[i0..i1]
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        let n = reg * VLEN + n;
+        (self.register_file[n / 8] << (7 - n % 8) >> (7 - n % 8)) != 0
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        let n = reg * VLEN + n;
+        self.register_file[n / 8] |= 1 << (n % 8)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        let n = reg * VLEN + n;
+        self.register_file[n / 8] &= !(1 << (n % 8))
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        if self.vtype != new_type {
+            self.vtype = new_type;
+            self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
+            self.vlmul = match new_type & 0x7 {
+                0b000 => 1,
+                0b001 => 2,
+                0b010 => 4,
+                0b011 => 8,
+                0b111 => -2,
+                0b110 => -4,
+                0b101 => -8,
+                _ => -16,
+            };
+            self.vlmax = if self.vlmul >= 0 {
+                (VLEN as u64 / self.vsew) * (self.vlmul.abs() as u64)
+            } else {
+                (VLEN as u64 / self.vsew) / (self.vlmul.abs() as u64)
+            };
+            self.vta = ((new_type >> 6) & 0x1) != 0;
+            self.vma = ((new_type >> 7) & 0x1) != 0;
+            self.vill = self.vlmul == -16
+                || (new_type >> 8) != 0
+                || if self.vlmul < 0 {
+                    self.vsew as u64 > ELEN as u64 / self.vlmul.abs() as u64
+                } else {
+                    self.vsew as u64 > ELEN as u64
+                };
+            if self.vill {
+                self.vlmax = 0;
+                self.vtype = 1 << 63;
+            }
+        }
+        if self.vlmax == 0 {
+            self.vl = 0;
+        } else if rd == 0 && rs1 == 0 {
+            self.vl = std::cmp::min(self.vl, self.vlmax);
+        } else if rd != 0 && rs1 == 0 {
+            self.vl = self.vlmax;
+        } else if rs1 != 0 {
+            self.vl = std::cmp::min(avl, self.vlmax);
+        }
+        self.vstart = 0;
+    }
+
+    fn vl(&self) -> u64 {
+        self.vl
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.vlmax
+    }
+
+    fn vsew(&self) -> u64 {
+        self.vsew
+    }
+
+    fn vlmul(&self) -> i32 {
+        self.vlmul
+    }
+
+    fn vta(&self) -> bool {
+        self.vta
+    }
+
+    fn vma(&self) -> bool {
+        self.vma
+    }
+
+    fn vill(&self) -> bool {
+        self.vill
     }
 }
 
@@ -168,13 +270,13 @@ fn check_memory_executable(
     Ok(())
 }
 
-// check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
+// check whether a memory address is initialized, `size` should be le RISCV_PAGESIZE
 fn check_memory_inited(
     machine: &mut Box<AsmCoreMachine>,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
-    debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
+    debug_assert!(size <= RISCV_PAGESIZE);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= RISCV_PAGES {
         return Err(Error::MemOutOfBound);
@@ -292,6 +394,11 @@ impl Memory for Box<AsmCoreMachine> {
             value,
         );
         Ok(())
+    }
+
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Vec<u8>, Error> {
+        check_memory_inited(self, addr, size as usize)?;
+        Ok(self.memory[addr as usize..(addr + size) as usize].to_vec())
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
@@ -445,7 +552,10 @@ impl<'a> AsmMachine<'a> {
         machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
         aot_code: Option<&'a AotCode>,
     ) -> Self {
-        Self { machine, aot_code }
+        let mut r = Self { machine, aot_code };
+        // Default to illegal configuration
+        r.machine.set_vl(0, 0, 0, u64::MAX);
+        r
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {

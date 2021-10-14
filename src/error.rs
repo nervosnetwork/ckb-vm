@@ -67,6 +67,10 @@ pub enum Error {
     Unexpected(String),
     #[display(fmt = "unimplemented")]
     Unimplemented,
+    #[display(fmt = "vill")]
+    Vill,
+    #[display(fmt = "invalid SEW: {}", "_0")]
+    InvalidSew(String),
 }
 
 impl std::error::Error for Error {}
