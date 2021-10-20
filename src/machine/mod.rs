@@ -126,8 +126,8 @@ pub trait SupportMachine: CoreMachine {
                 .collect();
                 (header.e_entry, program_headers)
             } else {
-                use goblin_v040::container::Ctx;
-                use goblin_v040::elf::{program_header::ProgramHeader, Header};
+                use goblin_v043::container::Ctx;
+                use goblin_v043::elf::{program_header::ProgramHeader, Header};
                 let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
                 let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
                 let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
