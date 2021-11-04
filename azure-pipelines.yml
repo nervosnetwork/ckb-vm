@@ -67,7 +67,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: 'stable'
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
       - script: cargo install cargo-deny --locked
         displayName: Install cargo deny
       - script: make ci-deps
