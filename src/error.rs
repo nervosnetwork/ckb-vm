@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::io::{Error as IOError, ErrorKind};
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq, Display)]
+#[derive(Debug, PartialEq, Clone, Eq, Display)]
 pub enum Error {
     #[display(fmt = "parse error")]
     ParseError,
@@ -13,8 +13,12 @@ pub enum Error {
     InvalidCycles,
     #[display(fmt = "cycles overflow")]
     CyclesOverflow,
-    #[display(fmt = "invalid instruction {}", "_0")]
-    InvalidInstruction(u32),
+    #[display(
+        fmt = "invalid instruction pc=0x{:x} instruction=0x{:x}",
+        "pc",
+        "instruction"
+    )]
+    InvalidInstruction { pc: u64, instruction: u32 },
     #[display(fmt = "invalid syscall {}", "_0")]
     InvalidEcall(u64),
     #[display(fmt = "invalid elf")]
@@ -37,6 +41,10 @@ pub enum Error {
     Unexpected,
     #[display(fmt = "unimplemented")]
     Unimplemented,
+    // Unknown error type is for the debugging tool of CKB-VM, it should not be
+    // used in this project.
+    #[display(fmt = "external error: {}", "_0")]
+    External(String),
 }
 
 impl StdError for Error {}

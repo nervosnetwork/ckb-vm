@@ -103,7 +103,10 @@ impl Decoder {
                 return Ok(instruction);
             }
         }
-        Err(Error::InvalidInstruction(instruction_bits))
+        Err(Error::InvalidInstruction {
+            pc,
+            instruction: instruction_bits,
+        })
     }
 
     // Macro-Operation Fusion (also Macro-Op Fusion, MOP Fusion, or Macrofusion) is a hardware optimization technique found

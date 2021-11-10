@@ -226,7 +226,10 @@ impl LabelGatheringMachine {
                         }
                         self.pc = Value::from_u64(next_pc);
                     }
-                    Err(Error::InvalidInstruction(i)) if i == 0 => {
+                    Err(Error::InvalidInstruction {
+                        pc: _,
+                        instruction: i,
+                    }) if i == 0 => {
                         // Due to alignment or other reasons, the code might
                         // certain invalid instructions in the executable
                         // sections, for a normal VM instance that's executing
