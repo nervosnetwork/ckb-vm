@@ -104,7 +104,7 @@ impl Decoder {
             }
         }
         Err(Error::InvalidInstruction {
-            pc: pc,
+            pc,
             instruction: instruction_bits,
         })
     }
