@@ -470,7 +470,13 @@ pub fn test_asm_version0_cadd_hints() {
     let mut machine = create_rust_machine("cadd_hints".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidInstruction(36906));
+    assert_eq!(
+        result.unwrap_err(),
+        Error::InvalidInstruction {
+            pc: 65656,
+            instruction: 36906
+        }
+    );
 }
 
 #[test]
