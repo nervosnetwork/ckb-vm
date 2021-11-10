@@ -17,7 +17,7 @@ pub use ckb_vm_definitions::instructions::{
 pub use execute::{execute, execute_instruction};
 
 type RegisterIndex = usize;
-type Immediate = i32;
+type SImmediate = i32;
 type UImmediate = u32;
 
 #[inline(always)]
@@ -73,11 +73,11 @@ impl Rtype {
 pub struct Itype(pub Instruction);
 
 impl Itype {
-    pub fn new(
+    pub fn new_u(
         op: InstructionOpcode,
         rd: RegisterIndex,
         rs1: RegisterIndex,
-        immediate: UImmediate,
+        immediate_u: UImmediate,
     ) -> Self {
         Itype(
             (u64::from(op) >> 8 << 16) |
@@ -86,7 +86,7 @@ impl Itype {
               (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, I-type uses 12 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
-              (u64::from(immediate) << 40),
+              (u64::from(immediate_u) << 40),
         )
     }
 
@@ -94,9 +94,9 @@ impl Itype {
         op: InstructionOpcode,
         rd: RegisterIndex,
         rs1: RegisterIndex,
-        immediate: Immediate,
+        immediate_s: SImmediate,
     ) -> Self {
-        Self::new(op, rd, rs1, immediate as UImmediate)
+        Self::new_u(op, rd, rs1, immediate_s as UImmediate)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -111,12 +111,12 @@ impl Itype {
         (self.0 >> 32) as u8 as RegisterIndex
     }
 
-    pub fn immediate(self) -> UImmediate {
+    pub fn immediate_u(self) -> UImmediate {
         self.immediate_s() as UImmediate
     }
 
-    pub fn immediate_s(self) -> Immediate {
-        ((self.0 as i64) >> 40) as Immediate
+    pub fn immediate_s(self) -> SImmediate {
+        ((self.0 as i64) >> 40) as SImmediate
     }
 }
 
@@ -124,9 +124,9 @@ impl Itype {
 pub struct Stype(pub Instruction);
 
 impl Stype {
-    pub fn new(
+    pub fn new_u(
         op: InstructionOpcode,
-        immediate: UImmediate,
+        immediate_u: UImmediate,
         rs1: RegisterIndex,
         rs2: RegisterIndex,
     ) -> Self {
@@ -137,17 +137,17 @@ impl Stype {
               (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, S/B type uses 13 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
-              (u64::from(immediate) << 40),
+              (u64::from(immediate_u) << 40),
         )
     }
 
     pub fn new_s(
         op: InstructionOpcode,
-        immediate: Immediate,
+        immediate_s: SImmediate,
         rs1: RegisterIndex,
         rs2: RegisterIndex,
     ) -> Self {
-        Self::new(op, immediate as UImmediate, rs1, rs2)
+        Self::new_u(op, immediate_s as UImmediate, rs1, rs2)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -162,12 +162,12 @@ impl Stype {
         (self.0 >> 8) as u8 as RegisterIndex
     }
 
-    pub fn immediate(self) -> UImmediate {
+    pub fn immediate_u(self) -> UImmediate {
         self.immediate_s() as UImmediate
     }
 
-    pub fn immediate_s(self) -> Immediate {
-        ((self.0 as i64) >> 40) as Immediate
+    pub fn immediate_s(self) -> SImmediate {
+        ((self.0 as i64) >> 40) as SImmediate
     }
 }
 
@@ -175,17 +175,17 @@ impl Stype {
 pub struct Utype(pub Instruction);
 
 impl Utype {
-    pub fn new(op: InstructionOpcode, rd: RegisterIndex, immediate: UImmediate) -> Self {
+    pub fn new(op: InstructionOpcode, rd: RegisterIndex, immediate_u: UImmediate) -> Self {
         Utype(
             (u64::from(op) >> 8 << 16)
                 | u64::from(op as u8)
                 | (u64::from(rd as u8) << 8)
-                | (u64::from(immediate) << 32),
+                | (u64::from(immediate_u) << 32),
         )
     }
 
-    pub fn new_s(op: InstructionOpcode, rd: RegisterIndex, immediate: Immediate) -> Self {
-        Self::new(op, rd, immediate as UImmediate)
+    pub fn new_s(op: InstructionOpcode, rd: RegisterIndex, immediate_s: SImmediate) -> Self {
+        Self::new(op, rd, immediate_s as UImmediate)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -196,12 +196,12 @@ impl Utype {
         (self.0 >> 8) as u8 as RegisterIndex
     }
 
-    pub fn immediate(self) -> UImmediate {
+    pub fn immediate_u(self) -> UImmediate {
         self.immediate_s() as UImmediate
     }
 
-    pub fn immediate_s(self) -> Immediate {
-        ((self.0 as i64) >> 32) as Immediate
+    pub fn immediate_s(self) -> SImmediate {
+        ((self.0 as i64) >> 32) as SImmediate
     }
 }
 

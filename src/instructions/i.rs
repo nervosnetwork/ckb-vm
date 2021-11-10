@@ -285,5 +285,5 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
 }
 
 pub fn nop() -> Instruction {
-    Itype::new(insts::OP_ADDI, 0, 0, 0).0
+    Itype::new_u(insts::OP_ADDI, 0, 0, 0).0
 }
