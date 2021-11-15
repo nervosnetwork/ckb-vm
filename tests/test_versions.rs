@@ -6,7 +6,7 @@ use ckb_vm::{
         asm::{AsmCoreMachine, AsmMachine},
         VERSION0, VERSION1,
     },
-    memory::FLAG_FREEZED,
+    memory::{FLAG_DIRTY, FLAG_FREEZED},
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
     SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
@@ -434,7 +434,7 @@ pub fn test_asm_version0_writable_page() {
     // 0x12000 is the address of the variable "buffer", which can be found from the dump file.
     let page_index = 0x12000 / RISCV_PAGESIZE as u64;
     let flag = machine.machine.memory_mut().fetch_flag(page_index).unwrap();
-    assert_eq!(flag, FLAG_FREEZED);
+    assert_eq!(flag, FLAG_DIRTY | FLAG_FREEZED);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -445,7 +445,7 @@ pub fn test_asm_version1_writable_page() {
     let mut machine = create_asm_machine("writable_page".to_string(), VERSION1);
     let page_index = 0x12000 / RISCV_PAGESIZE as u64;
     let flag = machine.machine.memory_mut().fetch_flag(page_index).unwrap();
-    assert_eq!(flag, 0);
+    assert_eq!(flag, FLAG_DIRTY);
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
