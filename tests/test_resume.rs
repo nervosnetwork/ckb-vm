@@ -8,7 +8,7 @@ use ckb_vm::{
         trace::TraceMachine,
         DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1,
     },
-    memory::sparse::SparseMemory,
+    memory::{sparse::SparseMemory, wxorx::WXorXMemory},
     snapshot::{make_snapshot, resume, Snapshot},
     DefaultMachineBuilder, Error, Instruction, ISA_IMC,
 };
@@ -76,9 +76,6 @@ pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 40, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -101,9 +98,6 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     let snapshot1 = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 4000000, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot1).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -112,9 +106,6 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     let snapshot2 = machine2.snapshot().unwrap();
 
     let mut machine3 = MachineTy::Asm.build(version, 4000000, None);
-    machine3
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine3.resume(&snapshot2).unwrap();
     let result3 = machine3.run();
     let cycles3 = machine3.cycles();
@@ -137,9 +128,6 @@ pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Interpreter.build(version, 40, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot).unwrap();
 
     let result2 = machine2.run();
@@ -163,9 +151,6 @@ pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Interpreter.build(version, 30, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -188,9 +173,6 @@ pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 30, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -217,9 +199,6 @@ pub fn resume_aot_2_asm(version: u32, except_cycles: u64) {
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 40, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -242,9 +221,6 @@ pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u6
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 30, None);
-    machine2
-        .load_program(&buffer, &vec!["alloc_many".into()])
-        .unwrap();
     machine2.resume(&snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -285,10 +261,11 @@ impl MachineTy {
                 Machine::Aot(AsmMachine::new(core1, program))
             }
             MachineTy::Interpreter => {
-                let core_machine1 =
-                    DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, version, max_cycles);
+                let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+                    ISA_IMC, version, max_cycles,
+                );
                 Machine::Interpreter(
-                    DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(
+                    DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
                         core_machine1,
                     )
                     .instruction_cycle_func(Box::new(dummy_cycle_func))
@@ -296,15 +273,18 @@ impl MachineTy {
                 )
             }
             MachineTy::InterpreterWithTrace => {
-                let core_machine1 =
-                    DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, version, max_cycles);
-                Machine::InterpreterWithTrace(TraceMachine::new(
-                    DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(
-                        core_machine1,
-                    )
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
-                    .build(),
-                ))
+                let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+                    ISA_IMC, version, max_cycles,
+                );
+                Machine::InterpreterWithTrace(
+                    TraceMachine::new(
+                        DefaultMachineBuilder::<
+                            DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
+                        >::new(core_machine1)
+                        .instruction_cycle_func(Box::new(dummy_cycle_func))
+                        .build(),
+                    ),
+                )
             }
         }
     }
@@ -313,8 +293,10 @@ impl MachineTy {
 enum Machine<'a> {
     Asm(AsmMachine<'static>),
     Aot(AsmMachine<'a>),
-    Interpreter(DefaultMachine<'static, DefaultCoreMachine<u64, SparseMemory<u64>>>),
-    InterpreterWithTrace(TraceMachine<'static, DefaultCoreMachine<u64, SparseMemory<u64>>>),
+    Interpreter(DefaultMachine<'static, DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
+    InterpreterWithTrace(
+        TraceMachine<'static, DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
+    ),
 }
 
 impl<'a> Machine<'a> {

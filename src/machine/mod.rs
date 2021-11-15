@@ -13,12 +13,11 @@ use scroll::Pread;
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, Decoder};
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{round_page_down, round_page_up, Memory, FLAG_DIRTY};
+use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGES,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -179,9 +178,6 @@ pub trait SupportMachine: CoreMachine {
         if update_pc {
             self.update_pc(Self::REG::from_u64(e_entry));
             self.commit_pc();
-        }
-        for i in 0..RISCV_PAGES {
-            self.memory_mut().clear_flag(i as u64, FLAG_DIRTY)?;
         }
         Ok(bytes)
     }
