@@ -71,8 +71,7 @@ pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error>
             }
 
             snap.page_indices.push(i as u64);
-            snap.page_flags
-                .push(machine.memory_mut().fetch_flag(i as u64)?);
+            snap.page_flags.push(flag);
             snap.pages.push(page);
         }
     }
