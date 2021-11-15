@@ -33,6 +33,7 @@ pub struct Snapshot {
     pub registers: [u64; RISCV_GENERAL_REGISTER_NUMBER],
     pub pc: u64,
     pub page_indices: Vec<u64>,
+    pub page_flags: Vec<u8>,
     pub pages: Vec<Vec<u8>>,
 }
 
@@ -70,6 +71,7 @@ pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error>
             }
 
             snap.page_indices.push(i as u64);
+            snap.page_flags.push(machine.memory_mut().fetch_flag(i as u64)?);
             snap.pages.push(page);
         }
     }
@@ -87,9 +89,11 @@ pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<()
     machine.commit_pc();
     for i in 0..snapshot.page_indices.len() {
         let page_index = snapshot.page_indices[i];
+        let page_flag = snapshot.page_flags[i];
         let page = &snapshot.pages[i];
         let addr_from = page_index << RISCV_PAGE_SHIFTS;
         machine.memory_mut().store_bytes(addr_from, &page[..])?;
+        machine.memory_mut().set_flag(page_index, page_flag)?;
     }
 
     Ok(())
