@@ -11,12 +11,17 @@ fn main() {
     let is_windows = target_family == "windows";
     let is_unix = target_family == "unix";
     let is_x86_64 = target_arch == "x86_64";
+    let is_aarch64 = target_arch == "aarch64";
     let x64_asm = is_x86_64 && (is_windows || is_unix);
-    let can_enable_asm = x64_asm;
+    let aarch64_asm = is_aarch64 && is_unix;
+    let can_enable_asm = x64_asm || aarch64_asm;
     let can_enable_aot = x64_asm;
 
     if cfg!(feature = "asm") && (!can_enable_asm) {
-        panic!("asm feature can only be enabled on x86_64 Linux, macOS and Windows platforms!");
+        panic!(
+            "Asm feature is not available for target {} on {}!",
+            target_arch, target_family
+        );
     }
 
     if cfg!(feature = "aot") && (!can_enable_aot) {
@@ -47,18 +52,18 @@ fn main() {
 
         let mut build = Build::new();
 
-        if is_windows {
+        if is_windows && x64_asm {
             let out_dir = env::var("OUT_DIR").unwrap();
-            let expand_path = Path::new(&out_dir).join("execute-expanded.S");
+            let expand_path = Path::new(&out_dir).join("execute_x64-expanded.S");
             let mut expand_command = Command::new("clang");
             expand_command
                 .arg("-E")
-                .arg("src/machine/asm/execute.S")
+                .arg("src/machine/asm/execute_x64.S")
                 .arg("-o")
                 .arg(&expand_path);
             run_command(expand_command);
 
-            let compile_path = Path::new(&out_dir).join("execute.o");
+            let compile_path = Path::new(&out_dir).join("execute_x64.o");
             let mut compile_command = Command::new("yasm");
             compile_command
                 .arg("-p")
@@ -78,11 +83,14 @@ fn main() {
                 build.file("src/machine/aot/aot.x64.win.compiled.c");
             }
         } else if x64_asm {
-            build.file("src/machine/asm/execute.S");
+            build.file("src/machine/asm/execute_x64.S");
 
             if enable_aot {
                 build.file("src/machine/aot/aot.x64.compiled.c");
             }
+        } else if aarch64_asm {
+            build.file("src/machine/asm/execute_aarch64.S");
+            // TODO: AOT
         }
 
         if enable_aot {

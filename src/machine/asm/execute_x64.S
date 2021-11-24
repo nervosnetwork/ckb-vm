@@ -1,6 +1,3 @@
-/*
- * TODO: change macros to assembly directives due to MSVC compatibility issues
- */
 #define CKB_VM_ASM_GENERATE_LABEL_TABLES 1
 #include "cdefinitions_generated.h"
 
