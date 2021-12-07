@@ -1,4 +1,4 @@
-#![cfg(has_asm)]
+#![cfg(has_aot)]
 
 use ckb_vm::{
     machine::{

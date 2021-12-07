@@ -1,5 +1,5 @@
 use bytes::Bytes;
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 use ckb_vm::machine::aot::AotCompilingMachine;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
@@ -107,7 +107,7 @@ fn test_reset_asm() {
 }
 
 #[test]
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 pub fn test_reset_aot() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
     let code = Bytes::from(code_data);

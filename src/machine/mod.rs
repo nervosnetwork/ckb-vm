@@ -1,4 +1,4 @@
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 pub mod aot;
 #[cfg(has_asm)]
 pub mod asm;
