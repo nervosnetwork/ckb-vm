@@ -8,7 +8,7 @@ trigger:
 
 variables:
   RUST_BACKTRACE: full
-  TEST_SUITE_COMMIT: 1cc531114df6eaa94cc046bc526c8f631bd0bfdd
+  TEST_SUITE_COMMIT: 2256b990a84fe50a9bac1fd178ce086bb90d7710
 
 jobs:
   - job: WinCI
