@@ -11,16 +11,27 @@ fn main() {
     let is_windows = target_family == "windows";
     let is_unix = target_family == "unix";
     let is_x86_64 = target_arch == "x86_64";
-    let can_enable_asm = is_x86_64 && (is_windows || is_unix);
+    let x64_asm = is_x86_64 && (is_windows || is_unix);
+    let can_enable_asm = x64_asm;
+    let can_enable_aot = x64_asm;
 
     if cfg!(feature = "asm") && (!can_enable_asm) {
         panic!("asm feature can only be enabled on x86_64 Linux, macOS and Windows platforms!");
+    }
+
+    if cfg!(feature = "aot") && (!can_enable_aot) {
+        panic!(
+            "Aot feature is not available for target {} on {}!",
+            target_arch, target_family
+        );
     }
 
     if cfg!(any(feature = "asm", feature = "detect-asm")) && can_enable_asm {
         use cc::Build;
         use std::path::Path;
         use std::process::Command;
+
+        let enable_aot = cfg!(feature = "aot");
 
         fn run_command(mut c: Command) {
             let status = c.status().unwrap_or_else(|e| {
@@ -61,19 +72,25 @@ fn main() {
                 .arg(&compile_path);
             run_command(compile_command);
 
-            build
-                .object(&compile_path)
-                .file("src/machine/aot/aot.x64.win.compiled.c");
-        } else {
-            build
-                .file("src/machine/asm/execute.S")
-                .file("src/machine/aot/aot.x64.compiled.c");
+            build.object(&compile_path);
+
+            if enable_aot {
+                build.file("src/machine/aot/aot.x64.win.compiled.c");
+            }
+        } else if x64_asm {
+            build.file("src/machine/asm/execute.S");
+
+            if enable_aot {
+                build.file("src/machine/aot/aot.x64.compiled.c");
+            }
         }
 
-        build
-            .include("dynasm")
-            .include("src/machine/asm")
-            .compile("asm");
+        if enable_aot {
+            build.include("dynasm");
+            println!("cargo:rustc-cfg=has_aot");
+        }
+
+        build.include("src/machine/asm").compile("asm");
 
         println!("cargo:rustc-cfg=has_asm")
     }

@@ -1,7 +1,7 @@
 #[cfg(has_asm)]
-use ckb_vm::machine::aot::{AotCode, AotCompilingMachine};
-#[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+#[cfg(has_aot)]
+use ckb_vm::machine::{aot::AotCompilingMachine, asm::AotCode};
 
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1};
 use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP};
@@ -27,7 +27,7 @@ pub fn asm_v1_imcb<'a>(path: &str) -> AsmMachine<'a> {
     machine
 }
 
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 pub fn aot_v1_imcb_code(path: &str) -> AotCode {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let mut aot_machine =
@@ -35,7 +35,7 @@ pub fn aot_v1_imcb_code(path: &str) -> AotCode {
     aot_machine.compile().unwrap()
 }
 
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 pub fn aot_v1_imcb<'a>(path: &str, code: &'a AotCode) -> AsmMachine<'a> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
 
@@ -84,7 +84,7 @@ pub fn asm_v1_mop<'a>(path: &str, args: Vec<Bytes>) -> AsmMachine<'a> {
     machine
 }
 
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 pub fn aot_v1_mop_code(path: &str) -> AotCode {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let mut aot_machine =
@@ -92,7 +92,7 @@ pub fn aot_v1_mop_code(path: &str) -> AotCode {
     aot_machine.compile().unwrap()
 }
 
-#[cfg(has_asm)]
+#[cfg(has_aot)]
 pub fn aot_v1_mop<'a>(path: &str, args: Vec<Bytes>, code: &'a AotCode) -> AsmMachine<'a> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
 

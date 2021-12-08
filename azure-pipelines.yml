@@ -8,37 +8,27 @@ trigger:
 
 variables:
   RUST_BACKTRACE: full
-  TEST_SUITE_COMMIT: 1cc531114df6eaa94cc046bc526c8f631bd0bfdd
+  TEST_SUITE_COMMIT: 2256b990a84fe50a9bac1fd178ce086bb90d7710
 
 jobs:
-  - job: WinUnitTest
+  - job: WinCI
     pool:
       vmImage: 'VS2017-Win2016'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
           rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
-      - script: make test
+      - script: make ci-aot
         displayName: Run unit tests
 
-  - job: WinUnitTestAllFeatures
+  - job: WinCIChaos
     pool:
       vmImage: 'VS2017-Win2016'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
           rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
-      - script: make test-all-features
-        displayName: Run unit tests with all features
-
-  - job: WinUnitTestChaos
-    pool:
-      vmImage: 'VS2017-Win2016'
-    steps:
-      - template: devtools/azure/windows-dependencies.yml
-        parameters:
-          rustup_toolchain: '1.51.0-x86_64-pc-windows-msvc'
-      - script: make test-chaos
+      - script: make ci-aot-chaos
         displayName: Run unit tests with chaos
 
   - job: OSXCI
@@ -48,18 +38,18 @@ jobs:
       - template: devtools/azure/osx-dependencies.yml
         parameters:
           rustup_toolchain: '1.51.0-x86_64-apple-darwin'
-      - script: make ci
-        displayName: Run ci
+      - script: make ci-aot
+        displayName: Run unit tests
 
-  - job: OSXCIAllFeatures
+  - job: OSXCIChaos
     pool:
       vmImage: 'macOS-10.15'
     steps:
       - template: devtools/azure/osx-dependencies.yml
         parameters:
           rustup_toolchain: '1.51.0-x86_64-apple-darwin'
-      - script: make ci-all-features
-        displayName: Run ci-all-features
+      - script: make ci-aot-chaos
+        displayName: Run unit tests with chaos
 
   - job: LinuxCIDeps
     pool:
@@ -103,25 +93,55 @@ jobs:
       - script: make check
         displayName: Run check
 
-  - job: LinuxCIAllFeatures
+  - job: LinuxCIAOT
     pool:
       vmImage: 'ubuntu-20.04'
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
           rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
-      - script: make ci-all-features
-        displayName: Run ci-all-features
+      - script: make ci-aot
+        displayName: Run ci-aot
 
-  - job: LinuxCIChaos
+  - job: LinuxCIASM
     pool:
       vmImage: 'ubuntu-20.04'
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
           rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
-      - script: make ci-chaos
-        displayName: Run ci-chaos
+      - script: make ci-asm
+        displayName: Run ci-asm
+
+  - job: LinuxCI
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make ci
+        displayName: Run ci
+
+  - job: LinuxCIASMChaos
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make ci-asm-chaos
+        displayName: Run ci-asm-chaos
+
+  - job: LinuxCIAOTChaos
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: make ci-aot-chaos
+        displayName: Run ci-aot-chaos
 
   - job: LinuxCIMiri
     pool:

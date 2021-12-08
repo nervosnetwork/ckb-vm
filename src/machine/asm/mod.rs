@@ -14,7 +14,9 @@ use ckb_vm_definitions::{
     RISCV_PAGE_SHIFTS,
 };
 use libc::c_uchar;
+use memmap::Mmap;
 use rand::{prelude::RngCore, SeedableRng};
+use std::collections::HashMap;
 
 use crate::{
     decoder::{build_decoder, Decoder},
@@ -22,7 +24,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::{aot::AotCode, VERSION0},
+    machine::VERSION0,
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -409,6 +411,20 @@ impl SupportMachine for Box<AsmCoreMachine> {
 
     fn set_running(&mut self, running: bool) {
         self.running = if running { 1 } else { 0 }
+    }
+}
+
+pub struct AotCode {
+    pub code: Mmap,
+    /// Labels that map RISC-V addresses to offsets into the compiled x86_64
+    /// assembly code. This can be used as entrypoints to start executing in
+    /// AOT code.
+    pub labels: HashMap<u64, u32>,
+}
+
+impl AotCode {
+    pub fn base_address(&self) -> u64 {
+        self.code.as_ptr() as u64
     }
 }
 

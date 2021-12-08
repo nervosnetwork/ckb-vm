@@ -6,7 +6,7 @@ use std::mem;
 use std::rc::Rc;
 
 use bytes::Bytes;
-use memmap::{Mmap, MmapMut};
+use memmap::MmapMut;
 use scroll::Pread;
 
 use super::super::{
@@ -15,7 +15,7 @@ use super::super::{
         ast::Value, execute, instruction_length, is_basic_block_end_instruction,
         is_slowpath_instruction, Instruction,
     },
-    machine::{elf_adaptor, SupportMachine, VERSION1},
+    machine::{asm::AotCode, elf_adaptor, SupportMachine, VERSION1},
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
     Register, RISCV_MAX_MEMORY,
 };
@@ -420,20 +420,6 @@ impl Memory for LabelGatheringMachine {
 
     fn store64(&mut self, _addr: &Value, _value: &Value) -> Result<(), Error> {
         Ok(())
-    }
-}
-
-pub struct AotCode {
-    pub code: Mmap,
-    /// Labels that map RISC-V addresses to offsets into the compiled x86_64
-    /// assembly code. This can be used as entrypoints to start executing in
-    /// AOT code.
-    pub labels: HashMap<u64, u32>,
-}
-
-impl AotCode {
-    pub fn base_address(&self) -> u64 {
-        self.code.as_ptr() as u64
     }
 }
 

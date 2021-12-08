@@ -1,11 +1,17 @@
 test:
 	cargo test --all -- --nocapture
 
-test-all-features:
+test-asm:
 	cargo test --all --features=asm -- --nocapture
 
-test-chaos:
+test-aot:
+	cargo test --all --features=aot -- --nocapture
+
+test-asm-chaos:
 	cargo test --all --features=asm,enable-chaos-mode-by-default -- --nocapture
+
+test-aot-chaos:
+	cargo test --all --features=aot,enable-chaos-mode-by-default -- --nocapture
 
 check:
 	cargo check --all --all-targets --all-features
@@ -44,10 +50,16 @@ ci-deps: security-audit check-licenses check-crates
 ci-quick: test
 	git diff --exit-code Cargo.lock
 
-ci-all-features: test-all-features
+ci-asm: test-asm
 	git diff --exit-code Cargo.lock
 
-ci-chaos: test-chaos
+ci-aot: test-aot
+	git diff --exit-code Cargo.lock
+
+ci-asm-chaos: test-asm-chaos
+	git diff --exit-code Cargo.lock
+
+ci-aot-chaos: test-aot-chaos
 	git diff --exit-code Cargo.lock
 
 ci-miri:

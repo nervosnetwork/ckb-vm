@@ -1,8 +1,10 @@
 #![cfg(has_asm)]
 
+#[cfg(has_aot)]
+use ckb_vm::machine::{aot::AotCompilingMachine, asm::AotCode};
+
 use ckb_vm::{
     machine::{
-        aot::{AotCode, AotCompilingMachine},
         asm::{AsmCoreMachine, AsmMachine},
         VERSION0, VERSION1,
     },
@@ -41,6 +43,7 @@ fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
     machine
 }
 
+#[cfg(has_aot)]
 fn compile_aot_code(program: String, version: u32) -> AotCode {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
@@ -48,6 +51,7 @@ fn compile_aot_code(program: String, version: u32) -> AotCode {
     aot_machine.compile().unwrap()
 }
 
+#[cfg(has_aot)]
 fn create_aot_machine<'a>(program: String, code: &'a AotCode, version: u32) -> AsmMachine<'a> {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
@@ -253,6 +257,7 @@ pub fn test_asm_version1_write_at_boundary() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_argv_null() {
     let code = compile_aot_code("argv_null_test".to_string(), VERSION0);
     let mut machine = create_aot_machine("argv_null_test".to_string(), &code, VERSION0);
@@ -262,6 +267,7 @@ pub fn test_aot_version0_argv_null() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_sp_alignment() {
     let code = compile_aot_code("sp_alignment_test".to_string(), VERSION0);
     let mut machine = create_aot_machine("sp_alignment_test".to_string(), &code, VERSION0);
@@ -271,6 +277,7 @@ pub fn test_aot_version0_sp_alignment() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_jalr_bug() {
     let code = compile_aot_code("jalr_bug".to_string(), VERSION0);
     let mut machine = create_aot_machine("jalr_bug".to_string(), &code, VERSION0);
@@ -280,6 +287,7 @@ pub fn test_aot_version0_jalr_bug() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_jalr_bug_noc() {
     let code = compile_aot_code("jalr_bug_noc".to_string(), VERSION0);
     let mut machine = create_aot_machine("jalr_bug_noc".to_string(), &code, VERSION0);
@@ -289,6 +297,7 @@ pub fn test_aot_version0_jalr_bug_noc() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_read_at_boundary() {
     let code = compile_aot_code("read_at_boundary64".to_string(), VERSION0);
     let mut machine = create_aot_machine("read_at_boundary64".to_string(), &code, VERSION0);
@@ -298,6 +307,7 @@ pub fn test_aot_version0_read_at_boundary() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_write_at_boundary() {
     let code = compile_aot_code("write_at_boundary64".to_string(), VERSION0);
     let mut machine = create_aot_machine("write_at_boundary64".to_string(), &code, VERSION0);
@@ -307,6 +317,7 @@ pub fn test_aot_version0_write_at_boundary() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_argv_null() {
     let code = compile_aot_code("argv_null_test".to_string(), VERSION1);
     let mut machine = create_aot_machine("argv_null_test".to_string(), &code, VERSION1);
@@ -316,6 +327,7 @@ pub fn test_aot_version1_argv_null() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_sp_alignment() {
     let code = compile_aot_code("sp_alignment_test".to_string(), VERSION1);
     let mut machine = create_aot_machine("sp_alignment_test".to_string(), &code, VERSION1);
@@ -325,6 +337,7 @@ pub fn test_aot_version1_sp_alignment() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_jalr_bug() {
     let code = compile_aot_code("jalr_bug".to_string(), VERSION1);
     let mut machine = create_aot_machine("jalr_bug".to_string(), &code, VERSION1);
@@ -334,6 +347,7 @@ pub fn test_aot_version1_jalr_bug() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_jalr_bug_noc() {
     let code = compile_aot_code("jalr_bug_noc".to_string(), VERSION1);
     let mut machine = create_aot_machine("jalr_bug_noc".to_string(), &code, VERSION1);
@@ -343,6 +357,7 @@ pub fn test_aot_version1_jalr_bug_noc() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_read_at_boundary() {
     let code = compile_aot_code("read_at_boundary64".to_string(), VERSION1);
     let mut machine = create_aot_machine("read_at_boundary64".to_string(), &code, VERSION1);
@@ -352,6 +367,7 @@ pub fn test_aot_version1_read_at_boundary() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_write_at_boundary() {
     let code = compile_aot_code("write_at_boundary64".to_string(), VERSION1);
     let mut machine = create_aot_machine("write_at_boundary64".to_string(), &code, VERSION1);
@@ -405,6 +421,7 @@ pub fn test_asm_version1_unaligned64() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version0_unaligned64() {
     let program = "unaligned64";
     let code = compile_aot_code(program.to_string(), VERSION1);
@@ -420,6 +437,7 @@ pub fn test_aot_version0_unaligned64() {
 }
 
 #[test]
+#[cfg(has_aot)]
 pub fn test_aot_version1_unaligned64() {
     let code = compile_aot_code("unaligned64".to_string(), VERSION1);
     let mut machine = create_aot_machine("unaligned64".to_string(), &code, VERSION1);
