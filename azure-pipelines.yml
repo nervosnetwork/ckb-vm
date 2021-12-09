@@ -8,7 +8,7 @@ trigger:
 
 variables:
   RUST_BACKTRACE: full
-  TEST_SUITE_COMMIT: 2256b990a84fe50a9bac1fd178ce086bb90d7710
+  TEST_SUITE_COMMIT: 0e26e2f2eafa493ec6dc091515d5e543822e4f13
 
 jobs:
   - job: WinCI
@@ -182,7 +182,7 @@ jobs:
           cd ckb-vm-test-suite &&
           git checkout $TEST_SUITE_COMMIT &&
           git submodule update --init --recursive &&
-          RISCV=`pwd`/../riscv ./test.sh
+          RISCV=`pwd`/../riscv ./test.sh --enable-aot
         displayName: Run test suite
 
   - job: LinuxFuzz
@@ -210,6 +210,30 @@ jobs:
           sudo apt-get install -y qemu binfmt-support qemu-user-static
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "cd /code && cargo test --features=asm"
+        displayName: Run ci-asm on arm64 machines
+
+  - job: LinuxArm64TestSuite
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: |
+          sudo apt-get install -y qemu binfmt-support qemu-user-static
+          sudo apt-get install -y gcc-multilib
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
+          rustup target add aarch64-unknown-linux-gnu
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain@sha256:3624938631b8281f9988acef72710564ca14ea52ccc2025fa9a5f47e77b54d43 cp -r /riscv /code/riscv
+          git clone https://github.com/nervosnetwork/ckb-vm-test-suite &&
+          ln -snf .. ckb-vm-test-suite/ckb-vm &&
+          cd ckb-vm-test-suite &&
+          git checkout $TEST_SUITE_COMMIT &&
+          git submodule update --init --recursive &&
+          cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd ..
+          cd .. && 
+          docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "RISCV=/code/riscv /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
         displayName: Run ci-asm on arm64 machines
 
   - job: LinuxCodeCoverage
