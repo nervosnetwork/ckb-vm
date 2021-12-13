@@ -1,4 +1,4 @@
-pub use uintxx::{I1024, I256, I512, U1024, U128, U16, U256, U32, U512, U64, U8};
+pub use uintxx::{U1024, U128, U16, U256, U32, U512, U64, U8};
 
 #[derive(Clone, Copy, Debug)]
 pub enum VRegister {
