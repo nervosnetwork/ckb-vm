@@ -65,6 +65,9 @@ pub trait Element:
     /// Returns the number of leading zeros in the binary representation of self.
     fn leading_zeros(self) -> u32;
 
+    /// Compare signed.
+    fn cmp_s(&self, other: &Self) -> std::cmp::Ordering;
+
     /// Calculates self + other
     ///
     /// Returns a tuple of the addition along with a boolean indicating whether an arithmetic overflow would
@@ -111,10 +114,16 @@ pub trait Element:
     /// the wrapping operations.
     fn wrapping_div(self, other: Self) -> Self;
 
+    /// Wrapping (modular) division signed.
+    fn wrapping_div_s(self, other: Self) -> Self;
+
     /// Wrapping (modular) remainder. Computes self % rhs. Wrapped remainder calculation on unsigned types is just the
     /// regular remainder calculation. There’s no way wrapping could ever happen. This function exists, so that all
     /// operations are accounted for in the wrapping operations.
     fn wrapping_rem(self, other: Self) -> Self;
+
+    /// Wrapping (modular) remainder signed.
+    fn wrapping_rem_s(self, other: Self) -> Self;
 
     /// Panic-free bitwise shift-left; yields self << mask(rhs), where mask removes any high-order bits of rhs
     /// that would cause the shift to exceed the bitwidth of the type.
@@ -370,6 +379,10 @@ macro_rules! uint_wrap_impl {
                 self.0.leading_zeros()
             }
 
+            fn cmp_s(&self, other: &Self) -> std::cmp::Ordering {
+                (self.0 as $sint).cmp(&(other.0 as $sint))
+            }
+
             fn overflowing_add(self, other: Self) -> (Self, bool) {
                 let (r, b) = self.0.overflowing_add(other.0);
                 (Self(r), b)
@@ -413,9 +426,29 @@ macro_rules! uint_wrap_impl {
                 }
             }
 
+            fn wrapping_div_s(self, other: Self) -> Self {
+                if other.0 == 0 {
+                    Self::MAX
+                } else if self.0 == 1 << (Self::BITS - 1) && other == Self::MAX {
+                    Self::ONE << (Self::BITS - 1)
+                } else {
+                    Self(self.0.wrapping_div(other.0))
+                }
+            }
+
             fn wrapping_rem(self, other: Self) -> Self {
                 if other.0 == 0 {
                     self
+                } else {
+                    Self(self.0.wrapping_rem(other.0))
+                }
+            }
+
+            fn wrapping_rem_s(self, other: Self) -> Self {
+                if other.0 == 0 {
+                    self
+                } else if self.0 == 1 << (Self::BITS - 1) && other == Self::MAX {
+                    Self::MIN
                 } else {
                     Self(self.0.wrapping_rem(other.0))
                 }
@@ -523,7 +556,7 @@ uint_wrap_from_impl!(U128, u128, u128);
 uint_wrap_from_impl!(U128, u128, i128);
 
 macro_rules! uint_impl {
-    ($name:ident, $half:ty, $bits:expr) => {
+    ($name:ident, $half:ty) => {
         #[derive(Copy, Clone, Default, PartialEq, Eq)]
         pub struct $name {
             pub lo: $half,
@@ -765,6 +798,17 @@ macro_rules! uint_impl {
                 }
             }
 
+            fn cmp_s(&self, other: &Self) -> std::cmp::Ordering {
+                let lhssign = self.is_negative();
+                let rhssign = other.is_negative();
+                match (lhssign, rhssign) {
+                    (false, false) => self.cmp(&other),
+                    (false, true) => std::cmp::Ordering::Greater,
+                    (true, false) => std::cmp::Ordering::Less,
+                    (true, true) => self.cmp(&other),
+                }
+            }
+
             fn overflowing_add(self, other: Self) -> (Self, bool) {
                 let (lo, lo_carry) = self.lo.overflowing_add(other.lo);
                 let (hi, hi_carry_1) = self.hi.overflowing_add(<$half>::from(lo_carry));
@@ -833,11 +877,35 @@ macro_rules! uint_impl {
                 }
             }
 
+            fn wrapping_div_s(self, other: Self) -> Self {
+                let minus_min = Self::ONE << (Self::BITS - 1);
+                let minus_one = Self::MAX;
+                if other == Self::MIN {
+                    Self::MAX
+                } else if self == minus_min && other == minus_one {
+                    minus_min
+                } else {
+                    self.divs(other).0
+                }
+            }
+
             fn wrapping_rem(self, other: Self) -> Self {
                 if other == Self::MIN {
                     self
                 } else {
                     self.div(other).1
+                }
+            }
+
+            fn wrapping_rem_s(self, other: Self) -> Self {
+                let minus_min = Self::ONE << (Self::BITS - 1);
+                let minus_one = Self::MAX;
+                if other == Self::MIN {
+                    self
+                } else if self == minus_min && other == minus_one {
+                    Self::MIN
+                } else {
+                    self.divs(other).1
                 }
             }
 
@@ -905,12 +973,12 @@ macro_rules! uint_impl {
 
         impl $name {
             /// Create a native endian integer value from its representation as a byte array in big endian.
-            pub fn from_be_bytes(bytes: [u8; $bits / 8]) -> Self {
-                let mut t = [0u8; $bits / 8 / 2];
+            pub fn from_be_bytes(bytes: [u8; Self::BITS as usize / 8]) -> Self {
+                let mut t = [0u8; Self::BITS as usize / 8 / 2];
                 let a = 0x00;
-                let b = $bits / 8 / 2;
+                let b = Self::BITS as usize / 8 / 2;
                 let c = b;
-                let d = $bits / 8;
+                let d = Self::BITS as usize / 8;
                 t.copy_from_slice(&bytes[a..b]);
                 let hi = <$half>::from_be_bytes(t);
                 t.copy_from_slice(&bytes[c..d]);
@@ -919,12 +987,12 @@ macro_rules! uint_impl {
             }
 
             /// Create a native endian integer value from its representation as a byte array in little endian.
-            pub fn from_le_bytes(bytes: [u8; $bits / 8]) -> Self {
-                let mut t = [0u8; $bits / 8 / 2];
+            pub fn from_le_bytes(bytes: [u8; Self::BITS as usize / 8]) -> Self {
+                let mut t = [0u8; Self::BITS as usize / 8 / 2];
                 let a = 0x00;
-                let b = $bits / 8 / 2;
+                let b = Self::BITS as usize / 8 / 2;
                 let c = b;
-                let d = $bits / 8;
+                let d = Self::BITS as usize / 8;
                 t.copy_from_slice(&bytes[a..b]);
                 let lo = <$half>::from_le_bytes(t);
                 t.copy_from_slice(&bytes[c..d]);
@@ -933,24 +1001,24 @@ macro_rules! uint_impl {
             }
 
             /// Return the memory representation of this integer as a byte array in big-endian (network) byte order.
-            pub fn to_be_bytes(self) -> [u8; $bits / 8] {
-                let mut r = [0u8; $bits / 8];
+            pub fn to_be_bytes(self) -> [u8; Self::BITS as usize / 8] {
+                let mut r = [0u8; Self::BITS as usize / 8];
                 let a = 0x00;
-                let b = $bits / 8 / 2;
+                let b = Self::BITS as usize / 8 / 2;
                 let c = b;
-                let d = $bits / 8;
+                let d = Self::BITS as usize / 8;
                 r[a..b].copy_from_slice(&self.hi.to_be_bytes());
                 r[c..d].copy_from_slice(&self.lo.to_be_bytes());
                 return r;
             }
 
             /// Return the memory representation of this integer as a byte array in little-endian byte order.
-            pub fn to_le_bytes(self) -> [u8; $bits / 8] {
-                let mut r = [0u8; $bits / 8];
+            pub fn to_le_bytes(self) -> [u8; Self::BITS as usize / 8] {
+                let mut r = [0u8; Self::BITS as usize / 8];
                 let a = 0x00;
-                let b = $bits / 8 / 2;
+                let b = Self::BITS as usize / 8 / 2;
                 let c = b;
-                let d = $bits / 8;
+                let d = Self::BITS as usize / 8;
                 r[a..b].copy_from_slice(&self.lo.to_le_bytes());
                 r[c..d].copy_from_slice(&self.hi.to_le_bytes());
                 return r;
@@ -1034,6 +1102,23 @@ macro_rules! uint_impl {
                 }
                 (q, r)
             }
+
+            /// Inspired by https://github.com/chfast/intx/blob/master/include/intx/intx.hpp#L760
+            fn divs(self, rhs: Self) -> (Self, Self) {
+                let x = self;
+                let y = rhs;
+                let x_is_neg = x.is_negative();
+                let y_is_neg = y.is_negative();
+                let x_abs = if x_is_neg { -x } else { x };
+                let y_abs = if y_is_neg { -y } else { y };
+                let q_is_neg = x_is_neg ^ y_is_neg;
+                let r = x_abs.div(y_abs);
+                let quo = r.0;
+                let rem = r.1;
+                let quo = Self::from(if q_is_neg { -quo } else { quo });
+                let rem = Self::from(if x_is_neg { -rem } else { rem });
+                (quo, rem)
+            }
         }
     };
 }
@@ -1074,7 +1159,7 @@ macro_rules! uint_impl_from_i {
     };
 }
 
-uint_impl!(U256, U128, 256);
+uint_impl!(U256, U128);
 uint_impl_from_u!(U256, U128, bool);
 uint_impl_from_u!(U256, U128, u8);
 uint_impl_from_u!(U256, U128, u16);
@@ -1087,7 +1172,7 @@ uint_impl_from_i!(U256, U128, i16);
 uint_impl_from_i!(U256, U128, i32);
 uint_impl_from_i!(U256, U128, i64);
 uint_impl_from_i!(U256, U128, i128);
-uint_impl!(U512, U256, 512);
+uint_impl!(U512, U256);
 uint_impl_from_u!(U512, U256, bool);
 uint_impl_from_u!(U512, U256, u8);
 uint_impl_from_u!(U512, U256, u16);
@@ -1101,7 +1186,7 @@ uint_impl_from_i!(U512, U256, i16);
 uint_impl_from_i!(U512, U256, i32);
 uint_impl_from_i!(U512, U256, i64);
 uint_impl_from_i!(U512, U256, i128);
-uint_impl!(U1024, U512, 1024);
+uint_impl!(U1024, U512);
 uint_impl_from_u!(U1024, U512, bool);
 uint_impl_from_u!(U1024, U512, u8);
 uint_impl_from_u!(U1024, U512, u16);
@@ -1116,139 +1201,3 @@ uint_impl_from_i!(U1024, U512, i16);
 uint_impl_from_i!(U1024, U512, i32);
 uint_impl_from_i!(U1024, U512, i64);
 uint_impl_from_i!(U1024, U512, i128);
-
-macro_rules! sint_impl {
-    ($name:ident, $uint:ty) => {
-        #[derive(Copy, Clone, Default, PartialEq, Eq)]
-        pub struct $name {
-            pub uint: $uint,
-        }
-
-        impl std::convert::From<$uint> for $name {
-            fn from(uint: $uint) -> Self {
-                Self { uint }
-            }
-        }
-
-        impl std::cmp::PartialOrd for $name {
-            fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
-                Some(self.cmp(rhs))
-            }
-        }
-
-        impl std::cmp::Ord for $name {
-            fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
-                let lhssign = self.uint.is_negative();
-                let rhssign = rhs.uint.is_negative();
-                match (lhssign, rhssign) {
-                    (false, false) => self.uint.cmp(&rhs.uint),
-                    (false, true) => std::cmp::Ordering::Greater,
-                    (true, false) => std::cmp::Ordering::Less,
-                    (true, true) => self.uint.cmp(&rhs.uint),
-                }
-            }
-        }
-
-        impl std::ops::Div for $name {
-            type Output = Self;
-            fn div(self, rhs: Self) -> Self::Output {
-                self.wrapping_div(rhs)
-            }
-        }
-
-        impl std::ops::DivAssign for $name {
-            fn div_assign(&mut self, rhs: Self) {
-                *self = self.wrapping_div(rhs)
-            }
-        }
-
-        impl std::ops::Rem for $name {
-            type Output = Self;
-            fn rem(self, rhs: Self) -> Self::Output {
-                self.wrapping_rem(rhs)
-            }
-        }
-
-        impl std::ops::RemAssign for $name {
-            fn rem_assign(&mut self, rhs: Self) {
-                *self = self.wrapping_rem(rhs);
-            }
-        }
-
-        impl $name {
-            /// Inspired by https://github.com/chfast/intx/blob/master/include/intx/intx.hpp#L760
-            fn div(self, rhs: Self) -> (Self, Self) {
-                let x = self.uint;
-                let y = rhs.uint;
-                let x_is_neg = x.is_negative();
-                let y_is_neg = y.is_negative();
-                let x_abs = if x_is_neg { -x } else { x };
-                let y_abs = if y_is_neg { -y } else { y };
-                let q_is_neg = x_is_neg ^ y_is_neg;
-                let r = x_abs.div(y_abs);
-                let quo = r.0;
-                let rem = r.1;
-                let quo = Self::from(if q_is_neg { -quo } else { quo });
-                let rem = Self::from(if x_is_neg { -rem } else { rem });
-                (quo, rem)
-            }
-
-            /// Wrapping (modular) division. Computes self / rhs, wrapping around at the boundary of the type.
-            ///
-            /// The only case where such wrapping can occur is when one divides MIN / -1 on a signed type (where MIN is
-            /// the negative minimal value for the type); this is equivalent to -MIN, a positive value that is too
-            /// large to represent in the type. In such a case, this function returns MIN itself.
-            pub fn wrapping_div(self, rhs: Self) -> Self {
-                let minus_min = <$uint>::ONE << (<$uint>::BITS - 1);
-                let minus_one = <$uint>::MAX;
-                if rhs.uint == <$uint>::MIN {
-                    Self::from(<$uint>::MAX)
-                } else if self.uint == minus_min && rhs.uint == minus_one {
-                    Self::from(minus_min)
-                } else {
-                    self.div(rhs).0
-                }
-            }
-
-            /// Wrapping (modular) remainder. Computes self % rhs, wrapping around at the boundary of the type.
-            ///
-            /// Such wrap-around never actually occurs mathematically; implementation artifacts make x % y invalid for
-            /// MIN / -1 on a signed type (where MIN is the negative minimal value). In such a case, this function
-            /// returns 0.
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
-                let minus_min = <$uint>::ONE << (<$uint>::BITS - 1);
-                let minus_one = <$uint>::MAX;
-                if rhs.uint == <$uint>::MIN {
-                    self
-                } else if self.uint == minus_min && rhs.uint == minus_one {
-                    Self::from(<$uint>::MIN)
-                } else {
-                    self.div(rhs).1
-                }
-            }
-
-            /// Panic-free bitwise shift-left; yields self << mask(rhs), where mask removes any high-order bits of rhs
-            /// that would cause the shift to exceed the bitwidth of the type.
-            ///
-            /// Note that this is not the same as a rotate-left; the RHS of a wrapping shift-left is restricted to the
-            /// range of the type, rather than the bits shifted out of the LHS being returned to the other end. The
-            /// primitive integer types all implement a rotate_left function, which may be what you want instead.
-            pub fn wrapping_shl(self, rhs: u32) -> Self {
-                Self {
-                    uint: self.uint.wrapping_shl(rhs),
-                }
-            }
-
-            /// Panic-free bitwise sign shift-right.
-            pub fn wrapping_shr(self, rhs: u32) -> Self {
-                Self {
-                    uint: self.uint.wrapping_sra(rhs),
-                }
-            }
-        }
-    };
-}
-
-sint_impl!(I256, U256);
-sint_impl!(I512, U512);
-sint_impl!(I1024, U1024);

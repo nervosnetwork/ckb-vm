@@ -7,7 +7,7 @@ use super::{
 
 use crate::memory::Memory;
 use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
-pub use uintxx::{Element, I1024, I256, I512, U1024, U128, U16, U256, U32, U512, U64, U8};
+pub use uintxx::{Element, U1024, U128, U16, U256, U32, U512, U64, U8};
 
 type VVIteratorFunc =
     fn(lhs: &VRegister, rhs: &VRegister, result: &mut VRegister, num: usize) -> Result<(), Error>;
@@ -1693,107 +1693,27 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VDIV_VV => {
             vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| I1024::from(*a).wrapping_div(I1024::from(*b)).uint},
-                {|a: &U512, b: &U512| I512::from(*a).wrapping_div(I512::from(*b)).uint},
-                {|a: &U256, b: &U256| I256::from(*a).wrapping_div(I256::from(*b)).uint},
-                {|a: &U128, b: &U128| if b.0 == 0 {
-                    U128::MAX
-                } else if a.0 == 1 << 127 && b.0 == u128::MAX {
-                    U128(1u128 << 127)
-                } else {
-                    U128((a.0 as i128).wrapping_div(b.0 as i128) as u128)
-                }},
-                {|a: &U64, b: &U64| if b.0 == 0 {
-                    U64(u64::MAX)
-                } else if a.0 == 1 << 63 && b.0 == u64::MAX {
-                    U64(1u64 << 63)
-                } else {
-                    U64((a.0 as i64).wrapping_div(b.0 as i64) as u64)
-                }},
-                {|a: &U32, b: &U32| if b.0 == 0 {
-                    U32(u32::MAX)
-                } else if a.0 == 1 << 31 && b.0 == u32::MAX {
-                    U32(1u32 << 31)
-                } else {
-                    U32((a.0 as i32).wrapping_div(b.0 as i32) as u32)
-                }},
-                {|a: &U16, b: &U16| if b.0 == 0 {
-                    U16(u16::MAX)
-                } else if a.0 == 1 << 15 && b.0 == u16::MAX {
-                    U16(1u16 << 15)
-                } else {
-                    U16((a.0 as i16).wrapping_div(b.0 as i16) as u16)
-                }},
-                {|a: &U8, b: &U8| if b.0 == 0 {
-                    U8(u8::MAX)
-                } else if a.0 == 1 << 7 && b.0 == u8::MAX {
-                    U8(1u8 << 7)
-                } else {
-                    U8((a.0 as i8).wrapping_div(b.0 as i8) as u8)
-                }}
+                {|a: &U1024, b: &U1024| a.wrapping_div_s(*b)},
+                {|a: &U512, b: &U512| a.wrapping_div_s(*b)},
+                {|a: &U256, b: &U256| a.wrapping_div_s(*b)},
+                {|a: &U128, b: &U128| a.wrapping_div_s(*b)},
+                {|a: &U64, b: &U64| a.wrapping_div_s(*b)},
+                {|a: &U32, b: &U32| a.wrapping_div_s(*b)},
+                {|a: &U16, b: &U16| a.wrapping_div_s(*b)},
+                {|a: &U8, b: &U8| a.wrapping_div_s(*b)}
             };
             loop_vv(inst, machine, vv_iterator_func)?;
         }
         insts::OP_VDIV_VX => {
             vx_iterator_impl! {
-                {|a:&U1024, rhs: u64|
-                    I1024::from(*a)
-                    .wrapping_div(I1024::from(U1024::from(rhs as i64)))
-                    .uint
-                },
-                {|a:&U512, rhs: u64|
-                    I512::from(*a)
-                    .wrapping_div(I512::from(U512::from(rhs as i64)))
-                    .uint },
-                {|a:&U256, rhs: u64|
-                    I256::from(*a)
-                    .wrapping_div(I256::from(U256::from(rhs as i64)))
-                    .uint},
-                {|a:&U128, rhs: u64|
-                    if rhs == 0 {
-                        U128(u128::MAX)
-                    } else if a.0 == 1 << 127 && rhs == u64::MAX {
-                        U128(1u128 << 127)
-                    } else {
-                        U128((a.0 as i128).wrapping_div(rhs as i128) as u128)
-                    }
-                },
-                {|a:&U64, rhs: u64|
-                    if rhs == 0 {
-                        U64(u64::MAX)
-                    } else if a.0 == 1 << 63 && rhs == u64::MAX {
-                        U64(1u64 << 63)
-                    } else {
-                        U64((a.0 as i64).wrapping_div(rhs as i64) as u64)
-                    }
-                },
-                {|a:&U32, rhs: u64|
-                    if rhs == 0 {
-                        U32(u32::MAX)
-                    } else if a.0 == 1 << 31 && rhs as u32 == u32::MAX {
-                        U32(1u32 << 31)
-                    } else {
-                        U32((a.0 as i32).wrapping_div(rhs as i32) as u32)
-                    }
-                },
-                {|a:&U16, rhs: u64|
-                    if rhs == 0 {
-                        U16(u16::MAX)
-                    } else if a.0 == 1 << 15 && rhs as u16 == u16::MAX {
-                        U16(1u16 << 15)
-                    } else {
-                        U16((a.0 as i16).wrapping_div(rhs as i16) as u16)
-                    }
-                },
-                {|a:&U8, rhs: u64|
-                    if rhs == 0 {
-                        U8(u8::MAX)
-                    } else if a.0 == 1 << 7 && rhs as u8 == u8::MAX {
-                        U8(1u8 << 7)
-                    } else {
-                        U8((a.0 as i8).wrapping_div(rhs as i8) as u8)
-                    }
-                }
+                {|a:&U1024, rhs: u64| a.wrapping_div_s(U1024::vx(rhs)) },
+                {|a:&U512, rhs: u64| a.wrapping_div_s(U512::vx(rhs)) },
+                {|a:&U256, rhs: u64| a.wrapping_div_s(U256::vx(rhs))  },
+                {|a:&U128, rhs: u64| a.wrapping_div_s(U128::vx(rhs)) },
+                {|a:&U64, rhs: u64| a.wrapping_div_s(U64::vx(rhs))  },
+                {|a:&U32, rhs: u64| a.wrapping_div_s(U32::vx(rhs))  },
+                {|a:&U16, rhs: u64| a.wrapping_div_s(U16::vx(rhs)) },
+                {|a:&U8, rhs: u64| a.wrapping_div_s(U8::vx(rhs))  }
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
@@ -1825,108 +1745,27 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VREM_VV => {
             vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| I1024::from(*a).wrapping_rem(I1024::from(*b)).uint},
-                {|a: &U512, b: &U512| I512::from(*a).wrapping_rem(I512::from(*b)).uint},
-                {|a: &U256, b: &U256| I256::from(*a).wrapping_rem(I256::from(*b)).uint},
-                {|a: &U128, b: &U128| if b.0 == 0 {
-                    *a
-                } else if a.0 == 1 << 127 && b.0 == u128::MAX {
-                    U128(0)
-                } else {
-                    U128((a.0 as i128).wrapping_rem(b.0 as i128) as u128)
-                }},
-                {|a: &U64, b: &U64| if b.0 == 0 {
-                    *a
-                } else if a.0 == 1 << 63 && b.0 == u64::MAX {
-                    U64(0)
-                } else {
-                    U64((a.0 as i64).wrapping_rem(b.0 as i64) as u64)
-                }},
-                {|a: &U32, b: &U32| if b.0 == 0 {
-                    *a
-                } else if a.0 == 1 << 31 && b.0 == u32::MAX {
-                    U32(0)
-                } else {
-                    U32((a.0 as i32).wrapping_rem(b.0 as i32) as u32)
-                }},
-                {|a: &U16, b: &U16| if b.0 == 0 {
-                    *a
-                } else if a.0 == 1 << 15 && b.0 == u16::MAX {
-                    U16(0)
-                } else {
-                    U16((a.0 as i16).wrapping_rem(b.0 as i16) as u16)
-                }},
-                {|a: &U8, b: &U8| if b.0 == 0 {
-                    *a
-                } else if a.0 == 1 << 7 && b.0 == u8::MAX {
-                    U8(0)
-                } else {
-                    U8((a.0 as i8).wrapping_rem(b.0 as i8) as u8)
-                }}
+                {|a: &U1024, b: &U1024| a.wrapping_rem_s(*b)},
+                {|a: &U512, b: &U512| a.wrapping_rem_s(*b)},
+                {|a: &U256, b: &U256| a.wrapping_rem_s(*b)},
+                {|a: &U128, b: &U128| a.wrapping_rem_s(*b)},
+                {|a: &U64, b: &U64| a.wrapping_rem_s(*b)},
+                {|a: &U32, b: &U32| a.wrapping_rem_s(*b)},
+                {|a: &U16, b: &U16| a.wrapping_rem_s(*b)},
+                {|a: &U8, b: &U8| a.wrapping_rem_s(*b)}
             };
             loop_vv(inst, machine, vv_iterator_func)?;
         }
         insts::OP_VREM_VX => {
             vx_iterator_impl! {
-                {|a:&U1024, rhs: u64|
-                    I1024::from(*a)
-                    .wrapping_rem(I1024::from(U1024::from(rhs as i64)))
-                    .uint },
-                {|a:&U512, rhs: u64|
-                    I512::from(*a)
-                    .wrapping_rem(I512::from(U512::from(rhs as i64)))
-                    .uint
-                },
-                {|a:&U256, rhs: u64|
-                    I256::from(*a)
-                    .wrapping_rem(I256::from(U256::from(rhs as i64)))
-                    .uint
-                },
-                {|a:&U128, rhs: u64|
-                    if rhs == 0 {
-                        *a
-                    } else if a.0 == 1 << 127 && rhs == u64::MAX {
-                        U128(0)
-                    } else {
-                        U128((a.0 as i128).wrapping_rem(rhs as i128) as u128)
-                    }
-                },
-                {|a:&U64, rhs: u64|
-                    if rhs == 0 {
-                        *a
-                    } else if a.0 == 1 << 63 && rhs == u64::MAX {
-                        U64(0)
-                    } else {
-                        U64((a.0 as i64).wrapping_rem(rhs as i64) as u64)
-                    }
-                },
-                {|a:&U32, rhs: u64|
-                    if rhs == 0 {
-                        *a
-                    } else if a.0 == 1 << 31 && rhs as u32 == u32::MAX {
-                        U32(0)
-                    } else {
-                        U32((a.0 as i32).wrapping_rem(rhs as i32) as u32)
-                    }
-                },
-                {|a:&U16, rhs: u64|
-                     if rhs == 0 {
-                        *a
-                    } else if a.0 == 1 << 15 && rhs as u16 == u16::MAX {
-                        U16(0)
-                    } else {
-                        U16((a.0 as i16).wrapping_rem(rhs as i16) as u16)
-                    }
-                },
-                {|a:&U8, rhs: u64|
-                    if rhs == 0 {
-                        *a
-                    } else if a.0 == 1 << 7 && rhs as u8 == u8::MAX {
-                        U8(0)
-                    } else {
-                        U8((a.0 as i8).wrapping_rem(rhs as i8) as u8)
-                    }
-                }
+                {|a:&U1024, rhs: u64|  a.wrapping_rem_s(U1024::vx(rhs)) },
+                {|a:&U512, rhs: u64| a.wrapping_rem_s(U512::vx(rhs)) },
+                {|a:&U256, rhs: u64| a.wrapping_rem_s(U256::vx(rhs))  },
+                {|a:&U128, rhs: u64| a.wrapping_rem_s(U128::vx(rhs))},
+                {|a:&U64, rhs: u64| a.wrapping_rem_s(U64::vx(rhs))  },
+                {|a:&U32, rhs: u64| a.wrapping_rem_s(U32::vx(rhs))  },
+                {|a:&U16, rhs: u64| a.wrapping_rem_s(U16::vx(rhs)) },
+                {|a:&U8, rhs: u64| a.wrapping_rem_s(U8::vx(rhs)) }
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
@@ -2153,107 +1992,27 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMSLT_VV => {
             vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| if I1024::from(*a) < I1024::from(*b) {
-                    U1024::ONE
-                } else {
-                    U1024::MIN
-                }},
-                {|a: &U512, b: &U512| if I512::from(*a) < I512::from(*b) {
-                    U512::ONE
-                } else {
-                    U512::MIN
-                }},
-                {|a: &U256, b: &U256| if I256::from(*a) < I256::from(*b) {
-                    U256::ONE
-                } else {
-                    U256::MIN
-                }},
-                {|a: &U128, b: &U128| if (a.0 as i128) < (b.0 as i128) {
-                    U128::ONE
-                } else {
-                    U128::ZERO
-                }},
-                {|a: &U64, b: &U64| if (a.0 as i64) < (b.0 as i64) {
-                    U64::ONE
-                } else {
-                    U64::ZERO
-                }},
-                {|a: &U32, b: &U32| if (a.0 as i32) < (b.0 as i32) {
-                    U32::ONE
-                } else {
-                    U32::ZERO
-                }},
-                {|a: &U16, b: &U16| if (a.0 as i16) < (b.0 as i16) {
-                    U16::ONE
-                } else {
-                    U16::ZERO
-                }},
-                {|a: &U8, b: &U8| if (a.0 as i8) < (b.0 as i8) {
-                    U8::ONE
-                } else {
-                    U8::ZERO
-                }}
+                {|a: &U1024, b: &U1024| U1024::from(a.cmp_s(b) == std::cmp::Ordering::Less) },
+                {|a: &U512, b: &U512| U512::from(a.cmp_s(b) == std::cmp::Ordering::Less) },
+                {|a: &U256, b: &U256| U256::from(a.cmp_s(b)== std::cmp::Ordering::Less) },
+                {|a: &U128, b: &U128| U128::from(a.cmp_s(b)== std::cmp::Ordering::Less) },
+                {|a: &U64, b: &U64| U64::from(a.cmp_s(b) == std::cmp::Ordering::Less) },
+                {|a: &U32, b: &U32| U32::from(a.cmp_s(b) == std::cmp::Ordering::Less) },
+                {|a: &U16, b: &U16| U16::from(a.cmp_s(b) == std::cmp::Ordering::Less) },
+                {|a: &U8, b: &U8| U8::from(a.cmp_s(b) == std::cmp::Ordering::Less) }
             };
             loop_vv(inst, machine, vv_iterator_func)?;
         }
         insts::OP_VMSLT_VX => {
             vx_iterator_impl! {
-                {|a:&U1024, rhs: u64|
-                     if I1024::from(*a) < I1024::from(U1024::from(rhs as i64)) {
-                        U1024::ONE
-                    } else {
-                        U1024::MIN
-                    }
-                },
-                {|a:&U512, rhs: u64|
-                    if I512::from(*a) < I512::from(U512::from(rhs as i64)) {
-                            U512::ONE
-                    } else {
-                        U512::MIN
-                    }
-                },
-                {|a:&U256, rhs: u64|
-                    if I256::from(*a) < I256::from(U256::from(rhs as i64)) {
-                        U256::ONE
-                    } else {
-                        U256::MIN
-                    }
-                },
-                {|a:&U128, rhs: u64|
-                    if (a.0 as i128) < (rhs as i64 as i128) {
-                        U128::ONE
-                    } else {
-                        U128::ZERO
-                    }
-                },
-                {|a:&U64, rhs: u64|
-                    if (a.0 as i64) < (rhs as i64) {
-                        U64::ONE
-                    } else {
-                        U64::ZERO
-                    }
-                },
-                {|a:&U32, rhs: u64|
-                    if (a.0 as i32) < (rhs as u32 as i32) {
-                        U32::ONE
-                    } else {
-                        U32::ZERO
-                    }
-                },
-                {|a:&U16, rhs: u64|
-                    if (a.0 as i16) < (rhs as u16 as i16) {
-                        U16::ONE
-                    } else {
-                        U16::ZERO
-                    }
-                },
-                {|a:&U8, rhs: u64|
-                    if (a.0 as i8) < (rhs as u8 as i8) {
-                        U8::ONE
-                    } else {
-                        U8::ZERO
-                    }
-                }
+                {|a:&U1024, rhs: u64|  U1024::from( a.cmp_s(&U1024::vx(rhs)) == std::cmp::Ordering::Less ) },
+                {|a:&U512, rhs: u64| U512::from(a.cmp_s(&U512::vx(rhs)) == std::cmp::Ordering::Less) },
+                {|a:&U256, rhs: u64| U256::from(a.cmp_s(&U256::vx(rhs)) == std::cmp::Ordering::Less)  },
+                {|a:&U128, rhs: u64| U128::from(a.cmp_s(&U128::vx(rhs)) == std::cmp::Ordering::Less) },
+                {|a:&U64, rhs: u64| U64::from(a.cmp_s(&U64::vx(rhs)) == std::cmp::Ordering::Less)  },
+                {|a:&U32, rhs: u64| U32::from(a.cmp_s(&U32::vx(rhs)) == std::cmp::Ordering::Less) },
+                {|a:&U16, rhs: u64| U16::from(a.cmp_s(&U16::vx(rhs)) == std::cmp::Ordering::Less) },
+                {|a:&U8, rhs: u64| U8::from(a.cmp_s(&U8::vx(rhs)) == std::cmp::Ordering::Less) }
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
@@ -2298,168 +2057,40 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMSLE_VV => {
             vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| if I1024::from(*a) <= I1024::from(*b) {
-                    U1024::ONE
-                } else {
-                    U1024::MIN
-                }},
-                {|a: &U512, b: &U512| if I512::from(*a) <= I512::from(*b) {
-                    U512::ONE
-                } else {
-                    U512::MIN
-                }},
-                {|a: &U256, b: &U256| if I256::from(*a) <= I256::from(*b) {
-                    U256::ONE
-                } else {
-                    U256::MIN
-                }},
-                {|a: &U128, b: &U128| if (a.0 as i128) <= (b.0 as i128) {
-                    U128::ONE
-                } else {
-                    U128::ZERO
-                }},
-                {|a: &U64, b: &U64| if (a.0 as i64) <= (b.0 as i64) {
-                    U64::ONE
-                } else {
-                    U64::ZERO
-                }},
-                {|a: &U32, b: &U32| if (a.0 as i32) <= (b.0 as i32) {
-                    U32::ONE
-                } else {
-                    U32::ZERO
-                }},
-                {|a: &U16, b: &U16| if (a.0 as i16) <= (b.0 as i16) {
-                    U16::ONE
-                } else {
-                    U16::ZERO
-                }},
-                {|a: &U8, b: &U8| if (a.0 as i8) <= (b.0 as i8) {
-                    U8::ONE
-                } else {
-                    U8::ZERO
-                }}
+                {|a: &U1024, b: &U1024| U1024::from(a.cmp_s(b) != std::cmp::Ordering::Greater) },
+                {|a: &U512, b: &U512| U512::from(a.cmp_s(b) != std::cmp::Ordering::Greater) },
+                {|a: &U256, b: &U256| U256::from(a.cmp_s(b)!= std::cmp::Ordering::Greater) },
+                {|a: &U128, b: &U128| U128::from(a.cmp_s(b)!= std::cmp::Ordering::Greater) },
+                {|a: &U64, b: &U64| U64::from(a.cmp_s(b) != std::cmp::Ordering::Greater) },
+                {|a: &U32, b: &U32| U32::from(a.cmp_s(b) != std::cmp::Ordering::Greater) },
+                {|a: &U16, b: &U16| U16::from(a.cmp_s(b) != std::cmp::Ordering::Greater) },
+                {|a: &U8, b: &U8| U8::from(a.cmp_s(b) != std::cmp::Ordering::Greater) }
             };
             loop_vv(inst, machine, vv_iterator_func)?;
         }
         insts::OP_VMSLE_VX => {
             vx_iterator_impl! {
-                {|a:&U1024, rhs: u64|
-                    if I1024::from(*a) <= I1024::from(U1024::from(rhs as i64)) {
-                        U1024::ONE
-                    } else {
-                        U1024::MIN
-                    }
-                },
-                {|a:&U512, rhs: u64|
-                    if I512::from(*a) <= I512::from(U512::from(rhs as i64)) {
-                        U512::ONE
-                    } else {
-                        U512::MIN
-                    }
-                },
-                {|a:&U256, rhs: u64|
-                    if I256::from(*a) <= I256::from(U256::from(rhs as i64)) {
-                        U256::ONE
-                    } else {
-                        U256::MIN
-                    }
-                },
-                {|a:&U128, rhs: u64|
-                    if (a.0 as i128) <= (rhs as i64 as i128) {
-                        U128::ONE
-                    } else {
-                        U128::ZERO
-                    }
-                },
-                {|a:&U64, rhs: u64|
-                    if (a.0 as i64) <= (rhs as i64) {
-                        U64::ONE
-                    } else {
-                        U64::ZERO
-                    }
-                },
-                {|a:&U32, rhs: u64|
-                    if (a.0 as i32) <= (rhs as u32 as i32) {
-                        U32::ONE
-                    } else {
-                        U32::ZERO
-                    }
-                },
-                {|a:&U16, rhs: u64|
-                    if (a.0 as i16) <= (rhs as u16 as i16) {
-                        U16::ONE
-                    } else {
-                        U16::ZERO
-                    }
-                },
-                {|a:&U8, rhs: u64|
-                    if (a.0 as i8) <= (rhs as u8 as i8) {
-                        U8::ONE
-                    } else {
-                        U8::ZERO
-                    }
-                }
+                {|a:&U1024, rhs: u64|  U1024::from( a.cmp_s(&U1024::vx(rhs)) != std::cmp::Ordering::Greater ) },
+                {|a:&U512, rhs: u64| U512::from(a.cmp_s(&U512::vx(rhs)) != std::cmp::Ordering::Greater) },
+                {|a:&U256, rhs: u64| U256::from(a.cmp_s(&U256::vx(rhs)) != std::cmp::Ordering::Greater)  },
+                {|a:&U128, rhs: u64| U128::from(a.cmp_s(&U128::vx(rhs)) != std::cmp::Ordering::Greater) },
+                {|a:&U64, rhs: u64| U64::from(a.cmp_s(&U64::vx(rhs)) != std::cmp::Ordering::Greater)  },
+                {|a:&U32, rhs: u64| U32::from(a.cmp_s(&U32::vx(rhs)) != std::cmp::Ordering::Greater) },
+                {|a:&U16, rhs: u64| U16::from(a.cmp_s(&U16::vx(rhs)) != std::cmp::Ordering::Greater) },
+                {|a:&U8, rhs: u64| U8::from(a.cmp_s(&U8::vx(rhs)) != std::cmp::Ordering::Greater) }
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
         insts::OP_VMSLE_VI => {
             vi_iterator_impl! {
-               {|a:&U1024, imm: i32|
-                    if I1024::from(*a) <= I1024::from(U1024::from(imm)) {
-                        U1024::ONE
-                    } else {
-                        U1024::MIN
-                    }
-                },
-                {|a:&U512, imm: i32|
-                    if I512::from(*a) <= I512::from(U512::from(imm)) {
-                        U512::ONE
-                    } else {
-                        U512::MIN
-                    }
-                },
-                {|a:&U256, imm: i32|
-                    if I256::from(*a) <= I256::from(U256::from(imm)) {
-                        U256::ONE
-                    } else {
-                        U256::MIN
-                    }
-                },
-                {|a:&U128, imm: i32|
-                    if a.0 as i128 <= imm as i128 {
-                        U128::ONE
-                    } else {
-                        U128::ZERO
-                    }
-                },
-                {|a:&U64, imm: i32|
-                    if a.0 as i64 <= imm as i64 {
-                        U64::ONE
-                    } else {
-                        U64::ZERO
-                    }
-                },
-                {|a:&U32, imm: i32|
-                    if a.0 as i32 <= imm {
-                        U32::ONE
-                    } else {
-                        U32::ZERO
-                    }
-                },
-                {|a:&U16, imm: i32|
-                    if a.0 as i16 <= imm as i16 {
-                        U16::ONE
-                    } else {
-                        U16::ZERO
-                    }
-                },
-                {|a:&U8, imm: i32|
-                    if a.0 as i8 <= imm as i8 {
-                        U8::ONE
-                    } else {
-                        U8::ZERO
-                    }
-                }
+                {|a:&U1024, imm: i32|  U1024::from( a.cmp_s(&U1024::vi(imm)) != std::cmp::Ordering::Greater ) },
+                {|a:&U512, imm: i32| U512::from(a.cmp_s(&U512::vi(imm)) != std::cmp::Ordering::Greater) },
+                {|a:&U256, imm: i32| U256::from(a.cmp_s(&U256::vi(imm)) != std::cmp::Ordering::Greater)  },
+                {|a:&U128, imm: i32| U128::from(a.cmp_s(&U128::vi(imm)) != std::cmp::Ordering::Greater) },
+                {|a:&U64, imm: i32| U64::from(a.cmp_s(&U64::vi(imm)) != std::cmp::Ordering::Greater)  },
+                {|a:&U32, imm: i32| U32::from(a.cmp_s(&U32::vi(imm)) != std::cmp::Ordering::Greater) },
+                {|a:&U16, imm: i32| U16::from(a.cmp_s(&U16::vi(imm)) != std::cmp::Ordering::Greater) },
+                {|a:&U8, imm: i32| U8::from(a.cmp_s(&U8::vi(imm)) != std::cmp::Ordering::Greater) }
             };
             loop_vi(inst, machine, vi_iterator_func)?;
         }
@@ -2491,123 +2122,27 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMSGT_VX => {
             vx_iterator_impl! {
-                {|a:&U1024, rhs: u64|
-                    if I1024::from(*a) > I1024::from(U1024::from(rhs as i64)) {
-                        U1024::ONE
-                    } else {
-                        U1024::MIN
-                    }
-                },
-                {|a:&U512, rhs: u64|
-                    if I512::from(*a) > I512::from(U512::from(rhs as i64)) {
-                        U512::ONE
-                    } else {
-                        U512::MIN
-                    }
-                },
-                {|a:&U256, rhs: u64|
-                    if I256::from(*a) > I256::from(U256::from(rhs as i64)) {
-                        U256::ONE
-                    } else {
-                        U256::MIN
-                    }
-                },
-                {|a:&U128, rhs: u64|
-                    if a.0 as i128 > rhs as i64 as i128 {
-                        U128::ONE
-                    } else {
-                        U128::ZERO
-                    }
-                },
-                {|a:&U64, rhs: u64|
-                    if a.0 as i64 > rhs as i64 {
-                        U64::ONE
-                    } else {
-                        U64::ZERO
-                    }
-                },
-                {|a:&U32, rhs: u64|
-                    if a.0 as i32 > rhs as u32 as i32 {
-                        U32::ONE
-                    } else {
-                        U32::ZERO
-                    }
-                },
-                {|a:&U16, rhs: u64|
-                    if a.0 as i16 > rhs as u16 as i16 {
-                        U16::ONE
-                    } else {
-                        U16::ZERO
-                    }
-                },
-                {|a:&U8, rhs: u64|
-                     if a.0 as i8 > rhs as u8 as i8 {
-                        U8::ONE
-                    } else {
-                        U8::ZERO
-                    }
-                }
+                {|a:&U1024, rhs: u64|  U1024::from( a.cmp_s(&U1024::vx(rhs)) == std::cmp::Ordering::Greater ) },
+                {|a:&U512, rhs: u64| U512::from(a.cmp_s(&U512::vx(rhs)) == std::cmp::Ordering::Greater) },
+                {|a:&U256, rhs: u64| U256::from(a.cmp_s(&U256::vx(rhs)) == std::cmp::Ordering::Greater)  },
+                {|a:&U128, rhs: u64| U128::from(a.cmp_s(&U128::vx(rhs)) == std::cmp::Ordering::Greater) },
+                {|a:&U64, rhs: u64| U64::from(a.cmp_s(&U64::vx(rhs)) == std::cmp::Ordering::Greater)  },
+                {|a:&U32, rhs: u64| U32::from(a.cmp_s(&U32::vx(rhs)) == std::cmp::Ordering::Greater) },
+                {|a:&U16, rhs: u64| U16::from(a.cmp_s(&U16::vx(rhs)) == std::cmp::Ordering::Greater) },
+                {|a:&U8, rhs: u64| U8::from(a.cmp_s(&U8::vx(rhs)) == std::cmp::Ordering::Greater) }
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
         insts::OP_VMSGT_VI => {
             vi_iterator_impl! {
-                {|a:&U1024, imm: i32|
-                    if I1024::from(*a) > I1024::from(U1024::from(imm)) {
-                        U1024::ONE
-                    } else {
-                        U1024::MIN
-                    }
-                },
-                {|a:&U512, imm: i32|
-                    if I512::from(*a) > I512::from(U512::from(imm)) {
-                        U512::ONE
-                    } else {
-                        U512::MIN
-                    }
-                },
-                {|a:&U256, imm: i32|
-                    if I256::from(*a) > I256::from(U256::from(imm)) {
-                        U256::ONE
-                    } else {
-                        U256::MIN
-                    }
-                },
-                {|a:&U128, imm: i32|
-                    if a.0 as i128 > imm as i128 {
-                        U128::ONE
-                    } else {
-                        U128::ZERO
-                    }
-                },
-                {|a:&U64, imm: i32|
-                    if a.0 as i64 > imm as i64 {
-                        U64::ONE
-                    } else {
-                        U64::ZERO
-                    }
-                },
-                {|a:&U32, imm: i32|
-                    if a.0 as i32 > imm {
-                        U32::ONE
-                    } else {
-                        U32::ZERO
-                    }
-                },
-                {|a:&U16, imm: i32|
-                    if a.0 as i16 > imm as i16 {
-                        U16::ONE
-                    } else {
-                        U16::ZERO
-                    }
-                },
-                {|a:&U8, imm: i32|
-                    if a.0 as i8 > imm as i8 {
-                        U8::ONE
-                    } else {
-                        U8::ZERO
-                    }
-                }
+                {|a:&U1024, imm: i32|  U1024::from( a.cmp_s(&U1024::vi(imm)) == std::cmp::Ordering::Greater ) },
+                {|a:&U512, imm: i32| U512::from(a.cmp_s(&U512::vi(imm)) == std::cmp::Ordering::Greater) },
+                {|a:&U256, imm: i32| U256::from(a.cmp_s(&U256::vi(imm)) == std::cmp::Ordering::Greater)  },
+                {|a:&U128, imm: i32| U128::from(a.cmp_s(&U128::vi(imm)) == std::cmp::Ordering::Greater) },
+                {|a:&U64, imm: i32| U64::from(a.cmp_s(&U64::vi(imm)) == std::cmp::Ordering::Greater)  },
+                {|a:&U32, imm: i32| U32::from(a.cmp_s(&U32::vi(imm)) == std::cmp::Ordering::Greater) },
+                {|a:&U16, imm: i32| U16::from(a.cmp_s(&U16::vi(imm)) == std::cmp::Ordering::Greater) },
+                {|a:&U8, imm: i32| U8::from(a.cmp_s(&U8::vi(imm)) == std::cmp::Ordering::Greater) }
             };
             loop_vi(inst, machine, vi_iterator_func)?;
         }
