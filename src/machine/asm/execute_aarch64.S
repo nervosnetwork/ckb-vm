@@ -32,7 +32,7 @@
 #define FLAG x21
 
 #define REGISTER_BASE x22
-#define ZERO_VALUE x23
+#define ZERO_VALUE xzr
 
 #define PREPCALL \
   stp x0, x8, [sp, -96]!; \
@@ -234,7 +234,6 @@ ckb_vm_x64_execute:
   stp x21, x22, [sp, 16]
   stp x23, x30, [sp, 32]
   add REGISTER_BASE, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS
-  mov ZERO_VALUE, 0
 
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
 .prepare_trace:
