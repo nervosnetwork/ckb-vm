@@ -1274,48 +1274,56 @@ ckb_vm_x64_execute:
   ldr TEMP1, =0x00000000000000ff
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch1
   orr RS2, RS2, TEMP2
 .orcb_branch1:
   ldr TEMP1, =0x000000000000ff00
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch2
   orr RS2, RS2, TEMP2
 .orcb_branch2:
   ldr TEMP1, =0x0000000000ff0000
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch3
   orr RS2, RS2, TEMP2
 .orcb_branch3:
   ldr TEMP1, =0x00000000ff000000
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch4
   orr RS2, RS2, TEMP2
 .orcb_branch4:
   ldr TEMP1, =0x000000ff00000000
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch5
   orr RS2, RS2, TEMP2
 .orcb_branch5:
   ldr TEMP1, =0x0000ff0000000000
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch6
   orr RS2, RS2, TEMP2
 .orcb_branch6:
   ldr TEMP1, =0x00ff000000000000
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch7
   orr RS2, RS2, TEMP2
 .orcb_branch7:
   ldr TEMP1, =0xff00000000000000
   mov TEMP2, TEMP1
   and TEMP1, TEMP1, RS1
+  cmp TEMP1, 0
   beq .orcb_branch8
   orr RS2, RS2, TEMP2
 .orcb_branch8:
