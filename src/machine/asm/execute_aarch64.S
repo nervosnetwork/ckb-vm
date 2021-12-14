@@ -1100,6 +1100,7 @@ ckb_vm_x64_execute:
   lsr TEMP2, TEMP2, TEMP4
   eor TEMP1, TEMP1, TEMP3
   and TEMP2, TEMP2, 1
+  cmp TEMP2, 0
   csel TEMP3, TEMP1, TEMP3, ne
   add TEMP4, TEMP4, 1
   cmp TEMP4, 64
@@ -1122,6 +1123,7 @@ ckb_vm_x64_execute:
   lsr TEMP2, TEMP2, TEMP4
   eor TEMP1, TEMP1, TEMP3
   and TEMP2, TEMP2, 1
+  cmp TEMP2, 0
   csel TEMP3, TEMP1, TEMP3, ne
   add RS3, RS3, 1
   cmp RS3, 64
@@ -1144,6 +1146,7 @@ ckb_vm_x64_execute:
   lsr TEMP2, TEMP2, TEMP4
   eor TEMP1, TEMP1, TEMP3
   and TEMP2, TEMP2, 1
+  cmp TEMP2, 0
   csel TEMP3, TEMP1, TEMP3, ne
   add RS3, RS3, 1
   cmp RS3, 64
