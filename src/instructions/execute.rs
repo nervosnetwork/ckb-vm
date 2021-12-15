@@ -220,27 +220,27 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_SLLI => {
             let i = Itype(inst);
-            common::slli(machine, i.rd(), i.rs1(), i.immediate());
+            common::slli(machine, i.rd(), i.rs1(), i.immediate_u());
         }
         insts::OP_SRLI => {
             let i = Itype(inst);
-            common::srli(machine, i.rd(), i.rs1(), i.immediate());
+            common::srli(machine, i.rd(), i.rs1(), i.immediate_u());
         }
         insts::OP_SRAI => {
             let i = Itype(inst);
-            common::srai(machine, i.rd(), i.rs1(), i.immediate());
+            common::srai(machine, i.rd(), i.rs1(), i.immediate_u());
         }
         insts::OP_SLLIW => {
             let i = Itype(inst);
-            common::slliw(machine, i.rd(), i.rs1(), i.immediate());
+            common::slliw(machine, i.rd(), i.rs1(), i.immediate_u());
         }
         insts::OP_SRLIW => {
             let i = Itype(inst);
-            common::srliw(machine, i.rd(), i.rs1(), i.immediate());
+            common::srliw(machine, i.rd(), i.rs1(), i.immediate_u());
         }
         insts::OP_SRAIW => {
             let i = Itype(inst);
-            common::sraiw(machine, i.rd(), i.rs1(), i.immediate());
+            common::sraiw(machine, i.rd(), i.rs1(), i.immediate_u());
         }
         insts::OP_SB => {
             let i = Stype(inst);
@@ -484,7 +484,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_BCLRI => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate());
+            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
             let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = rs1_value.clone() & !(Mac::REG::one() << shamt);
             update_register(machine, i.rd(), value);
@@ -500,7 +500,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_BEXTI => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate());
+            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
             let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = Mac::REG::one() & (rs1_value.clone() >> shamt);
             update_register(machine, i.rd(), value);
@@ -516,7 +516,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_BINVI => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate());
+            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
             let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = rs1_value.clone() ^ (Mac::REG::one() << shamt);
             update_register(machine, i.rd(), value);
@@ -532,7 +532,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_BSETI => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate());
+            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
             let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = rs1_value.clone() | (Mac::REG::one() << shamt);
             update_register(machine, i.rd(), value);
@@ -674,7 +674,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_RORI => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate());
+            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
             let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = rs1_value.ror(&shamt);
             update_register(machine, i.rd(), value);
@@ -682,7 +682,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_RORIW => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate());
+            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
             let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
             let twins = rs1_value
                 .zero_extend(&Mac::REG::from_u8(32))
@@ -763,7 +763,7 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_SLLIUW => {
             let i = Itype(inst);
             let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = Mac::REG::from_u32(i.immediate());
+            let rs2_value = Mac::REG::from_u32(i.immediate_u());
             let rs1_u = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
             let shamt = rs2_value & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
             let value = rs1_u << shamt;

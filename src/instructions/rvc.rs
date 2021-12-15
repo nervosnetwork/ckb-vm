@@ -107,7 +107,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             if nzuimm != 0 {
                 // C.ADDI4SPN
                 Some(
-                    Itype::new(
+                    Itype::new_u(
                         insts::OP_ADDI,
                         compact_register_number(instruction_bits, 2),
                         SP,
@@ -122,7 +122,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         }
         0b_010_00000000000_00 => Some(
             // C.LW
-            Itype::new(
+            Itype::new_u(
                 insts::OP_LW,
                 compact_register_number(instruction_bits, 2),
                 compact_register_number(instruction_bits, 7),
@@ -136,7 +136,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             } else {
                 // C.LD
                 Some(
-                    Itype::new(
+                    Itype::new_u(
                         insts::OP_LD,
                         compact_register_number(instruction_bits, 2),
                         compact_register_number(instruction_bits, 7),
@@ -150,7 +150,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_100_00000000000_00 => None,
         0b_110_00000000000_00 => Some(
             // C.SW
-            Stype::new(
+            Stype::new_u(
                 insts::OP_SW,
                 sw_uimmediate(instruction_bits),
                 compact_register_number(instruction_bits, 7),
@@ -164,7 +164,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             } else {
                 // C.SD
                 Some(
-                    Stype::new(
+                    Stype::new_u(
                         insts::OP_SD,
                         fld_uimmediate(instruction_bits),
                         compact_register_number(instruction_bits, 7),
@@ -340,13 +340,13 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                         (0b_00_000_00000_00, 0) => None,
                         // C.SRLI
                         (0b_00_000_00000_00, uimm) => Some(
-                            Itype::new(insts::OP_SRLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0,
+                            Itype::new_u(insts::OP_SRLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0,
                         ),
                         // Invalid instruction
                         (0b_01_000_00000_00, 0) => None,
                         // C.SRAI
                         (0b_01_000_00000_00, uimm) => Some(
-                            Itype::new(insts::OP_SRAI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0,
+                            Itype::new_u(insts::OP_SRAI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0,
                         ),
                         // C.ANDI
                         (0b_10_000_00000_00, _) => Some(
@@ -387,7 +387,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             let rd = rd(instruction_bits);
             if rd != 0 && uimm != 0 {
                 // C.SLLI
-                Some(Itype::new(insts::OP_SLLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0)
+                Some(Itype::new_u(insts::OP_SLLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0)
             } else if version >= 1 {
                 // HINTs
                 Some(nop())
@@ -399,7 +399,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             let rd = rd(instruction_bits);
             if rd != 0 {
                 // C.LWSP
-                Some(Itype::new(insts::OP_LW, rd, SP, lwsp_uimmediate(instruction_bits)).0)
+                Some(Itype::new_u(insts::OP_LW, rd, SP, lwsp_uimmediate(instruction_bits)).0)
             } else {
                 // Reserved
                 None
@@ -412,7 +412,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                 let rd = rd(instruction_bits);
                 if rd != 0 {
                     // C.LDSP
-                    Some(Itype::new(insts::OP_LD, rd, SP, fldsp_uimmediate(instruction_bits)).0)
+                    Some(Itype::new_u(insts::OP_LD, rd, SP, fldsp_uimmediate(instruction_bits)).0)
                 } else {
                     // Reserved
                     None
@@ -470,7 +470,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         }
         0b_110_00000000000_10 => Some(
             // C.SWSP
-            Stype::new(
+            Stype::new_u(
                 insts::OP_SW,
                 swsp_uimmediate(instruction_bits),
                 SP,
@@ -484,7 +484,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             } else {
                 // C.SDSP
                 Some(
-                    Stype::new(
+                    Stype::new_u(
                         insts::OP_SD,
                         fsdsp_uimmediate(instruction_bits),
                         2,
