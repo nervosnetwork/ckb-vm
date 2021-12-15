@@ -366,15 +366,8 @@ ckb_vm_x64_execute:
   b .prepare_trace
 .CKB_VM_ASM_LABEL_OP_DIV:
   DECODE_R
-  mov TEMP1, INT64_MIN
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  cmp RS1, TEMP1
-  bne .div_branch1
-  cmp RS2, -1
-  bne .div_branch1
-  b .div_branch3
-.div_branch1:
   cmp RS2, 0
   bne .div_branch2
   mov RS1, UINT64_MAX
@@ -415,17 +408,10 @@ ckb_vm_x64_execute:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVW:
   DECODE_R
-  mov TEMP1, INT64_MIN
   ldr RS1, REGISTER_ADDRESS(RS1)
   sxtw RS1, RS1w
   ldr RS2, REGISTER_ADDRESS(RS2)
   sxtw RS2, RS2w
-  cmp RS1, TEMP1
-  bne .divw_branch1
-  cmp RS2, -1
-  bne .divw_branch1
-  b .divw_branch3
-.divw_branch1:
   cmp RS2, 0
   bne .divw_branch2
   mov RS1, UINT64_MAX
