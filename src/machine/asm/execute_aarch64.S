@@ -735,16 +735,8 @@ ckb_vm_x64_execute:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_REM:
   DECODE_R
-  mov TEMP1, INT64_MIN
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  cmp RS1, TEMP1
-  bne .rem_branch1
-  cmp RS2, -1
-  bne .rem_branch1
-  mov RS1, 0
-  b .rem_branch3
-.rem_branch1:
   cmp RS2, 0
   bne .rem_branch2
   b .rem_branch3
@@ -786,18 +778,10 @@ ckb_vm_x64_execute:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_REMW:
   DECODE_R
-  mov TEMP1, INT64_MIN
   ldr RS1, REGISTER_ADDRESS(RS1)
   sxtw RS1, RS1w
   ldr RS2, REGISTER_ADDRESS(RS2)
   sxtw RS2, RS2w
-  cmp RS1, TEMP1
-  bne .remw_branch1
-  cmp RS2, -1
-  bne .remw_branch1
-  mov RS1, 0
-  b .remw_branch3
-.remw_branch1:
   cmp RS2, 0
   bne .remw_branch2
   b .remw_branch3
