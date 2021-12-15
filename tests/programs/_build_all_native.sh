@@ -52,5 +52,6 @@ riscv64-unknown-elf-as -o trace.o trace.S && riscv64-unknown-elf-ld -o trace64 t
 riscv64-unknown-elf-gcc -o writable_page writable_page.c && riscv64-unknown-elf-objdump -h writable_page > writable_page.dump
 riscv64-unknown-elf-as -o write_at_boundary.o write_at_boundary.S && riscv64-unknown-elf-ld -o write_at_boundary64 write_at_boundary.o && rm write_at_boundary.o
 riscv64-unknown-elf-as -o write_large_address.o write_large_address.S && riscv64-unknown-elf-ld -o write_large_address64 write_large_address.o && rm write_large_address.o
-# SKIP: wxorx_crash_64
+# riscv64-unknown-elf-as -march=rv64i_zba_zbb_zbc clmul_bug.S -o clmul_bug.o && riscv64-unknown-elf-ld clmul_bug.o -o clmul_bug && rm clmul_bug.o
+# riscv64-unknown-elf-as -march=rv64i_zba_zbb_zbc orc_bug.S -o orc_bug.o && riscv64-unknown-elf-ld orc_bug.o -o orc_bug && rm orc_bug.o
 echo "done"

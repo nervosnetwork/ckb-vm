@@ -8,12 +8,12 @@ trigger:
 
 variables:
   RUST_BACKTRACE: full
-  TEST_SUITE_COMMIT: 2256b990a84fe50a9bac1fd178ce086bb90d7710
+  TEST_SUITE_COMMIT: ff49a1dfb3c12be9dc18073133d660f0dd176662
 
 jobs:
   - job: WinCI
     pool:
-      vmImage: 'VS2017-Win2016'
+      vmImage: 'windows-latest'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
@@ -23,7 +23,7 @@ jobs:
 
   - job: WinCIChaos
     pool:
-      vmImage: 'VS2017-Win2016'
+      vmImage: 'windows-latest'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
@@ -182,7 +182,7 @@ jobs:
           cd ckb-vm-test-suite &&
           git checkout $TEST_SUITE_COMMIT &&
           git submodule update --init --recursive &&
-          RISCV=`pwd`/../riscv ./test.sh
+          RISCV=`pwd`/../riscv ./test.sh --enable-aot
         displayName: Run test suite
 
   - job: LinuxFuzz
@@ -198,6 +198,62 @@ jobs:
           cargo +nightly install cargo-fuzz
           make fuzz
         displayName: Run fuzz
+
+  - job: LinuxArm64AsmCI
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: |
+          sudo apt-get install -y qemu binfmt-support qemu-user-static
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "cd /code && cargo test --features=asm"
+        displayName: Run ci-asm on arm64 machines
+
+  - job: LinuxArm64TestSuite
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.51.0-x86_64-unknown-linux-gnu'
+      - script: |
+          sudo apt install -y git \
+                              build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              zlib1g-dev
+      - script: |
+          git clone https://github.com/nervosnetwork/ckb-vm-test-suite &&
+          ln -snf .. ckb-vm-test-suite/ckb-vm &&
+          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv &&
+          cd ckb-vm-test-suite &&
+          git checkout $TEST_SUITE_COMMIT &&
+          git submodule update --init --recursive &&
+          RISCV=`pwd`/../riscv ./test.sh --build-only &&
+          cd ..
+        displayName: Build test suite
+      - script: |
+          sudo apt-get install -y qemu binfmt-support qemu-user-static
+          sudo apt-get install -y gcc-multilib
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
+          rustup target add aarch64-unknown-linux-gnu
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          cd ckb-vm-test-suite &&
+          cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd .. &&
+          cd .. &&
+          docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
+        displayName: Run test suite on arm64 machines
 
   - job: LinuxCodeCoverage
     condition: eq(variables['Build.SourceBranch'], 'refs/heads/release')
