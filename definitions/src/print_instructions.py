@@ -2,6 +2,7 @@ insts = [
     "VSETVLI",
     "VSETIVLI",
     "VSETVL",
+    "VLM_V",
     "VLE8_V",
     "VLE16_V",
     "VLE32_V",
@@ -10,6 +11,7 @@ insts = [
     "VLE256_V",
     "VLE512_V",
     "VLE1024_V",
+    "VSM_V",
     "VSE8_V",
     "VSE16_V",
     "VSE32_V",
@@ -64,6 +66,7 @@ insts = [
     "VMSGTU_VI",
     "VMSGT_VX",
     "VMSGT_VI",
+    "VFIRST_M",
 ]
 
 for (i, e) in enumerate(insts):

@@ -1259,6 +1259,22 @@ pub fn execute_instruction<Mac: Machine>(
                 machine.registers()[i.rs2()].to_u32(),
             )?;
         }
+        insts::OP_VLM_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            for i in 0..(machine.get_vl() + 7) / 8 {
+                let rd = rd + i as usize / 256;
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 1));
+                let elem = machine.memory_mut().load8(&addr)?.to_u8();
+                let vreg = machine.get_vregister(rd);
+                if let VRegister::U8(ref mut data) = vreg {
+                    data[i as usize % 256] = U8(elem);
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
         insts::OP_VLE8_V => {
             let i = Itype(inst);
             let rd = i.rd();
@@ -1390,6 +1406,25 @@ pub fn execute_instruction<Mac: Machine>(
                 let vreg = machine.get_vregister(rd);
                 if let VRegister::U1024(ref mut data) = vreg {
                     data[i as usize % 2] = elem;
+                } else {
+                    return Err(Error::Unexpected);
+                }
+            }
+        }
+        insts::OP_VSM_V => {
+            let i = Itype(inst);
+            let rd = i.rd();
+            let addr = machine.registers()[i.rs1()].clone();
+            let bits: usize = 8;
+            for i in 0..(machine.get_vl() + 7) / 8 {
+                let rd = rd + i as usize / (VLEN as usize / bits);
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
+                let vreg = machine.vregisters()[rd];
+                if let VRegister::U8(data) = vreg {
+                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    machine
+                        .memory_mut()
+                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
                     return Err(Error::Unexpected);
                 }
