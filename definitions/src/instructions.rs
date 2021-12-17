@@ -231,13 +231,21 @@ pub const OP_VMSGTU_VX: InstructionOpcode = 0x3ff0;
 pub const OP_VMSGTU_VI: InstructionOpcode = 0x40f0;
 pub const OP_VMSGT_VX: InstructionOpcode = 0x41f0;
 pub const OP_VMSGT_VI: InstructionOpcode = 0x42f0;
-pub const OP_VFIRST_M: InstructionOpcode = 0x43f0;
+pub const OP_VMINU_VV: InstructionOpcode = 0x43f0;
+pub const OP_VMINU_VX: InstructionOpcode = 0x44f0;
+pub const OP_VMIN_VV: InstructionOpcode = 0x45f0;
+pub const OP_VMIN_VX: InstructionOpcode = 0x46f0;
+pub const OP_VMAXU_VV: InstructionOpcode = 0x47f0;
+pub const OP_VMAXU_VX: InstructionOpcode = 0x48f0;
+pub const OP_VMAX_VV: InstructionOpcode = 0x49f0;
+pub const OP_VMAX_VX: InstructionOpcode = 0x4af0;
+pub const OP_VFIRST_M: InstructionOpcode = 0x4bf0;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
 pub const LEVEL2_V_OPCODE: InstructionOpcode = 0xf0;
 pub const MINIMAL_LEVEL2_OPCODE: InstructionOpcode = 0x00;
-pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0x43;
+pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0x4b;
 
 pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize + 1] = [
     "UNLOADED",
@@ -433,6 +441,14 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL2: [&str;
     "VMSGTU_VI",
     "VMSGT_VX",
     "VMSGT_VI",
+    "VMINU_VV",
+    "VMINU_VX",
+    "VMIN_VV",
+    "VMIN_VX",
+    "VMAXU_VV",
+    "VMAXU_VX",
+    "VMAX_VV",
+    "VMAX_VX",
     "VFIRST_M",
 ];
 

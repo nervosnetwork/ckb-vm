@@ -66,6 +66,14 @@ insts = [
     "VMSGTU_VI",
     "VMSGT_VX",
     "VMSGT_VI",
+    "VMINU_VV",
+    "VMINU_VX",
+    "VMIN_VV",
+    "VMIN_VX",
+    "VMAXU_VV",
+    "VMAXU_VX",
+    "VMAX_VV",
+    "VMAX_VX",
     "VFIRST_M",
 ]
 
