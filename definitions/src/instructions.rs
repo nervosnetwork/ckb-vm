@@ -239,13 +239,102 @@ pub const OP_VMAXU_VV: InstructionOpcode = 0x47f0;
 pub const OP_VMAXU_VX: InstructionOpcode = 0x48f0;
 pub const OP_VMAX_VV: InstructionOpcode = 0x49f0;
 pub const OP_VMAX_VX: InstructionOpcode = 0x4af0;
-pub const OP_VFIRST_M: InstructionOpcode = 0x4bf0;
+pub const OP_VWADDU_VV: InstructionOpcode = 0x4bf0;
+pub const OP_VWADDU_VX: InstructionOpcode = 0x4cf0;
+pub const OP_VWSUBU_VV: InstructionOpcode = 0x4df0;
+pub const OP_VWSUBU_VX: InstructionOpcode = 0x4ef0;
+pub const OP_VWADD_VV: InstructionOpcode = 0x4ff0;
+pub const OP_VWADD_VX: InstructionOpcode = 0x50f0;
+pub const OP_VWSUB_VV: InstructionOpcode = 0x51f0;
+pub const OP_VWSUB_VX: InstructionOpcode = 0x52f0;
+pub const OP_VWADDU_WV: InstructionOpcode = 0x53f0;
+pub const OP_VWADDU_WX: InstructionOpcode = 0x54f0;
+pub const OP_VWSUBU_WV: InstructionOpcode = 0x55f0;
+pub const OP_VWSUBU_WX: InstructionOpcode = 0x56f0;
+pub const OP_VWADD_WV: InstructionOpcode = 0x57f0;
+pub const OP_VWADD_WX: InstructionOpcode = 0x58f0;
+pub const OP_VWSUB_WV: InstructionOpcode = 0x59f0;
+pub const OP_VWSUB_WX: InstructionOpcode = 0x5af0;
+pub const OP_VZEXT_VF8: InstructionOpcode = 0x5bf0;
+pub const OP_VSEXT_VF8: InstructionOpcode = 0x5cf0;
+pub const OP_VZEXT_VF4: InstructionOpcode = 0x5df0;
+pub const OP_VSEXT_VF4: InstructionOpcode = 0x5ef0;
+pub const OP_VZEXT_VF2: InstructionOpcode = 0x5ff0;
+pub const OP_VSEXT_VF2: InstructionOpcode = 0x60f0;
+pub const OP_VADC_VVM: InstructionOpcode = 0x61f0;
+pub const OP_VADC_VXM: InstructionOpcode = 0x62f0;
+pub const OP_VADC_VIM: InstructionOpcode = 0x63f0;
+pub const OP_VMADC_VVM: InstructionOpcode = 0x64f0;
+pub const OP_VMADC_VXM: InstructionOpcode = 0x65f0;
+pub const OP_VMADC_VIM: InstructionOpcode = 0x66f0;
+pub const OP_VMADC_VV: InstructionOpcode = 0x67f0;
+pub const OP_VMADC_VX: InstructionOpcode = 0x68f0;
+pub const OP_VMADC_VI: InstructionOpcode = 0x69f0;
+pub const OP_VSBC_VVM: InstructionOpcode = 0x6af0;
+pub const OP_VSBC_VXM: InstructionOpcode = 0x6bf0;
+pub const OP_VMSBC_VVM: InstructionOpcode = 0x6cf0;
+pub const OP_VMSBC_VXM: InstructionOpcode = 0x6df0;
+pub const OP_VMSBC_VV: InstructionOpcode = 0x6ef0;
+pub const OP_VMSBC_VX: InstructionOpcode = 0x6ff0;
+pub const OP_VAND_VV: InstructionOpcode = 0x70f0;
+pub const OP_VAND_VI: InstructionOpcode = 0x71f0;
+pub const OP_VAND_VX: InstructionOpcode = 0x72f0;
+pub const OP_VOR_VV: InstructionOpcode = 0x73f0;
+pub const OP_VOR_VX: InstructionOpcode = 0x74f0;
+pub const OP_VOR_VI: InstructionOpcode = 0x75f0;
+pub const OP_VXOR_VV: InstructionOpcode = 0x76f0;
+pub const OP_VXOR_VX: InstructionOpcode = 0x77f0;
+pub const OP_VXOR_VI: InstructionOpcode = 0x78f0;
+pub const OP_VNSRL_WV: InstructionOpcode = 0x79f0;
+pub const OP_VNSRL_WX: InstructionOpcode = 0x7af0;
+pub const OP_VNSRL_WI: InstructionOpcode = 0x7bf0;
+pub const OP_VNSRA_WV: InstructionOpcode = 0x7cf0;
+pub const OP_VNSRA_WX: InstructionOpcode = 0x7df0;
+pub const OP_VNSRA_WI: InstructionOpcode = 0x7ef0;
+pub const OP_VMULH_VV: InstructionOpcode = 0x7ff0;
+pub const OP_VMULH_VX: InstructionOpcode = 0x80f0;
+pub const OP_VMULHU_VV: InstructionOpcode = 0x81f0;
+pub const OP_VMULHU_VX: InstructionOpcode = 0x82f0;
+pub const OP_VMULHSU_VV: InstructionOpcode = 0x83f0;
+pub const OP_VMULHSU_VX: InstructionOpcode = 0x84f0;
+pub const OP_VWMULU_VV: InstructionOpcode = 0x85f0;
+pub const OP_VWMULU_VX: InstructionOpcode = 0x86f0;
+pub const OP_VWMULSU_VV: InstructionOpcode = 0x87f0;
+pub const OP_VWMULSU_VX: InstructionOpcode = 0x88f0;
+pub const OP_VWMUL_VV: InstructionOpcode = 0x89f0;
+pub const OP_VWMUL_VX: InstructionOpcode = 0x8af0;
+pub const OP_VMV_V_V: InstructionOpcode = 0x8bf0;
+pub const OP_VMV_V_X: InstructionOpcode = 0x8cf0;
+pub const OP_VMV_V_I: InstructionOpcode = 0x8df0;
+pub const OP_VSADDU_VV: InstructionOpcode = 0x8ef0;
+pub const OP_VSADDU_VX: InstructionOpcode = 0x8ff0;
+pub const OP_VSADDU_VI: InstructionOpcode = 0x90f0;
+pub const OP_VSADD_VV: InstructionOpcode = 0x91f0;
+pub const OP_VSADD_VX: InstructionOpcode = 0x92f0;
+pub const OP_VSADD_VI: InstructionOpcode = 0x93f0;
+pub const OP_VSSUBU_VV: InstructionOpcode = 0x94f0;
+pub const OP_VSSUBU_VX: InstructionOpcode = 0x95f0;
+pub const OP_VSSUB_VV: InstructionOpcode = 0x96f0;
+pub const OP_VSSUB_VX: InstructionOpcode = 0x97f0;
+pub const OP_VAADDU_VV: InstructionOpcode = 0x98f0;
+pub const OP_VAADDU_VX: InstructionOpcode = 0x99f0;
+pub const OP_VAADD_VV: InstructionOpcode = 0x9af0;
+pub const OP_VAADD_VX: InstructionOpcode = 0x9bf0;
+pub const OP_VASUBU_VV: InstructionOpcode = 0x9cf0;
+pub const OP_VASUBU_VX: InstructionOpcode = 0x9df0;
+pub const OP_VASUB_VV: InstructionOpcode = 0x9ef0;
+pub const OP_VASUB_VX: InstructionOpcode = 0x9ff0;
+pub const OP_VMV1R_V: InstructionOpcode = 0xa0f0;
+pub const OP_VMV2R_V: InstructionOpcode = 0xa1f0;
+pub const OP_VMV4R_V: InstructionOpcode = 0xa2f0;
+pub const OP_VMV8R_V: InstructionOpcode = 0xa3f0;
+pub const OP_VFIRST_M: InstructionOpcode = 0xa4f0;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
 pub const LEVEL2_V_OPCODE: InstructionOpcode = 0xf0;
 pub const MINIMAL_LEVEL2_OPCODE: InstructionOpcode = 0x00;
-pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0x4b;
+pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0xa4;
 
 pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize + 1] = [
     "UNLOADED",
@@ -449,6 +538,95 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL2: [&str;
     "VMAXU_VX",
     "VMAX_VV",
     "VMAX_VX",
+    "VWADDU_VV",
+    "VWADDU_VX",
+    "VWSUBU_VV",
+    "VWSUBU_VX",
+    "VWADD_VV",
+    "VWADD_VX",
+    "VWSUB_VV",
+    "VWSUB_VX",
+    "VWADDU_WV",
+    "VWADDU_WX",
+    "VWSUBU_WV",
+    "VWSUBU_WX",
+    "VWADD_WV",
+    "VWADD_WX",
+    "VWSUB_WV",
+    "VWSUB_WX",
+    "VZEXT_VF8",
+    "VSEXT_VF8",
+    "VZEXT_VF4",
+    "VSEXT_VF4",
+    "VZEXT_VF2",
+    "VSEXT_VF2",
+    "VADC_VVM",
+    "VADC_VXM",
+    "VADC_VIM",
+    "VMADC_VVM",
+    "VMADC_VXM",
+    "VMADC_VIM",
+    "VMADC_VV",
+    "VMADC_VX",
+    "VMADC_VI",
+    "VSBC_VVM",
+    "VSBC_VXM",
+    "VMSBC_VVM",
+    "VMSBC_VXM",
+    "VMSBC_VV",
+    "VMSBC_VX",
+    "VAND_VV",
+    "VAND_VI",
+    "VAND_VX",
+    "VOR_VV",
+    "VOR_VX",
+    "VOR_VI",
+    "VXOR_VV",
+    "VXOR_VX",
+    "VXOR_VI",
+    "VNSRL_WV",
+    "VNSRL_WX",
+    "VNSRL_WI",
+    "VNSRA_WV",
+    "VNSRA_WX",
+    "VNSRA_WI",
+    "VMULH_VV",
+    "VMULH_VX",
+    "VMULHU_VV",
+    "VMULHU_VX",
+    "VMULHSU_VV",
+    "VMULHSU_VX",
+    "VWMULU_VV",
+    "VWMULU_VX",
+    "VWMULSU_VV",
+    "VWMULSU_VX",
+    "VWMUL_VV",
+    "VWMUL_VX",
+    "VMV_V_V",
+    "VMV_V_X",
+    "VMV_V_I",
+    "VSADDU_VV",
+    "VSADDU_VX",
+    "VSADDU_VI",
+    "VSADD_VV",
+    "VSADD_VX",
+    "VSADD_VI",
+    "VSSUBU_VV",
+    "VSSUBU_VX",
+    "VSSUB_VV",
+    "VSSUB_VX",
+    "VAADDU_VV",
+    "VAADDU_VX",
+    "VAADD_VV",
+    "VAADD_VX",
+    "VASUBU_VV",
+    "VASUBU_VX",
+    "VASUB_VV",
+    "VASUB_VX",
+    "VMV1R_V",
+    "VMV2R_V",
+    "VMV4R_V",
+    "VMV8R_V",
     "VFIRST_M",
 ];
 
