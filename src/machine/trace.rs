@@ -107,7 +107,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.set_vregister(idx, value)
     }
 
-    fn get_vregister(&mut self, idx: usize) -> &mut VRegister {
+    fn get_vregister(&mut self, idx: usize) -> VRegister {
         self.machine.get_vregister(idx)
     }
 

@@ -406,7 +406,7 @@ pub fn set_vl<Mac: Machine>(
     let new_vsew = machine.get_vsew();
     if old_vsew != new_vsew {
         for i in 0..32 {
-            let fr = &machine.vregisters()[i];
+            let fr = &machine.get_vregister(i);
             let le_byte: [u8; 256] = match fr {
                 VRegister::U8(data) => {
                     let mut r = [0x00; 256];

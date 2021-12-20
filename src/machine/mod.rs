@@ -56,7 +56,7 @@ pub trait CoreMachine {
     fn get_vill(&self) -> bool;
     fn vregisters(&self) -> &[VRegister];
     fn set_vregister(&mut self, idx: usize, value: VRegister);
-    fn get_vregister(&mut self, idx: usize) -> &mut VRegister;
+    fn get_vregister(&mut self, idx: usize) -> VRegister;
 
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
@@ -336,7 +336,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     }
 
     fn get_vl(&self) -> u32 {
-        return self.vl;
+        self.vl
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
@@ -377,10 +377,6 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         } else {
             self.vl
         };
-        // println!(
-        //     "set_vl vl={:?} sew={:?} lmul={:?}",
-        //     self.vl, self.vtype_sew, self.vtype_lmul
-        // );
     }
 
     fn get_vsew(&self) -> u32 {
@@ -411,8 +407,8 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.vregisters[idx] = value;
     }
 
-    fn get_vregister(&mut self, idx: usize) -> &mut VRegister {
-        &mut self.vregisters[idx]
+    fn get_vregister(&mut self, idx: usize) -> VRegister {
+        self.vregisters[idx]
     }
 
     fn isa(&self) -> u8 {
@@ -528,7 +524,7 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         self.inner.set_register(idx, value)
     }
 
-    fn get_vregister(&mut self, idx: usize) -> &mut VRegister {
+    fn get_vregister(&mut self, idx: usize) -> VRegister {
         self.inner.get_vregister(idx)
     }
 
