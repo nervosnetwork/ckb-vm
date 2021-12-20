@@ -21,10 +21,11 @@ fn loop_vv<Mac: Machine>(
     let vlmax = VLEN / machine.get_vsew();
     let num = machine.get_vl() as usize;
     for j in 0..((num as u32 - 1) / vlmax) + 1 {
-        let vs1 = machine.vregisters()[i.vs1() as usize + j as usize];
-        let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
-        let vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, &vs1, vd, num)?;
+        let vs1 = machine.get_vregister(i.vs1() as usize + j as usize);
+        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
+        let mut vd = machine.get_vregister(i.vd() + j as usize);
+        func(&vs2, &vs1, &mut vd, num)?;
+        machine.set_vregister(i.vd() + j as usize, vd);
     }
     Ok(())
 }
@@ -104,9 +105,10 @@ fn loop_vx<Mac: Machine>(
     let num = machine.get_vl() as usize;
     for j in 0..((num as u32 - 1) / vlmax) + 1 {
         let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
-        let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
-        let vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, rs1, vd, num)?;
+        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
+        let mut vd = machine.get_vregister(i.vd() + j as usize);
+        func(&vs2, rs1, &mut vd, num)?;
+        machine.set_vregister(i.vd() + j as usize, vd);
     }
     Ok(())
 }
@@ -186,10 +188,11 @@ fn loop_vi<Mac: Machine>(
     let vlmax = VLEN / machine.get_vsew();
     let num = machine.get_vl() as usize;
     for j in 0..((num as u32 - 1) / vlmax) + 1 {
-        let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
         let imm = i.immediate_s();
-        let vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, imm, vd, num)?;
+        let mut vd = machine.get_vregister(i.vd() + j as usize);
+        func(&vs2, imm, &mut vd, num)?;
+        machine.set_vregister(i.vd() + j as usize, vd);
     }
     Ok(())
 }
@@ -269,10 +272,11 @@ fn loop_vi2<Mac: Machine>(
     let vlmax = VLEN / machine.get_vsew();
     let num = machine.get_vl() as usize;
     for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
-        let vs2 = machine.vregisters()[i.vs2() as usize + j as usize];
+        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
         let imm = i.immediate_u();
-        let vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, imm, vd, num)?;
+        let mut vd = machine.get_vregister(i.vd() + j as usize);
+        func(&vs2, imm, &mut vd, num)?;
+        machine.set_vregister(i.vd() + j as usize, vd);
     }
     Ok(())
 }
@@ -1267,12 +1271,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 256;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 1));
                 let elem = machine.memory_mut().load8(&addr)?.to_u8();
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U8(ref mut data) = vreg {
                     data[i as usize % 256] = U8(elem);
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE8_V => {
@@ -1283,12 +1288,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 256;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 1));
                 let elem = machine.memory_mut().load8(&addr)?.to_u8();
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U8(ref mut data) = vreg {
                     data[i as usize % 256] = U8(elem);
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE16_V => {
@@ -1299,12 +1305,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 128;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 2));
                 let elem = machine.memory_mut().load16(&addr)?.to_u16();
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U16(ref mut data) = vreg {
                     data[i as usize % 128] = U16(elem);
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE32_V => {
@@ -1315,12 +1322,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 64;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 4));
                 let elem = machine.memory_mut().load32(&addr)?.to_u32();
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U32(ref mut data) = vreg {
                     data[i as usize % 64] = U32(elem);
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE64_V => {
@@ -1331,12 +1339,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 32;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 8));
                 let elem = machine.memory_mut().load64(&addr)?.to_u64();
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U64(ref mut data) = vreg {
                     data[i as usize % 32] = U64(elem);
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE128_V => {
@@ -1349,12 +1358,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 16));
                 buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 16)?);
                 let elem = u128::from_le_bytes(buf);
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U128(ref mut data) = vreg {
                     data[i as usize % 16] = U128(elem);
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE256_V => {
@@ -1367,12 +1377,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 32));
                 buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 32)?);
                 let elem = U256::from_le_bytes(buf);
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U256(ref mut data) = vreg {
                     data[i as usize % 8] = elem;
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE512_V => {
@@ -1385,12 +1396,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 64));
                 buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 64)?);
                 let elem = U512::from_le_bytes(buf);
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U512(ref mut data) = vreg {
                     data[i as usize % 4] = elem;
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VLE1024_V => {
@@ -1403,12 +1415,13 @@ pub fn execute_instruction<Mac: Machine>(
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 128));
                 buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 128)?);
                 let elem = U1024::from_le_bytes(buf);
-                let vreg = machine.get_vregister(rd);
+                let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U1024(ref mut data) = vreg {
                     data[i as usize % 2] = elem;
                 } else {
                     return Err(Error::Unexpected);
                 }
+                machine.set_vregister(rd, vreg);
             }
         }
         insts::OP_VSM_V => {
@@ -1419,7 +1432,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..(machine.get_vl() + 7) / 8 {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U8(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1438,7 +1451,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U8(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1457,7 +1470,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U16(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1476,7 +1489,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U32(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1495,7 +1508,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U64(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1514,7 +1527,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U128(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1533,7 +1546,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U256(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1552,7 +1565,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U512(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -1571,7 +1584,7 @@ pub fn execute_instruction<Mac: Machine>(
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.vregisters()[rd];
+                let vreg = machine.get_vregister(rd);
                 if let VRegister::U1024(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -2287,7 +2300,7 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
-            let vs2 = machine.vregisters()[i.rs2() as usize];
+            let vs2 = machine.get_vregister(i.rs2() as usize);
             let mut r = u64::MAX;
             match vs2 {
                 VRegister::U1024(data) => {

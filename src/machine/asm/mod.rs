@@ -1,5 +1,6 @@
 use std::mem::transmute;
 
+use crate::instructions::Register;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -11,7 +12,7 @@ use ckb_vm_definitions::{
     },
     instructions::OP_CUSTOM_TRACE_END,
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    RISCV_PAGE_SHIFTS, VLEN,
 };
 use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
@@ -20,7 +21,7 @@ use crate::{
     decoder::{build_decoder, Decoder},
     instructions::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction,
+        is_basic_block_end_instruction, VRegister,
     },
     machine::{aot::AotCode, VERSION0},
     memory::{
@@ -69,6 +70,83 @@ impl CoreMachine for Box<AsmCoreMachine> {
 
     fn version(&self) -> u32 {
         self.version
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
+        self.vtype_sew = 1 << (((new_type >> 3) & 0x7) + 3);
+        self.vtype_lmul = match new_type & 0x7 {
+            0b_000 => 1,
+            0b_001 => 2,
+            0b_010 => 4,
+            0b_011 => 8,
+            0b_111 => -2,
+            0b_110 => -4,
+            0b_101 => -8,
+            0b_100 => -16, // reserved
+            _ => unreachable!(),
+        };
+        let vlmax = if self.vtype_lmul >= 0 {
+            (VLEN / self.vtype_sew) * (self.vtype_lmul as u32)
+        } else {
+            (VLEN / self.vtype_sew) / ((-self.vtype_lmul) as u32)
+        };
+        self.vtype_vta = ((new_type >> 6) & 0x1) != 0;
+        self.vtype_vma = ((new_type >> 7) & 0x1) != 0;
+        self.vtype_vill = (new_type >> 8) != 0
+            || if self.vtype_lmul < 0 {
+                self.vtype_sew > VLEN / (-self.vtype_lmul) as u32
+            } else {
+                false
+            };
+
+        self.vl = if vlmax == 0 {
+            0
+        } else if rd == 0 && rs1 == 0 {
+            std::cmp::min(self.vl, vlmax)
+        } else if rd != 0 && rs1 == 0 {
+            vlmax
+        } else if rs1 != 0 {
+            std::cmp::min(reqvl.to_u32(), vlmax)
+        } else {
+            self.vl
+        };
+    }
+
+    fn get_vl(&self) -> u32 {
+        self.vl
+    }
+
+    fn get_vsew(&self) -> u32 {
+        self.vtype_sew
+    }
+
+    fn get_vlmul(&self) -> i32 {
+        self.vtype_lmul
+    }
+
+    fn get_vta(&self) -> bool {
+        self.vtype_vta
+    }
+
+    fn get_vma(&self) -> bool {
+        self.vtype_vma
+    }
+
+    fn get_vill(&self) -> bool {
+        self.vtype_vill
+    }
+
+    fn vregisters(&self) -> &[VRegister] {
+        unreachable!()
+    }
+
+    fn set_vregister(&mut self, idx: usize, value: VRegister) {
+        self.vregisters[idx] = value.to_le_bytes();
+    }
+
+    fn get_vregister(&mut self, idx: usize) -> VRegister {
+        let data = self.vregisters[idx];
+        VRegister::from_le_bytes(self.vtype_sew, data)
     }
 }
 
@@ -290,6 +368,11 @@ impl Memory for Box<AsmCoreMachine> {
             value,
         );
         Ok(())
+    }
+
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Vec<u8>, Error> {
+        check_memory_inited(self, addr, size as usize)?;
+        Ok(self.memory[addr as usize..(addr + size) as usize].to_vec())
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
