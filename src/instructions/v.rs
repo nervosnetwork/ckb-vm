@@ -504,6 +504,9 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     0b_100101 => Some(insts::OP_VSLL_VV),
                     0b_101000 => Some(insts::OP_VSRL_VV),
                     0b_101001 => Some(insts::OP_VSRA_VV),
+                    0b_001001 => Some(insts::OP_VAND_VV),
+                    0b_001010 => Some(insts::OP_VOR_VV),
+                    0b_001011 => Some(insts::OP_VXOR_VV),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -554,6 +557,9 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     0b_100101 => Some(insts::OP_VSLL_VI),
                     0b_101000 => Some(insts::OP_VSRL_VI),
                     0b_101001 => Some(insts::OP_VSRA_VI),
+                    0b_001001 => Some(insts::OP_VAND_VI),
+                    0b_001010 => Some(insts::OP_VOR_VI),
+                    0b_001011 => Some(insts::OP_VXOR_VI),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -587,6 +593,9 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     0b_100101 => Some(insts::OP_VSLL_VX),
                     0b_101000 => Some(insts::OP_VSRL_VX),
                     0b_101001 => Some(insts::OP_VSRA_VX),
+                    0b_001001 => Some(insts::OP_VAND_VX),
+                    0b_001010 => Some(insts::OP_VOR_VX),
+                    0b_001011 => Some(insts::OP_VXOR_VX),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
