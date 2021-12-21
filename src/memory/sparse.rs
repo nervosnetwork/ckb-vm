@@ -219,7 +219,7 @@ impl<R: Register> Memory for SparseMemory<R> {
             }
             break;
         }
-        return Ok(r);
+        Ok(r)
     }
 
     fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {

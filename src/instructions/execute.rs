@@ -1269,7 +1269,7 @@ pub fn execute_instruction<Mac: Machine>(
             let addr = machine.registers()[i.rs1()].clone();
             for i in 0..(machine.get_vl() + 7) / 8 {
                 let rd = rd + i as usize / 256;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 1));
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32));
                 let elem = machine.memory_mut().load8(&addr)?.to_u8();
                 let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U8(ref mut data) = vreg {
@@ -1286,7 +1286,7 @@ pub fn execute_instruction<Mac: Machine>(
             let addr = machine.registers()[i.rs1()].clone();
             for i in 0..machine.get_vl() {
                 let rd = rd + i as usize / 256;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 1));
+                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32));
                 let elem = machine.memory_mut().load8(&addr)?.to_u8();
                 let mut vreg = machine.get_vregister(rd);
                 if let VRegister::U8(ref mut data) = vreg {

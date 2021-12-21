@@ -837,7 +837,7 @@ macro_rules! uint_impl {
                 let lo = self.lo.widening_mul(other.lo);
                 let lo = Self { lo: lo.0, hi: lo.1 };
                 let (hi, hi_overflow_add) = lo.hi.overflowing_add(hi);
-                let lo = Self { lo: lo.lo, hi: hi };
+                let lo = Self { lo: lo.lo, hi };
                 (lo, hi_overflow_mul || hi_overflow_add)
             }
 

@@ -262,13 +262,12 @@ impl VVtype {
         vs2: RegisterIndex,
         vm: bool,
     ) -> Self {
-        let a = u64::from(op as u8);
-        let b = u64::from(op) >> 8 << 16;
-        let c = u64::from(vd as u8) << 8;
-        let d = u64::from(vs1 as u8) << 32;
-        let e = u64::from(vs2 as u8) << 40;
-        let f = if vm { 1u64 << 28 } else { 0 };
-        VVtype(a | b | c | d | e | f)
+        let opcode = u64::from(op as u8) | u64::from(op) >> 8 << 16;
+        let vd = u64::from(vd as u8) << 8;
+        let vs1 = u64::from(vs1 as u8) << 32;
+        let vs2 = u64::from(vs2 as u8) << 40;
+        let vm = if vm { 1u64 << 28 } else { 0 };
+        VVtype(opcode | vd | vs1 | vs2 | vm)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -303,13 +302,12 @@ impl VXtype {
         vs2: RegisterIndex,
         vm: bool,
     ) -> Self {
-        let a = u64::from(op as u8);
-        let b = u64::from(op) >> 8 << 16;
-        let c = u64::from(vd as u8) << 8;
-        let d = u64::from(rs1 as u8) << 32;
-        let e = u64::from(vs2 as u8) << 40;
-        let f = if vm { 1u64 << 28 } else { 0 };
-        VXtype(a | b | c | d | e | f)
+        let opcode = u64::from(op as u8) | u64::from(op) >> 8 << 16;
+        let vd = u64::from(vd as u8) << 8;
+        let rs1 = u64::from(rs1 as u8) << 32;
+        let vs2 = u64::from(vs2 as u8) << 40;
+        let vm = if vm { 1u64 << 28 } else { 0 };
+        VXtype(opcode | vd | rs1 | vs2 | vm)
     }
 
     pub fn op(self) -> InstructionOpcode {
@@ -344,13 +342,12 @@ impl VItype {
         imm: UImmediate,
         vm: bool,
     ) -> Self {
-        let a = u64::from(op as u8);
-        let b = u64::from(op) >> 8 << 16;
-        let c = u64::from(vd as u8) << 8;
-        let d = u64::from(vs2 as u8) << 32;
-        let e = u64::from(imm) << 40;
-        let f = if vm { 1u64 << 28 } else { 0 };
-        VItype(a | b | c | d | e | f)
+        let opcode = u64::from(op as u8) | u64::from(op) >> 8 << 16;
+        let vd = u64::from(vd as u8) << 8;
+        let vs2 = u64::from(vs2 as u8) << 32;
+        let imm = u64::from(imm) << 40;
+        let vm = if vm { 1u64 << 28 } else { 0 };
+        VItype(opcode | vd | vs2 | imm | vm)
     }
 
     pub fn op(self) -> InstructionOpcode {
