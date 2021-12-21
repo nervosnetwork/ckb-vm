@@ -2415,6 +2415,34 @@ pub fn execute_instruction<Mac: Machine>(
             }
             loop_vi(inst, machine, vi_iterator_func)?;
         }
+        insts::OP_VMV1R_V => {
+            let i = VItype(inst);
+            for j in 0..1 {
+                let vreg = machine.get_vregister(i.vs2() + j as usize);
+                machine.set_vregister(i.vd() + j as usize, vreg);
+            }
+        }
+        insts::OP_VMV2R_V => {
+            let i = VItype(inst);
+            for j in 0..2 {
+                let vreg = machine.get_vregister(i.vs2() + j as usize);
+                machine.set_vregister(i.vd() + j as usize, vreg);
+            }
+        }
+        insts::OP_VMV4R_V => {
+            let i = VItype(inst);
+            for j in 0..4 {
+                let vreg = machine.get_vregister(i.vs2() + j as usize);
+                machine.set_vregister(i.vd() + j as usize, vreg);
+            }
+        }
+        insts::OP_VMV8R_V => {
+            let i = VItype(inst);
+            for j in 0..8 {
+                let vreg = machine.get_vregister(i.vs2() + j as usize);
+                machine.set_vregister(i.vd() + j as usize, vreg);
+            }
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);
