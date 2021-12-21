@@ -2298,6 +2298,123 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
+        insts::OP_VAND_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| *a & *b},
+                {|a: &U512, b: &U512| *a & *b},
+                {|a: &U256, b: &U256| *a & *b},
+                {|a: &U128, b: &U128| *a & *b},
+                {|a: &U64, b: &U64| *a & *b},
+                {|a: &U32, b: &U32| *a & *b},
+                {|a: &U16, b: &U16| *a & *b},
+                {|a: &U8, b: &U8| *a & *b}
+            }
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VOR_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| *a | *b},
+                {|a: &U512, b: &U512| *a | *b},
+                {|a: &U256, b: &U256| *a | *b},
+                {|a: &U128, b: &U128| *a | *b},
+                {|a: &U64, b: &U64| *a | *b},
+                {|a: &U32, b: &U32| *a | *b},
+                {|a: &U16, b: &U16| *a | *b},
+                {|a: &U8, b: &U8| *a | *b}
+            }
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VXOR_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| *a ^ *b},
+                {|a: &U512, b: &U512| *a ^ *b},
+                {|a: &U256, b: &U256| *a ^ *b},
+                {|a: &U128, b: &U128| *a ^ *b},
+                {|a: &U64, b: &U64| *a ^ *b},
+                {|a: &U32, b: &U32| *a ^ *b},
+                {|a: &U16, b: &U16| *a ^ *b},
+                {|a: &U8, b: &U8| *a ^ *b}
+            }
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VAND_VX => {
+            vx_iterator_impl! {
+                {|a: &U1024, rhs: u64| *a & U1024::vx(rhs)},
+                {|a: &U512, rhs: u64| *a & U512::vx(rhs)},
+                {|a: &U256, rhs: u64| *a & U256::vx(rhs) },
+                {|a: &U128, rhs: u64| *a & U128::vx(rhs)},
+                {|a: &U64, rhs: u64| *a & U64::vx(rhs)},
+                {|a: &U32, rhs: u64| *a & U32::vx(rhs)},
+                {|a: &U16, rhs: u64| *a & U16::vx(rhs)},
+                {|a: &U8, rhs: u64| *a & U8::vx(rhs)}
+            }
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VOR_VX => {
+            vx_iterator_impl! {
+                {|a: &U1024, rhs: u64| *a | U1024::vx(rhs)},
+                {|a: &U512, rhs: u64| *a | U512::vx(rhs)},
+                {|a: &U256, rhs: u64| *a | U256::vx(rhs) },
+                {|a: &U128, rhs: u64| *a | U128::vx(rhs)},
+                {|a: &U64, rhs: u64| *a | U64::vx(rhs)},
+                {|a: &U32, rhs: u64| *a | U32::vx(rhs)},
+                {|a: &U16, rhs: u64| *a | U16::vx(rhs)},
+                {|a: &U8, rhs: u64| *a | U8::vx(rhs)}
+            }
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VXOR_VX => {
+            vx_iterator_impl! {
+                {|a: &U1024, rhs: u64| *a ^ U1024::vx(rhs)},
+                {|a: &U512, rhs: u64| *a ^ U512::vx(rhs)},
+                {|a: &U256, rhs: u64| *a ^ U256::vx(rhs) },
+                {|a: &U128, rhs: u64| *a ^ U128::vx(rhs)},
+                {|a: &U64, rhs: u64| *a ^ U64::vx(rhs)},
+                {|a: &U32, rhs: u64| *a ^ U32::vx(rhs)},
+                {|a: &U16, rhs: u64| *a ^ U16::vx(rhs)},
+                {|a: &U8, rhs: u64| *a ^ U8::vx(rhs)}
+            }
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VAND_VI => {
+            vi_iterator_impl! {
+                {|a: &U1024, imm: i32| *a & U1024::vi(imm)},
+                {|a: &U512, imm: i32| *a & U512::vi(imm)},
+                {|a: &U256, imm: i32| *a & U256::vi(imm)},
+                {|a: &U128, imm: i32| *a & U128::vi(imm)},
+                {|a: &U64, imm: i32| *a & U64::vi(imm)},
+                {|a: &U32, imm: i32| *a & U32::vi(imm)},
+                {|a: &U16, imm: i32| *a & U16::vi(imm)},
+                {|a: &U8, imm: i32| *a & U8::vi(imm)}
+            }
+            loop_vi(inst, machine, vi_iterator_func)?;
+        }
+        insts::OP_VOR_VI => {
+            vi_iterator_impl! {
+                {|a: &U1024, imm: i32| *a | U1024::vi(imm)},
+                {|a: &U512, imm: i32| *a | U512::vi(imm)},
+                {|a: &U256, imm: i32| *a | U256::vi(imm)},
+                {|a: &U128, imm: i32| *a | U128::vi(imm)},
+                {|a: &U64, imm: i32| *a | U64::vi(imm)},
+                {|a: &U32, imm: i32| *a | U32::vi(imm)},
+                {|a: &U16, imm: i32| *a | U16::vi(imm)},
+                {|a: &U8, imm: i32| *a | U8::vi(imm)}
+            }
+            loop_vi(inst, machine, vi_iterator_func)?;
+        }
+        insts::OP_VXOR_VI => {
+            vi_iterator_impl! {
+                {|a: &U1024, imm: i32| *a ^ U1024::vi(imm)},
+                {|a: &U512, imm: i32| *a ^ U512::vi(imm)},
+                {|a: &U256, imm: i32| *a ^ U256::vi(imm)},
+                {|a: &U128, imm: i32| *a ^ U128::vi(imm)},
+                {|a: &U64, imm: i32| *a ^ U64::vi(imm)},
+                {|a: &U32, imm: i32| *a ^ U32::vi(imm)},
+                {|a: &U16, imm: i32| *a ^ U16::vi(imm)},
+                {|a: &U8, imm: i32| *a ^ U8::vi(imm)}
+            }
+            loop_vi(inst, machine, vi_iterator_func)?;
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);
