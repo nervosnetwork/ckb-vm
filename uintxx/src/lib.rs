@@ -1076,7 +1076,7 @@ macro_rules! uint_impl {
                 } else {
                     let (hi, r) = Self::from(self.hi).div_half_0(y);
                     let (lo, r) = Self { lo: self.lo, hi: r }.div_half_0(y);
-                    (Self { lo: lo, hi: hi }, r)
+                    (Self { lo, hi }, r)
                 }
             }
 
@@ -1098,7 +1098,7 @@ macro_rules! uint_impl {
                 let mut r = self - other * q;
                 if r >= other {
                     q += Self::ONE;
-                    r = r - other;
+                    r -= other;
                 }
                 (q, r)
             }
