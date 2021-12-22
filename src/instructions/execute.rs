@@ -2443,6 +2443,136 @@ pub fn execute_instruction<Mac: Machine>(
                 machine.set_vregister(i.vd() + j as usize, vreg);
             }
         }
+        insts::OP_VSADDU_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U512, b: &U512| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U256, b: &U256| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U128, b: &U128| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U64, b: &U64| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U32, b: &U32| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U16, b: &U16| { let (r, _) = a.saturating_add(*b); r }},
+                {|a: &U8, b: &U8| { let (r, _) = a.saturating_add(*b); r }}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSADDU_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_add(U1024::vx(rhs)); r }},
+                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_add(U512::vx(rhs)); r }},
+                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_add(U256::vx(rhs)); r }},
+                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_add(U128::vx(rhs)); r }},
+                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_add(U64::vx(rhs)); r }},
+                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_add(U32::vx(rhs)); r }},
+                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_add(U16::vx(rhs)); r }},
+                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_add(U8::vx(rhs)); r }}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VSADDU_VI => {
+            vi_iterator_impl! {
+                {|a:&U1024, imm: i32| { let (r, _) = a.saturating_add(U1024::vi(imm)); r }},
+                {|a:&U512, imm: i32| { let (r, _) = a.saturating_add(U512::vi(imm)); r }},
+                {|a:&U256, imm: i32| { let (r, _) = a.saturating_add(U256::vi(imm)); r }},
+                {|a:&U128, imm: i32| { let (r, _) = a.saturating_add(U128::vi(imm)); r }},
+                {|a:&U64, imm: i32| { let (r, _) = a.saturating_add(U64::vi(imm)); r }},
+                {|a:&U32, imm: i32| { let (r, _) = a.saturating_add(U32::vi(imm)); r }},
+                {|a:&U16, imm: i32| { let (r, _) = a.saturating_add(U16::vi(imm)); r }},
+                {|a:&U8, imm: i32| { let (r, _) = a.saturating_add(U8::vi(imm)); r }}
+            };
+            loop_vi(inst, machine, vi_iterator_func)?;
+        }
+        insts::OP_VSADD_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U512, b: &U512| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U256, b: &U256| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U128, b: &U128| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U64, b: &U64| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U32, b: &U32| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U16, b: &U16| { let (r, _) = a.saturating_add_s(*b); r }},
+                {|a: &U8, b: &U8| { let (r, _) = a.saturating_add_s(*b); r }}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSADD_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_add_s(U1024::vx(rhs)); r }},
+                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_add_s(U512::vx(rhs)); r }},
+                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_add_s(U256::vx(rhs)); r }},
+                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_add_s(U128::vx(rhs)); r }},
+                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_add_s(U64::vx(rhs)); r }},
+                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_add_s(U32::vx(rhs)); r }},
+                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_add_s(U16::vx(rhs)); r }},
+                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_add_s(U8::vx(rhs)); r }}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VSADD_VI => {
+            vi_iterator_impl! {
+                {|a:&U1024, imm: i32| { let (r, _) = a.saturating_add_s(U1024::vi(imm)); r }},
+                {|a:&U512, imm: i32| { let (r, _) = a.saturating_add_s(U512::vi(imm)); r }},
+                {|a:&U256, imm: i32| { let (r, _) = a.saturating_add_s(U256::vi(imm)); r }},
+                {|a:&U128, imm: i32| { let (r, _) = a.saturating_add_s(U128::vi(imm)); r }},
+                {|a:&U64, imm: i32| { let (r, _) = a.saturating_add_s(U64::vi(imm)); r }},
+                {|a:&U32, imm: i32| { let (r, _) = a.saturating_add_s(U32::vi(imm)); r }},
+                {|a:&U16, imm: i32| { let (r, _) = a.saturating_add_s(U16::vi(imm)); r }},
+                {|a:&U8, imm: i32| { let (r, _) = a.saturating_add_s(U8::vi(imm)); r }}
+            };
+            loop_vi(inst, machine, vi_iterator_func)?;
+        }
+        insts::OP_VSSUBU_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U512, b: &U512| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U256, b: &U256| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U128, b: &U128| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U64, b: &U64| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U32, b: &U32| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U16, b: &U16| { let (r, _) = a.saturating_sub(*b); r }},
+                {|a: &U8, b: &U8| { let (r, _) = a.saturating_sub(*b); r }}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSSUBU_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_sub(U1024::vx(rhs)); r }},
+                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_sub(U512::vx(rhs)); r }},
+                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_sub(U256::vx(rhs)); r }},
+                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_sub(U128::vx(rhs)); r }},
+                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_sub(U64::vx(rhs)); r }},
+                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_sub(U32::vx(rhs)); r }},
+                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_sub(U16::vx(rhs)); r }},
+                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_sub(U8::vx(rhs)); r }}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VSSUB_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U512, b: &U512| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U256, b: &U256| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U128, b: &U128| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U64, b: &U64| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U32, b: &U32| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U16, b: &U16| { let (r, _) = a.saturating_sub_s(*b); r }},
+                {|a: &U8, b: &U8| { let (r, _) = a.saturating_sub_s(*b); r }}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSSUB_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_sub_s(U1024::vx(rhs)); r }},
+                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_sub_s(U512::vx(rhs)); r }},
+                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_sub_s(U256::vx(rhs)); r }},
+                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_sub_s(U128::vx(rhs)); r }},
+                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_sub_s(U64::vx(rhs)); r }},
+                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_sub_s(U32::vx(rhs)); r }},
+                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_sub_s(U16::vx(rhs)); r }},
+                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_sub_s(U8::vx(rhs)); r }}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);
