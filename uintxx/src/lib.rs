@@ -36,6 +36,10 @@ pub trait Element:
     const MIN: Self;
     /// The largest value that can be represented by this integer type.
     const MAX: Self;
+    /// The smallest signed value that can be represented by this integer type.
+    const MIN_S: Self;
+    /// The largest signed value that can be represented by this integer type.
+    const MAX_S: Self;
     /// The one value that can be represented by this integer type.
     const ONE: Self;
     /// The zero value that can be represented by this integer type.
@@ -99,6 +103,19 @@ pub trait Element:
     /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would occur. Note
     /// that for unsigned integers overflow never occurs, so the second value is always false.
     fn overflowing_rem(self, other: Self) -> (Self, bool);
+
+    /// Saturating integer addition. Computes self + rhs, saturating at the numeric bounds instead of overflowing.
+    fn saturating_add(self, other: Self) -> (Self, bool);
+
+    /// Saturating addition with a signed integer. Computes self + rhs, saturating at the numeric bounds instead of
+    /// overflowing.
+    fn saturating_add_s(self, other: Self) -> (Self, bool);
+
+    /// Saturating integer subtraction. Computes self - rhs, saturating at the numeric bounds instead of overflowing.
+    fn saturating_sub(self, other: Self) -> (Self, bool);
+
+    /// Saturating integer subtraction. Computes self - rhs, saturating at the numeric bounds instead of overflowing.
+    fn saturating_sub_s(self, other: Self) -> (Self, bool);
 
     /// Wrapping (modular) addition. Computes self + other, wrapping around at the boundary of the type.
     fn wrapping_add(self, other: Self) -> Self;
@@ -342,6 +359,8 @@ macro_rules! uint_wrap_impl {
             const BITS: u32 = <$uint>::MIN.leading_zeros();
             const MIN: Self = Self(0);
             const MAX: Self = Self(<$uint>::MAX);
+            const MIN_S: Self = Self(<$sint>::MIN as $uint);
+            const MAX_S: Self = Self(<$sint>::MAX as $uint);
             const ONE: Self = Self(1);
             const ZERO: Self = Self(0);
 
@@ -404,6 +423,53 @@ macro_rules! uint_wrap_impl {
 
             fn overflowing_rem(self, other: Self) -> (Self, bool) {
                 (self.wrapping_rem(other), false)
+            }
+
+            fn saturating_add(self, other: Self) -> (Self, bool) {
+                let (r, overflow) = self.overflowing_add(other);
+                if overflow {
+                    (Self::MAX, overflow)
+                } else {
+                    (r, overflow)
+                }
+            }
+
+            fn saturating_add_s(self, other: Self) -> (Self, bool) {
+                let r = self.wrapping_add(other);
+                if !(self ^ other).is_negative() {
+                    if (r ^ self).is_negative() {
+                        let r = if self.is_negative() {
+                            Self::MIN_S
+                        } else {
+                            Self::MAX_S
+                        };
+                        return (r, true);
+                    }
+                }
+                (r, false)
+            }
+
+            fn saturating_sub(self, other: Self) -> (Self, bool) {
+                if self > other {
+                    (self.wrapping_sub(other), false)
+                } else {
+                    (Self::MIN, true)
+                }
+            }
+
+            fn saturating_sub_s(self, other: Self) -> (Self, bool) {
+                let r = self.wrapping_sub(other);
+                if (self ^ other).is_negative() {
+                    if (r ^ self).is_negative() {
+                        let r = if self.is_negative() {
+                            Self::MIN_S
+                        } else {
+                            Self::MAX_S
+                        };
+                        return (r, true);
+                    }
+                }
+                (r, false)
             }
 
             fn wrapping_add(self, other: Self) -> Self {
@@ -755,6 +821,14 @@ macro_rules! uint_impl {
                 lo: <$half>::MAX,
                 hi: <$half>::MAX,
             };
+            const MIN_S: Self = Self {
+                lo: <$half>::MIN,
+                hi: <$half>::MIN_S,
+            };
+            const MAX_S: Self = Self {
+                lo: <$half>::MAX,
+                hi: <$half>::MAX_S,
+            };
             const ONE: Self = Self {
                 lo: <$half>::ONE,
                 hi: <$half>::MIN,
@@ -847,6 +921,53 @@ macro_rules! uint_impl {
 
             fn overflowing_rem(self, other: Self) -> (Self, bool) {
                 (self.wrapping_rem(other), false)
+            }
+
+            fn saturating_add(self, other: Self) -> (Self, bool) {
+                let (r, overflow) = self.overflowing_add(other);
+                if overflow {
+                    (Self::MAX, overflow)
+                } else {
+                    (r, overflow)
+                }
+            }
+
+            fn saturating_add_s(self, other: Self) -> (Self, bool) {
+                let r = self.wrapping_add(other);
+                if !(self ^ other).is_negative() {
+                    if (r ^ self).is_negative() {
+                        let r = if self.is_negative() {
+                            Self::MIN_S
+                        } else {
+                            Self::MAX_S
+                        };
+                        return (r, true);
+                    }
+                }
+                (r, false)
+            }
+
+            fn saturating_sub(self, other: Self) -> (Self, bool) {
+                if self > other {
+                    (self.wrapping_sub(other), false)
+                } else {
+                    (Self::MIN, true)
+                }
+            }
+
+            fn saturating_sub_s(self, other: Self) -> (Self, bool) {
+                let r = self.wrapping_sub(other);
+                if (self ^ other).is_negative() {
+                    if (r ^ self).is_negative() {
+                        let r = if self.is_negative() {
+                            Self::MIN_S
+                        } else {
+                            Self::MAX_S
+                        };
+                        return (r, true);
+                    }
+                }
+                (r, false)
             }
 
             fn wrapping_add(self, other: Self) -> Self {
