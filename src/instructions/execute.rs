@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 use super::{
     super::{machine::Machine, Error},
     common, extract_opcode, instruction_length,
@@ -7,7 +9,7 @@ use super::{
 
 use crate::memory::Memory;
 use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
-pub use uintxx::{Element, U1024, U128, U16, U256, U32, U512, U64, U8};
+pub use uintxx::{Element, U1024, U128, U16, U2048, U256, U32, U512, U64, U8};
 
 type VVIteratorFunc =
     fn(lhs: &VRegister, rhs: &VRegister, result: &mut VRegister, num: usize) -> Result<(), Error>;
@@ -335,6 +337,214 @@ macro_rules! vi2_iterator_impl {
                 (VRegister::U8(a), VRegister::U8(ref mut r)) => {
                     for i in 0..num {
                         r[i] = $func_8(&a[i], imm);
+                    }
+                }
+                _ => return Err(Error::Unexpected),
+            }
+            Ok(())
+        }
+    };
+}
+
+type WVVIteratorFunc = fn(
+    lhs: &VRegister,
+    rhs: &VRegister,
+    vd: [&mut VRegister; 2],
+    num: usize,
+    elements_per_register: usize,
+) -> Result<(), Error>;
+
+// Widening operation: 2*SEW = SEW op SEW
+// Have a destination group with EEW=2*SEW and EMUL=2*LMUL
+fn loop_w_vv<Mac: Machine>(
+    inst: Instruction,
+    machine: &mut Mac,
+    func: WVVIteratorFunc,
+) -> Result<(), Error> {
+    let i = VVtype(inst);
+    let elements_per_register = (VLEN / machine.get_vsew()) as usize;
+    let vl = machine.get_vl() as usize;
+    let register_count = ((vl - 1) / elements_per_register) + 1;
+    for j in 0..register_count {
+        let vs1 = machine.get_vregister(i.vs1() + j);
+        let vs2 = machine.get_vregister(i.vs2() + j);
+        let mut vd1 = machine.get_vregister(i.vd() + j * 2);
+        let mut vd2 = machine.get_vregister(i.vd() + j * 2 + 1);
+
+        let num = if j == (register_count - 1) {
+            vl - j * elements_per_register
+        } else {
+            elements_per_register
+        };
+        func(&vs2, &vs1, [&mut vd1, &mut vd2], num, elements_per_register)?;
+        machine.set_vregister(i.vd() + j * 2, vd1);
+        if num > (elements_per_register / 2) {
+            machine.set_vregister(i.vd() + j * 2 + 1, vd2);
+        }
+    }
+    Ok(())
+}
+
+macro_rules! w_vv_iterator_impl {
+    ($func_1024:tt,
+    $func_512:tt,
+    $func_256:tt,
+    $func_128:tt,
+    $func_64:tt,
+    $func_32:tt,
+    $func_16:tt,
+    $func_8:tt) => {
+        pub fn vv_iterator_func(
+            vs2: &VRegister,
+            vs1: &VRegister,
+            vd: [&mut VRegister; 2],
+            num: usize,
+            elements_per_register: usize,
+        ) -> Result<(), Error> {
+            let half = elements_per_register / 2;
+            match (vs2, vs1, vd) {
+                (
+                    VRegister::U1024(a),
+                    VRegister::U1024(b),
+                    [VRegister::U1024(ref mut r), VRegister::U1024(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_1024(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_1024(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U512(a),
+                    VRegister::U512(b),
+                    [VRegister::U512(ref mut r), VRegister::U512(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_512(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_512(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U256(a),
+                    VRegister::U256(b),
+                    [VRegister::U256(ref mut r), VRegister::U256(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_256(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_256(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U128(a),
+                    VRegister::U128(b),
+                    [VRegister::U128(ref mut r), VRegister::U128(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_128(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_128(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U64(a),
+                    VRegister::U64(b),
+                    [VRegister::U64(ref mut r), VRegister::U64(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_64(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_64(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U32(a),
+                    VRegister::U32(b),
+                    [VRegister::U32(ref mut r), VRegister::U32(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_32(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_32(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U16(a),
+                    VRegister::U16(b),
+                    [VRegister::U16(ref mut r), VRegister::U16(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_16(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_16(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    VRegister::U8(a),
+                    VRegister::U8(b),
+                    [VRegister::U8(ref mut r), VRegister::U8(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_8(&a[i], &b[i]);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let (res1, res2) = $func_8(&a[i], &b[i]);
+                            r[2 * i] = res1;
+                            r[2 * i + 1] = res2;
+                        }
                     }
                 }
                 _ => return Err(Error::Unexpected),
@@ -2573,6 +2783,53 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
+        insts::OP_VWADDU_VV => {
+            w_vv_iterator_impl! {
+                {|a:&U1024, b: &U1024| {
+                    let c = U2048::from(*a) + U2048::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U512, b: &U512| {
+                    let c = U1024::from(*a) + U1024::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U256, b: &U256| {
+                    let c = U512::from(*a) + U512::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U128, b: &U128| {
+                    let c = U256::from(*a) + U256::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U64, b: &U64| {
+                    let c = u128::from(a.0) + u128::from(b.0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:&U32, b: &U32| {
+                    let c = u64::from(a.0) + u64::from(b.0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:&U16, b: &U16| {
+                    let c = u32::from(a.0) + u32::from(b.0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:&U8, b: &U8| {
+                    let c = u16::from(a.0) + u16::from(b.0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_vv(inst, machine, vv_iterator_func)?;
+        }
+        // insts::OP_VWADD_VV => {
+        // }
+        // insts::OP_VWSUBU_VV => {
+        // }
+        // insts::OP_VWSUB_VV => {
+        // }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);

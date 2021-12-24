@@ -164,6 +164,10 @@ pub trait Element:
     /// Function mul_full returns the 256-bit product of x and y: (lo, hi) = x * y
     /// with the product bits' upper half returned in hi and the lower half returned in lo.
     fn widening_mul(self, other: Self) -> (Self, Self);
+
+    /// Widen a signed integer to double-width forming. Return with 'hi' part.
+    /// The `hi` can be all zero(MIN) or all one(MAX), depending on the sign of `self`
+    fn widening_s(self) -> Self;
 }
 
 macro_rules! uint_wrap_impl {
@@ -548,6 +552,13 @@ macro_rules! uint_wrap_impl {
                 let hi = x1 * y1 + w2 + hi(w1);
                 let lo = self.0.wrapping_mul(other.0);
                 (Self(lo), Self(hi))
+            }
+            fn widening_s(self) -> Self {
+                if self.is_negative() {
+                    Self::MAX
+                } else {
+                    Self::MIN
+                }
             }
         }
 
@@ -1090,6 +1101,13 @@ macro_rules! uint_impl {
                 let lo = self.wrapping_mul(other);
                 (lo, hi)
             }
+            fn widening_s(self) -> Self {
+                if self.is_negative() {
+                    Self::MAX
+                } else {
+                    Self::MIN
+                }
+            }
         }
 
         impl $name {
@@ -1322,3 +1340,20 @@ uint_impl_from_i!(U1024, U512, i16);
 uint_impl_from_i!(U1024, U512, i32);
 uint_impl_from_i!(U1024, U512, i64);
 uint_impl_from_i!(U1024, U512, i128);
+
+uint_impl!(U2048, U1024);
+uint_impl_from_u!(U2048, U1024, bool);
+uint_impl_from_u!(U2048, U1024, u8);
+uint_impl_from_u!(U2048, U1024, u16);
+uint_impl_from_u!(U2048, U1024, u32);
+uint_impl_from_u!(U2048, U1024, u64);
+uint_impl_from_u!(U2048, U1024, u128);
+uint_impl_from_u!(U2048, U1024, U128);
+uint_impl_from_u!(U2048, U1024, U256);
+uint_impl_from_u!(U2048, U1024, U512);
+uint_impl_from_u!(U2048, U1024);
+uint_impl_from_i!(U2048, U1024, i8);
+uint_impl_from_i!(U2048, U1024, i16);
+uint_impl_from_i!(U2048, U1024, i32);
+uint_impl_from_i!(U2048, U1024, i64);
+uint_impl_from_i!(U2048, U1024, i128);
