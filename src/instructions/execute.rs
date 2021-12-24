@@ -2573,6 +2573,110 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
+        insts::OP_VAADD_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| a.average_add_s(*b)},
+                {|a: &U512, b: &U512| a.average_add_s(*b)},
+                {|a: &U256, b: &U256| a.average_add_s(*b)},
+                {|a: &U128, b: &U128| a.average_add_s(*b)},
+                {|a: &U64, b: &U64| a.average_add_s(*b)},
+                {|a: &U32, b: &U32| a.average_add_s(*b)},
+                {|a: &U16, b: &U16| a.average_add_s(*b)},
+                {|a: &U8, b: &U8| a.average_add_s(*b)}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VAADD_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| a.average_add_s(U1024::vx(rhs))},
+                {|a:&U512, rhs: u64| a.average_add_s(U512::vx(rhs))},
+                {|a:&U256, rhs: u64| a.average_add_s(U256::vx(rhs))},
+                {|a:&U128, rhs: u64| a.average_add_s(U128::vx(rhs))},
+                {|a:&U64, rhs: u64| a.average_add_s(U64::vx(rhs))},
+                {|a:&U32, rhs: u64| a.average_add_s(U32::vx(rhs))},
+                {|a:&U16, rhs: u64| a.average_add_s(U16::vx(rhs))},
+                {|a:&U8, rhs: u64| a.average_add_s(U8::vx(rhs))}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VAADDU_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| a.average_add(*b)},
+                {|a: &U512, b: &U512| a.average_add(*b)},
+                {|a: &U256, b: &U256| a.average_add(*b)},
+                {|a: &U128, b: &U128| a.average_add(*b)},
+                {|a: &U64, b: &U64| a.average_add(*b)},
+                {|a: &U32, b: &U32| a.average_add(*b)},
+                {|a: &U16, b: &U16| a.average_add(*b)},
+                {|a: &U8, b: &U8| a.average_add(*b)}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VAADDU_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| a.average_add(U1024::vx(rhs))},
+                {|a:&U512, rhs: u64| a.average_add(U512::vx(rhs))},
+                {|a:&U256, rhs: u64| a.average_add(U256::vx(rhs))},
+                {|a:&U128, rhs: u64| a.average_add(U128::vx(rhs))},
+                {|a:&U64, rhs: u64| a.average_add(U64::vx(rhs))},
+                {|a:&U32, rhs: u64| a.average_add(U32::vx(rhs))},
+                {|a:&U16, rhs: u64| a.average_add(U16::vx(rhs))},
+                {|a:&U8, rhs: u64| a.average_add(U8::vx(rhs))}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VASUB_VV => {
+            vv_iterator_impl! {
+                {|a: &U1024, b: &U1024| a.average_sub_s(*b)},
+                {|a: &U512, b: &U512| a.average_sub_s(*b)},
+                {|a: &U256, b: &U256| a.average_sub_s(*b)},
+                {|a: &U128, b: &U128| a.average_sub_s(*b)},
+                {|a: &U64, b: &U64| a.average_sub_s(*b)},
+                {|a: &U32, b: &U32| a.average_sub_s(*b)},
+                {|a: &U16, b: &U16| a.average_sub_s(*b)},
+                {|a: &U8, b: &U8| a.average_sub_s(*b)}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VASUB_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| a.average_sub_s(U1024::vx(rhs))},
+                {|a:&U512, rhs: u64| a.average_sub_s(U512::vx(rhs))},
+                {|a:&U256, rhs: u64| a.average_sub_s(U256::vx(rhs))},
+                {|a:&U128, rhs: u64| a.average_sub_s(U128::vx(rhs))},
+                {|a:&U64, rhs: u64| a.average_sub_s(U64::vx(rhs))},
+                {|a:&U32, rhs: u64| a.average_sub_s(U32::vx(rhs))},
+                {|a:&U16, rhs: u64| a.average_sub_s(U16::vx(rhs))},
+                {|a:&U8, rhs: u64| a.average_sub_s(U8::vx(rhs))}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VASUBU_VV => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| a.average_sub(U1024::vx(rhs))},
+                {|a:&U512, rhs: u64| a.average_sub(U512::vx(rhs))},
+                {|a:&U256, rhs: u64| a.average_sub(U256::vx(rhs))},
+                {|a:&U128, rhs: u64| a.average_sub(U128::vx(rhs))},
+                {|a:&U64, rhs: u64| a.average_sub(U64::vx(rhs))},
+                {|a:&U32, rhs: u64| a.average_sub(U32::vx(rhs))},
+                {|a:&U16, rhs: u64| a.average_sub(U16::vx(rhs))},
+                {|a:&U8, rhs: u64| a.average_sub(U8::vx(rhs))}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VASUBU_VX => {
+            vx_iterator_impl! {
+                {|a:&U1024, rhs: u64| a.average_sub(U1024::vx(rhs))},
+                {|a:&U512, rhs: u64| a.average_sub(U512::vx(rhs))},
+                {|a:&U256, rhs: u64| a.average_sub(U256::vx(rhs))},
+                {|a:&U128, rhs: u64| a.average_sub(U128::vx(rhs))},
+                {|a:&U64, rhs: u64| a.average_sub(U64::vx(rhs))},
+                {|a:&U32, rhs: u64| a.average_sub(U32::vx(rhs))},
+                {|a:&U16, rhs: u64| a.average_sub(U16::vx(rhs))},
+                {|a:&U8, rhs: u64| a.average_sub(U8::vx(rhs))}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);
