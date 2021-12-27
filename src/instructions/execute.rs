@@ -2716,6 +2716,84 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_vi(inst, machine, vi_iterator_func)?;
         }
+        insts::OP_VZEXT_VF2 => {
+            vv_iterator_impl! {
+                {|a: &U1024, _: &U1024| *a << 512 >> 512},
+                {|a: &U512, _: &U512| *a << 256 >> 256},
+                {|a: &U256, _: &U256| *a << 128 >> 128},
+                {|a: &U128, _: &U128| *a << 64 >> 64},
+                {|a: &U64, _: &U64| *a << 32 >> 32},
+                {|a: &U32, _: &U32| *a << 16 >> 16},
+                {|a: &U16, _: &U16| *a << 8 >> 8},
+                {|a: &U8, _: &U8| *a << 4 >> 4}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VZEXT_VF4 => {
+            vv_iterator_impl! {
+                {|a: &U1024, _: &U1024| *a << 768 >> 768},
+                {|a: &U512, _: &U512| *a << 384 >> 384},
+                {|a: &U256, _: &U256| *a << 192 >> 192},
+                {|a: &U128, _: &U128| *a << 96 >> 96},
+                {|a: &U64, _: &U64| *a << 48 >> 48},
+                {|a: &U32, _: &U32| *a << 24 >> 24},
+                {|a: &U16, _: &U16| *a << 12 >> 12},
+                {|a: &U8, _: &U8| *a << 6 >> 6}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VZEXT_VF8 => {
+            vv_iterator_impl! {
+                {|a: &U1024, _: &U1024| *a << 896 >> 896},
+                {|a: &U512, _: &U512| *a << 448 >> 448},
+                {|a: &U256, _: &U256| *a << 224 >> 224},
+                {|a: &U128, _: &U128| *a << 112 >> 112},
+                {|a: &U64, _: &U64| *a << 56 >> 56},
+                {|a: &U32, _: &U32| *a << 28 >> 28},
+                {|a: &U16, _: &U16| *a << 14 >> 14},
+                {|a: &U8, _: &U8| *a << 7 >> 7}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSEXT_VF2 => {
+            vv_iterator_impl! {
+                {|a: &U1024, _: &U1024| (*a << 512).wrapping_sra(512)},
+                {|a: &U512, _: &U512| (*a << 256).wrapping_sra(256)},
+                {|a: &U256, _: &U256| (*a << 128).wrapping_sra(128)},
+                {|a: &U128, _: &U128| (*a << 64).wrapping_sra(64)},
+                {|a: &U64, _: &U64| (*a << 32).wrapping_sra(32)},
+                {|a: &U32, _: &U32| (*a << 16).wrapping_sra(16)},
+                {|a: &U16, _: &U16| (*a << 8).wrapping_sra(8)},
+                {|a: &U8, _: &U8| (*a << 4).wrapping_sra(4)}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSEXT_VF4 => {
+            vv_iterator_impl! {
+                {|a: &U1024, _: &U1024| (*a << 768).wrapping_sra(768)},
+                {|a: &U512, _: &U512| (*a << 384).wrapping_sra(384)},
+                {|a: &U256, _: &U256| (*a << 192).wrapping_sra(192)},
+                {|a: &U128, _: &U128| (*a << 96).wrapping_sra(96)},
+                {|a: &U64, _: &U64| (*a << 48).wrapping_sra(48)},
+                {|a: &U32, _: &U32| (*a << 24).wrapping_sra(24)},
+                {|a: &U16, _: &U16| (*a << 12).wrapping_sra(12)},
+                {|a: &U8, _: &U8| (*a << 6).wrapping_sra(6)}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VSEXT_VF8 => {
+            vv_iterator_impl! {
+                {|a: &U1024, _: &U1024| (*a << 896).wrapping_sra(896)},
+                {|a: &U512, _: &U512| (*a << 448).wrapping_sra(448)},
+                {|a: &U256, _: &U256| (*a << 224).wrapping_sra(224)},
+                {|a: &U128, _: &U128| (*a << 112).wrapping_sra(112)},
+                {|a: &U64, _: &U64| (*a << 56).wrapping_sra(56)},
+                {|a: &U32, _: &U32| (*a << 28).wrapping_sra(28)},
+                {|a: &U16, _: &U16| (*a << 14).wrapping_sra(14)},
+                {|a: &U8, _: &U8| (*a << 7).wrapping_sra(7)}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);
