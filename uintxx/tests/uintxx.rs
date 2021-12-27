@@ -161,6 +161,47 @@ fn test_rem_s() {
 }
 
 #[test]
+fn test_average_add() {
+    let case_list = [
+        [
+            U256 {
+                lo: U128(0xffffffffffffffffffffffffffffffff),
+                hi: U128(0xffffffffffffffffffffffffffffffff),
+            },
+            U256 {
+                lo: U128(0xffffffffffffffffffffffffffffffff),
+                hi: U128(0xffffffffffffffffffffffffffffffff),
+            },
+            U256 {
+                lo: U128(0xffffffffffffffffffffffffffffffff),
+                hi: U128(0xffffffffffffffffffffffffffffffff),
+            },
+        ],
+        [
+            U256 {
+                lo: U128(0x00000000000000000000000000000004),
+                hi: U128(0x00000000000000000000000000000000),
+            },
+            U256 {
+                lo: U128(0x00000000000000000000000000000006),
+                hi: U128(0x00000000000000000000000000000000),
+            },
+            U256 {
+                lo: U128(0x00000000000000000000000000000005),
+                hi: U128(0x00000000000000000000000000000000),
+            },
+        ],
+    ];
+    for case in &case_list {
+        let lhs = case[0];
+        let rhs = case[1];
+        let e = case[2];
+        let r = lhs.average_add(rhs);
+        assert_eq!(r, e);
+    }
+}
+
+#[test]
 fn test_bug_fix_0() {
     let a = U256 {
         lo: U128(0x00000000000022330000000000001122),
