@@ -2677,6 +2677,45 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_vx(inst, machine, vx_iterator_func)?;
         }
+        insts::OP_VMV_VV => {
+            vv_iterator_impl! {
+                {|_: &U1024, b: &U1024| *b},
+                {|_: &U512, b: &U512| *b},
+                {|_: &U256, b: &U256| *b},
+                {|_: &U128, b: &U128| *b},
+                {|_: &U64, b: &U64| *b},
+                {|_: &U32, b: &U32| *b},
+                {|_: &U16, b: &U16| *b},
+                {|_: &U8, b: &U8| *b}
+            };
+            loop_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VMV_VX => {
+            vx_iterator_impl! {
+                {|_:&U1024, rhs: u64| U1024::vx(rhs)},
+                {|_:&U512, rhs: u64| U512::vx(rhs)},
+                {|_:&U256, rhs: u64| U256::vx(rhs)},
+                {|_:&U128, rhs: u64| U128::vx(rhs)},
+                {|_:&U64, rhs: u64| U64::vx(rhs)},
+                {|_:&U32, rhs: u64| U32::vx(rhs)},
+                {|_:&U16, rhs: u64| U16::vx(rhs)},
+                {|_:&U8, rhs: u64| U8::vx(rhs)}
+            };
+            loop_vx(inst, machine, vx_iterator_func)?;
+        }
+        insts::OP_VMV_VI => {
+            vi_iterator_impl! {
+                {|_:&U1024, imm: i32| U1024::vi(imm)},
+                {|_:&U512, imm: i32| U512::vi(imm)},
+                {|_:&U256, imm: i32| U256::vi(imm)},
+                {|_:&U128, imm: i32| U128::vi(imm)},
+                {|_:&U64, imm: i32| U64::vi(imm)},
+                {|_:&U32, imm: i32| U32::vi(imm)},
+                {|_:&U16, imm: i32| U16::vi(imm)},
+                {|_:&U8, imm: i32| U8::vi(imm)}
+            };
+            loop_vi(inst, machine, vi_iterator_func)?;
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let vs2 = machine.get_vregister(i.rs2() as usize);

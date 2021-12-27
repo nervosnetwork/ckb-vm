@@ -303,9 +303,9 @@ pub const OP_VWMULSU_VV: InstructionOpcode = 0x87f0;
 pub const OP_VWMULSU_VX: InstructionOpcode = 0x88f0;
 pub const OP_VWMUL_VV: InstructionOpcode = 0x89f0;
 pub const OP_VWMUL_VX: InstructionOpcode = 0x8af0;
-pub const OP_VMV_V_V: InstructionOpcode = 0x8bf0;
-pub const OP_VMV_V_X: InstructionOpcode = 0x8cf0;
-pub const OP_VMV_V_I: InstructionOpcode = 0x8df0;
+pub const OP_VMV_VV: InstructionOpcode = 0x8bf0;
+pub const OP_VMV_VX: InstructionOpcode = 0x8cf0;
+pub const OP_VMV_VI: InstructionOpcode = 0x8df0;
 pub const OP_VSADDU_VV: InstructionOpcode = 0x8ef0;
 pub const OP_VSADDU_VX: InstructionOpcode = 0x8ff0;
 pub const OP_VSADDU_VI: InstructionOpcode = 0x90f0;
@@ -602,9 +602,9 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL2: [&str;
     "VWMULSU_VX",
     "VWMUL_VV",
     "VWMUL_VX",
-    "VMV_V_V",
-    "VMV_V_X",
-    "VMV_V_I",
+    "VMV_VV",
+    "VMV_VX",
+    "VMV_VI",
     "VSADDU_VV",
     "VSADDU_VX",
     "VSADDU_VI",
