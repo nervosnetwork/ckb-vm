@@ -1658,17 +1658,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 8;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U8(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    let elem = data[i % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1677,17 +1679,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 16;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U16(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1696,17 +1700,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 32;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U32(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    let elem = data[i % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1715,17 +1721,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 64;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U64(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1734,17 +1742,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 128;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U128(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    let elem = data[i % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1753,17 +1763,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 256;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U256(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    let elem = data[i % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1772,17 +1784,19 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 512;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U512(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
                 } else {
-                    return Err(Error::Unexpected);
+                    unreachable!()
                 }
             }
         }
@@ -1791,12 +1805,14 @@ pub fn execute_instruction<Mac: Machine>(
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
             let bits: usize = 1024;
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / (VLEN as usize / bits);
+            let vl = machine.get_vl() as usize;
+            for i in 0..vl {
+                let rd = rd + i / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(bits);
                 if let VRegister::U1024(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
+                    let elem = data[i % (VLEN as usize / bits)];
                     machine
                         .memory_mut()
                         .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
@@ -2824,12 +2840,146 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_w_vv(inst, machine, vv_iterator_func)?;
         }
-        // insts::OP_VWADD_VV => {
-        // }
-        // insts::OP_VWSUBU_VV => {
-        // }
-        // insts::OP_VWSUB_VV => {
-        // }
+        insts::OP_VWADD_VV => {
+            w_vv_iterator_impl! {
+                {|a:&U1024, b: &U1024| {
+                    let c = a.widening_s() + b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U512, b: &U512| {
+                    let c = a.widening_s() + b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U256, b: &U256| {
+                    let c = a.widening_s() + b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U128, b: &U128| {
+                    let c = a.widening_s() + b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U64, b: &U64| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_add(b2);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c.0) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:&U32, b: &U32| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_add(b2);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:&U16, b: &U16| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_add(b2);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:&U8, b: &U8| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_add(b2);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_vv(inst, machine, vv_iterator_func)?;
+        }
+
+        insts::OP_VWSUBU_VV => {
+            w_vv_iterator_impl! {
+                {|a:&U1024, b: &U1024| {
+                    let c = U2048::from(*a) - U2048::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U512, b: &U512| {
+                    let c = U1024::from(*a) - U1024::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U256, b: &U256| {
+                    let c = U512::from(*a) - U512::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U128, b: &U128| {
+                    let c = U256::from(*a) - U256::from(*b);
+                    (c.lo, c.hi)
+                }},
+                {|a:&U64, b: &U64| {
+                    let c = u128::from(a.0) - u128::from(b.0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:&U32, b: &U32| {
+                    let c = u64::from(a.0) - u64::from(b.0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:&U16, b: &U16| {
+                    let c = u32::from(a.0) - u32::from(b.0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:&U8, b: &U8| {
+                    let c = u16::from(a.0) - u16::from(b.0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VWSUB_VV => {
+            w_vv_iterator_impl! {
+                {|a:&U1024, b: &U1024| {
+                    let c = a.widening_s() - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U512, b: &U512| {
+                    let c = a.widening_s() - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U256, b: &U256| {
+                    let c = a.widening_s() - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U128, b: &U128| {
+                    let c = a.widening_s() - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:&U64, b: &U64| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_sub(b2);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c.0) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:&U32, b: &U32| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_sub(b2);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:&U16, b: &U16| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_sub(b2);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:&U8, b: &U8| {
+                    let a2 = a.widening_s();
+                    let b2 = b.widening_s();
+                    let c = a2.wrapping_sub(b2);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_vv(inst, machine, vv_iterator_func)?;
+        }
         insts::OP_VAADD_VV => {
             vv_iterator_impl! {
                 {|a: &U1024, b: &U1024| a.average_add_s(*b)},

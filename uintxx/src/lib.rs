@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 pub trait Element:
     Copy
     + Clone
@@ -176,10 +178,6 @@ pub trait Element:
     /// Function mul_full returns the 256-bit product of x and y: (lo, hi) = x * y
     /// with the product bits' upper half returned in hi and the lower half returned in lo.
     fn widening_mul(self, other: Self) -> (Self, Self);
-
-    /// Widen a signed integer to double-width forming. Return with 'hi' part.
-    /// The `hi` can be all zero(MIN) or all one(MAX), depending on the sign of `self`
-    fn widening_s(self) -> Self;
 }
 
 macro_rules! uint_wrap_impl {
@@ -580,13 +578,6 @@ macro_rules! uint_wrap_impl {
                 let hi = x1 * y1 + w2 + hi(w1);
                 let lo = self.0.wrapping_mul(other.0);
                 (Self(lo), Self(hi))
-            }
-            fn widening_s(self) -> Self {
-                if self.is_negative() {
-                    Self::MAX
-                } else {
-                    Self::MIN
-                }
             }
         }
 
@@ -1145,13 +1136,6 @@ macro_rules! uint_impl {
                 let lo = self.wrapping_mul(other);
                 (lo, hi)
             }
-            fn widening_s(self) -> Self {
-                if self.is_negative() {
-                    Self::MAX
-                } else {
-                    Self::MIN
-                }
-            }
         }
 
         impl $name {
@@ -1305,6 +1289,124 @@ macro_rules! uint_impl {
         }
     };
 }
+
+impl U1024 {
+    pub fn widening_s(&self) -> U2048 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U2048{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U2048 {
+        U2048{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U512 {
+    pub fn widening_s(&self) -> U1024 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U1024{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U1024 {
+        U1024{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U256 {
+    pub fn widening_s(&self) -> U512 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U512{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U512 {
+        U512{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U128 {
+    pub fn widening_s(&self) -> U256 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U256{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U256 {
+        U256{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U64 {
+    pub fn widening_s(&self) -> U128 {
+        let hi = if self.is_negative() {
+            u64::MAX
+        } else {
+            u64::MIN
+        };
+        let res = unsafe { transmute::<[u64; 2], u128>([self.0, hi]) };
+        U128(res)
+    }
+    pub fn widening_u(&self) -> U128 {
+        U128::from(self.0)
+    }
+}
+
+impl U32 {
+    pub fn widening_s(&self) -> U64 {
+        let hi = if self.is_negative() {
+            u32::MAX
+        } else {
+            u32::MIN
+        };
+        let res = unsafe { transmute::<[u32; 2], u64>([self.0, hi]) };
+        U64(res)
+    }
+    pub fn widening_u(&self) -> U64 {
+        U64::from(self.0)
+    }
+}
+
+
+impl U16 {
+    pub fn widening_s(&self) -> U32 {
+        let hi = if self.is_negative() {
+            u16::MAX
+        } else {
+            u16::MIN
+        };
+        let res = unsafe { transmute::<[u16; 2], u32>([self.0, hi]) };
+        U32(res)
+    }
+    pub fn widening_u(&self) -> U32 {
+        U32::from(self.0)
+    }
+}
+
+impl U8 {
+    pub fn widening_s(&self) -> U16 {
+        let hi = if self.is_negative() {
+            u8::MAX
+        } else {
+            u8::MIN
+        };
+        let res = unsafe { transmute::<[u8; 2], u16>([self.0, hi]) };
+        U16(res)
+    }
+    pub fn widening_u(&self) -> U16 {
+        U16::from(self.0)
+    }
+}
+
 
 macro_rules! uint_impl_from_u {
     ($name:ident, $half:ty) => {
