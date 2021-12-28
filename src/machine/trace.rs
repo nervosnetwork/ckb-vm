@@ -71,15 +71,15 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.set_register(idx, value)
     }
 
-    fn get_vl(&self) -> u32 {
+    fn get_vl(&self) -> u64 {
         self.machine.get_vl()
     }
 
-    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
-        self.machine.set_vl(rd, rs1, reqvl, new_type)
+    fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
+        self.machine.set_vl(rd, rs1, req_vl, new_type)
     }
 
-    fn get_vsew(&self) -> u32 {
+    fn get_vsew(&self) -> u64 {
         self.machine.get_vsew()
     }
 

@@ -54,12 +54,15 @@ pub struct AsmCoreMachine {
     pub traces: [Trace; TRACE_SIZE],
 
     pub vregisters: [[u8; 256]; 32],
-    pub vl: u32,
-    pub vtype_vill: bool,
-    pub vtype_vma: bool,
-    pub vtype_vta: bool,
-    pub vtype_lmul: i32,
-    pub vtype_sew: u32,
+    pub vlmax: u64,
+    pub vl: u64,
+    pub vtype: u64,
+    pub vill: bool,
+    pub vma: bool,
+    pub vta: bool,
+    pub vlmul: i32,
+    pub vsew: u64,
+    pub vstart: u64,
 }
 
 impl AsmCoreMachine {
