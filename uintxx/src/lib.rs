@@ -1359,6 +1359,42 @@ impl U64 {
     pub fn widening_u(&self) -> U128 {
         U128::from(self.0)
     }
+    pub fn widening_s_256(&self) -> U256 {
+        self.widening_s().widening_s()
+    }
+    pub fn widening_u_256(&self) -> U256 {
+        self.widening_u().widening_u()
+    }
+    pub fn widening_s_512(&self) -> U512 {
+        self.widening_s().widening_s().widening_s()
+    }
+    pub fn widening_u_512(&self) -> U512 {
+        self.widening_u().widening_u().widening_u()
+    }
+    pub fn widening_s_1024(&self) -> U1024 {
+        self.widening_s().widening_s().widening_s().widening_s()
+    }
+    pub fn widening_u_1024(&self) -> U1024 {
+        self.widening_u().widening_u().widening_u().widening_u()
+    }
+    pub fn widening_s_2048(&self) -> U2048 {
+        self.widening_s().widening_s().widening_s().widening_s().widening_s()
+    }
+    pub fn widening_u_2048(&self) -> U2048 {
+        self.widening_u().widening_u().widening_u().widening_u().widening_u()
+    }
+    pub fn narrowing_u_32(&self) -> U32 {
+        let res = unsafe { transmute::<u64, [u32; 2]>(self.0) };
+        U32::from(res[0])
+    }
+    pub fn narrowing_u_16(&self) -> U16 {
+        let res = unsafe { transmute::<u64, [u16; 4]>(self.0) };
+        U16::from(res[0])
+    }
+    pub fn narrowing_u_8(&self) -> U8 {
+        let res = unsafe { transmute::<u64, [u8; 8]>(self.0) };
+        U8::from(res[0])
+    }
 }
 
 impl U32 {
