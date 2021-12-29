@@ -14,12 +14,16 @@ pub enum Error {
     CyclesExceeded,
     #[display(fmt = "cycles error: overflow")]
     CyclesOverflow,
+    #[display(fmt = "elf error: bits")]
+    ElfBits,
     #[display(fmt = "elf error: {}", "_0")]
     ElfParseError(String),
     #[display(fmt = "elf error: segments is unreadable")]
     ElfSegmentUnreadable,
     #[display(fmt = "elf error: segments is writable and executable")]
     ElfSegmentWritableAndExecutable,
+    #[display(fmt = "invalid syscall {}", "_0")]
+    InvalidEcall(u64),
     #[display(
         fmt = "invalid instruction pc=0x{:x} instruction=0x{:x}",
         "pc",
@@ -33,10 +37,6 @@ pub enum Error {
     Unaligned,
     #[display(fmt = "out of bound access")]
     OutOfBound,
-    #[display(fmt = "invalid syscall {}", "_0")]
-    InvalidEcall(u64),
-    #[display(fmt = "invalid elf")]
-    InvalidElfBits,
     #[display(fmt = "invalid operand {}", "_0")]
     InvalidOp(u16),
     #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission

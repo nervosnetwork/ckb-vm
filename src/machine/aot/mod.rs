@@ -107,10 +107,10 @@ impl LabelGatheringMachine {
             use goblin_v023::elf::{Header, SectionHeader};
 
             let header = program.pread::<Header>(0)?;
-            let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-            let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+            let container = header.container().map_err(|_e| Error::ElfBits)?;
+            let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
             if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                return Err(Error::InvalidElfBits);
+                return Err(Error::ElfBits);
             }
             let ctx = Ctx::new(container, endianness);
             SectionHeader::parse(
@@ -127,10 +127,10 @@ impl LabelGatheringMachine {
             use goblin_v040::elf::{Header, SectionHeader};
 
             let header = program.pread::<Header>(0)?;
-            let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-            let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+            let container = header.container().map_err(|_e| Error::ElfBits)?;
+            let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
             if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                return Err(Error::InvalidElfBits);
+                return Err(Error::ElfBits);
             }
             let ctx = Ctx::new(container, endianness);
             SectionHeader::parse(
