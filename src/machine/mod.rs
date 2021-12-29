@@ -106,7 +106,7 @@ pub trait SupportMachine: CoreMachine {
             if version < VERSION1 {
                 use goblin_v023::container::Ctx;
                 use goblin_v023::elf::{program_header::ProgramHeader, Header};
-                let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+                let header = program.pread::<Header>(0)?;
                 let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
                 let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
                 if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
@@ -118,8 +118,7 @@ pub trait SupportMachine: CoreMachine {
                     header.e_phoff as usize,
                     header.e_phnum as usize,
                     ctx,
-                )
-                .map_err(|_e| Error::ParseError)?
+                )?
                 .iter()
                 .map(elf_adaptor::ProgramHeader::from_v0)
                 .collect();
@@ -127,7 +126,7 @@ pub trait SupportMachine: CoreMachine {
             } else {
                 use goblin_v040::container::Ctx;
                 use goblin_v040::elf::{program_header::ProgramHeader, Header};
-                let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
+                let header = program.pread::<Header>(0)?;
                 let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
                 let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
                 if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
@@ -139,8 +138,7 @@ pub trait SupportMachine: CoreMachine {
                     header.e_phoff as usize,
                     header.e_phnum as usize,
                     ctx,
-                )
-                .map_err(|_e| Error::ParseError)?
+                )?
                 .iter()
                 .map(elf_adaptor::ProgramHeader::from_v1)
                 .collect();

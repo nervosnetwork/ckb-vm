@@ -299,7 +299,7 @@ pub fn test_aot_load_malformed_elf_crash_64() {
         .unwrap()
         .into();
     let result = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0);
-    assert_eq!(result.err(), Some(Error::ParseError));
+    assert!(matches!(result.err(), Some(Error::ElfParseError(_))));
 }
 
 #[test]

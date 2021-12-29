@@ -1,6 +1,3 @@
-use std::error::Error as StdError;
-use std::io::{Error as IOError, ErrorKind};
-
 #[derive(Debug, PartialEq, Clone, Eq, Display)]
 pub enum Error {
     #[display(fmt = "aot error: dynasm ret {}", "_0")]
@@ -11,11 +8,13 @@ pub enum Error {
     AotLimitReachedMaximumLabels,
     #[display(fmt = "aot error: limit reached maximum sections")]
     AotLimitReachedMaximumSections,
-    #[display(fmt = "asm error {}", "_0")]
+    #[display(fmt = "asm error: {}", "_0")]
     Asm(u8),
+    #[display(fmt = "elf error: {}", "_0")]
+    ElfParseError(String),
+    #[display(fmt = "I/O error: {:?}", "_0")]
+    IO(std::io::ErrorKind),
 
-    #[display(fmt = "parse error")]
-    ParseError,
     #[display(fmt = "unaligned page access")]
     Unaligned,
     #[display(fmt = "out of bound access")]
@@ -36,8 +35,6 @@ pub enum Error {
     InvalidElfBits,
     #[display(fmt = "invalid operand {}", "_0")]
     InvalidOp(u16),
-    #[display(fmt = "I/O error: {:?}", "_0")]
-    IO(ErrorKind),
     #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission
     InvalidPermission,
     #[display(fmt = "invalid version")]
@@ -52,10 +49,22 @@ pub enum Error {
     External(String),
 }
 
-impl StdError for Error {}
+impl std::error::Error for Error {}
 
-impl From<IOError> for Error {
-    fn from(error: IOError) -> Self {
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
         Error::IO(error.kind())
+    }
+}
+
+impl From<goblin_v023::error::Error> for Error {
+    fn from(error: goblin_v023::error::Error) -> Self {
+        Error::ElfParseError(error.to_string())
+    }
+}
+
+impl From<goblin_v040::error::Error> for Error {
+    fn from(error: goblin_v040::error::Error) -> Self {
+        Error::ElfParseError(error.to_string())
     }
 }
