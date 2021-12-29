@@ -3,6 +3,17 @@ use std::io::{Error as IOError, ErrorKind};
 
 #[derive(Debug, PartialEq, Clone, Eq, Display)]
 pub enum Error {
+    #[display(fmt = "aot error: dynasm ret {}", "_0")]
+    AotDynasm(i32),
+    #[display(fmt = "aot error: limit reached maximum dummy sections")]
+    AotLimitReachedMaximumDummySections,
+    #[display(fmt = "aot error: limit reached maximum labels")]
+    AotLimitReachedMaximumLabels,
+    #[display(fmt = "aot error: limit reached maximum sections")]
+    AotLimitReachedMaximumSections,
+    #[display(fmt = "asm error {}", "_0")]
+    Asm(u8),
+
     #[display(fmt = "parse error")]
     ParseError,
     #[display(fmt = "unaligned page access")]
@@ -27,12 +38,6 @@ pub enum Error {
     InvalidOp(u16),
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(ErrorKind),
-    #[display(fmt = "dynasm error {}", "_0")]
-    Dynasm(i32),
-    #[display(fmt = "assembly error {}", "_0")]
-    Asm(u8),
-    #[display(fmt = "limit reached")] // FIXME: Distinguish which limit
-    LimitReached,
     #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission
     InvalidPermission,
     #[display(fmt = "invalid version")]

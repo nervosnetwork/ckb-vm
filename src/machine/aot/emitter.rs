@@ -142,7 +142,7 @@ fn check_aot_result(result: c_int) -> Result<(), Error> {
     if result == 0 {
         Ok(())
     } else {
-        Err(Error::Dynasm(result))
+        Err(Error::AotDynasm(result))
     }
 }
 
@@ -198,7 +198,7 @@ impl Emitter {
     pub fn new(labels: usize, version: u32) -> Result<Emitter, Error> {
         let aot = unsafe { aot_new(labels as u32, version) };
         if aot.is_null() {
-            Err(Error::Dynasm(-1))
+            Err(Error::AotDynasm(-1))
         } else {
             let emitter = Emitter {
                 aot,
@@ -212,7 +212,7 @@ impl Emitter {
         let mut buffer_size: usize = 0;
         let result = unsafe { aot_link(self.aot, &mut buffer_size) };
         if result != 0 {
-            return Err(Error::Dynasm(result));
+            return Err(Error::AotDynasm(result));
         }
         Ok(buffer_size)
     }
@@ -220,7 +220,7 @@ impl Emitter {
     pub fn encode(&mut self, buffer: &mut [u8]) -> Result<(), Error> {
         let result = unsafe { aot_encode(self.aot, buffer.as_mut_ptr() as *mut c_void) };
         if result != 0 {
-            return Err(Error::Dynasm(result));
+            return Err(Error::AotDynasm(result));
         }
         Ok(())
     }
@@ -229,7 +229,7 @@ impl Emitter {
         let mut offset = 0;
         let result = unsafe { aot_getpclabel(self.aot, label, &mut offset as *mut u32) };
         if result != 0 {
-            return Err(Error::Dynasm(result));
+            return Err(Error::AotDynasm(result));
         }
         Ok(offset)
     }
@@ -237,7 +237,7 @@ impl Emitter {
     pub fn emit_label(&mut self, label: u32) -> Result<(), Error> {
         let result = unsafe { aot_label(self.aot, label) };
         if result != 0 {
-            return Err(Error::Dynasm(result));
+            return Err(Error::AotDynasm(result));
         }
         Ok(())
     }
@@ -245,7 +245,7 @@ impl Emitter {
     pub fn emit_add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
         let result = unsafe { aot_add_cycles(self.aot, cycles) };
         if result != 0 {
-            return Err(Error::Dynasm(result));
+            return Err(Error::AotDynasm(result));
         }
         Ok(())
     }

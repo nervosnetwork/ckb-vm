@@ -146,7 +146,7 @@ impl LabelGatheringMachine {
             .collect()
         };
         if section_headers.len() > MAXIMUM_SECTIONS {
-            return Err(Error::LimitReached);
+            return Err(Error::AotLimitReachedMaximumSections);
         }
         let mut sections: Vec<(u64, u64)> = section_headers
             .iter()
@@ -222,7 +222,7 @@ impl LabelGatheringMachine {
                             }
                         }
                         if self.labels.len() > MAXIMUM_LABELS {
-                            return Err(Error::LimitReached);
+                            return Err(Error::AotLimitReachedMaximumLabels);
                         }
                         self.pc = Value::from_u64(next_pc);
                     }
@@ -260,7 +260,7 @@ impl LabelGatheringMachine {
                         // sections won't overlap with each other as well.
                         self.dummy_sections.insert(pc, dummy_end);
                         if self.dummy_sections.len() > MAXIMUM_DUMMY_SECTIONS {
-                            return Err(Error::LimitReached);
+                            return Err(Error::AotLimitReachedMaximumDummySections);
                         }
                         self.pc = Value::from_u64(dummy_end);
                     }
