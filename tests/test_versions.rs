@@ -387,7 +387,7 @@ pub fn test_rust_version0_unaligned64() {
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -409,7 +409,7 @@ pub fn test_asm_version0_unaligned64() {
     let mut machine = AsmMachine::new(core, None);
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -433,7 +433,7 @@ pub fn test_aot_version0_unaligned64() {
     let mut machine = AsmMachine::new(core, Some(&code));
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]

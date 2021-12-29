@@ -104,7 +104,7 @@ fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
 fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<(), Error> {
     let page_flag = memory.fetch_flag(page)?;
     if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
-        return Err(Error::InvalidPermission);
+        return Err(Error::MemWriteOnExecutablePage);
     }
     Ok(())
 }
@@ -222,7 +222,7 @@ impl Memory for Box<AsmCoreMachine> {
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE as u64;
             if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
-                return Err(Error::InvalidPermission);
+                return Err(Error::MemWriteOnFreezedPage);
             }
             current_addr += RISCV_PAGESIZE as u64;
         }
@@ -528,7 +528,7 @@ impl<'a> AsmMachine<'a> {
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
                 RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
                 RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
-                RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
+                RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
@@ -575,7 +575,7 @@ impl<'a> AsmMachine<'a> {
             RET_EBREAK => self.machine.ebreak()?,
             RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
             RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
-            RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
+            RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
             RET_SLOWPATH => {
                 let pc = *self.machine.pc() - 4;
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;

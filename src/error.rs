@@ -42,6 +42,10 @@ pub enum Error {
     IO(std::io::ErrorKind),
     #[display(fmt = "memory error: unaligned page access")]
     MemPageUnalignedAccess,
+    #[display(fmt = "memory error: write on executable page")]
+    MemWriteOnExecutablePage,
+    #[display(fmt = "memory error: write on freezed page")]
+    MemWriteOnFreezedPage,
     #[display(fmt = "unexpected error")]
     Unexpected,
     #[display(fmt = "unimplemented")]
@@ -49,8 +53,6 @@ pub enum Error {
 
     #[display(fmt = "out of bound access")]
     OutOfBound,
-    #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission
-    InvalidPermission,
 }
 
 impl std::error::Error for Error {}

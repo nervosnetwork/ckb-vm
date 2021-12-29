@@ -111,7 +111,7 @@ pub fn check_permission<M: Memory>(
     for page in page_indices.0..=page_indices.1 {
         let page_flag = memory.fetch_flag(page)?;
         if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
-            return Err(Error::InvalidPermission);
+            return Err(Error::MemWriteOnExecutablePage);
         }
     }
     Ok(())

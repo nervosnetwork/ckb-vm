@@ -48,7 +48,7 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
             let page = page_addr / RISCV_PAGESIZE as u64;
             if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
-                return Err(Error::InvalidPermission);
+                return Err(Error::MemWriteOnExecutablePage);
             }
             self.set_flag(page, flags)?;
         }
