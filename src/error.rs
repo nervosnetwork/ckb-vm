@@ -22,6 +22,10 @@ pub enum Error {
     ElfSegmentUnreadable,
     #[display(fmt = "elf error: segments is writable and executable")]
     ElfSegmentWritableAndExecutable,
+    // Unknown error type is for the debugging tool of CKB-VM, it should not be
+    // used in this project.
+    #[display(fmt = "external error: {}", "_0")]
+    External(String),
     #[display(fmt = "invalid syscall {}", "_0")]
     InvalidEcall(u64),
     #[display(
@@ -30,27 +34,23 @@ pub enum Error {
         "instruction"
     )]
     InvalidInstruction { pc: u64, instruction: u32 },
+    #[display(fmt = "invalid operand {}", "_0")]
+    InvalidOp(u16),
+    #[display(fmt = "invalid version")]
+    InvalidVersion,
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(std::io::ErrorKind),
     #[display(fmt = "memory error: unaligned page access")]
     MemPageUnalignedAccess,
-
-    #[display(fmt = "out of bound access")]
-    OutOfBound,
-    #[display(fmt = "invalid operand {}", "_0")]
-    InvalidOp(u16),
-    #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission
-    InvalidPermission,
-    #[display(fmt = "invalid version")]
-    InvalidVersion,
     #[display(fmt = "unexpected error")]
     Unexpected,
     #[display(fmt = "unimplemented")]
     Unimplemented,
-    // Unknown error type is for the debugging tool of CKB-VM, it should not be
-    // used in this project.
-    #[display(fmt = "external error: {}", "_0")]
-    External(String),
+
+    #[display(fmt = "out of bound access")]
+    OutOfBound,
+    #[display(fmt = "invalid permission")] // FIXME: Distinguish which permission
+    InvalidPermission,
 }
 
 impl std::error::Error for Error {}
