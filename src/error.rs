@@ -12,6 +12,10 @@ pub enum Error {
     Asm(u8),
     #[display(fmt = "elf error: {}", "_0")]
     ElfParseError(String),
+    #[display(fmt = "elf error: segments is unreadable")]
+    ElfSegmentUnreadable,
+    #[display(fmt = "elf error: segments is writable and executable")]
+    ElfSegmentWritableAndExecutable,
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(std::io::ErrorKind),
 
