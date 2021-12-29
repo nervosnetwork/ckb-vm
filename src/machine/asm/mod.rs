@@ -118,7 +118,7 @@ fn check_memory_writable(
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= RISCV_PAGES {
-        return Err(Error::OutOfBound);
+        return Err(Error::MemOutOfBound);
     }
     check_permission(machine, page, FLAG_WRITABLE)?;
     check_memory(machine, page);
@@ -129,7 +129,7 @@ fn check_memory_writable(
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
         if page as usize >= RISCV_PAGES {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         } else {
             check_permission(machine, page, FLAG_WRITABLE)?;
             check_memory(machine, page);
@@ -149,7 +149,7 @@ fn check_memory_executable(
 
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= RISCV_PAGES {
-        return Err(Error::OutOfBound);
+        return Err(Error::MemOutOfBound);
     }
     check_permission(machine, page, FLAG_EXECUTABLE)?;
     check_memory(machine, page);
@@ -159,7 +159,7 @@ fn check_memory_executable(
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
         if page as usize >= RISCV_PAGES {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         } else {
             check_permission(machine, page, FLAG_EXECUTABLE)?;
             check_memory(machine, page);
@@ -177,7 +177,7 @@ fn check_memory_inited(
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= RISCV_PAGES {
-        return Err(Error::OutOfBound);
+        return Err(Error::MemOutOfBound);
     }
     check_memory(machine, page);
 
@@ -186,7 +186,7 @@ fn check_memory_inited(
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
         if page as usize >= RISCV_PAGES {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         } else {
             check_memory(machine, page);
         }
@@ -213,7 +213,7 @@ impl Memory for Box<AsmCoreMachine> {
             || addr + size > RISCV_MAX_MEMORY as u64
             || offset_from_addr > size
         {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         // We benchmarked the code piece here, using while loop this way is
         // actually faster than a for..in solution. The difference is roughly
@@ -240,7 +240,7 @@ impl Memory for Box<AsmCoreMachine> {
         if page < RISCV_PAGES as u64 {
             Ok(self.flags[page as usize])
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -249,7 +249,7 @@ impl Memory for Box<AsmCoreMachine> {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -258,7 +258,7 @@ impl Memory for Box<AsmCoreMachine> {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -527,7 +527,7 @@ impl<'a> AsmMachine<'a> {
                 RET_DYNAMIC_JUMP => (),
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
                 RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
-                RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
+                RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
@@ -574,7 +574,7 @@ impl<'a> AsmMachine<'a> {
             RET_ECALL => self.machine.ecall()?,
             RET_EBREAK => self.machine.ebreak()?,
             RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
-            RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
+            RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
             RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
             RET_SLOWPATH => {
                 let pc = *self.machine.pc() - 4;

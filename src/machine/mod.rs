@@ -155,7 +155,7 @@ pub trait SupportMachine: CoreMachine {
                     .p_offset
                     .wrapping_add(program_header.p_filesz);
                 if slice_start > slice_end || slice_end > program.len() as u64 {
-                    return Err(Error::OutOfBound);
+                    return Err(Error::ElfSegmentAddrOrSizeError);
                 }
                 self.memory_mut().init_pages(
                     aligned_start,
@@ -258,7 +258,7 @@ pub trait SupportMachine: CoreMachine {
         }
         if self.registers()[SP].to_u64() < stack_start {
             // args exceed stack size
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfStack);
         }
         Ok(stack_start + stack_size - self.registers()[SP].to_u64())
     }

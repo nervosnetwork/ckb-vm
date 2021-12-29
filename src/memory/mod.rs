@@ -93,10 +93,10 @@ pub(crate) fn fill_page_data<M: Memory>(
 pub fn get_page_indices(addr: u64, size: u64) -> Result<(u64, u64), Error> {
     let (addr_end, overflowed) = addr.overflowing_add(size);
     if overflowed {
-        return Err(Error::OutOfBound);
+        return Err(Error::MemOutOfBound);
     }
     if addr_end > RISCV_MAX_MEMORY as u64 {
-        return Err(Error::OutOfBound);
+        return Err(Error::MemOutOfBound);
     }
     let page = addr >> RISCV_PAGE_SHIFTS;
     let page_end = (addr_end - 1) >> RISCV_PAGE_SHIFTS;

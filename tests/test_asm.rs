@@ -185,7 +185,7 @@ pub fn test_asm_write_large_address() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -226,7 +226,7 @@ pub fn test_invalid_read64() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -252,7 +252,7 @@ pub fn test_asm_wxorx_crash_64() {
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -389,7 +389,7 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::OutOfBound);
+    assert_eq!(result.unwrap_err(), Error::MemOutOfBound);
 }
 
 pub fn test_asm_step() {

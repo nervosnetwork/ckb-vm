@@ -139,7 +139,7 @@ pub fn test_invalid_file_offset64() {
         .unwrap()
         .into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::ElfSegmentAddrOrSizeError));
 }
 
 #[test]
@@ -183,7 +183,7 @@ pub fn test_load_elf_crash_64() {
 pub fn test_wxorx_crash_64() {
     let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -193,7 +193,7 @@ pub fn test_flat_crash_64() {
         DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]

@@ -162,14 +162,14 @@ impl LabelGatheringMachine {
             .collect();
         // Test there's no empty section
         if sections.iter().any(|(s, e)| s >= e) {
-            return Err(Error::OutOfBound);
+            return Err(Error::AotSectionIsEmpty);
         }
         // Test no section overlaps with one another. We first sort section
         // list by start, then we test if each end is equal or less than
         // the next start.
         sections.sort_by_key(|section| section.0);
         if sections.windows(2).any(|w| w[0].1 > w[1].0) {
-            return Err(Error::OutOfBound);
+            return Err(Error::AotSectionOverlaps);
         }
         // DefaultCoreMachine is only used here for loading ELF binaries
         // into memory.
@@ -247,7 +247,7 @@ impl LabelGatheringMachine {
                         // allow us to signal correct error and revert back
                         // to assembly VM for those quirky programs.
                         if !start_of_basic_block {
-                            return Err(Error::OutOfBound);
+                            return Err(Error::AotOutOfBoundDueToNotStartOfBasicBlock);
                         }
                         let mut dummy_end = pc + 2;
                         while dummy_end < section_end && self.memory.execute_load16(dummy_end)? == 0
@@ -268,7 +268,7 @@ impl LabelGatheringMachine {
             // A section must end a basic block, otherwise we would run into
             // out of bound error;
             if !start_of_basic_block {
-                return Err(Error::OutOfBound);
+                return Err(Error::AotOutOfBoundDueToNotStartOfBasicBlock);
             }
             debug_assert!(!self.labels.contains(&section_end));
         }
@@ -523,7 +523,7 @@ impl AotCompilingMachine {
         let pc = self.read_pc()?;
         // Emit succeeding PC write only
         if pc >= RISCV_MAX_MEMORY as u64 {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         self.emitter.emit(&Write::Pc {
             value: Value::Imm(pc | ADDRESS_WRITE_ONLY_FLAG),
@@ -617,7 +617,7 @@ impl AotCompilingMachine {
 
     fn optimize_pc(&self, pc: u64) -> Result<u64, Error> {
         if pc >= RISCV_MAX_MEMORY as u64 {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         if pc < MAXIMUM_ENCODED_ADDRESS {
             if let Some(label) = self.addresses_to_labels.get(&pc) {

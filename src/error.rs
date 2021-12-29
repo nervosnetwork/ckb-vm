@@ -2,12 +2,20 @@
 pub enum Error {
     #[display(fmt = "aot error: dynasm ret {}", "_0")]
     AotDynasm(i32),
+    #[display(fmt = "aot error: section is empty")]
+    AotSectionIsEmpty,
+    #[display(fmt = "aot error: section overlaps with another")]
+    AotSectionOverlaps,
     #[display(fmt = "aot error: limit reached maximum dummy sections")]
     AotLimitReachedMaximumDummySections,
     #[display(fmt = "aot error: limit reached maximum labels")]
     AotLimitReachedMaximumLabels,
     #[display(fmt = "aot error: limit reached maximum sections")]
     AotLimitReachedMaximumSections,
+    #[display(fmt = "aot error: limit reached maximum temp register")]
+    AotLimitReachedMaximumTempRegisters,
+    #[display(fmt = "aot error: out of bound due to not start of basic block")]
+    AotOutOfBoundDueToNotStartOfBasicBlock,
     #[display(fmt = "asm error: {}", "_0")]
     Asm(u8),
     #[display(fmt = "cycles error: max cycles exceeded")]
@@ -18,10 +26,12 @@ pub enum Error {
     ElfBits,
     #[display(fmt = "elf error: {}", "_0")]
     ElfParseError(String),
-    #[display(fmt = "elf error: segments is unreadable")]
+    #[display(fmt = "elf error: segment is unreadable")]
     ElfSegmentUnreadable,
-    #[display(fmt = "elf error: segments is writable and executable")]
+    #[display(fmt = "elf error: segment is writable and executable")]
     ElfSegmentWritableAndExecutable,
+    #[display(fmt = "elf error: segment addr or size is wrong")]
+    ElfSegmentAddrOrSizeError,
     // Unknown error type is for the debugging tool of CKB-VM, it should not be
     // used in this project.
     #[display(fmt = "external error: {}", "_0")]
@@ -40,6 +50,10 @@ pub enum Error {
     InvalidVersion,
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(std::io::ErrorKind),
+    #[display(fmt = "memory error: out of bound")]
+    MemOutOfBound,
+    #[display(fmt = "memory error: out of stack")]
+    MemOutOfStack,
     #[display(fmt = "memory error: unaligned page access")]
     MemPageUnalignedAccess,
     #[display(fmt = "memory error: write on executable page")]
@@ -50,9 +64,6 @@ pub enum Error {
     Unexpected,
     #[display(fmt = "unimplemented")]
     Unimplemented,
-
-    #[display(fmt = "out of bound access")]
-    OutOfBound,
 }
 
 impl std::error::Error for Error {}

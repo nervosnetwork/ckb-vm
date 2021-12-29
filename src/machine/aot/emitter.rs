@@ -161,7 +161,7 @@ impl Default for TempRegisterAllocator {
 impl TempRegisterAllocator {
     pub fn next(&mut self) -> Result<usize, Error> {
         if self.next > MAXIMAL_TEMP_REGISTER {
-            return Err(Error::OutOfBound);
+            return Err(Error::AotLimitReachedMaximumTempRegisters);
         }
         let value = self.next;
         self.next += 1;

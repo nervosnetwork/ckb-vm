@@ -43,7 +43,7 @@ impl<M: Memory> Memory for WXorXMemory<M> {
             || addr + size > RISCV_MAX_MEMORY as u64
             || offset_from_addr > size
         {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
             let page = page_addr / RISCV_PAGESIZE as u64;
