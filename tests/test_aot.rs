@@ -154,7 +154,7 @@ pub fn test_aot_simple_max_cycles_reached() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
 }
 
 #[test]
@@ -417,7 +417,7 @@ pub fn test_aot_outofcycles_in_syscall() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
     assert_eq!(machine.machine.cycles(), 108);
     assert_eq!(machine.machine.registers()[A0], 39);
 }

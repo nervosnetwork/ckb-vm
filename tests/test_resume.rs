@@ -82,7 +82,7 @@ pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 40);
@@ -104,7 +104,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot1 = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 4000000);
@@ -112,7 +112,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
     assert!(result2.is_err());
-    assert_eq!(result2.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result2.unwrap_err(), Error::CyclesExceeded);
     let snapshot2 = machine2.snapshot().unwrap();
 
     let mut machine3 = MachineTy::Asm.build(version, 4000000);
@@ -134,7 +134,7 @@ pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Interpreter.build(version, 40);
@@ -157,7 +157,7 @@ pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Interpreter.build(version, 30);
@@ -179,7 +179,7 @@ pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 30);
@@ -206,7 +206,7 @@ pub fn resume_aot_2_asm(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 40);
@@ -229,7 +229,7 @@ pub fn resume_asm_2_aot(version: u32, except_cycles: u64) {
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut aot_machine =
@@ -255,7 +255,7 @@ pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u6
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
     assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot = machine1.snapshot().unwrap();
 
     let mut machine2 = MachineTy::Asm.build(version, 30);

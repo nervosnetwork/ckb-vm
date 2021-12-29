@@ -525,7 +525,7 @@ impl<'a> AsmMachine<'a> {
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
                 RET_DYNAMIC_JUMP => (),
-                RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
+                RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
                 RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
                 RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
@@ -573,7 +573,7 @@ impl<'a> AsmMachine<'a> {
             RET_DECODE_TRACE => (),
             RET_ECALL => self.machine.ecall()?,
             RET_EBREAK => self.machine.ebreak()?,
-            RET_MAX_CYCLES_EXCEEDED => return Err(Error::InvalidCycles),
+            RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
             RET_OUT_OF_BOUND => return Err(Error::OutOfBound),
             RET_INVALID_PERMISSION => return Err(Error::InvalidPermission),
             RET_SLOWPATH => {

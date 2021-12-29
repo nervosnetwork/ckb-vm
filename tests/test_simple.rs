@@ -65,7 +65,7 @@ pub fn test_simple_max_cycles_reached() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
 }
 
 #[test]

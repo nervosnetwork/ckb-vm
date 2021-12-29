@@ -10,12 +10,22 @@ pub enum Error {
     AotLimitReachedMaximumSections,
     #[display(fmt = "asm error: {}", "_0")]
     Asm(u8),
+    #[display(fmt = "cycles error: max cycles exceeded")]
+    CyclesExceeded,
+    #[display(fmt = "cycles error: overflow")]
+    CyclesOverflow,
     #[display(fmt = "elf error: {}", "_0")]
     ElfParseError(String),
     #[display(fmt = "elf error: segments is unreadable")]
     ElfSegmentUnreadable,
     #[display(fmt = "elf error: segments is writable and executable")]
     ElfSegmentWritableAndExecutable,
+    #[display(
+        fmt = "invalid instruction pc=0x{:x} instruction=0x{:x}",
+        "pc",
+        "instruction"
+    )]
+    InvalidInstruction { pc: u64, instruction: u32 },
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(std::io::ErrorKind),
 
@@ -23,16 +33,6 @@ pub enum Error {
     Unaligned,
     #[display(fmt = "out of bound access")]
     OutOfBound,
-    #[display(fmt = "max cycles exceeded")]
-    InvalidCycles,
-    #[display(fmt = "cycles overflow")]
-    CyclesOverflow,
-    #[display(
-        fmt = "invalid instruction pc=0x{:x} instruction=0x{:x}",
-        "pc",
-        "instruction"
-    )]
-    InvalidInstruction { pc: u64, instruction: u32 },
     #[display(fmt = "invalid syscall {}", "_0")]
     InvalidEcall(u64),
     #[display(fmt = "invalid elf")]

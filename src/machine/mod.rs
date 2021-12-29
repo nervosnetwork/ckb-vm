@@ -83,7 +83,7 @@ pub trait SupportMachine: CoreMachine {
             .checked_add(cycles)
             .ok_or(Error::CyclesOverflow)?;
         if new_cycles > self.max_cycles() {
-            return Err(Error::InvalidCycles);
+            return Err(Error::CyclesExceeded);
         }
         self.set_cycles(new_cycles);
         Ok(())
@@ -476,7 +476,7 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
                     let processed = syscall.ecall(&mut self.inner)?;
                     if processed {
                         if self.cycles() > self.max_cycles() {
-                            return Err(Error::InvalidCycles);
+                            return Err(Error::CyclesExceeded);
                         }
                         return Ok(());
                     }
