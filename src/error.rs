@@ -32,9 +32,9 @@ pub enum Error {
     InvalidInstruction { pc: u64, instruction: u32 },
     #[display(fmt = "I/O error: {:?}", "_0")]
     IO(std::io::ErrorKind),
+    #[display(fmt = "memory error: unaligned page access")]
+    MemPageUnalignedAccess,
 
-    #[display(fmt = "unaligned page access")]
-    Unaligned,
     #[display(fmt = "out of bound access")]
     OutOfBound,
     #[display(fmt = "invalid operand {}", "_0")]

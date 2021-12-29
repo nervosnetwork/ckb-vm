@@ -206,7 +206,7 @@ impl Memory for Box<AsmCoreMachine> {
         offset_from_addr: u64,
     ) -> Result<(), Error> {
         if round_page_down(addr) != addr || round_page_up(size) != size {
-            return Err(Error::Unaligned);
+            return Err(Error::MemPageUnalignedAccess);
         }
         if addr > RISCV_MAX_MEMORY as u64
             || size > RISCV_MAX_MEMORY as u64
