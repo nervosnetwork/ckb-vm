@@ -32,7 +32,7 @@ pub enum Error {
     ElfSegmentWritableAndExecutable,
     #[display(fmt = "elf error: segment addr or size is wrong")]
     ElfSegmentAddrOrSizeError,
-    // Unknown error type is for the debugging tool of CKB-VM, it should not be
+    // External error type is for the debugging tool of CKB-VM, it should not be
     // used in this project.
     #[display(fmt = "external error: {}", "_0")]
     External(String),
@@ -48,8 +48,11 @@ pub enum Error {
     InvalidOp(u16),
     #[display(fmt = "invalid version")]
     InvalidVersion,
-    #[display(fmt = "I/O error: {:?}", "_0")]
-    IO(std::io::ErrorKind),
+    #[display(fmt = "I/O error: {:?} {}", "kind", "data")]
+    IO {
+        kind: std::io::ErrorKind,
+        data: String,
+    },
     #[display(fmt = "memory error: out of bound")]
     MemOutOfBound,
     #[display(fmt = "memory error: out of stack")]
@@ -70,7 +73,10 @@ impl std::error::Error for Error {}
 
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
-        Error::IO(error.kind())
+        Error::IO {
+            kind: error.kind(),
+            data: error.to_string(),
+        }
     }
 }
 
