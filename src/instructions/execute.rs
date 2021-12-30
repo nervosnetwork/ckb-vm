@@ -831,7 +831,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_1024([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -850,7 +850,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_512([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -869,7 +869,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_256([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -888,7 +888,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_128([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -907,7 +907,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_64([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -926,7 +926,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_32([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -945,7 +945,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_16([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -964,7 +964,7 @@ macro_rules! w_wv_iterator_impl {
                             let index = 2 * i;
                             let (res1, res2) = $func_8([&a1[index], &a1[index + 1]], &b[i]);
                             r1[index] = res1;
-                            r2[index + 1] = res2;
+                            r1[index + 1] = res2;
                         }
                     }
                 }
@@ -973,6 +973,49 @@ macro_rules! w_wv_iterator_impl {
             Ok(())
         }
     };
+}
+
+fn load_elements<Mac: Machine>(
+    machine: &mut Mac,
+    start_reg_index: usize,
+    sew: usize,
+    buf: &[u8],
+) -> Result<(), Error> {
+    let buf_len = buf.len();
+    if (buf_len*8) % sew != 0 || buf_len == 0 {
+        return Err(Error::Unexpected);
+    }
+    let vlenb = VLEN as usize / 8;
+    let reg_count = (buf_len - 1) / vlenb + 1;
+    for i in 0..reg_count {
+        if i == (reg_count - 1) {
+            let reg = machine.get_vregister(start_reg_index + i);
+            let mut temp = reg.to_le_bytes();
+            let num = buf_len - i * vlenb;
+            &temp[0..num].copy_from_slice(&buf[i * vlenb..i * vlenb + num]);
+            let reg = VRegister::from_le_bytes(sew as u32, temp);
+            machine.set_vregister(start_reg_index + i, reg);
+        } else {
+            let mut temp = [0u8; 256];
+            temp.copy_from_slice(&buf[i * vlenb..i * vlenb + vlenb]);
+            let reg = VRegister::from_le_bytes(sew as u32, temp);
+            machine.set_vregister(start_reg_index + i, reg);
+        }
+    }
+    Ok(())
+}
+
+fn vle_impl<Mac: Machine>(machine: &mut Mac, inst: Instruction, bits: usize) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rd = i.rd();
+    let addr = machine.registers()[i.rs1()].clone();
+    let vl = machine.get_vl() as usize;
+    let sew = machine.get_vsew() as usize;
+    let buf_len = vl * bits/8;
+    let buf = machine
+        .memory_mut()
+        .load_bytes(addr.to_u64(), buf_len as u64)?;
+    load_elements(machine, rd, sew, buf.as_slice())
 }
 
 pub fn execute_instruction<Mac: Machine>(
@@ -1902,7 +1945,8 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 256;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32));
                 let elem = machine.memory_mut().load8(&addr)?.to_u8();
-                let mut vreg = machine.get_vregister(rd);
+                let vreg = machine.get_vregister(rd);
+                let mut vreg = vreg.clone_with_eew(8);
                 if let VRegister::U8(ref mut data) = vreg {
                     data[i as usize % 256] = U8(elem);
                 } else {
@@ -1919,7 +1963,8 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 256;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32));
                 let elem = machine.memory_mut().load8(&addr)?.to_u8();
-                let mut vreg = machine.get_vregister(rd);
+                let vreg = machine.get_vregister(rd);
+                let mut vreg = vreg.clone_with_eew(8);
                 if let VRegister::U8(ref mut data) = vreg {
                     data[i as usize % 256] = U8(elem);
                 } else {
@@ -1936,7 +1981,8 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 128;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 2));
                 let elem = machine.memory_mut().load16(&addr)?.to_u16();
-                let mut vreg = machine.get_vregister(rd);
+                let vreg = machine.get_vregister(rd);
+                let mut vreg = vreg.clone_with_eew(16);
                 if let VRegister::U16(ref mut data) = vreg {
                     data[i as usize % 128] = U16(elem);
                 } else {
@@ -1953,7 +1999,8 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 64;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 4));
                 let elem = machine.memory_mut().load32(&addr)?.to_u32();
-                let mut vreg = machine.get_vregister(rd);
+                let vreg = machine.get_vregister(rd);
+                let mut vreg = vreg.clone_with_eew(32);
                 if let VRegister::U32(ref mut data) = vreg {
                     data[i as usize % 64] = U32(elem);
                 } else {
@@ -1970,7 +2017,8 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / 32;
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 8));
                 let elem = machine.memory_mut().load64(&addr)?.to_u64();
-                let mut vreg = machine.get_vregister(rd);
+                let vreg = machine.get_vregister(rd);
+                let mut vreg = vreg.clone_with_eew(64);
                 if let VRegister::U64(ref mut data) = vreg {
                     data[i as usize % 32] = U64(elem);
                 } else {
@@ -1989,7 +2037,8 @@ pub fn execute_instruction<Mac: Machine>(
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 16));
                 buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 16)?);
                 let elem = u128::from_le_bytes(buf);
-                let mut vreg = machine.get_vregister(rd);
+                let vreg = machine.get_vregister(rd);
+                let mut vreg = vreg.clone_with_eew(128);
                 if let VRegister::U128(ref mut data) = vreg {
                     data[i as usize % 16] = U128(elem);
                 } else {
@@ -1999,61 +2048,22 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VLE256_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let mut buf = [0u8; 32];
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 8;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 32));
-                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 32)?);
-                let elem = U256::from_le_bytes(buf);
-                let mut vreg = machine.get_vregister(rd);
-                if let VRegister::U256(ref mut data) = vreg {
-                    data[i as usize % 8] = elem;
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            vle_impl(machine, inst, 256)?;
         }
         insts::OP_VLE512_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let mut buf = [0u8; 64];
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 4;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 64));
-                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 64)?);
-                let elem = U512::from_le_bytes(buf);
-                let mut vreg = machine.get_vregister(rd);
-                if let VRegister::U512(ref mut data) = vreg {
-                    data[i as usize % 4] = elem;
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            vle_impl(machine, inst, 512)?;
         }
         insts::OP_VLE1024_V => {
             let i = Itype(inst);
             let rd = i.rd();
             let addr = machine.registers()[i.rs1()].clone();
-            let mut buf = [0u8; 128];
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 2;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 128));
-                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 128)?);
-                let elem = U1024::from_le_bytes(buf);
-                let mut vreg = machine.get_vregister(rd);
-                if let VRegister::U1024(ref mut data) = vreg {
-                    data[i as usize % 2] = elem;
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let vl = machine.get_vl() as usize;
+            let sew = machine.get_vsew() as usize;
+            let buf_len = vl * 256;
+            let buf = machine
+                .memory_mut()
+                .load_bytes(addr.to_u64(), buf_len as u64)?;
+            load_elements(machine, rd, sew, buf.as_slice())?
         }
         insts::OP_VSM_V => {
             let i = Itype(inst);
@@ -2064,6 +2074,7 @@ pub fn execute_instruction<Mac: Machine>(
                 let rd = rd + i as usize / (VLEN as usize / bits);
                 let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
                 let vreg = machine.get_vregister(rd);
+                let vreg = vreg.clone_with_eew(8);
                 if let VRegister::U8(data) = vreg {
                     let elem = data[i as usize % (VLEN as usize / bits)];
                     machine
@@ -3264,19 +3275,19 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWADDU_VX => {
             w_vx_iterator_impl! {
                 {|a:&U1024, b: &U64| {
-                    let c = U2048::from(*a) + b.widening_u_2048();
+                    let c = U2048::from(*a) + b.widening_u2048();
                     (c.lo, c.hi)
                 }},
                 {|a:&U512, b: &U64| {
-                    let c = U1024::from(*a) + b.widening_u_1024();
+                    let c = U1024::from(*a) + b.widening_u1024();
                     (c.lo, c.hi)
                 }},
                 {|a:&U256, b: &U64| {
-                    let c = U512::from(*a) + b.widening_u_512();
+                    let c = U512::from(*a) + b.widening_u512();
                     (c.lo, c.hi)
                 }},
                 {|a:&U128, b: &U64| {
-                    let c = U256::from(*a) +  b.widening_u_256();
+                    let c = U256::from(*a) +  b.widening_u256();
                     (c.lo, c.hi)
                 }},
                 {|a:&U64, b: &U64| {
@@ -3285,19 +3296,19 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u_32();
+                    let b_n = b.narrowing_u32();
                     let c = u64::from(a.0) + b_n.widening_u().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u_16();
+                    let b_n = b.narrowing_u16();
                     let c = u32::from(a.0) + b_n.widening_u().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u_8();
+                    let b_n = b.narrowing_u8();
                     let c = u16::from(a.0) + b_n.widening_u().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
@@ -3308,42 +3319,42 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWADDU_WV => {
             w_wv_iterator_impl! {
                 {|a:[&U1024; 2], b: &U1024| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} + U2048::from(*b);
+                    let c = U2048{lo: *a[0], hi: *a[1]} + b.widening_u();
                     (c.lo, c.hi)
                 }},
                 {|a:[&U512; 2], b: &U512| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} + U1024::from(*b);
+                    let c = U1024{lo: *a[0], hi: *a[1]} + b.widening_u();
                     (c.lo, c.hi)
                 }},
                 {|a:[&U256; 2], b: &U256| {
-                    let c = U512{lo: *a[0], hi: *a[1]} + U512::from(*b);
+                    let c = U512{lo: *a[0], hi: *a[1]} + b.widening_u();
                     (c.lo, c.hi)
                 }},
                 {|a:[&U128; 2], b: &U128| {
-                    let c = U256{lo: *a[0], hi: *a[1]} + U256::from(*b);
+                    let c = U256{lo: *a[0], hi: *a[1]} + b.widening_u();
                     (c.lo, c.hi)
                 }},
                 {|a:[&U64; 2], b: &U64| {
                     let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa + u128::from(b.0);
+                    let c = aa + b.widening_u().0;
                     let res = unsafe { transmute::<u128, [u64; 2]>(c) };
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:[&U32; 2], b: &U32| {
                     let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa + u64::from(b.0);
+                    let c = aa + b.widening_u().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:[&U16; 2], b: &U16| {
                     let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa + u32::from(b.0);
+                    let c = aa + b.widening_u().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:[&U8; 2], b: &U8| {
                     let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa + u16::from(b.0);
+                    let c = aa + b.widening_u().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
                 }}
@@ -3402,19 +3413,19 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWADD_VX => {
             w_vx_iterator_impl! {
                 {|a:&U1024, b: &U64| {
-                    let c = U2048::from(*a) + b.widening_s_2048();
+                    let c = U2048::from(*a) + b.widening_s2048();
                     (c.lo, c.hi)
                 }},
                 {|a:&U512, b: &U64| {
-                    let c = U1024::from(*a) + b.widening_s_1024();
+                    let c = U1024::from(*a) + b.widening_s1024();
                     (c.lo, c.hi)
                 }},
                 {|a:&U256, b: &U64| {
-                    let c = U512::from(*a) + b.widening_s_512();
+                    let c = U512::from(*a) + b.widening_s512();
                     (c.lo, c.hi)
                 }},
                 {|a:&U128, b: &U64| {
-                    let c = U256::from(*a) +  b.widening_s_256();
+                    let c = U256::from(*a) +  b.widening_s256();
                     (c.lo, c.hi)
                 }},
                 {|a:&U64, b: &U64| {
@@ -3423,19 +3434,19 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u_32();
+                    let b_n = b.narrowing_u32();
                     let c = u64::from(a.0) + b_n.widening_s().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u_16();
+                    let b_n = b.narrowing_u16();
                     let c = u32::from(a.0) + b_n.widening_s().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u_8();
+                    let b_n = b.narrowing_u8();
                     let c = u16::from(a.0) + b_n.widening_s().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
@@ -3533,19 +3544,19 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWSUBU_VX => {
             w_vx_iterator_impl! {
                 {|a:&U1024, b: &U64| {
-                    let c = U2048::from(*a) - b.widening_u_2048();
+                    let c = U2048::from(*a) - b.widening_u2048();
                     (c.lo, c.hi)
                 }},
                 {|a:&U512, b: &U64| {
-                    let c = U1024::from(*a) - b.widening_u_1024();
+                    let c = U1024::from(*a) - b.widening_u1024();
                     (c.lo, c.hi)
                 }},
                 {|a:&U256, b: &U64| {
-                    let c = U512::from(*a) - b.widening_u_512();
+                    let c = U512::from(*a) - b.widening_u512();
                     (c.lo, c.hi)
                 }},
                 {|a:&U128, b: &U64| {
-                    let c = U256::from(*a) - b.widening_u_256();
+                    let c = U256::from(*a) - b.widening_u256();
                     (c.lo, c.hi)
                 }},
                 {|a:&U64, b: &U64| {
@@ -3554,19 +3565,19 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u_32();
+                    let b_n = b.narrowing_u32();
                     let c = u64::from(a.0) - b_n.widening_u().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u_16();
+                    let b_n = b.narrowing_u16();
                     let c = u32::from(a.0) - b_n.widening_u().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u_8();
+                    let b_n = b.narrowing_u8();
                     let c = u16::from(a.0) - b_n.widening_u().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
@@ -3628,19 +3639,19 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWSUB_VX => {
             w_vx_iterator_impl! {
                 {|a:&U1024, b: &U64| {
-                    let c = a.widening_s() - b.widening_s_2048();
+                    let c = a.widening_s() - b.widening_s2048();
                     (c.lo, c.hi)
                 }},
                 {|a:&U512, b: &U64| {
-                    let c = a.widening_s() - b.widening_s_1024();
+                    let c = a.widening_s() - b.widening_s1024();
                     (c.lo, c.hi)
                 }},
                 {|a:&U256, b: &U64| {
-                    let c = a.widening_s() - b.widening_s_512();
+                    let c = a.widening_s() - b.widening_s512();
                     (c.lo, c.hi)
                 }},
                 {|a:&U128, b: &U64| {
-                    let c = a.widening_s() - b.widening_s_256();
+                    let c = a.widening_s() - b.widening_s256();
                     (c.lo, c.hi)
                 }},
                 {|a:&U64, b: &U64| {
@@ -3649,19 +3660,19 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u_32();
+                    let b_n = b.narrowing_u32();
                     let c = a.widening_s() - b_n.widening_s();
                     let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u_16();
+                    let b_n = b.narrowing_u16();
                     let c = a.widening_s() - b_n.widening_s();
                     let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u_8();
+                    let b_n = b.narrowing_u8();
                     let c = a.widening_s() - b_n.widening_s();
                     let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
                     (U8(res[0]), U8(res[1]))
