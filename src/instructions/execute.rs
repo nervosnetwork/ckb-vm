@@ -1,1236 +1,1280 @@
-use std::mem::transmute;
-
 use super::{
     super::{machine::Machine, Error},
     common, extract_opcode, instruction_length,
     utils::update_register,
-    Instruction, Itype, R4type, Register, Rtype, Stype, Utype, VItype, VRegister, VVtype, VXtype,
+    Instruction, Itype, R4type, Register, Rtype, Stype, Utype, VItype, VVtype, VXtype,
 };
-
 use crate::memory::Memory;
 use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
-pub use uintxx::{Element, U1024, U128, U16, U2048, U256, U32, U512, U64, U8};
+pub use uintxx::{alu, Element, U1024, U128, U16, U2048, U256, U32, U512, U64, U8};
 
-type VVIteratorFunc =
-    fn(lhs: &VRegister, rhs: &VRegister, result: &mut VRegister, num: usize) -> Result<(), Error>;
-
-fn loop_vv<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: VVIteratorFunc,
-) -> Result<(), Error> {
-    let i = VVtype(inst);
-    let vlmax = VLEN as u64 / machine.get_vsew();
-    let num = machine.get_vl() as usize;
-    for j in 0..((num as u64 - 1) / vlmax) + 1 {
-        let vs1 = machine.get_vregister(i.vs1() as usize + j as usize);
-        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
-        let mut vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, &vs1, &mut vd, num)?;
-        machine.set_vregister(i.vd() + j as usize, vd);
-    }
-    Ok(())
+macro_rules! ld {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = Itype($inst);
+        let rd = i.rd();
+        let addr = $machine.registers()[i.rs1()].clone();
+        let data = $machine.memory_mut().load_bytes(addr.to_u64(), $size)?;
+        $machine
+            .element_mut(rd, $size << 3, 0)
+            .copy_from_slice(&data);
+    };
 }
-macro_rules! vv_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn vv_iterator_func(
-            vs2: &VRegister,
-            vs1: &VRegister,
-            vd: &mut VRegister,
-            num: usize,
-        ) -> Result<(), Error> {
-            match (vs2, vs1, vd) {
-                (VRegister::U1024(a), VRegister::U1024(b), VRegister::U1024(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_1024(&a[i], &b[i]);
-                    }
+
+macro_rules! sd {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = Itype($inst);
+        let rd = i.rd();
+        let addr = $machine.registers()[i.rs1()].clone();
+        let data = $machine.element_ref(rd, $size << 3, 0).to_vec();
+        $machine.memory_mut().store_bytes(addr.to_u64(), &data)?;
+    };
+}
+
+macro_rules! vv_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U512(a), VRegister::U512(b), VRegister::U512(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_512(&a[i], &b[i]);
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U256(a), VRegister::U256(b), VRegister::U256(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_256(&a[i], &b[i]);
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U128(a), VRegister::U128(b), VRegister::U128(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_128(&a[i], &b[i]);
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U64(a), VRegister::U64(b), VRegister::U64(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_64(&a[i], &b[i]);
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U32(a), VRegister::U32(b), VRegister::U32(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_32(&a[i], &b[i]);
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U16(a), VRegister::U16(b), VRegister::U16(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_16(&a[i], &b[i]);
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U8(a), VRegister::U8(b), VRegister::U8(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_8(&a[i], &b[i]);
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-type VXIteratorFunc =
-    fn(lhs: &VRegister, rhs: u64, result: &mut VRegister, num: usize) -> Result<(), Error>;
-
-fn loop_vx<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: VXIteratorFunc,
-) -> Result<(), Error> {
-    let i = VXtype(inst);
-    let vlmax = VLEN as u64 / machine.get_vsew();
-    let num = machine.get_vl() as usize;
-    for j in 0..((num as u64 - 1) / vlmax) + 1 {
-        let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
-        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
-        let mut vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, rs1, &mut vd, num)?;
-        machine.set_vregister(i.vd() + j as usize, vd);
-    }
-    Ok(())
+macro_rules! vv_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        vv_loop_s!($inst, $machine, $body);
+    };
 }
 
-macro_rules! vx_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn vx_iterator_func(
-            lhs: &VRegister,
-            rhs: u64,
-            result: &mut VRegister,
-            num: usize,
-        ) -> Result<(), Error> {
-            match (lhs, result) {
-                (VRegister::U1024(a), VRegister::U1024(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_1024(&a[i], rhs);
-                    }
+macro_rules! vx_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U512(a), VRegister::U512(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_512(&a[i], rhs);
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U256(a), VRegister::U256(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_256(&a[i], rhs);
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U128(a), VRegister::U128(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_128(&a[i], rhs);
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U64(a), VRegister::U64(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_64(&a[i], rhs);
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U32(a), VRegister::U32(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_32(&a[i], rhs);
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U16(a), VRegister::U16(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_16(&a[i], rhs);
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U8(a), VRegister::U8(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_8(&a[i], rhs);
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-type VIIteratorFunc =
-    fn(lhs: &VRegister, rhs: i32, result: &mut VRegister, num: usize) -> Result<(), Error>;
-
-fn loop_vi<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: VIIteratorFunc,
-) -> Result<(), Error> {
-    let i = VItype(inst);
-    let vlmax = VLEN as u64 / machine.get_vsew();
-    let num = machine.get_vl() as usize;
-    for j in 0..((num as u64 - 1) / vlmax) + 1 {
-        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
-        let imm = i.immediate_s();
-        let mut vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, imm, &mut vd, num)?;
-        machine.set_vregister(i.vd() + j as usize, vd);
-    }
-    Ok(())
-}
-
-macro_rules! vi_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn vi_iterator_func(
-            lhs: &VRegister,
-            imm: i32,
-            result: &mut VRegister,
-            num: usize,
-        ) -> Result<(), Error> {
-            match (lhs, result) {
-                (VRegister::U1024(a), VRegister::U1024(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_1024(&a[i], imm);
-                    }
+macro_rules! vx_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U512(a), VRegister::U512(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_512(&a[i], imm);
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U256(a), VRegister::U256(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_256(&a[i], imm);
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U128(a), VRegister::U128(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_128(&a[i], imm);
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U64(a), VRegister::U64(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_64(&a[i], imm);
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U32(a), VRegister::U32(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_32(&a[i], imm);
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U16(a), VRegister::U16(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_16(&a[i], imm);
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U8(a), VRegister::U8(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_8(&a[i], imm);
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-type VI2IteratorFunc =
-    fn(lhs: &VRegister, rhs: u32, result: &mut VRegister, num: usize) -> Result<(), Error>;
-
-fn loop_vi2<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: VI2IteratorFunc,
-) -> Result<(), Error> {
-    let i = VItype(inst);
-    let vlmax = VLEN as u64 / machine.get_vsew();
-    let num = machine.get_vl() as usize;
-    for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
-        let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
-        let imm = i.immediate_u();
-        let mut vd = machine.get_vregister(i.vd() + j as usize);
-        func(&vs2, imm, &mut vd, num)?;
-        machine.set_vregister(i.vd() + j as usize, vd);
-    }
-    Ok(())
-}
-
-macro_rules! vi2_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn vi2_iterator_func(
-            lhs: &VRegister,
-            imm: u32,
-            result: &mut VRegister,
-            num: usize,
-        ) -> Result<(), Error> {
-            match (lhs, result) {
-                (VRegister::U1024(a), VRegister::U1024(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_1024(&a[i], imm);
-                    }
+macro_rules! vi_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U512(a), VRegister::U512(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_512(&a[i], imm);
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U256(a), VRegister::U256(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_256(&a[i], imm);
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U128(a), VRegister::U128(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_128(&a[i], imm);
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U64(a), VRegister::U64(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_64(&a[i], imm);
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U32(a), VRegister::U32(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_32(&a[i], imm);
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U16(a), VRegister::U16(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_16(&a[i], imm);
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (VRegister::U8(a), VRegister::U8(ref mut r)) => {
-                    for i in 0..num {
-                        r[i] = $func_8(&a[i], imm);
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vi_s(i.immediate_s());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-type WVVIteratorFunc = fn(
-    vs2: &VRegister,
-    vs1: &VRegister,
-    vd: [&mut VRegister; 2],
-    num: usize,
-    elements_per_register: usize,
-) -> Result<(), Error>;
-
-type WVXIteratorFunc = fn(
-    vs2: &VRegister,
-    rs1: U64,
-    vd: [&mut VRegister; 2],
-    num: usize,
-    elements_per_register: usize,
-) -> Result<(), Error>;
-
-// Widening operation: 2*SEW = SEW op SEW
-// Have a destination group with EEW=2*SEW and EMUL=2*LMUL
-fn loop_w_vv<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: WVVIteratorFunc,
-) -> Result<(), Error> {
-    let i = VVtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
-    let vl = machine.get_vl() as usize;
-    let register_count = ((vl - 1) / elements_per_register) + 1;
-    for j in 0..register_count {
-        let vs1 = machine.get_vregister(i.vs1() + j);
-        let vs2 = machine.get_vregister(i.vs2() + j);
-        let mut vd1 = machine.get_vregister(i.vd() + j * 2);
-        let mut vd2 = machine.get_vregister(i.vd() + j * 2 + 1);
-
-        let num = if j == (register_count - 1) {
-            vl - j * elements_per_register
-        } else {
-            elements_per_register
-        };
-        func(&vs2, &vs1, [&mut vd1, &mut vd2], num, elements_per_register)?;
-        machine.set_vregister(i.vd() + j * 2, vd1);
-        if num > (elements_per_register / 2) {
-            machine.set_vregister(i.vd() + j * 2 + 1, vd2);
-        }
-    }
-    Ok(())
-}
-
-macro_rules! w_vv_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn vv_iterator_func(
-            vs2: &VRegister,
-            vs1: &VRegister,
-            vd: [&mut VRegister; 2],
-            num: usize,
-            elements_per_register: usize,
-        ) -> Result<(), Error> {
-            let half = elements_per_register / 2;
-            match (vs2, vs1, vd) {
-                (
-                    VRegister::U1024(a),
-                    VRegister::U1024(b),
-                    [VRegister::U1024(ref mut r), VRegister::U1024(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_1024(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_1024(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+macro_rules! vi_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U512(a),
-                    VRegister::U512(b),
-                    [VRegister::U512(ref mut r), VRegister::U512(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_512(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_512(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U256(a),
-                    VRegister::U256(b),
-                    [VRegister::U256(ref mut r), VRegister::U256(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_256(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_256(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U128(a),
-                    VRegister::U128(b),
-                    [VRegister::U128(ref mut r), VRegister::U128(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_128(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_128(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U64(a),
-                    VRegister::U64(b),
-                    [VRegister::U64(ref mut r), VRegister::U64(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_64(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_64(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U32(a),
-                    VRegister::U32(b),
-                    [VRegister::U32(ref mut r), VRegister::U32(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_32(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_32(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U16(a),
-                    VRegister::U16(b),
-                    [VRegister::U16(ref mut r), VRegister::U16(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_16(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_16(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                (
-                    VRegister::U8(a),
-                    VRegister::U8(b),
-                    [VRegister::U8(ref mut r), VRegister::U8(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_8(&a[i], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_8(&a[i], &b[i]);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vi_u(i.immediate_u());
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew, j));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-// Widening operation: 2*SEW = SEW op SEW
-// Have a destination group with EEW=2*SEW and EMUL=2*LMUL
-fn loop_w_vx<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func_vx: WVXIteratorFunc,
-) -> Result<(), Error> {
-    let i = VXtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
-    let vl = machine.get_vl() as usize;
-    let register_count = ((vl - 1) / elements_per_register) + 1;
-    for j in 0..register_count {
-        let rs1_value = machine.registers()[i.rs1()].to_u64();
-        let vs2 = machine.get_vregister(i.vs2() + j);
-        let mut vd1 = machine.get_vregister(i.vd() + j * 2);
-        let mut vd2 = machine.get_vregister(i.vd() + j * 2 + 1);
-
-        let num = if j == (register_count - 1) {
-            vl - j * elements_per_register
-        } else {
-            elements_per_register
-        };
-        func_vx(
-            &vs2,
-            U64(rs1_value),
-            [&mut vd1, &mut vd2],
-            num,
-            elements_per_register,
-        )?;
-        machine.set_vregister(i.vd() + j * 2, vd1);
-        if num > (elements_per_register / 2) {
-            machine.set_vregister(i.vd() + j * 2 + 1, vd2);
-        }
-    }
-    Ok(())
-}
-
-macro_rules! w_vx_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn vx_iterator_func(
-            vs2: &VRegister,
-            rs1: U64,
-            vd: [&mut VRegister; 2],
-            num: usize,
-            elements_per_register: usize,
-        ) -> Result<(), Error> {
-            let half = elements_per_register / 2;
-            match (vs2, rs1, vd) {
-                (
-                    VRegister::U1024(a),
-                    b,
-                    [VRegister::U1024(ref mut r), VRegister::U1024(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_1024(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_1024(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+macro_rules! vv_loop_s_cmp {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        let mut out = [0u8; VLEN >> 3];
+        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (
-                    VRegister::U512(a),
-                    b,
-                    [VRegister::U512(ref mut r), VRegister::U512(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_512(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_512(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (
-                    VRegister::U256(a),
-                    b,
-                    [VRegister::U256(ref mut r), VRegister::U256(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_256(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_256(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (
-                    VRegister::U128(a),
-                    b,
-                    [VRegister::U128(ref mut r), VRegister::U128(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_128(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_128(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (VRegister::U64(a), b, [VRegister::U64(ref mut r), VRegister::U64(ref mut r2)]) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_64(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_64(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (VRegister::U32(a), b, [VRegister::U32(ref mut r), VRegister::U32(ref mut r2)]) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_32(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_32(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (VRegister::U16(a), b, [VRegister::U16(ref mut r), VRegister::U16(ref mut r2)]) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_16(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_16(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
-                (VRegister::U8(a), b, [VRegister::U8(ref mut r), VRegister::U8(ref mut r2)]) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_8(&a[i], &b);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let (res1, res2) = $func_8(&a[i], &b);
-                            r[2 * i] = res1;
-                            r[2 * i + 1] = res2;
-                        }
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::read($machine.element_ref(i.vs1(), sew, j));
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
+        }
+        $machine
+            .element_mut(i.vd(), VLEN as u64, 0)
+            .copy_from_slice(&out);
+    };
+}
+
+macro_rules! vv_loop_u_cmp {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        vv_loop_s_cmp!($inst, $machine, $body);
+    };
+}
+
+macro_rules! vx_loop_s_cmp {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        let mut out = [0u8; VLEN >> 3];
+        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vx_s($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+        $machine
+            .element_mut(i.vd(), VLEN as u64, 0)
+            .copy_from_slice(&out);
+    };
+}
+
+macro_rules! vx_loop_u_cmp {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        let mut out = [0u8; VLEN >> 3];
+        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vx_u($machine.registers()[i.rs1()].to_u64());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+        $machine
+            .element_mut(i.vd(), VLEN as u64, 0)
+            .copy_from_slice(&out);
+    };
+}
+
+macro_rules! vi_loop_s_cmp {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        let mut out = [0u8; VLEN >> 3];
+        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vi_s(i.immediate_s());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+        $machine
+            .element_mut(i.vd(), VLEN as u64, 0)
+            .copy_from_slice(&out);
+    };
+}
+
+macro_rules! vi_loop_u_cmp {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        let mut out = [0u8; VLEN >> 3];
+        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vi_u(i.immediate_u());
+                    out[j / 8] = if $cond(b, a) {
+                        out[j / 8] | (1 << (j % 8))
+                    } else {
+                        out[j / 8] & !(1 << (j % 8))
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+        $machine
+            .element_mut(i.vd(), VLEN as u64, 0)
+            .copy_from_slice(&out);
+    };
+}
+
+macro_rules! vv_loop_s_widen {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::read($machine.element_ref(i.vs1(), sew, j));
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                }
+                _ => return Err(Error::Unexpected),
+            }
         }
     };
 }
 
-type WWVIteratorFunc = fn(
-    lhs: [&VRegister; 2],
-    rhs: &VRegister,
-    vd: [&mut VRegister; 2],
-    num: usize,
-    elements_per_register: usize,
-) -> Result<(), Error>;
-
-// Widening operation: 2*SEW = 2*SEW op SEW
-// Have a destination and a source group with EEW=2*SEW and EMUL=2*LMUL
-fn loop_w_wv<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: WWVIteratorFunc,
-) -> Result<(), Error> {
-    let i = VVtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
-    let vl = machine.get_vl() as usize;
-    let register_count = ((vl - 1) / elements_per_register) + 1;
-    for j in 0..register_count {
-        let vs1 = machine.get_vregister(i.vs1() + j);
-        let vs2_1 = machine.get_vregister(i.vs2() + j * 2);
-        let vs2_2 = machine.get_vregister(i.vs2() + j * 2 + 1);
-        let mut vd1 = machine.get_vregister(i.vd() + j * 2);
-        let mut vd2 = machine.get_vregister(i.vd() + j * 2 + 1);
-
-        let num = if j == (register_count - 1) {
-            vl - j * elements_per_register
-        } else {
-            elements_per_register
-        };
-        func(
-            [&vs2_1, &vs2_2],
-            &vs1,
-            [&mut vd1, &mut vd2],
-            num,
-            elements_per_register,
-        )?;
-        machine.set_vregister(i.vd() + j * 2, vd1);
-        if num > (elements_per_register / 2) {
-            machine.set_vregister(i.vd() + j * 2 + 1, vd2);
-        }
-    }
-    Ok(())
+macro_rules! vv_loop_u_widen {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        vv_loop_s_widen!($inst, $machine, $cond);
+    };
 }
 
-macro_rules! w_wv_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn wv_iterator_func(
-            vs2: [&VRegister; 2],
-            vs1: &VRegister,
-            vd: [&mut VRegister; 2],
-            num: usize,
-            elements_per_register: usize,
-        ) -> Result<(), Error> {
-            let half = elements_per_register / 2;
-            match (vs2, vs1, vd) {
-                (
-                    [VRegister::U1024(ref a1), VRegister::U1024(ref a2)],
-                    VRegister::U1024(b),
-                    [VRegister::U1024(ref mut r1), VRegister::U1024(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_1024([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_1024([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+macro_rules! vx_loop_s_widen {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U512(ref a1), VRegister::U512(ref a2)],
-                    VRegister::U512(b),
-                    [VRegister::U512(ref mut r1), VRegister::U512(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_512([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_512([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U256(ref a1), VRegister::U256(ref a2)],
-                    VRegister::U256(b),
-                    [VRegister::U256(ref mut r1), VRegister::U256(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_256([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_256([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U128(ref a1), VRegister::U128(ref a2)],
-                    VRegister::U128(b),
-                    [VRegister::U128(ref mut r1), VRegister::U128(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_128([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_128([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U64(ref a1), VRegister::U64(ref a2)],
-                    VRegister::U64(b),
-                    [VRegister::U64(ref mut r1), VRegister::U64(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_64([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_64([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U32(ref a1), VRegister::U32(ref a2)],
-                    VRegister::U32(b),
-                    [VRegister::U32(ref mut r1), VRegister::U32(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_32([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_32([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U16(ref a1), VRegister::U16(ref a2)],
-                    VRegister::U16(b),
-                    [VRegister::U16(ref mut r1), VRegister::U16(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_16([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_16([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U8(ref a1), VRegister::U8(ref a2)],
-                    VRegister::U8(b),
-                    [VRegister::U8(ref mut r1), VRegister::U8(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_8([&a2[index], &a2[index + 1]], &b[i]);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_8([&a1[index], &a1[index + 1]], &b[i]);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vx_s($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-type WWXIteratorFunc = fn(
-    lhs: [&VRegister; 2],
-    rhs: u64,
-    vd: [&mut VRegister; 2],
-    num: usize,
-    elements_per_register: usize,
-) -> Result<(), Error>;
-
-// Widening operation: 2*SEW = 2*SEW op SEW
-// Have a destination and a source group with EEW=2*SEW and EMUL=2*LMUL
-fn loop_w_wx<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-    func: WWXIteratorFunc,
-) -> Result<(), Error> {
-    let i = VXtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
-    let vl = machine.get_vl() as usize;
-    let register_count = ((vl - 1) / elements_per_register) + 1;
-    for j in 0..register_count {
-        let rs1_value = machine.registers()[i.rs1()].to_u64();
-        let vs2_1 = machine.get_vregister(i.vs2() + j * 2);
-        let vs2_2 = machine.get_vregister(i.vs2() + j * 2 + 1);
-        let mut vd1 = machine.get_vregister(i.vd() + j * 2);
-        let mut vd2 = machine.get_vregister(i.vd() + j * 2 + 1);
-
-        let num = if j == (register_count - 1) {
-            vl - j * elements_per_register
-        } else {
-            elements_per_register
-        };
-        func(
-            [&vs2_1, &vs2_2],
-            rs1_value,
-            [&mut vd1, &mut vd2],
-            num,
-            elements_per_register,
-        )?;
-        machine.set_vregister(i.vd() + j * 2, vd1);
-        if num > (elements_per_register / 2) {
-            machine.set_vregister(i.vd() + j * 2 + 1, vd2);
-        }
-    }
-    Ok(())
-}
-
-macro_rules! w_wx_iterator_impl {
-    ($func_1024:tt,
-    $func_512:tt,
-    $func_256:tt,
-    $func_128:tt,
-    $func_64:tt,
-    $func_32:tt,
-    $func_16:tt,
-    $func_8:tt) => {
-        pub fn wx_iterator_func(
-            vs2: [&VRegister; 2],
-            vs1: u64,
-            vd: [&mut VRegister; 2],
-            num: usize,
-            elements_per_register: usize,
-        ) -> Result<(), Error> {
-            let half = elements_per_register / 2;
-            match (vs2, vd) {
-                (
-                    [VRegister::U1024(ref a1), VRegister::U1024(ref a2)],
-                    [VRegister::U1024(ref mut r1), VRegister::U1024(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_1024([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_1024([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+macro_rules! vx_loop_u_widen {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U512(ref a1), VRegister::U512(ref a2)],
-                    [VRegister::U512(ref mut r1), VRegister::U512(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_512([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_512([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U256(ref a1), VRegister::U256(ref a2)],
-                    [VRegister::U256(ref mut r1), VRegister::U256(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_256([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_256([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U128(ref a1), VRegister::U128(ref a2)],
-                    [VRegister::U128(ref mut r1), VRegister::U128(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_128([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_128([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U64(ref a1), VRegister::U64(ref a2)],
-                    [VRegister::U64(ref mut r1), VRegister::U64(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_64([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_64([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U32(ref a1), VRegister::U32(ref a2)],
-                    [VRegister::U32(ref mut r1), VRegister::U32(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_32([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_32([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U16(ref a1), VRegister::U16(ref a2)],
-                    [VRegister::U16(ref mut r1), VRegister::U16(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_16([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_16([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                (
-                    [VRegister::U8(ref a1), VRegister::U8(ref a2)],
-                    [VRegister::U8(ref mut r1), VRegister::U8(ref mut r2)],
-                ) => {
-                    for i in 0..num {
-                        if i >= half {
-                            let index = 2 * i - elements_per_register;
-                            let (res1, res2) = $func_8([&a2[index], &a2[index + 1]], vs1);
-                            r2[index] = res1;
-                            r2[index + 1] = res2;
-                        } else {
-                            let index = 2 * i;
-                            let (res1, res2) = $func_8([&a1[index], &a1[index + 1]], vs1);
-                            r1[index] = res1;
-                            r1[index + 1] = res2;
-                        }
-                    }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::vx_u($machine.registers()[i.rs1()].to_u64());
+                    let (lo, hi) = $body(b, a);
+                    lo.save($machine.element_mut(i.vd(), sew, j * 2));
+                    hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 _ => return Err(Error::Unexpected),
             }
-            Ok(())
         }
     };
 }
 
-fn load_elements<Mac: Machine>(
-    machine: &mut Mac,
-    start_reg_index: usize,
-    sew: usize,
-    buf: &[u8],
-) -> Result<(), Error> {
-    let buf_len = buf.len();
-    if (buf_len * 8) % sew != 0 || buf_len == 0 {
-        return Err(Error::Unexpected);
-    }
-    let vlenb = VLEN as usize / 8;
-    let reg_count = (buf_len - 1) / vlenb + 1;
-    for i in 0..reg_count {
-        if i == (reg_count - 1) {
-            let reg = machine.get_vregister(start_reg_index + i);
-            let mut temp = reg.to_le_bytes();
-            let num = buf_len - i * vlenb;
-            &temp[0..num].copy_from_slice(&buf[i * vlenb..i * vlenb + num]);
-            let reg = VRegister::from_le_bytes(sew as u32, temp);
-            machine.set_vregister(start_reg_index + i, reg);
-        } else {
-            let mut temp = [0u8; 256];
-            temp.copy_from_slice(&buf[i * vlenb..i * vlenb + vlenb]);
-            let reg = VRegister::from_le_bytes(sew as u32, temp);
-            machine.set_vregister(start_reg_index + i, reg);
+macro_rules! wv_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U16::from(U8::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a.wrapping_shl(U16::BITS / 2).wrapping_sra(U16::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                16 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U32::from(U16::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a.wrapping_shl(U32::BITS / 2).wrapping_sra(U32::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                32 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U64::from(U32::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a.wrapping_shl(U64::BITS / 2).wrapping_sra(U64::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                64 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U128::from(U64::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a.wrapping_shl(U128::BITS / 2).wrapping_sra(U128::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                128 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U256::from(U128::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a.wrapping_shl(U256::BITS / 2).wrapping_sra(U256::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                256 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U512::from(U256::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a.wrapping_shl(U512::BITS / 2).wrapping_sra(U512::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                512 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U1024::from(U512::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a
+                        .wrapping_shl(U1024::BITS / 2)
+                        .wrapping_sra(U1024::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                1024 => {
+                    let b = U2048::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U2048::from(U1024::read($machine.element_ref(i.vs1(), sew, j)));
+                    let a = a
+                        .wrapping_shl(U2048::BITS / 2)
+                        .wrapping_sra(U2048::BITS / 2);
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
         }
-    }
-    Ok(())
+    };
 }
 
-fn vle_impl<Mac: Machine>(machine: &mut Mac, inst: Instruction, bits: usize) -> Result<(), Error> {
-    let i = Itype(inst);
-    let rd = i.rd();
-    let addr = machine.registers()[i.rs1()].clone();
-    let vl = machine.get_vl() as usize;
-    let sew = machine.get_vsew() as usize;
-    let buf_len = vl * bits / 8;
-    let buf = machine
-        .memory_mut()
-        .load_bytes(addr.to_u64(), buf_len as u64)?;
-    load_elements(machine, rd, sew, buf.as_slice())
+macro_rules! wv_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U16::from(U8::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                16 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U32::from(U16::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                32 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U64::from(U32::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                64 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U128::from(U64::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                128 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U256::from(U128::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                256 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U512::from(U256::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                512 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U1024::from(U512::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                1024 => {
+                    let b = U2048::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U2048::from(U1024::read($machine.element_ref(i.vs1(), sew, j)));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! wx_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U16::from(U8::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                16 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U32::from(U16::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                32 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U64::from(U32::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                64 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U128::from(U64::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                128 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U256::from(U128::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                256 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U512::from(U256::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                512 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U1024::from(U512::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                1024 => {
+                    let b = U2048::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U2048::from(U1024::vx_s($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! wx_loop_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            match sew {
+                8 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U16::from(U8::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                16 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U32::from(U16::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                32 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U64::from(U32::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                64 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U128::from(U64::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                128 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U256::from(U128::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                256 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U512::from(U256::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                512 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U1024::from(U512::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                1024 => {
+                    let b = U2048::read($machine.element_ref(i.vs2(), sew * 2, j));
+                    let a = U2048::from(U1024::vx_u($machine.registers()[i.rs1()].to_u64()));
+                    let r = $body(b, a);
+                    r.save($machine.element_mut(i.vd(), sew * 2, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! vv_loop_s_ext {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mut b = $machine.element_ref(i.vs2(), sew / $size, j).to_vec();
+            if b.last().unwrap() > &127 {
+                b.resize(sew as usize >> 3, 0xff);
+            } else {
+                b.resize(sew as usize >> 3, 0x00);
+            }
+            $machine.element_mut(i.vd(), sew, j).copy_from_slice(&b);
+        }
+    };
+}
+
+macro_rules! vv_loop_u_ext {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mut b = $machine.element_ref(i.vs2(), sew / $size, j).to_vec();
+            b.resize(sew as usize >> 3, 0x00);
+            $machine.element_mut(i.vd(), sew, j).copy_from_slice(&b);
+        }
+    };
 }
 
 pub fn execute_instruction<Mac: Machine>(
@@ -2153,2322 +2197,432 @@ pub fn execute_instruction<Mac: Machine>(
             )?;
         }
         insts::OP_VLM_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            for i in 0..(machine.get_vl() + 7) / 8 {
-                let rd = rd + i as usize / 256;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32));
-                let elem = machine.memory_mut().load8(&addr)?.to_u8();
-                let vreg = machine.get_vregister(rd);
-                let mut vreg = vreg.clone_with_eew(8);
-                if let VRegister::U8(ref mut data) = vreg {
-                    data[i as usize % 256] = U8(elem);
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let size = (machine.vl() + 7) / 8;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE8_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 256;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32));
-                let elem = machine.memory_mut().load8(&addr)?.to_u8();
-                let vreg = machine.get_vregister(rd);
-                let mut vreg = vreg.clone_with_eew(8);
-                if let VRegister::U8(ref mut data) = vreg {
-                    data[i as usize % 256] = U8(elem);
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let size = machine.vl() * 8 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE16_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 128;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 2));
-                let elem = machine.memory_mut().load16(&addr)?.to_u16();
-                let vreg = machine.get_vregister(rd);
-                let mut vreg = vreg.clone_with_eew(16);
-                if let VRegister::U16(ref mut data) = vreg {
-                    data[i as usize % 128] = U16(elem);
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let size = machine.vl() * 16 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE32_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 64;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 4));
-                let elem = machine.memory_mut().load32(&addr)?.to_u32();
-                let vreg = machine.get_vregister(rd);
-                let mut vreg = vreg.clone_with_eew(32);
-                if let VRegister::U32(ref mut data) = vreg {
-                    data[i as usize % 64] = U32(elem);
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let size = machine.vl() * 32 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE64_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 32;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 8));
-                let elem = machine.memory_mut().load64(&addr)?.to_u64();
-                let vreg = machine.get_vregister(rd);
-                let mut vreg = vreg.clone_with_eew(64);
-                if let VRegister::U64(ref mut data) = vreg {
-                    data[i as usize % 32] = U64(elem);
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let size = machine.vl() * 64 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE128_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let mut buf = [0u8; 16];
-            for i in 0..machine.get_vl() {
-                let rd = rd + i as usize / 16;
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * 16));
-                buf.copy_from_slice(&machine.memory_mut().load_bytes(addr.to_u64(), 16)?);
-                let elem = u128::from_le_bytes(buf);
-                let vreg = machine.get_vregister(rd);
-                let mut vreg = vreg.clone_with_eew(128);
-                if let VRegister::U128(ref mut data) = vreg {
-                    data[i as usize % 16] = U128(elem);
-                } else {
-                    return Err(Error::Unexpected);
-                }
-                machine.set_vregister(rd, vreg);
-            }
+            let size = machine.vl() * 128 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE256_V => {
-            vle_impl(machine, inst, 256)?;
+            let size = machine.vl() * 256 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE512_V => {
-            vle_impl(machine, inst, 512)?;
+            let size = machine.vl() * 512 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VLE1024_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let vl = machine.get_vl() as usize;
-            let sew = machine.get_vsew() as usize;
-            let buf_len = vl * 256;
-            let buf = machine
-                .memory_mut()
-                .load_bytes(addr.to_u64(), buf_len as u64)?;
-            load_elements(machine, rd, sew, buf.as_slice())?
+            let size = machine.vl() * 1024 >> 3;
+            ld!(inst, machine, size);
         }
         insts::OP_VSM_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 8;
-            for i in 0..(machine.get_vl() + 7) / 8 {
-                let rd = rd + i as usize / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(8);
-                if let VRegister::U8(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    return Err(Error::Unexpected);
-                }
-            }
+            let size = (machine.vl() + 7) / 8;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE8_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 8;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U8(data) = vreg {
-                    let elem = data[i % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 8 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE16_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 16;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U16(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 16 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE32_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 32;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U32(data) = vreg {
-                    let elem = data[i % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 32 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE64_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 64;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U64(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 64 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE128_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 128;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U128(data) = vreg {
-                    let elem = data[i % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 128 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE256_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 256;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U256(data) = vreg {
-                    let elem = data[i % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 256 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE512_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 512;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U512(data) = vreg {
-                    let elem = data[i as usize % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    unreachable!()
-                }
-            }
+            let size = machine.vl() * 512 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VSE1024_V => {
-            let i = Itype(inst);
-            let rd = i.rd();
-            let addr = machine.registers()[i.rs1()].clone();
-            let bits: usize = 1024;
-            let vl = machine.get_vl() as usize;
-            for i in 0..vl {
-                let rd = rd + i / (VLEN as usize / bits);
-                let addr = addr.overflowing_add(&Mac::REG::from_u32(i as u32 * (bits as u32 / 8)));
-                let vreg = machine.get_vregister(rd);
-                let vreg = vreg.clone_with_eew(bits);
-                if let VRegister::U1024(data) = vreg {
-                    let elem = data[i % (VLEN as usize / bits)];
-                    machine
-                        .memory_mut()
-                        .store_bytes(addr.to_u64(), &elem.to_le_bytes())?;
-                } else {
-                    return Err(Error::Unexpected);
-                }
-            }
+            let size = machine.vl() * 1024 >> 3;
+            sd!(inst, machine, size);
         }
         insts::OP_VADD_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_add(*b)},
-                {|a: &U512, b: &U512| a.wrapping_add(*b)},
-                {|a: &U256, b: &U256| a.wrapping_add(*b)},
-                {|a: &U128, b: &U128| a.wrapping_add(*b)},
-                {|a: &U64, b: &U64| a.wrapping_add(*b)},
-                {|a: &U32, b: &U32| a.wrapping_add(*b)},
-                {|a: &U16, b: &U16| a.wrapping_add(*b)},
-                {|a: &U8, b: &U8| a.wrapping_add(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::wrapping_add });
         }
         insts::OP_VADD_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_add(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_add(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_add(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_add(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_add(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_add(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_add(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_add(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::wrapping_add });
         }
         insts::OP_VADD_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| a.wrapping_add(U1024::vi(imm))},
-                {|a:&U512, imm: i32| a.wrapping_add(U512::vi(imm))},
-                {|a:&U256, imm: i32| a.wrapping_add(U256::vi(imm))},
-                {|a:&U128, imm: i32| a.wrapping_add(U128::vi(imm))},
-                {|a:&U64, imm: i32| a.wrapping_add(U64::vi(imm))},
-                {|a:&U32, imm: i32| a.wrapping_add(U32::vi(imm))},
-                {|a:&U16, imm: i32| a.wrapping_add(U16::vi(imm))},
-                {|a:&U8, imm: i32| a.wrapping_add(U8::vi(imm))}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { Element::wrapping_add });
         }
         insts::OP_VSUB_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_sub(*b)},
-                {|a: &U512, b: &U512| a.wrapping_sub(*b)},
-                {|a: &U256, b: &U256| a.wrapping_sub(*b)},
-                {|a: &U128, b: &U128| a.wrapping_sub(*b)},
-                {|a: &U64, b: &U64| a.wrapping_sub(*b)},
-                {|a: &U32, b: &U32| a.wrapping_sub(*b)},
-                {|a: &U16, b: &U16| a.wrapping_sub(*b)},
-                {|a: &U8, b: &U8| a.wrapping_sub(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::wrapping_sub });
         }
         insts::OP_VSUB_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_sub(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_sub(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_sub(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_sub(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_sub(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_sub(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_sub(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_sub(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::wrapping_sub });
         }
         insts::OP_VRSUB_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::vx(rhs).wrapping_sub(*a)},
-                {|a:&U512, rhs: u64| U512::vx(rhs).wrapping_sub(*a)},
-                {|a:&U256, rhs: u64| U256::vx(rhs).wrapping_sub(*a)},
-                {|a:&U128, rhs: u64| U128::vx(rhs).wrapping_sub(*a)},
-                {|a:&U64, rhs: u64| U64::vx(rhs).wrapping_sub(*a)},
-                {|a:&U32, rhs: u64| U32::vx(rhs).wrapping_sub(*a)},
-                {|a:&U16, rhs: u64| U16::vx(rhs).wrapping_sub(*a)},
-                {|a:&U8, rhs: u64| U8::vx(rhs).wrapping_sub(*a)}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::wrapping_rsub });
         }
         insts::OP_VRSUB_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::vi(imm).wrapping_sub(*a)},
-                {|a:&U512, imm: i32| U512::vi(imm).wrapping_sub(*a)},
-                {|a:&U256, imm: i32| U256::vi(imm).wrapping_sub(*a)},
-                {|a:&U128, imm: i32| U128::vi(imm).wrapping_sub(*a)},
-                {|a:&U64, imm: i32| U64::vi(imm).wrapping_sub(*a)},
-                {|a:&U32, imm: i32| U32::vi(imm).wrapping_sub(*a)},
-                {|a:&U16, imm: i32| U16::vi(imm).wrapping_sub(*a)},
-                {|a:&U8, imm: i32| U8::vi(imm).wrapping_sub(*a)}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { Element::wrapping_rsub });
         }
-
         insts::OP_VMUL_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_mul(*b)},
-                {|a: &U512, b: &U512| a.wrapping_mul(*b)},
-                {|a: &U256, b: &U256| a.wrapping_mul(*b)},
-                {|a: &U128, b: &U128| a.wrapping_mul(*b)},
-                {|a: &U64, b: &U64| a.wrapping_mul(*b)},
-                {|a: &U32, b: &U32| a.wrapping_mul(*b)},
-                {|a: &U16, b: &U16| a.wrapping_mul(*b)},
-                {|a: &U8, b: &U8| a.wrapping_mul(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::wrapping_mul });
         }
         insts::OP_VMUL_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_mul(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_mul(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_mul(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_mul(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_mul(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_mul(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_mul(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_mul(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::wrapping_mul });
         }
         insts::OP_VDIVU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_div(*b)},
-                {|a: &U512, b: &U512| a.wrapping_div(*b)},
-                {|a: &U256, b: &U256| a.wrapping_div(*b)},
-                {|a: &U128, b: &U128| a.wrapping_div(*b)},
-                {|a: &U64, b: &U64| a.wrapping_div(*b)},
-                {|a: &U32, b: &U32| a.wrapping_div(*b)},
-                {|a: &U16, b: &U16| a.wrapping_div(*b)},
-                {|a: &U8, b: &U8| a.wrapping_div(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::wrapping_div });
         }
         insts::OP_VDIVU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_div(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_div(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_div(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_div(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_div(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_div(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_div(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_div(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::wrapping_div });
         }
         insts::OP_VDIV_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_div_s(*b)},
-                {|a: &U512, b: &U512| a.wrapping_div_s(*b)},
-                {|a: &U256, b: &U256| a.wrapping_div_s(*b)},
-                {|a: &U128, b: &U128| a.wrapping_div_s(*b)},
-                {|a: &U64, b: &U64| a.wrapping_div_s(*b)},
-                {|a: &U32, b: &U32| a.wrapping_div_s(*b)},
-                {|a: &U16, b: &U16| a.wrapping_div_s(*b)},
-                {|a: &U8, b: &U8| a.wrapping_div_s(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::wrapping_div_s });
         }
         insts::OP_VDIV_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_div_s(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_div_s(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_div_s(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_div_s(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_div_s(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_div_s(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_div_s(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_div_s(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::wrapping_div_s });
         }
         insts::OP_VREMU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_rem(*b)},
-                {|a: &U512, b: &U512| a.wrapping_rem(*b)},
-                {|a: &U256, b: &U256| a.wrapping_rem(*b)},
-                {|a: &U128, b: &U128| a.wrapping_rem(*b)},
-                {|a: &U64, b: &U64| a.wrapping_rem(*b)},
-                {|a: &U32, b: &U32| a.wrapping_rem(*b)},
-                {|a: &U16, b: &U16| a.wrapping_rem(*b)},
-                {|a: &U8, b: &U8| a.wrapping_rem(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::wrapping_rem });
         }
         insts::OP_VREMU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_rem(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_rem(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_rem(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_rem(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_rem(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_rem(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_rem(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_rem(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::wrapping_rem });
         }
         insts::OP_VREM_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_rem_s(*b)},
-                {|a: &U512, b: &U512| a.wrapping_rem_s(*b)},
-                {|a: &U256, b: &U256| a.wrapping_rem_s(*b)},
-                {|a: &U128, b: &U128| a.wrapping_rem_s(*b)},
-                {|a: &U64, b: &U64| a.wrapping_rem_s(*b)},
-                {|a: &U32, b: &U32| a.wrapping_rem_s(*b)},
-                {|a: &U16, b: &U16| a.wrapping_rem_s(*b)},
-                {|a: &U8, b: &U8| a.wrapping_rem_s(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::wrapping_rem_s });
         }
         insts::OP_VREM_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_rem_s(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.wrapping_rem_s(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.wrapping_rem_s(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.wrapping_rem_s(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.wrapping_rem_s(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.wrapping_rem_s(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.wrapping_rem_s(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.wrapping_rem_s(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::wrapping_rem_s });
         }
         insts::OP_VSLL_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| *a << b.u32()},
-                {|a: &U512, b: &U512| *a << b.u32()},
-                {|a: &U256, b: &U256| *a << b.u32()},
-                {|a: &U128, b: &U128| *a << b.u32()},
-                {|a: &U64, b: &U64| *a << b.u32()},
-                {|a: &U32, b: &U32| *a << b.u32()},
-                {|a: &U16, b: &U16| *a << b.u32()},
-                {|a: &U8, b: &U8| *a << b.u32()}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::wrapping_shl_e });
         }
         insts::OP_VSLL_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| *a << rhs as u32 },
-                {|a:&U512, rhs: u64| *a << rhs as u32},
-                {|a:&U256, rhs: u64| *a << rhs as u32},
-                {|a:&U128, rhs: u64| *a << rhs as u32} ,
-                {|a:&U64, rhs: u64| *a << rhs as u32},
-                {|a:&U32, rhs: u64| *a << rhs as u32},
-                {|a:&U16, rhs: u64| *a << rhs as u32 },
-                {|a:&U8, rhs: u64| *a << rhs as u32}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::wrapping_shl_e });
         }
         insts::OP_VSLL_VI => {
-            vi2_iterator_impl! {
-                {|a:&U1024, imm: u32| *a << imm },
-                {|a:&U512, imm: u32| *a << imm },
-                {|a:&U256, imm: u32| *a << imm  },
-                {|a:&U128, imm: u32| *a << imm  },
-                {|a:&U64, imm: u32| *a << imm },
-                {|a:&U32, imm: u32| *a << imm },
-                {|a:&U16, imm: u32| *a << imm  },
-                {|a:&U8, imm: u32| *a << imm }
-            };
-            loop_vi2(inst, machine, vi2_iterator_func)?;
+            vi_loop_u!(inst, machine, { Element::wrapping_shl_e });
         }
         insts::OP_VSRL_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| *a >> b.u32()},
-                {|a: &U512, b: &U512| *a >> b.u32()},
-                {|a: &U256, b: &U256| *a >> b.u32()},
-                {|a: &U128, b: &U128| *a >> b.u32()},
-                {|a: &U64, b: &U64| *a >> b.u32()},
-                {|a: &U32, b: &U32| *a >> b.u32()},
-                {|a: &U16, b: &U16| *a >> b.u32()},
-                {|a: &U8, b: &U8| *a >> b.u32()}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::wrapping_shr_e });
         }
         insts::OP_VSRL_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| *a >> rhs as u32 },
-                {|a:&U512, rhs: u64| *a >> rhs as u32 },
-                {|a:&U256, rhs: u64| *a >> rhs as u32  },
-                {|a:&U128, rhs: u64| *a >> rhs as u32 },
-                {|a:&U64, rhs: u64| *a >> rhs as u32  },
-                {|a:&U32, rhs: u64| *a >> rhs as u32  },
-                {|a:&U16, rhs: u64| *a >> rhs as u32 },
-                {|a:&U8, rhs: u64| *a >> rhs as u32 }
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::wrapping_shr_e });
         }
         insts::OP_VSRL_VI => {
-            vi2_iterator_impl! {
-                {|a:&U1024, imm: u32| *a >> imm },
-                {|a:&U512, imm: u32| *a >> imm },
-                {|a:&U256, imm: u32| *a >> imm },
-                {|a:&U128, imm: u32| *a >> imm  },
-                {|a:&U64, imm: u32| *a >> imm },
-                {|a:&U32, imm: u32| *a >> imm },
-                {|a:&U16, imm: u32| *a >> imm },
-                {|a:&U8, imm: u32| *a >> imm }
-            };
-            loop_vi2(inst, machine, vi2_iterator_func)?;
+            vi_loop_u!(inst, machine, { Element::wrapping_shr_e });
         }
         insts::OP_VSRA_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.wrapping_sra(b.u32())},
-                {|a: &U512, b: &U512| a.wrapping_sra(b.u32())},
-                {|a: &U256, b: &U256| a.wrapping_sra(b.u32())},
-                {|a: &U128, b: &U128| a.wrapping_sra(b.u32())},
-                {|a: &U64, b: &U64| a.wrapping_sra(b.u32())},
-                {|a: &U32, b: &U32| a.wrapping_sra(b.u32())},
-                {|a: &U16, b: &U16| a.wrapping_sra(b.u32())},
-                {|a: &U8, b: &U8| a.wrapping_sra(b.u32())}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::wrapping_sra_e });
         }
         insts::OP_VSRA_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.wrapping_sra(rhs as u32)},
-                {|a:&U512, rhs: u64| a.wrapping_sra(rhs as u32)},
-                {|a:&U256, rhs: u64| a.wrapping_sra(rhs as u32)},
-                {|a:&U128, rhs: u64| a.wrapping_sra(rhs as u32)},
-                {|a:&U64, rhs: u64| a.wrapping_sra(rhs as u32)   },
-                {|a:&U32, rhs: u64| a.wrapping_sra(rhs as u32)   },
-                {|a:&U16, rhs: u64| a.wrapping_sra(rhs as u32)},
-                {|a:&U8, rhs: u64| a.wrapping_sra(rhs as u32)}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::wrapping_sra_e });
         }
         insts::OP_VSRA_VI => {
-            vi2_iterator_impl! {
-                {|a:&U1024, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U512, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U256, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U128, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U64, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U32, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U16, imm: u32| a.wrapping_sra(imm)},
-                {|a:&U8, imm: u32| a.wrapping_sra(imm)}
-            };
-            loop_vi2(inst, machine, vi2_iterator_func)?;
+            vi_loop_u!(inst, machine, { Element::wrapping_sra_e });
         }
         insts::OP_VMSEQ_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| (a == b).into()},
-                {|a: &U512, b: &U512| (a == b).into()},
-                {|a: &U256, b: &U256| (a == b).into()},
-                {|a: &U128, b: &U128| (a == b).into()},
-                {|a: &U64, b: &U64| (a == b).into()},
-                {|a: &U32, b: &U32| (a == b).into()},
-                {|a: &U16, b: &U16| (a == b).into()},
-                {|a: &U8, b: &U8| (a == b).into()}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_cmp!(inst, machine, { alu::seq });
         }
         insts::OP_VMSEQ_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a == &U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| U512::from(a == &U512::vx(rhs))},
-                {|a:&U256, rhs: u64| U256::from(a == &U256::vx(rhs))},
-                {|a:&U128, rhs: u64| U128::from(a == &U128::vx(rhs))},
-                {|a:&U64, rhs: u64| U64::from(a == &U64::vx(rhs))},
-                {|a:&U32, rhs: u64| U32::from(a == &U32::vx(rhs))},
-                {|a:&U16, rhs: u64| U16::from(a == &U16::vx(rhs))},
-                {|a:&U8, rhs: u64| U8::from(a == &U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_cmp!(inst, machine, { alu::seq });
         }
         insts::OP_VMSEQ_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::from(a == &U1024::vi(imm))},
-                {|a:&U512, imm: i32| U512::from(a == &U512::vi(imm))},
-                {|a:&U256, imm: i32| U256::from(a == &U256::vi(imm))},
-                {|a:&U128, imm: i32| U128::from(a == &U128::vi(imm))},
-                {|a:&U64, imm: i32| U64::from(a == &U64::vi(imm))},
-                {|a:&U32, imm: i32| U32::from(a == &U32::vi(imm))},
-                {|a:&U16, imm: i32| U16::from(a == &U16::vi(imm))},
-                {|a:&U8, imm: i32| U8::from(a == &U8::vi(imm))}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s_cmp!(inst, machine, { alu::seq });
         }
         insts::OP_VMSNE_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| (a != b).into()},
-                {|a: &U512, b: &U512| (a != b).into()},
-                {|a: &U256, b: &U256| (a != b).into()},
-                {|a: &U128, b: &U128| (a != b).into()},
-                {|a: &U64, b: &U64| (a != b).into()},
-                {|a: &U32, b: &U32| (a != b).into()},
-                {|a: &U16, b: &U16| (a != b).into()},
-                {|a: &U8, b: &U8| (a != b).into()}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_cmp!(inst, machine, { alu::sne });
         }
         insts::OP_VMSNE_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a != &U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| U512::from(a != &U512::vx(rhs))},
-                {|a:&U256, rhs: u64| U256::from(a != &U256::vx(rhs))},
-                {|a:&U128, rhs: u64| U128::from(a != &U128::vx(rhs))},
-                {|a:&U64, rhs: u64| U64::from(a != &U64::vx(rhs))},
-                {|a:&U32, rhs: u64| U32::from(a != &U32::vx(rhs))},
-                {|a:&U16, rhs: u64| U16::from(a != &U16::vx(rhs))},
-                {|a:&U8, rhs: u64| U8::from(a != &U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_cmp!(inst, machine, { alu::sne });
         }
         insts::OP_VMSNE_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::from(a != &U1024::vi(imm))},
-                {|a:&U512, imm: i32| U512::from(a != &U512::vi(imm))},
-                {|a:&U256, imm: i32| U256::from(a != &U256::vi(imm))},
-                {|a:&U128, imm: i32| U128::from(a != &U128::vi(imm))},
-                {|a:&U64, imm: i32| U64::from(a != &U64::vi(imm))},
-                {|a:&U32, imm: i32| U32::from(a != &U32::vi(imm))},
-                {|a:&U16, imm: i32| U16::from(a != &U16::vi(imm))},
-                {|a:&U8, imm: i32| U8::from(a != &U8::vi(imm))}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s_cmp!(inst, machine, { alu::sne });
         }
         insts::OP_VMSLTU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| (a < b).into()},
-                {|a: &U512, b: &U512| (a < b).into()},
-                {|a: &U256, b: &U256| (a < b).into()},
-                {|a: &U128, b: &U128| (a < b).into()},
-                {|a: &U64, b: &U64| (a < b).into()},
-                {|a: &U32, b: &U32| (a < b).into()},
-                {|a: &U16, b: &U16| (a < b).into()},
-                {|a: &U8, b: &U8| (a < b).into()}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_cmp!(inst, machine, { alu::sltu });
         }
         insts::OP_VMSLTU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a < &U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| U512::from(a < &U512::vx(rhs))},
-                {|a:&U256, rhs: u64| U256::from(a < &U256::vx(rhs))},
-                {|a:&U128, rhs: u64| U128::from(a < &U128::vx(rhs))},
-                {|a:&U64, rhs: u64| U64::from(a < &U64::vx(rhs))},
-                {|a:&U32, rhs: u64| U32::from(a < &U32::vx(rhs))},
-                {|a:&U16, rhs: u64| U16::from(a < &U16::vx(rhs))},
-                {|a:&U8, rhs: u64| U8::from(a < &U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u_cmp!(inst, machine, { alu::sltu });
         }
         insts::OP_VMSLT_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| U1024::from(a.cmp_s(b) == std::cmp::Ordering::Less)},
-                {|a: &U512, b: &U512| U512::from(a.cmp_s(b) == std::cmp::Ordering::Less)},
-                {|a: &U256, b: &U256| U256::from(a.cmp_s(b)== std::cmp::Ordering::Less)},
-                {|a: &U128, b: &U128| U128::from(a.cmp_s(b)== std::cmp::Ordering::Less)},
-                {|a: &U64, b: &U64| U64::from(a.cmp_s(b) == std::cmp::Ordering::Less)},
-                {|a: &U32, b: &U32| U32::from(a.cmp_s(b) == std::cmp::Ordering::Less)},
-                {|a: &U16, b: &U16| U16::from(a.cmp_s(b) == std::cmp::Ordering::Less)},
-                {|a: &U8, b: &U8| U8::from(a.cmp_s(b) == std::cmp::Ordering::Less)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_cmp!(inst, machine, { alu::slt });
         }
         insts::OP_VMSLT_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a.cmp_s(&U1024::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U512, rhs: u64| U512::from(a.cmp_s(&U512::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U256, rhs: u64| U256::from(a.cmp_s(&U256::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U128, rhs: u64| U128::from(a.cmp_s(&U128::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U64, rhs: u64| U64::from(a.cmp_s(&U64::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U32, rhs: u64| U32::from(a.cmp_s(&U32::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U16, rhs: u64| U16::from(a.cmp_s(&U16::vx(rhs)) == std::cmp::Ordering::Less)},
-                {|a:&U8, rhs: u64| U8::from(a.cmp_s(&U8::vx(rhs)) == std::cmp::Ordering::Less)}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_cmp!(inst, machine, { alu::slt });
         }
         insts::OP_VMSLEU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| (a <= b).into()},
-                {|a: &U512, b: &U512| (a <= b).into()},
-                {|a: &U256, b: &U256| (a <= b).into()},
-                {|a: &U128, b: &U128| (a <= b).into()},
-                {|a: &U64, b: &U64| (a <= b).into()},
-                {|a: &U32, b: &U32| (a <= b).into()},
-                {|a: &U16, b: &U16| (a <= b).into()},
-                {|a: &U8, b: &U8| (a <= b).into()}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_cmp!(inst, machine, { alu::sleu });
         }
         insts::OP_VMSLEU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a <= &U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| U512::from(a <= &U512::vx(rhs))},
-                {|a:&U256, rhs: u64| U256::from(a <= &U256::vx(rhs))},
-                {|a:&U128, rhs: u64| U128::from(a <= &U128::vx(rhs))},
-                {|a:&U64, rhs: u64| U64::from(a <= &U64::vx(rhs))},
-                {|a:&U32, rhs: u64| U32::from(a <= &U32::vx(rhs))},
-                {|a:&U16, rhs: u64| U16::from(a <= &U16::vx(rhs))},
-                {|a:&U8, rhs: u64| U8::from(a <= &U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u_cmp!(inst, machine, { alu::sleu });
         }
         insts::OP_VMSLEU_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::from(*a <= U1024::vi(imm))},
-                {|a:&U512, imm: i32| U512::from(*a <= U512::vi(imm))},
-                {|a:&U256, imm: i32| U256::from(*a <= U256::vi(imm))},
-                {|a:&U128, imm: i32| U128::from(*a <= U128::vi(imm))},
-                {|a:&U64, imm: i32| U64::from(*a <= U64::vi(imm))},
-                {|a:&U32, imm: i32| U32::from(*a <= U32::vi(imm))},
-                {|a:&U16, imm: i32| U16::from(*a <= U16::vi(imm))},
-                {|a:&U8, imm: i32| U8::from(*a <= U8::vi(imm))}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_u_cmp!(inst, machine, { alu::sleu });
         }
         insts::OP_VMSLE_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| U1024::from(a.cmp_s(b) != std::cmp::Ordering::Greater)},
-                {|a: &U512, b: &U512| U512::from(a.cmp_s(b) != std::cmp::Ordering::Greater)},
-                {|a: &U256, b: &U256| U256::from(a.cmp_s(b)!= std::cmp::Ordering::Greater)},
-                {|a: &U128, b: &U128| U128::from(a.cmp_s(b)!= std::cmp::Ordering::Greater)},
-                {|a: &U64, b: &U64| U64::from(a.cmp_s(b) != std::cmp::Ordering::Greater)},
-                {|a: &U32, b: &U32| U32::from(a.cmp_s(b) != std::cmp::Ordering::Greater)},
-                {|a: &U16, b: &U16| U16::from(a.cmp_s(b) != std::cmp::Ordering::Greater)},
-                {|a: &U8, b: &U8| U8::from(a.cmp_s(b) != std::cmp::Ordering::Greater)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_cmp!(inst, machine, { alu::sle });
         }
         insts::OP_VMSLE_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a.cmp_s(&U1024::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U512, rhs: u64| U512::from(a.cmp_s(&U512::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U256, rhs: u64| U256::from(a.cmp_s(&U256::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U128, rhs: u64| U128::from(a.cmp_s(&U128::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U64, rhs: u64| U64::from(a.cmp_s(&U64::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U32, rhs: u64| U32::from(a.cmp_s(&U32::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U16, rhs: u64| U16::from(a.cmp_s(&U16::vx(rhs)) != std::cmp::Ordering::Greater)},
-                {|a:&U8, rhs: u64| U8::from(a.cmp_s(&U8::vx(rhs)) != std::cmp::Ordering::Greater)}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_cmp!(inst, machine, { alu::sle });
         }
         insts::OP_VMSLE_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::from(a.cmp_s(&U1024::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U512, imm: i32| U512::from(a.cmp_s(&U512::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U256, imm: i32| U256::from(a.cmp_s(&U256::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U128, imm: i32| U128::from(a.cmp_s(&U128::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U64, imm: i32| U64::from(a.cmp_s(&U64::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U32, imm: i32| U32::from(a.cmp_s(&U32::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U16, imm: i32| U16::from(a.cmp_s(&U16::vi(imm)) != std::cmp::Ordering::Greater)},
-                {|a:&U8, imm: i32| U8::from(a.cmp_s(&U8::vi(imm)) != std::cmp::Ordering::Greater)}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s_cmp!(inst, machine, { alu::sle });
         }
         insts::OP_VMSGTU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a > &U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| U512::from(a > &U512::vx(rhs))},
-                {|a:&U256, rhs: u64| U256::from(a > &U256::vx(rhs))},
-                {|a:&U128, rhs: u64| U128::from(a > &U128::vx(rhs))},
-                {|a:&U64, rhs: u64| U64::from(a > &U64::vx(rhs))},
-                {|a:&U32, rhs: u64| U32::from(a > &U32::vx(rhs))},
-                {|a:&U16, rhs: u64| U16::from(a > &U16::vx(rhs))},
-                {|a:&U8, rhs: u64| U8::from(a > &U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u_cmp!(inst, machine, { alu::sgtu });
         }
         insts::OP_VMSGTU_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::from(a > &U1024::vi(imm))},
-                {|a:&U512, imm: i32| U512::from(a > &U512::vi(imm))},
-                {|a:&U256, imm: i32| U256::from(a > &U256::vi(imm))},
-                {|a:&U128, imm: i32| U128::from(a > &U128::vi(imm))},
-                {|a:&U64, imm: i32| U64::from(a > &U64::vi(imm))},
-                {|a:&U32, imm: i32| U32::from(a > &U32::vi(imm))},
-                {|a:&U16, imm: i32| U16::from(a > &U16::vi(imm))},
-                {|a:&U8, imm: i32| U8::from(a > &U8::vi(imm))}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_u_cmp!(inst, machine, { alu::sgtu });
         }
         insts::OP_VMSGT_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| U1024::from(a.cmp_s(&U1024::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U512, rhs: u64| U512::from(a.cmp_s(&U512::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U256, rhs: u64| U256::from(a.cmp_s(&U256::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U128, rhs: u64| U128::from(a.cmp_s(&U128::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U64, rhs: u64| U64::from(a.cmp_s(&U64::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U32, rhs: u64| U32::from(a.cmp_s(&U32::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U16, rhs: u64| U16::from(a.cmp_s(&U16::vx(rhs)) == std::cmp::Ordering::Greater)},
-                {|a:&U8, rhs: u64| U8::from(a.cmp_s(&U8::vx(rhs)) == std::cmp::Ordering::Greater)}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_cmp!(inst, machine, { alu::sgt });
         }
         insts::OP_VMSGT_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| U1024::from(a.cmp_s(&U1024::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U512, imm: i32| U512::from(a.cmp_s(&U512::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U256, imm: i32| U256::from(a.cmp_s(&U256::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U128, imm: i32| U128::from(a.cmp_s(&U128::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U64, imm: i32| U64::from(a.cmp_s(&U64::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U32, imm: i32| U32::from(a.cmp_s(&U32::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U16, imm: i32| U16::from(a.cmp_s(&U16::vi(imm)) == std::cmp::Ordering::Greater)},
-                {|a:&U8, imm: i32| U8::from(a.cmp_s(&U8::vi(imm)) == std::cmp::Ordering::Greater)}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s_cmp!(inst, machine, { alu::sgt });
         }
         insts::OP_VMAXU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| if a > b {*a} else {*b}},
-                {|a: &U512, b: &U512| if a > b {*a} else {*b}},
-                {|a: &U256, b: &U256| if a > b {*a} else {*b}},
-                {|a: &U128, b: &U128| if a > b {*a} else {*b}},
-                {|a: &U64, b: &U64| if a > b {*a} else {*b}},
-                {|a: &U32, b: &U32| if a > b {*a} else {*b}},
-                {|a: &U16, b: &U16| if a > b {*a} else {*b}},
-                {|a: &U8, b: &U8| if a > b {*a} else {*b}}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { alu::maxu });
         }
         insts::OP_VMAXU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| if *a > U1024::vx(rhs) {*a} else {U1024::vx(rhs)}},
-                {|a:&U512, rhs: u64| if *a > U512::vx(rhs) {*a} else {U512::vx(rhs)}},
-                {|a:&U256, rhs: u64| if *a > U256::vx(rhs) {*a} else {U256::vx(rhs)}},
-                {|a:&U128, rhs: u64| if *a > U128::vx(rhs) {*a} else {U128::vx(rhs)}},
-                {|a:&U64, rhs: u64| if *a > U64::vx(rhs) {*a} else {U64::vx(rhs)}},
-                {|a:&U32, rhs: u64| if *a > U32::vx(rhs) {*a} else {U32::vx(rhs)}},
-                {|a:&U16, rhs: u64| if *a > U16::vx(rhs) {*a} else {U16::vx(rhs)}},
-                {|a:&U8, rhs: u64| if *a > U8::vx(rhs) {*a} else {U8::vx(rhs)}}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { alu::maxu });
         }
         insts::OP_VMAX_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U512, b: &U512| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U256, b: &U256| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U128, b: &U128| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U64, b: &U64| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U32, b: &U32| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U16, b: &U16| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}},
-                {|a: &U8, b: &U8| if a.cmp_s(b) == std::cmp::Ordering::Greater {*a} else {*b}}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::max });
         }
         insts::OP_VMAX_VX => {
-            vx_iterator_impl! {
-                {|a: &U1024, rhs: u64| if a.cmp_s(&U1024::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U1024::vx(rhs)}},
-                {|a: &U512, rhs: u64| if a.cmp_s(&U512::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U512::vx(rhs)}},
-                {|a: &U256, rhs: u64| if a.cmp_s(&U256::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U256::vx(rhs)}},
-                {|a: &U128, rhs: u64| if a.cmp_s(&U128::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U128::vx(rhs)}},
-                {|a: &U64, rhs: u64| if a.cmp_s(&U64::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U64::vx(rhs)}},
-                {|a: &U32, rhs: u64| if a.cmp_s(&U32::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U32::vx(rhs)}},
-                {|a: &U16, rhs: u64| if a.cmp_s(&U16::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U16::vx(rhs)}},
-                {|a: &U8, rhs: u64| if a.cmp_s(&U8::vx(rhs)) == std::cmp::Ordering::Greater {*a} else {U8::vx(rhs)}}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::max });
         }
         insts::OP_VMINU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| if a < b {*a} else {*b}},
-                {|a: &U512, b: &U512| if a < b {*a} else {*b}},
-                {|a: &U256, b: &U256| if a < b {*a} else {*b}},
-                {|a: &U128, b: &U128| if a < b {*a} else {*b}},
-                {|a: &U64, b: &U64| if a < b {*a} else {*b}},
-                {|a: &U32, b: &U32| if a < b {*a} else {*b}},
-                {|a: &U16, b: &U16| if a < b {*a} else {*b}},
-                {|a: &U8, b: &U8| if a < b {*a} else {*b}}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { alu::minu });
         }
         insts::OP_VMINU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| if *a < U1024::vx(rhs) {*a} else {U1024::vx(rhs)}},
-                {|a:&U512, rhs: u64| if *a < U512::vx(rhs) {*a} else {U512::vx(rhs)}},
-                {|a:&U256, rhs: u64| if *a < U256::vx(rhs) {*a} else {U256::vx(rhs)}},
-                {|a:&U128, rhs: u64| if *a < U128::vx(rhs) {*a} else {U128::vx(rhs)}},
-                {|a:&U64, rhs: u64| if *a < U64::vx(rhs) {*a} else {U64::vx(rhs)}},
-                {|a:&U32, rhs: u64| if *a > U32::vx(rhs) {*a} else {U32::vx(rhs)}},
-                {|a:&U16, rhs: u64| if *a < U16::vx(rhs) {*a} else {U16::vx(rhs)}},
-                {|a:&U8, rhs: u64| if *a < U8::vx(rhs) {*a} else {U8::vx(rhs)}}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { alu::minu });
         }
         insts::OP_VMIN_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U512, b: &U512| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U256, b: &U256| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U128, b: &U128| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U64, b: &U64| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U32, b: &U32| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U16, b: &U16| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}},
-                {|a: &U8, b: &U8| if a.cmp_s(b) == std::cmp::Ordering::Less {*a} else {*b}}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::min });
         }
         insts::OP_VMIN_VX => {
-            vx_iterator_impl! {
-                {|a: &U1024, rhs: u64| if a.cmp_s(&U1024::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U1024::vx(rhs)}},
-                {|a: &U512, rhs: u64| if a.cmp_s(&U512::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U512::vx(rhs)}},
-                {|a: &U256, rhs: u64| if a.cmp_s(&U256::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U256::vx(rhs)}},
-                {|a: &U128, rhs: u64| if a.cmp_s(&U128::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U128::vx(rhs)}},
-                {|a: &U64, rhs: u64| if a.cmp_s(&U64::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U64::vx(rhs)}},
-                {|a: &U32, rhs: u64| if a.cmp_s(&U32::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U32::vx(rhs)}},
-                {|a: &U16, rhs: u64| if a.cmp_s(&U16::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U16::vx(rhs)}},
-                {|a: &U8, rhs: u64| if a.cmp_s(&U8::vx(rhs)) == std::cmp::Ordering::Less {*a} else {U8::vx(rhs)}}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::min });
         }
         insts::OP_VAND_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| *a & *b},
-                {|a: &U512, b: &U512| *a & *b},
-                {|a: &U256, b: &U256| *a & *b},
-                {|a: &U128, b: &U128| *a & *b},
-                {|a: &U64, b: &U64| *a & *b},
-                {|a: &U32, b: &U32| *a & *b},
-                {|a: &U16, b: &U16| *a & *b},
-                {|a: &U8, b: &U8| *a & *b}
-            }
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::and });
         }
         insts::OP_VOR_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| *a | *b},
-                {|a: &U512, b: &U512| *a | *b},
-                {|a: &U256, b: &U256| *a | *b},
-                {|a: &U128, b: &U128| *a | *b},
-                {|a: &U64, b: &U64| *a | *b},
-                {|a: &U32, b: &U32| *a | *b},
-                {|a: &U16, b: &U16| *a | *b},
-                {|a: &U8, b: &U8| *a | *b}
-            }
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::or });
         }
         insts::OP_VXOR_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| *a ^ *b},
-                {|a: &U512, b: &U512| *a ^ *b},
-                {|a: &U256, b: &U256| *a ^ *b},
-                {|a: &U128, b: &U128| *a ^ *b},
-                {|a: &U64, b: &U64| *a ^ *b},
-                {|a: &U32, b: &U32| *a ^ *b},
-                {|a: &U16, b: &U16| *a ^ *b},
-                {|a: &U8, b: &U8| *a ^ *b}
-            }
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::xor });
         }
         insts::OP_VAND_VX => {
-            vx_iterator_impl! {
-                {|a: &U1024, rhs: u64| *a & U1024::vx(rhs)},
-                {|a: &U512, rhs: u64| *a & U512::vx(rhs)},
-                {|a: &U256, rhs: u64| *a & U256::vx(rhs) },
-                {|a: &U128, rhs: u64| *a & U128::vx(rhs)},
-                {|a: &U64, rhs: u64| *a & U64::vx(rhs)},
-                {|a: &U32, rhs: u64| *a & U32::vx(rhs)},
-                {|a: &U16, rhs: u64| *a & U16::vx(rhs)},
-                {|a: &U8, rhs: u64| *a & U8::vx(rhs)}
-            }
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::and });
         }
         insts::OP_VOR_VX => {
-            vx_iterator_impl! {
-                {|a: &U1024, rhs: u64| *a | U1024::vx(rhs)},
-                {|a: &U512, rhs: u64| *a | U512::vx(rhs)},
-                {|a: &U256, rhs: u64| *a | U256::vx(rhs) },
-                {|a: &U128, rhs: u64| *a | U128::vx(rhs)},
-                {|a: &U64, rhs: u64| *a | U64::vx(rhs)},
-                {|a: &U32, rhs: u64| *a | U32::vx(rhs)},
-                {|a: &U16, rhs: u64| *a | U16::vx(rhs)},
-                {|a: &U8, rhs: u64| *a | U8::vx(rhs)}
-            }
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::or });
         }
         insts::OP_VXOR_VX => {
-            vx_iterator_impl! {
-                {|a: &U1024, rhs: u64| *a ^ U1024::vx(rhs)},
-                {|a: &U512, rhs: u64| *a ^ U512::vx(rhs)},
-                {|a: &U256, rhs: u64| *a ^ U256::vx(rhs) },
-                {|a: &U128, rhs: u64| *a ^ U128::vx(rhs)},
-                {|a: &U64, rhs: u64| *a ^ U64::vx(rhs)},
-                {|a: &U32, rhs: u64| *a ^ U32::vx(rhs)},
-                {|a: &U16, rhs: u64| *a ^ U16::vx(rhs)},
-                {|a: &U8, rhs: u64| *a ^ U8::vx(rhs)}
-            }
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::xor });
         }
         insts::OP_VAND_VI => {
-            vi_iterator_impl! {
-                {|a: &U1024, imm: i32| *a & U1024::vi(imm)},
-                {|a: &U512, imm: i32| *a & U512::vi(imm)},
-                {|a: &U256, imm: i32| *a & U256::vi(imm)},
-                {|a: &U128, imm: i32| *a & U128::vi(imm)},
-                {|a: &U64, imm: i32| *a & U64::vi(imm)},
-                {|a: &U32, imm: i32| *a & U32::vi(imm)},
-                {|a: &U16, imm: i32| *a & U16::vi(imm)},
-                {|a: &U8, imm: i32| *a & U8::vi(imm)}
-            }
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { alu::and });
         }
         insts::OP_VOR_VI => {
-            vi_iterator_impl! {
-                {|a: &U1024, imm: i32| *a | U1024::vi(imm)},
-                {|a: &U512, imm: i32| *a | U512::vi(imm)},
-                {|a: &U256, imm: i32| *a | U256::vi(imm)},
-                {|a: &U128, imm: i32| *a | U128::vi(imm)},
-                {|a: &U64, imm: i32| *a | U64::vi(imm)},
-                {|a: &U32, imm: i32| *a | U32::vi(imm)},
-                {|a: &U16, imm: i32| *a | U16::vi(imm)},
-                {|a: &U8, imm: i32| *a | U8::vi(imm)}
-            }
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { alu::or });
         }
         insts::OP_VXOR_VI => {
-            vi_iterator_impl! {
-                {|a: &U1024, imm: i32| *a ^ U1024::vi(imm)},
-                {|a: &U512, imm: i32| *a ^ U512::vi(imm)},
-                {|a: &U256, imm: i32| *a ^ U256::vi(imm)},
-                {|a: &U128, imm: i32| *a ^ U128::vi(imm)},
-                {|a: &U64, imm: i32| *a ^ U64::vi(imm)},
-                {|a: &U32, imm: i32| *a ^ U32::vi(imm)},
-                {|a: &U16, imm: i32| *a ^ U16::vi(imm)},
-                {|a: &U8, imm: i32| *a ^ U8::vi(imm)}
-            }
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { alu::xor });
         }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);
-            for j in 0..1 {
-                let vreg = machine.get_vregister(i.vs2() + j as usize);
-                machine.set_vregister(i.vd() + j as usize, vreg);
-            }
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 1, 0)
+                .copy_from_slice(&data);
         }
         insts::OP_VMV2R_V => {
             let i = VItype(inst);
-            for j in 0..2 {
-                let vreg = machine.get_vregister(i.vs2() + j as usize);
-                machine.set_vregister(i.vd() + j as usize, vreg);
-            }
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 2, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 2, 0)
+                .copy_from_slice(&data);
         }
         insts::OP_VMV4R_V => {
             let i = VItype(inst);
-            for j in 0..4 {
-                let vreg = machine.get_vregister(i.vs2() + j as usize);
-                machine.set_vregister(i.vd() + j as usize, vreg);
-            }
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 4, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 4, 0)
+                .copy_from_slice(&data);
         }
         insts::OP_VMV8R_V => {
             let i = VItype(inst);
-            for j in 0..8 {
-                let vreg = machine.get_vregister(i.vs2() + j as usize);
-                machine.set_vregister(i.vd() + j as usize, vreg);
-            }
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 8, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 8, 0)
+                .copy_from_slice(&data);
         }
         insts::OP_VSADDU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U512, b: &U512| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U256, b: &U256| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U128, b: &U128| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U64, b: &U64| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U32, b: &U32| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U16, b: &U16| { let (r, _) = a.saturating_add(*b); r }},
-                {|a: &U8, b: &U8| { let (r, _) = a.saturating_add(*b); r }}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { alu::saddu });
         }
         insts::OP_VSADDU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_add(U1024::vx(rhs)); r }},
-                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_add(U512::vx(rhs)); r }},
-                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_add(U256::vx(rhs)); r }},
-                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_add(U128::vx(rhs)); r }},
-                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_add(U64::vx(rhs)); r }},
-                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_add(U32::vx(rhs)); r }},
-                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_add(U16::vx(rhs)); r }},
-                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_add(U8::vx(rhs)); r }}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { alu::saddu });
         }
         insts::OP_VSADDU_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| { let (r, _) = a.saturating_add(U1024::vi(imm)); r }},
-                {|a:&U512, imm: i32| { let (r, _) = a.saturating_add(U512::vi(imm)); r }},
-                {|a:&U256, imm: i32| { let (r, _) = a.saturating_add(U256::vi(imm)); r }},
-                {|a:&U128, imm: i32| { let (r, _) = a.saturating_add(U128::vi(imm)); r }},
-                {|a:&U64, imm: i32| { let (r, _) = a.saturating_add(U64::vi(imm)); r }},
-                {|a:&U32, imm: i32| { let (r, _) = a.saturating_add(U32::vi(imm)); r }},
-                {|a:&U16, imm: i32| { let (r, _) = a.saturating_add(U16::vi(imm)); r }},
-                {|a:&U8, imm: i32| { let (r, _) = a.saturating_add(U8::vi(imm)); r }}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_u!(inst, machine, { alu::saddu });
         }
         insts::OP_VSADD_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U512, b: &U512| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U256, b: &U256| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U128, b: &U128| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U64, b: &U64| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U32, b: &U32| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U16, b: &U16| { let (r, _) = a.saturating_add_s(*b); r }},
-                {|a: &U8, b: &U8| { let (r, _) = a.saturating_add_s(*b); r }}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::sadd });
         }
         insts::OP_VSADD_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_add_s(U1024::vx(rhs)); r }},
-                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_add_s(U512::vx(rhs)); r }},
-                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_add_s(U256::vx(rhs)); r }},
-                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_add_s(U128::vx(rhs)); r }},
-                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_add_s(U64::vx(rhs)); r }},
-                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_add_s(U32::vx(rhs)); r }},
-                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_add_s(U16::vx(rhs)); r }},
-                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_add_s(U8::vx(rhs)); r }}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::sadd });
         }
         insts::OP_VSADD_VI => {
-            vi_iterator_impl! {
-                {|a:&U1024, imm: i32| { let (r, _) = a.saturating_add_s(U1024::vi(imm)); r }},
-                {|a:&U512, imm: i32| { let (r, _) = a.saturating_add_s(U512::vi(imm)); r }},
-                {|a:&U256, imm: i32| { let (r, _) = a.saturating_add_s(U256::vi(imm)); r }},
-                {|a:&U128, imm: i32| { let (r, _) = a.saturating_add_s(U128::vi(imm)); r }},
-                {|a:&U64, imm: i32| { let (r, _) = a.saturating_add_s(U64::vi(imm)); r }},
-                {|a:&U32, imm: i32| { let (r, _) = a.saturating_add_s(U32::vi(imm)); r }},
-                {|a:&U16, imm: i32| { let (r, _) = a.saturating_add_s(U16::vi(imm)); r }},
-                {|a:&U8, imm: i32| { let (r, _) = a.saturating_add_s(U8::vi(imm)); r }}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { alu::sadd });
         }
         insts::OP_VSSUBU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U512, b: &U512| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U256, b: &U256| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U128, b: &U128| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U64, b: &U64| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U32, b: &U32| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U16, b: &U16| { let (r, _) = a.saturating_sub(*b); r }},
-                {|a: &U8, b: &U8| { let (r, _) = a.saturating_sub(*b); r }}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { alu::ssubu });
         }
         insts::OP_VSSUBU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_sub(U1024::vx(rhs)); r }},
-                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_sub(U512::vx(rhs)); r }},
-                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_sub(U256::vx(rhs)); r }},
-                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_sub(U128::vx(rhs)); r }},
-                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_sub(U64::vx(rhs)); r }},
-                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_sub(U32::vx(rhs)); r }},
-                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_sub(U16::vx(rhs)); r }},
-                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_sub(U8::vx(rhs)); r }}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { alu::ssubu });
         }
         insts::OP_VSSUB_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U512, b: &U512| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U256, b: &U256| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U128, b: &U128| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U64, b: &U64| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U32, b: &U32| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U16, b: &U16| { let (r, _) = a.saturating_sub_s(*b); r }},
-                {|a: &U8, b: &U8| { let (r, _) = a.saturating_sub_s(*b); r }}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::ssub });
         }
         insts::OP_VSSUB_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| { let (r, _) = a.saturating_sub_s(U1024::vx(rhs)); r }},
-                {|a:&U512, rhs: u64| { let (r, _) = a.saturating_sub_s(U512::vx(rhs)); r }},
-                {|a:&U256, rhs: u64| { let (r, _) = a.saturating_sub_s(U256::vx(rhs)); r }},
-                {|a:&U128, rhs: u64| { let (r, _) = a.saturating_sub_s(U128::vx(rhs)); r }},
-                {|a:&U64, rhs: u64| { let (r, _) = a.saturating_sub_s(U64::vx(rhs)); r }},
-                {|a:&U32, rhs: u64| { let (r, _) = a.saturating_sub_s(U32::vx(rhs)); r }},
-                {|a:&U16, rhs: u64| { let (r, _) = a.saturating_sub_s(U16::vx(rhs)); r }},
-                {|a:&U8, rhs: u64| { let (r, _) = a.saturating_sub_s(U8::vx(rhs)); r }}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::ssub });
         }
         insts::OP_VWADDU_VV => {
-            w_vv_iterator_impl! {
-                {|a:&U1024, b: &U1024| {
-                    let c = U2048::from(*a) + U2048::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U512| {
-                    let c = U1024::from(*a) + U1024::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U256| {
-                    let c = U512::from(*a) + U512::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U128| {
-                    let c = U256::from(*a) + U256::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let c = u128::from(a.0) + u128::from(b.0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U32| {
-                    let c = u64::from(a.0) + u64::from(b.0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U16| {
-                    let c = u32::from(a.0) + u32::from(b.0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U8| {
-                    let c = u16::from(a.0) + u16::from(b.0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_widen!(inst, machine, { Element::widening_add });
         }
         insts::OP_VWADDU_VX => {
-            w_vx_iterator_impl! {
-                {|a:&U1024, b: &U64| {
-                    let c = U2048::from(*a) + b.widening_u2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U64| {
-                    let c = U1024::from(*a) + b.widening_u1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U64| {
-                    let c = U512::from(*a) + b.widening_u512();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U64| {
-                    let c = U256::from(*a) +  b.widening_u256();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let c = u128::from(a.0) + b.widening_u().0;
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U64| {
-                    let bb = U32(b.u32());
-                    let c = u64::from(a.0) + bb.widening_u().0;
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U64| {
-                    let bb = U16(b.u16());
-                    let c = u32::from(a.0) + bb.widening_u().0;
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U64| {
-                    let bb = U8(b.u8());
-                    let c = u16::from(a.0) + bb.widening_u().0;
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u_widen!(inst, machine, { Element::widening_add });
         }
         insts::OP_VWADDU_WV => {
-            w_wv_iterator_impl! {
-                {|a:[&U1024; 2], b: &U1024| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} + b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: &U512| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} + b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: &U256| {
-                    let c = U512{lo: *a[0], hi: *a[1]} + b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: &U128| {
-                    let c = U256{lo: *a[0], hi: *a[1]} + b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: &U64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_u().0;
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: &U32| {
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_u().0;
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: &U16| {
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_u().0;
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: &U8| {
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_u().0;
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wv(inst, machine, wv_iterator_func)?;
+            wv_loop_u!(inst, machine, { Element::wrapping_add });
         }
         insts::OP_VWADDU_WX => {
-            w_wx_iterator_impl! {
-                {|a:[&U1024; 2], b: u64| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} + U64(b).widening_u2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: u64| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} + U64(b).widening_u1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: u64| {
-                    let c = U512{lo: *a[0], hi: *a[1]} + U64(b).widening_u512();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: u64| {
-                    let c = U256{lo: *a[0], hi: *a[1]} + U64(b).widening_u256();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: u64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(U64(b).widening_u().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: u64| {
-                    let bb = U32(U64(b).u32());
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(bb.widening_u().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: u64| {
-                    let bb = U16(U64(b).u16());
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(bb.widening_u().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: u64| {
-                    let bb = U8(U64(b).u8());
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(bb.widening_u().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wx(inst, machine, wx_iterator_func)?;
+            wx_loop_u!(inst, machine, { Element::wrapping_add });
         }
         insts::OP_VWADD_WX => {
-            w_wx_iterator_impl! {
-                {|a:[&U1024; 2], b: u64| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} + U64(b).widening_s2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: u64| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} + U64(b).widening_s1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: u64| {
-                    let c = U512{lo: *a[0], hi: *a[1]} + U64(b).widening_s512();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: u64| {
-                    let c = U256{lo: *a[0], hi: *a[1]} + U64(b).widening_s256();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: u64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(U64(b).widening_s().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: u64| {
-                    let bb = U32(U64(b).u32());
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(bb.widening_s().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: u64| {
-                    let bb = U16(U64(b).u16());
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(bb.widening_s().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: u64| {
-                    let bb = U8(U64(b).u8());
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(bb.widening_s().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wx(inst, machine, wx_iterator_func)?;
+            wx_loop_s!(inst, machine, { Element::wrapping_add });
         }
         insts::OP_VWADD_VV => {
-            w_vv_iterator_impl! {
-                {|a:&U1024, b: &U1024| {
-                    let c = a.widening_s() + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U512| {
-                    let c = a.widening_s() + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U256| {
-                    let c = a.widening_s() + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U128| {
-                    let c = a.widening_s() + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_add(b2);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c.0) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U32| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_add(b2);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U16| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_add(b2);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U8| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_add(b2);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_widen!(inst, machine, { Element::widening_add_s });
         }
         insts::OP_VWADD_VX => {
-            w_vx_iterator_impl! {
-                {|a:&U1024, b: &U64| {
-                    let c = a.widening_s() + b.widening_s2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U64| {
-                    let c = a.widening_s() + b.widening_s1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U64| {
-                    let c = a.widening_s() + b.widening_s512();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U64| {
-                    let c =a.widening_s() +  b.widening_s256();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let c = a.widening_s().0 + b.widening_s().0;
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U64| {
-                    let bb = U32(b.u32());
-                    let c = a.widening_s().0 + bb.widening_s().0;
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U64| {
-                    let bb = U16(b.u16());
-                    let c = a.widening_s().0 + bb.widening_s().0;
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U64| {
-                    let bb = U8(b.u8());
-                    let c = a.widening_s().0 + bb.widening_s().0;
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_widen!(inst, machine, { Element::widening_add_s });
         }
         insts::OP_VWADD_WV => {
-            w_wv_iterator_impl! {
-                {|a:[&U1024; 2], b: &U1024| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: &U512| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: &U256| {
-                    let c = U512{lo: *a[0], hi: *a[1]} + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: &U128| {
-                    let c = U256{lo: *a[0], hi: *a[1]} + b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: &U64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(b.widening_s().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: &U32| {
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(b.widening_s().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: &U16| {
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(b.widening_s().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: &U8| {
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_add(b.widening_s().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wv(inst, machine, wv_iterator_func)?;
+            wv_loop_s!(inst, machine, { Element::wrapping_add });
         }
-
         insts::OP_VWSUBU_VV => {
-            w_vv_iterator_impl! {
-                {|a:&U1024, b: &U1024| {
-                    let c = U2048::from(*a) - U2048::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U512| {
-                    let c = U1024::from(*a) - U1024::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U256| {
-                    let c = U512::from(*a) - U512::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U128| {
-                    let c = U256::from(*a) - U256::from(*b);
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let c = u128::from(a.0) - u128::from(b.0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U32| {
-                    let c = u64::from(a.0) - u64::from(b.0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U16| {
-                    let c = u32::from(a.0) - u32::from(b.0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U8| {
-                    let c = u16::from(a.0) - u16::from(b.0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_widen!(inst, machine, { Element::widening_sub });
         }
         insts::OP_VWSUBU_WV => {
-            w_wv_iterator_impl! {
-                {|a:[&U1024; 2], b: &U1024| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} - b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: &U512| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} - b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: &U256| {
-                    let c = U512{lo: *a[0], hi: *a[1]} - b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: &U128| {
-                    let c = U256{lo: *a[0], hi: *a[1]} - b.widening_u();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: &U64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_u().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: &U32| {
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_u().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: &U16| {
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_u().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: &U8| {
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_u().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wv(inst, machine, wv_iterator_func)?;
+            wv_loop_u!(inst, machine, { Element::wrapping_sub });
         }
         insts::OP_VWSUBU_VX => {
-            w_vx_iterator_impl! {
-                {|a:&U1024, b: &U64| {
-                    let c = U2048::from(*a) - b.widening_u2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U64| {
-                    let c = U1024::from(*a) - b.widening_u1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U64| {
-                    let c = U512::from(*a) - b.widening_u512();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U64| {
-                    let c = U256::from(*a) - b.widening_u256();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let c = u128::from(a.0) - b.widening_u().0;
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U64| {
-                    let bb = U32(b.u32());
-                    let c = u64::from(a.0) - bb.widening_u().0;
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U64| {
-                    let bb = U16(b.u16());
-                    let c = u32::from(a.0) - bb.widening_u().0;
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U64| {
-                    let bb = U8(b.u8());
-                    let c = u16::from(a.0) - bb.widening_u().0;
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u_widen!(inst, machine, { Element::widening_sub });
         }
-
         insts::OP_VWSUB_VV => {
-            w_vv_iterator_impl! {
-                {|a:&U1024, b: &U1024| {
-                    let c = a.widening_s() - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U512| {
-                    let c = a.widening_s() - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U256| {
-                    let c = a.widening_s() - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U128| {
-                    let c = a.widening_s() - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_sub(b2);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c.0) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U32| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_sub(b2);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U16| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_sub(b2);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U8| {
-                    let a2 = a.widening_s();
-                    let b2 = b.widening_s();
-                    let c = a2.wrapping_sub(b2);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_widen!(inst, machine, { Element::widening_sub_s });
         }
-
         insts::OP_VWSUB_VX => {
-            w_vx_iterator_impl! {
-                {|a:&U1024, b: &U64| {
-                    let c = a.widening_s() - b.widening_s2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U512, b: &U64| {
-                    let c = a.widening_s() - b.widening_s1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U256, b: &U64| {
-                    let c = a.widening_s() - b.widening_s512();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U128, b: &U64| {
-                    let c = a.widening_s() - b.widening_s256();
-                    (c.lo, c.hi)
-                }},
-                {|a:&U64, b: &U64| {
-                    let c = a.widening_s() - b.widening_s();
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c.0) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:&U32, b: &U64| {
-                    let bb = U32(b.u32());
-                    let c = a.widening_s() - bb.widening_s();
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:&U16, b: &U64| {
-                    let bb = U16(b.u16());
-                    let c = a.widening_s() - bb.widening_s();
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:&U8, b: &U64| {
-                    let bb = U8(b.u8());
-                    let c = a.widening_s() - bb.widening_s();
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s_widen!(inst, machine, { Element::widening_sub_s });
         }
         insts::OP_VWSUB_WV => {
-            w_wv_iterator_impl! {
-                {|a:[&U1024; 2], b: &U1024| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: &U512| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: &U256| {
-                    let c = U512{lo: *a[0], hi: *a[1]} - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: &U128| {
-                    let c = U256{lo: *a[0], hi: *a[1]} - b.widening_s();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: &U64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_s().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: &U32| {
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_s().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: &U16| {
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_s().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: &U8| {
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(b.widening_s().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wv(inst, machine, wv_iterator_func)?;
+            wv_loop_s!(inst, machine, { Element::wrapping_sub });
         }
         insts::OP_VWSUBU_WX => {
-            w_wx_iterator_impl! {
-                {|a:[&U1024; 2], b: u64| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} - U64(b).widening_u2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: u64| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} - U64(b).widening_u1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: u64| {
-                    let c = U512{lo: *a[0], hi: *a[1]} - U64(b).widening_u512();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: u64| {
-                    let c = U256{lo: *a[0], hi: *a[1]} - U64(b).widening_u256();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: u64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(U64(b).widening_u().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: u64| {
-                    let bb = U32(U64(b).u32());
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(bb.widening_u().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: u64| {
-                    let bb = U16(U64(b).u16());
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(bb.widening_u().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: u64| {
-                    let bb = U8(U64(b).u8());
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(bb.widening_u().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wx(inst, machine, wx_iterator_func)?;
+            wx_loop_u!(inst, machine, { Element::wrapping_sub });
         }
         insts::OP_VWSUB_WX => {
-            w_wx_iterator_impl! {
-                {|a:[&U1024; 2], b: u64| {
-                    let c = U2048{lo: *a[0], hi: *a[1]} - U64(b).widening_s2048();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U512; 2], b: u64| {
-                    let c = U1024{lo: *a[0], hi: *a[1]} - U64(b).widening_s1024();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U256; 2], b: u64| {
-                    let c = U512{lo: *a[0], hi: *a[1]} - U64(b).widening_s512();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U128; 2], b: u64| {
-                    let c = U256{lo: *a[0], hi: *a[1]} - U64(b).widening_s256();
-                    (c.lo, c.hi)
-                }},
-                {|a:[&U64; 2], b: u64| {
-                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(U64(b).widening_s().0);
-                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
-                    (U64(res[0]), U64(res[1]))
-                }},
-                {|a:[&U32; 2], b: u64| {
-                    let bb = U32(U64(b).u32());
-                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(bb.widening_s().0);
-                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
-                    (U32(res[0]), U32(res[1]))
-                }},
-                {|a:[&U16; 2], b: u64| {
-                    let bb = U16(U64(b).u16());
-                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(bb.widening_s().0);
-                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
-                    (U16(res[0]), U16(res[1]))
-                }},
-                {|a:[&U8; 2], b: u64| {
-                    let bb = U8(U64(b).u8());
-                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa.wrapping_sub(bb.widening_s().0);
-                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
-                    (U8(res[0]), U8(res[1]))
-                }}
-            };
-            loop_w_wx(inst, machine, wx_iterator_func)?;
+            wx_loop_s!(inst, machine, { Element::wrapping_sub });
         }
         insts::OP_VAADD_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.average_add_s(*b)},
-                {|a: &U512, b: &U512| a.average_add_s(*b)},
-                {|a: &U256, b: &U256| a.average_add_s(*b)},
-                {|a: &U128, b: &U128| a.average_add_s(*b)},
-                {|a: &U64, b: &U64| a.average_add_s(*b)},
-                {|a: &U32, b: &U32| a.average_add_s(*b)},
-                {|a: &U16, b: &U16| a.average_add_s(*b)},
-                {|a: &U8, b: &U8| a.average_add_s(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::average_add_s });
         }
         insts::OP_VAADD_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.average_add_s(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.average_add_s(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.average_add_s(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.average_add_s(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.average_add_s(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.average_add_s(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.average_add_s(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.average_add_s(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::average_add_s });
         }
         insts::OP_VAADDU_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.average_add(*b)},
-                {|a: &U512, b: &U512| a.average_add(*b)},
-                {|a: &U256, b: &U256| a.average_add(*b)},
-                {|a: &U128, b: &U128| a.average_add(*b)},
-                {|a: &U64, b: &U64| a.average_add(*b)},
-                {|a: &U32, b: &U32| a.average_add(*b)},
-                {|a: &U16, b: &U16| a.average_add(*b)},
-                {|a: &U8, b: &U8| a.average_add(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::average_add });
         }
         insts::OP_VAADDU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.average_add(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.average_add(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.average_add(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.average_add(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.average_add(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.average_add(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.average_add(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.average_add(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::average_add });
         }
         insts::OP_VASUB_VV => {
-            vv_iterator_impl! {
-                {|a: &U1024, b: &U1024| a.average_sub_s(*b)},
-                {|a: &U512, b: &U512| a.average_sub_s(*b)},
-                {|a: &U256, b: &U256| a.average_sub_s(*b)},
-                {|a: &U128, b: &U128| a.average_sub_s(*b)},
-                {|a: &U64, b: &U64| a.average_sub_s(*b)},
-                {|a: &U32, b: &U32| a.average_sub_s(*b)},
-                {|a: &U16, b: &U16| a.average_sub_s(*b)},
-                {|a: &U8, b: &U8| a.average_sub_s(*b)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { Element::average_sub_s });
         }
         insts::OP_VASUB_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.average_sub_s(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.average_sub_s(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.average_sub_s(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.average_sub_s(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.average_sub_s(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.average_sub_s(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.average_sub_s(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.average_sub_s(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { Element::average_sub_s });
         }
         insts::OP_VASUBU_VV => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.average_sub(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.average_sub(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.average_sub(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.average_sub(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.average_sub(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.average_sub(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.average_sub(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.average_sub(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vv_loop_u!(inst, machine, { Element::average_sub });
         }
         insts::OP_VASUBU_VX => {
-            vx_iterator_impl! {
-                {|a:&U1024, rhs: u64| a.average_sub(U1024::vx(rhs))},
-                {|a:&U512, rhs: u64| a.average_sub(U512::vx(rhs))},
-                {|a:&U256, rhs: u64| a.average_sub(U256::vx(rhs))},
-                {|a:&U128, rhs: u64| a.average_sub(U128::vx(rhs))},
-                {|a:&U64, rhs: u64| a.average_sub(U64::vx(rhs))},
-                {|a:&U32, rhs: u64| a.average_sub(U32::vx(rhs))},
-                {|a:&U16, rhs: u64| a.average_sub(U16::vx(rhs))},
-                {|a:&U8, rhs: u64| a.average_sub(U8::vx(rhs))}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_u!(inst, machine, { Element::average_sub });
         }
         insts::OP_VMV_VV => {
-            vv_iterator_impl! {
-                {|_: &U1024, b: &U1024| *b},
-                {|_: &U512, b: &U512| *b},
-                {|_: &U256, b: &U256| *b},
-                {|_: &U128, b: &U128| *b},
-                {|_: &U64, b: &U64| *b},
-                {|_: &U32, b: &U32| *b},
-                {|_: &U16, b: &U16| *b},
-                {|_: &U8, b: &U8| *b}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s!(inst, machine, { alu::mv });
         }
         insts::OP_VMV_VX => {
-            vx_iterator_impl! {
-                {|_:&U1024, rhs: u64| U1024::vx(rhs)},
-                {|_:&U512, rhs: u64| U512::vx(rhs)},
-                {|_:&U256, rhs: u64| U256::vx(rhs)},
-                {|_:&U128, rhs: u64| U128::vx(rhs)},
-                {|_:&U64, rhs: u64| U64::vx(rhs)},
-                {|_:&U32, rhs: u64| U32::vx(rhs)},
-                {|_:&U16, rhs: u64| U16::vx(rhs)},
-                {|_:&U8, rhs: u64| U8::vx(rhs)}
-            };
-            loop_vx(inst, machine, vx_iterator_func)?;
+            vx_loop_s!(inst, machine, { alu::mv });
         }
         insts::OP_VMV_VI => {
-            vi_iterator_impl! {
-                {|_:&U1024, imm: i32| U1024::vi(imm)},
-                {|_:&U512, imm: i32| U512::vi(imm)},
-                {|_:&U256, imm: i32| U256::vi(imm)},
-                {|_:&U128, imm: i32| U128::vi(imm)},
-                {|_:&U64, imm: i32| U64::vi(imm)},
-                {|_:&U32, imm: i32| U32::vi(imm)},
-                {|_:&U16, imm: i32| U16::vi(imm)},
-                {|_:&U8, imm: i32| U8::vi(imm)}
-            };
-            loop_vi(inst, machine, vi_iterator_func)?;
+            vi_loop_s!(inst, machine, { alu::mv });
         }
         insts::OP_VZEXT_VF2 => {
-            vv_iterator_impl! {
-                {|a: &U1024, _: &U1024| *a << 512 >> 512},
-                {|a: &U512, _: &U512| *a << 256 >> 256},
-                {|a: &U256, _: &U256| *a << 128 >> 128},
-                {|a: &U128, _: &U128| *a << 64 >> 64},
-                {|a: &U64, _: &U64| *a << 32 >> 32},
-                {|a: &U32, _: &U32| *a << 16 >> 16},
-                {|a: &U16, _: &U16| *a << 8 >> 8},
-                {|a: &U8, _: &U8| *a << 4 >> 4}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_ext!(inst, machine, 2);
         }
         insts::OP_VZEXT_VF4 => {
-            vv_iterator_impl! {
-                {|a: &U1024, _: &U1024| *a << 768 >> 768},
-                {|a: &U512, _: &U512| *a << 384 >> 384},
-                {|a: &U256, _: &U256| *a << 192 >> 192},
-                {|a: &U128, _: &U128| *a << 96 >> 96},
-                {|a: &U64, _: &U64| *a << 48 >> 48},
-                {|a: &U32, _: &U32| *a << 24 >> 24},
-                {|a: &U16, _: &U16| *a << 12 >> 12},
-                {|a: &U8, _: &U8| *a << 6 >> 6}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_ext!(inst, machine, 4);
         }
         insts::OP_VZEXT_VF8 => {
-            vv_iterator_impl! {
-                {|a: &U1024, _: &U1024| *a << 896 >> 896},
-                {|a: &U512, _: &U512| *a << 448 >> 448},
-                {|a: &U256, _: &U256| *a << 224 >> 224},
-                {|a: &U128, _: &U128| *a << 112 >> 112},
-                {|a: &U64, _: &U64| *a << 56 >> 56},
-                {|a: &U32, _: &U32| *a << 28 >> 28},
-                {|a: &U16, _: &U16| *a << 14 >> 14},
-                {|a: &U8, _: &U8| *a << 7 >> 7}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_u_ext!(inst, machine, 8);
         }
         insts::OP_VSEXT_VF2 => {
-            vv_iterator_impl! {
-                {|a: &U1024, _: &U1024| (*a << 512).wrapping_sra(512)},
-                {|a: &U512, _: &U512| (*a << 256).wrapping_sra(256)},
-                {|a: &U256, _: &U256| (*a << 128).wrapping_sra(128)},
-                {|a: &U128, _: &U128| (*a << 64).wrapping_sra(64)},
-                {|a: &U64, _: &U64| (*a << 32).wrapping_sra(32)},
-                {|a: &U32, _: &U32| (*a << 16).wrapping_sra(16)},
-                {|a: &U16, _: &U16| (*a << 8).wrapping_sra(8)},
-                {|a: &U8, _: &U8| (*a << 4).wrapping_sra(4)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_ext!(inst, machine, 2);
         }
         insts::OP_VSEXT_VF4 => {
-            vv_iterator_impl! {
-                {|a: &U1024, _: &U1024| (*a << 768).wrapping_sra(768)},
-                {|a: &U512, _: &U512| (*a << 384).wrapping_sra(384)},
-                {|a: &U256, _: &U256| (*a << 192).wrapping_sra(192)},
-                {|a: &U128, _: &U128| (*a << 96).wrapping_sra(96)},
-                {|a: &U64, _: &U64| (*a << 48).wrapping_sra(48)},
-                {|a: &U32, _: &U32| (*a << 24).wrapping_sra(24)},
-                {|a: &U16, _: &U16| (*a << 12).wrapping_sra(12)},
-                {|a: &U8, _: &U8| (*a << 6).wrapping_sra(6)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_ext!(inst, machine, 4);
         }
         insts::OP_VSEXT_VF8 => {
-            vv_iterator_impl! {
-                {|a: &U1024, _: &U1024| (*a << 896).wrapping_sra(896)},
-                {|a: &U512, _: &U512| (*a << 448).wrapping_sra(448)},
-                {|a: &U256, _: &U256| (*a << 224).wrapping_sra(224)},
-                {|a: &U128, _: &U128| (*a << 112).wrapping_sra(112)},
-                {|a: &U64, _: &U64| (*a << 56).wrapping_sra(56)},
-                {|a: &U32, _: &U32| (*a << 28).wrapping_sra(28)},
-                {|a: &U16, _: &U16| (*a << 14).wrapping_sra(14)},
-                {|a: &U8, _: &U8| (*a << 7).wrapping_sra(7)}
-            };
-            loop_vv(inst, machine, vv_iterator_func)?;
+            vv_loop_s_ext!(inst, machine, 8);
         }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
-            let vs2 = machine.get_vregister(i.rs2() as usize);
-            let mut r = u64::MAX;
-            match vs2 {
-                VRegister::U1024(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if e == &U1024::from(1u8) {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U512(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if e == &U512::from(1u8) {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U256(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if e == &U256::from(1u8) {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U128(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if *e == U128::ONE {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U64(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if *e == U64::ONE {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U32(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if *e == U32::ONE {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U16(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if *e == U16::ONE {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
-                VRegister::U8(data) => {
-                    for (j, e) in data.iter().enumerate() {
-                        if *e == U8::ONE {
-                            r = j as u64;
-                            break;
-                        }
-                    }
-                }
+            let m = U2048::read(machine.element_ref(i.rs2(), VLEN as u64, 0));
+            let r = m.trailing_zeros();
+            if r == 2048 {
+                update_register(machine, i.rd(), Mac::REG::from_u64(0xffff_ffff_ffff_ffff));
+            } else {
+                update_register(machine, i.rd(), Mac::REG::from_u32(r));
             }
-            update_register(machine, i.rd(), Mac::REG::from_u64(r));
         }
         _ => return Err(Error::InvalidOp(op)),
     };

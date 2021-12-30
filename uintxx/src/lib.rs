@@ -1,5 +1,3 @@
-use std::mem::transmute;
-
 pub trait Element:
     Copy
     + Clone
@@ -8,28 +6,28 @@ pub trait Element:
     + Eq
     + std::fmt::Display
     + std::fmt::LowerHex
-    + std::ops::BitAnd
+    + std::ops::BitAnd<Output = Self>
     + std::ops::BitAndAssign
-    + std::ops::BitOr
+    + std::ops::BitOr<Output = Self>
     + std::ops::BitOrAssign
-    + std::ops::BitXor
+    + std::ops::BitXor<Output = Self>
     + std::ops::BitXorAssign
     + std::ops::Not
     + std::ops::Neg
     + std::cmp::PartialOrd
     + std::cmp::Ord
-    + std::ops::Add
+    + std::ops::Add<Output = Self>
     + std::ops::AddAssign
-    + std::ops::Sub
+    + std::ops::Sub<Output = Self>
     + std::ops::SubAssign
-    + std::ops::Mul
+    + std::ops::Mul<Output = Self>
     + std::ops::MulAssign
-    + std::ops::Div
+    + std::ops::Div<Output = Self>
     + std::ops::DivAssign
-    + std::ops::Rem
+    + std::ops::Rem<Output = Self>
     + std::ops::RemAssign
-    + std::ops::Shl<u32>
-    + std::ops::Shr<u32>
+    + std::ops::Shl<u32, Output = Self>
+    + std::ops::Shr<u32, Output = Self>
     + From<bool>
 {
     /// The size of this integer type in bits.
@@ -50,16 +48,23 @@ pub trait Element:
     /// For integer operations, the scalar can be taken from the scalar x register specified by rs1. If XLEN>SEW, the
     /// least-significant SEW bits of the x register are used, unless otherwise specified. If XLEN<SEW, the value from
     /// the x register is sign-extended to SEW bits.
-    fn vx(x: u64) -> Self;
+    fn vx_s(x: u64) -> Self;
+
+    /// If XLEN>SEW, the least-significant SEW bits of the x register are used. If XLEN<SEW, the value from the x
+    /// register is zero-extended to SEW bits.
+    fn vx_u(x: u64) -> Self;
 
     /// For integer operations, the scalar can be a 5-bit immediate, imm[4:0], encoded in the rs1 field. The value is
     /// sign-extended to SEW bits, unless otherwise specified.
-    fn vi(i: i32) -> Self;
+    fn vi_s(i: i32) -> Self;
 
-    /// Returns the lower 8 bits
+    /// The value is zero-extended to SEW bits.
+    fn vi_u(i: u32) -> Self;
+
+    /// Returns the lower 8 bits.
     fn u8(self) -> u8;
 
-    /// Returns the lower 16 bits
+    /// Returns the lower 16 bits.
     fn u16(self) -> u16;
 
     /// Returns the lower 32 bits.
@@ -74,8 +79,17 @@ pub trait Element:
     /// Returns true if self is negative and false if the number is zero or positive.
     fn is_negative(self) -> bool;
 
+    /// Read a native endian integer value from its representation as a byte slice in little endian.
+    fn read(b: &[u8]) -> Self;
+
+    /// Save the integer as a byte array in little-endian byte order to memory.
+    fn save(&self, b: &mut [u8]);
+
     /// Returns the number of leading zeros in the binary representation of self.
     fn leading_zeros(self) -> u32;
+
+    /// Returns the number of trailing zeros in the binary representation of self.
+    fn trailing_zeros(self) -> u32;
 
     /// Compare signed.
     fn cmp_s(&self, other: &Self) -> std::cmp::Ordering;
@@ -143,6 +157,11 @@ pub trait Element:
     /// Wrapping (modular) subtraction. Computes self - other, wrapping around at the boundary of the type.
     fn wrapping_sub(self, other: Self) -> Self;
 
+    /// Wrapping (modular) subtraction. Computes other - self, wrapping around at the boundary of the type.
+    fn wrapping_rsub(self, other: Self) -> Self {
+        other.wrapping_sub(self)
+    }
+
     /// Wrapping (modular) multiplication. Computes self * other, wrapping around at the boundary of the type.
     fn wrapping_mul(self, other: Self) -> Self;
 
@@ -170,6 +189,11 @@ pub trait Element:
     /// primitive integer types all implement a rotate_left function, which may be what you want instead.
     fn wrapping_shl(self, other: u32) -> Self;
 
+    /// Shift-left with element.
+    fn wrapping_shl_e(self, other: Self) -> Self {
+        self.wrapping_shl(other.u32())
+    }
+
     /// Panic-free bitwise shift-right; yields self >> mask(rhs), where mask removes any high-order bits of rhs
     /// that would cause the shift to exceed the bitwidth of the type.
     ///
@@ -178,12 +202,176 @@ pub trait Element:
     /// primitive integer types all implement a rotate_right function, which may be what you want instead.
     fn wrapping_shr(self, other: u32) -> Self;
 
+    /// Shift-right with element.
+    fn wrapping_shr_e(self, other: Self) -> Self {
+        self.wrapping_shr(other.u32())
+    }
+
     /// Panic-free bitwise sign shift-right.
     fn wrapping_sra(self, other: u32) -> Self;
+
+    /// Sign shift-right with element.
+    fn wrapping_sra_e(self, other: Self) -> Self {
+        self.wrapping_sra(other.u32())
+    }
+
+    /// Widening add.
+    fn widening_add(self, other: Self) -> (Self, Self) {
+        let (lo, carry) = self.overflowing_add(other);
+        (lo, if carry { Self::ONE } else { Self::MIN })
+    }
+
+    /// Signed widening add.
+    fn widening_add_s(self, other: Self) -> (Self, Self) {
+        let hi0 = if self.is_negative() { Self::MAX } else { Self::MIN };
+        let hi1 = if other.is_negative() { Self::MAX } else { Self::MIN };
+        let (lo, carry) = self.overflowing_add(other);
+        let hi = hi0.wrapping_add(hi1).wrapping_add(Self::from(carry));
+        (lo, hi)
+    }
+
+    /// Widening substract.
+    fn widening_sub(self, other: Self) -> (Self, Self) {
+        let (lo, borrow) = self.overflowing_sub(other);
+        (lo, if borrow { Self::MAX } else { Self::MIN })
+    }
+
+    /// Signed widening substract.
+    fn widening_sub_s(self, other: Self) -> (Self, Self) {
+        let hi0 = if self.is_negative() { Self::MAX } else { Self::MIN };
+        let hi1 = if other.is_negative() { Self::MAX } else { Self::MIN };
+        let (lo, borrow) = self.overflowing_sub(other);
+        let hi = hi0.wrapping_sub(hi1).wrapping_sub(Self::from(borrow));
+        (lo, hi)
+    }
 
     /// Function mul_full returns the 256-bit product of x and y: (lo, hi) = x * y
     /// with the product bits' upper half returned in hi and the lower half returned in lo.
     fn widening_mul(self, other: Self) -> (Self, Self);
+}
+
+pub mod alu {
+    use crate::Element;
+
+    /// Set if equal.
+    pub fn seq<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs == rhs
+    }
+
+    /// Set if not equal.
+    pub fn sne<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs != rhs
+    }
+
+    /// Set if less than, unsigned.
+    pub fn sltu<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs < rhs
+    }
+
+    /// Set if less than, signed.
+    pub fn slt<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs.cmp_s(&rhs) == std::cmp::Ordering::Less
+    }
+
+    /// Set if less than or equal, unsigned.
+    pub fn sleu<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs <= rhs
+    }
+
+    /// Set if less than or equal, signed.
+    pub fn sle<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs.cmp_s(&rhs) != std::cmp::Ordering::Greater
+    }
+
+    /// Set if greater than, unsigned.
+    pub fn sgtu<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs > rhs
+    }
+
+    /// Set if greater than, signed.
+    pub fn sgt<T: Element>(lhs: T, rhs: T) -> bool {
+        lhs.cmp_s(&rhs) == std::cmp::Ordering::Greater
+    }
+
+    /// Unsigned maximum.
+    pub fn maxu<T: Element>(lhs: T, rhs: T) -> T {
+        if lhs > rhs {
+            lhs
+        } else {
+            rhs
+        }
+    }
+
+    /// Signed maximum.
+    pub fn max<T: Element>(lhs: T, rhs: T) -> T {
+        if lhs.cmp_s(&rhs) == std::cmp::Ordering::Greater {
+            lhs
+        } else {
+            rhs
+        }
+    }
+
+    /// Unsigned minimum.
+    pub fn minu<T: Element>(lhs: T, rhs: T) -> T {
+        if lhs < rhs {
+            lhs
+        } else {
+            rhs
+        }
+    }
+
+    /// Signed minimum.
+    pub fn min<T: Element>(lhs: T, rhs: T) -> T {
+        if lhs.cmp_s(&rhs) == std::cmp::Ordering::Less {
+            lhs
+        } else {
+            rhs
+        }
+    }
+
+    /// Bitwise and.
+    pub fn and<T: Element>(lhs: T, rhs: T) -> T {
+        lhs & rhs
+    }
+
+    /// Bitwise or.
+    pub fn or<T: Element>(lhs: T, rhs: T) -> T {
+        lhs | rhs
+    }
+
+    /// Bitwise xor.
+    pub fn xor<T: Element>(lhs: T, rhs: T) -> T {
+        lhs ^ rhs
+    }
+
+    /// Saturating adds of unsigned integers.
+    pub fn saddu<T: Element>(lhs: T, rhs: T) -> T {
+        let (r, _) = lhs.saturating_add(rhs);
+        r
+    }
+
+    /// Saturating adds of signed integers.
+    pub fn sadd<T: Element>(lhs: T, rhs: T) -> T {
+        let (r, _) = lhs.saturating_add_s(rhs);
+        r
+    }
+
+    /// Saturating subtract of unsigned integers.
+    pub fn ssubu<T: Element>(lhs: T, rhs: T) -> T {
+        let (r, _) = lhs.saturating_sub(rhs);
+        r
+    }
+
+    /// Saturating subtract of signed integers.
+    pub fn ssub<T: Element>(lhs: T, rhs: T) -> T {
+        let (r, _) = lhs.saturating_sub_s(rhs);
+        r
+    }
+
+    /// Copy rhs.
+    pub fn mv<T: Element>(_: T, rhs: T) -> T {
+        rhs
+    }
 }
 
 macro_rules! uint_wrap_impl {
@@ -384,7 +572,7 @@ macro_rules! uint_wrap_impl {
             const ONE: Self = Self(1);
             const ZERO: Self = Self(0);
 
-            fn vx(x: u64) -> Self {
+            fn vx_s(x: u64) -> Self {
                 if Self::BITS <= 64 {
                     Self(x as $uint)
                 } else {
@@ -392,17 +580,29 @@ macro_rules! uint_wrap_impl {
                 }
             }
 
-            fn vi(i: i32) -> Self {
+            fn vx_u(x: u64) -> Self {
+                Self(x as $uint)
+            }
+
+            fn vi_s(i: i32) -> Self {
                 assert!(i >= -16);
                 assert!(i <= 15);
                 Self(i as $uint)
             }
+
+            fn vi_u(i: u32) -> Self {
+                assert!(i <= 31);
+                Self(i as $uint)
+            }
+
             fn u8(self) -> u8 {
                 self.0 as u8
             }
+
             fn u16(self) -> u16 {
                 self.0 as u16
             }
+
             fn u32(self) -> u32 {
                 self.0 as u32
             }
@@ -419,8 +619,23 @@ macro_rules! uint_wrap_impl {
                 (self.0 as $sint).is_negative()
             }
 
+            fn read(b: &[u8]) -> Self {
+                let mut buf = [0u8; Self::BITS as usize >> 3];
+                buf.copy_from_slice(&b);
+                Self(<$uint>::from_le_bytes(buf))
+            }
+
+            fn save(&self, b: &mut [u8]) {
+                let buf = self.0.to_le_bytes();
+                b.copy_from_slice(&buf);
+            }
+
             fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
+            }
+
+            fn trailing_zeros(self) -> u32 {
+                self.0.trailing_zeros()
             }
 
             fn cmp_s(&self, other: &Self) -> std::cmp::Ordering {
@@ -624,6 +839,13 @@ macro_rules! uint_wrap_from_impl {
             }
         }
     };
+    ($name:ty, $from:ty) => {
+        impl From<$from> for $name {
+            fn from(small: $from) -> Self {
+                Self::from(small.0)
+            }
+        }
+    };
 }
 
 uint_wrap_impl!(U8, u8, i8);
@@ -637,12 +859,15 @@ uint_wrap_from_impl!(U16, u16, u8);
 uint_wrap_from_impl!(U16, u16, i8);
 uint_wrap_from_impl!(U16, u16, u16);
 uint_wrap_from_impl!(U16, u16, i16);
+uint_wrap_from_impl!(U16, U8);
 uint_wrap_from_impl!(U32, u32, u8);
 uint_wrap_from_impl!(U32, u32, i8);
 uint_wrap_from_impl!(U32, u32, u16);
 uint_wrap_from_impl!(U32, u32, i16);
 uint_wrap_from_impl!(U32, u32, u32);
 uint_wrap_from_impl!(U32, u32, i32);
+uint_wrap_from_impl!(U32, U8);
+uint_wrap_from_impl!(U32, U16);
 uint_wrap_from_impl!(U64, u64, u8);
 uint_wrap_from_impl!(U64, u64, i8);
 uint_wrap_from_impl!(U64, u64, u16);
@@ -651,6 +876,9 @@ uint_wrap_from_impl!(U64, u64, u32);
 uint_wrap_from_impl!(U64, u64, i32);
 uint_wrap_from_impl!(U64, u64, u64);
 uint_wrap_from_impl!(U64, u64, i64);
+uint_wrap_from_impl!(U64, U8);
+uint_wrap_from_impl!(U64, U16);
+uint_wrap_from_impl!(U64, U32);
 uint_wrap_from_impl!(U128, u128, u8);
 uint_wrap_from_impl!(U128, u128, i8);
 uint_wrap_from_impl!(U128, u128, u16);
@@ -661,6 +889,10 @@ uint_wrap_from_impl!(U128, u128, u64);
 uint_wrap_from_impl!(U128, u128, i64);
 uint_wrap_from_impl!(U128, u128, u128);
 uint_wrap_from_impl!(U128, u128, i128);
+uint_wrap_from_impl!(U128, U8);
+uint_wrap_from_impl!(U128, U16);
+uint_wrap_from_impl!(U128, U32);
+uint_wrap_from_impl!(U128, U64);
 
 macro_rules! uint_impl {
     ($name:ident, $half:ty) => {
@@ -879,24 +1111,37 @@ macro_rules! uint_impl {
                 hi: <$half>::MIN,
             };
 
-            fn vx(x: u64) -> Self {
+            fn vx_s(x: u64) -> Self {
                 Self::from(x as i64)
             }
 
-            fn vi(i: i32) -> Self {
+            fn vx_u(x: u64) -> Self {
+                Self::from(x)
+            }
+
+            fn vi_s(i: i32) -> Self {
                 assert!(i >= -16);
                 assert!(i <= 15);
                 Self::from(i)
             }
+
+            fn vi_u(i: u32) -> Self {
+                assert!(i <= 31);
+                Self::from(i)
+            }
+
             fn u8(self) -> u8 {
                 self.lo.u8()
             }
+
             fn u16(self) -> u16 {
                 self.lo.u16()
             }
+
             fn u32(self) -> u32 {
                 self.lo.u32()
             }
+
             fn u64(self) -> u64 {
                 self.lo.u64()
             }
@@ -909,11 +1154,34 @@ macro_rules! uint_impl {
                 self != <$name>::MIN && self.wrapping_shr(Self::BITS - 1) == <$name>::ONE
             }
 
+            fn read(b: &[u8]) -> Self {
+                let mut buf = [0u8; Self::BITS as usize >> 3];
+                buf.copy_from_slice(&b);
+                Self {
+                    lo: <$half>::read(&b[0..Self::BITS as usize >> 4]),
+                    hi: <$half>::read(&b[Self::BITS as usize >> 4..Self::BITS as usize >> 3]),
+                }
+            }
+
+            fn save(&self, b: &mut [u8]) {
+                self.lo.save(&mut b[0..Self::BITS as usize >> 4]);
+                self.hi
+                    .save(&mut b[Self::BITS as usize >> 4..Self::BITS as usize >> 3]);
+            }
+
             fn leading_zeros(self) -> u32 {
                 if self.hi == <$half>::MIN {
                     Self::BITS / 2 + self.lo.leading_zeros()
                 } else {
                     self.hi.leading_zeros()
+                }
+            }
+
+            fn trailing_zeros(self) -> u32 {
+                if self.lo == <$half>::MIN {
+                    Self::BITS / 2 + self.hi.trailing_zeros()
+                } else {
+                    self.lo.trailing_zeros()
                 }
             }
 
@@ -1305,148 +1573,6 @@ macro_rules! uint_impl {
     };
 }
 
-impl U1024 {
-    pub fn widening_s(&self) -> U2048 {
-        let hi = if self.is_negative() {
-            Self::MAX
-        } else {
-            Self::MIN
-        };
-        U2048{hi, lo: *self}
-    }
-    pub fn widening_u(&self) -> U2048 {
-        U2048{hi: Self::MIN, lo: *self}
-    }
-}
-
-impl U512 {
-    pub fn widening_s(&self) -> U1024 {
-        let hi = if self.is_negative() {
-            Self::MAX
-        } else {
-            Self::MIN
-        };
-        U1024{hi, lo: *self}
-    }
-    pub fn widening_u(&self) -> U1024 {
-        U1024{hi: Self::MIN, lo: *self}
-    }
-}
-
-impl U256 {
-    pub fn widening_s(&self) -> U512 {
-        let hi = if self.is_negative() {
-            Self::MAX
-        } else {
-            Self::MIN
-        };
-        U512{hi, lo: *self}
-    }
-    pub fn widening_u(&self) -> U512 {
-        U512{hi: Self::MIN, lo: *self}
-    }
-}
-
-impl U128 {
-    pub fn widening_s(&self) -> U256 {
-        let hi = if self.is_negative() {
-            Self::MAX
-        } else {
-            Self::MIN
-        };
-        U256{hi, lo: *self}
-    }
-    pub fn widening_u(&self) -> U256 {
-        U256{hi: Self::MIN, lo: *self}
-    }
-}
-
-impl U64 {
-    pub fn widening_s(&self) -> U128 {
-        let hi = if self.is_negative() {
-            u64::MAX
-        } else {
-            u64::MIN
-        };
-        let res = unsafe { transmute::<[u64; 2], u128>([self.0, hi]) };
-        U128(res)
-    }
-    pub fn widening_u(&self) -> U128 {
-        U128::from(self.0)
-    }
-    pub fn widening_s256(&self) -> U256 {
-        self.widening_s().widening_s()
-    }
-    pub fn widening_u256(&self) -> U256 {
-        self.widening_u().widening_u()
-    }
-    pub fn widening_s512(&self) -> U512 {
-        self.widening_s().widening_s().widening_s()
-    }
-    pub fn widening_u512(&self) -> U512 {
-        self.widening_u().widening_u().widening_u()
-    }
-    pub fn widening_s1024(&self) -> U1024 {
-        self.widening_s().widening_s().widening_s().widening_s()
-    }
-    pub fn widening_u1024(&self) -> U1024 {
-        self.widening_u().widening_u().widening_u().widening_u()
-    }
-    pub fn widening_s2048(&self) -> U2048 {
-        self.widening_s().widening_s().widening_s().widening_s().widening_s()
-    }
-    pub fn widening_u2048(&self) -> U2048 {
-        self.widening_u().widening_u().widening_u().widening_u().widening_u()
-    }
-}
-
-impl U32 {
-    pub fn widening_s(&self) -> U64 {
-        let hi = if self.is_negative() {
-            u32::MAX
-        } else {
-            u32::MIN
-        };
-        let res = unsafe { transmute::<[u32; 2], u64>([self.0, hi]) };
-        U64(res)
-    }
-    pub fn widening_u(&self) -> U64 {
-        U64::from(self.0)
-    }
-}
-
-
-impl U16 {
-    pub fn widening_s(&self) -> U32 {
-        let hi = if self.is_negative() {
-            u16::MAX
-        } else {
-            u16::MIN
-        };
-        let res = unsafe { transmute::<[u16; 2], u32>([self.0, hi]) };
-        U32(res)
-    }
-    pub fn widening_u(&self) -> U32 {
-        U32::from(self.0)
-    }
-}
-
-impl U8 {
-    pub fn widening_s(&self) -> U16 {
-        let hi = if self.is_negative() {
-            u8::MAX
-        } else {
-            u8::MIN
-        };
-        let res = unsafe { transmute::<[u8; 2], u16>([self.0, hi]) };
-        U16(res)
-    }
-    pub fn widening_u(&self) -> U16 {
-        U16::from(self.0)
-    }
-}
-
-
 macro_rules! uint_impl_from_u {
     ($name:ident, $half:ty) => {
         impl std::convert::From<$half> for $name {
@@ -1525,7 +1651,6 @@ uint_impl_from_i!(U1024, U512, i16);
 uint_impl_from_i!(U1024, U512, i32);
 uint_impl_from_i!(U1024, U512, i64);
 uint_impl_from_i!(U1024, U512, i128);
-
 uint_impl!(U2048, U1024);
 uint_impl_from_u!(U2048, U1024, bool);
 uint_impl_from_u!(U2048, U1024, u8);

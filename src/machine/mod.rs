@@ -12,7 +12,7 @@ use scroll::Pread;
 
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, Decoder};
-use super::instructions::{execute, Instruction, Register, VRegister};
+use super::instructions::{execute, Instruction, Register, RegisterFile};
 use super::memory::{round_page_down, round_page_up, Memory, FLAG_DIRTY};
 use super::syscalls::Syscalls;
 use super::{
@@ -47,16 +47,15 @@ pub trait CoreMachine {
     fn set_register(&mut self, idx: usize, value: Self::REG);
 
     // Vector extension
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8];
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8];
     fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64);
-    fn get_vl(&self) -> u64;
-    fn get_vsew(&self) -> u64;
-    fn get_vlmul(&self) -> i32;
-    fn get_vta(&self) -> bool;
-    fn get_vma(&self) -> bool;
-    fn get_vill(&self) -> bool;
-    fn vregisters(&self) -> &[VRegister];
-    fn set_vregister(&mut self, idx: usize, value: VRegister);
-    fn get_vregister(&mut self, idx: usize) -> VRegister;
+    fn vl(&self) -> u64;
+    fn vsew(&self) -> u64;
+    fn vlmul(&self) -> i32;
+    fn vta(&self) -> bool;
+    fn vma(&self) -> bool;
+    fn vill(&self) -> bool;
 
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
@@ -295,7 +294,7 @@ pub struct DefaultCoreMachine<R, M> {
     isa: u8,
     version: u32,
 
-    vregisters: [VRegister; 32],
+    register_file: RegisterFile,
     vlmax: u64,
     vl: u64,
     vtype: u64,
@@ -338,8 +337,12 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.registers[idx] = value;
     }
 
-    fn get_vl(&self) -> u64 {
-        self.vl
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.register_file.element_ref(reg, sew, n)
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.register_file.element_mut(reg, sew, n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
@@ -387,36 +390,28 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.vstart = 0;
     }
 
-    fn get_vsew(&self) -> u64 {
+    fn vl(&self) -> u64 {
+        self.vl
+    }
+
+    fn vsew(&self) -> u64 {
         self.vsew
     }
 
-    fn get_vlmul(&self) -> i32 {
+    fn vlmul(&self) -> i32 {
         self.vlmul
     }
 
-    fn get_vta(&self) -> bool {
+    fn vta(&self) -> bool {
         self.vta
     }
 
-    fn get_vma(&self) -> bool {
+    fn vma(&self) -> bool {
         self.vma
     }
 
-    fn get_vill(&self) -> bool {
+    fn vill(&self) -> bool {
         self.vill
-    }
-
-    fn vregisters(&self) -> &[VRegister] {
-        &self.vregisters
-    }
-
-    fn set_vregister(&mut self, idx: usize, value: VRegister) {
-        self.vregisters[idx] = value;
-    }
-
-    fn get_vregister(&mut self, idx: usize) -> VRegister {
-        self.vregisters[idx]
     }
 
     fn isa(&self) -> u8 {
@@ -532,44 +527,40 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         self.inner.set_register(idx, value)
     }
 
-    fn get_vregister(&mut self, idx: usize) -> VRegister {
-        self.inner.get_vregister(idx)
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.inner.element_ref(reg, sew, n)
     }
 
-    fn get_vl(&self) -> u64 {
-        self.inner.get_vl()
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.inner.element_mut(reg, sew, n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
         self.inner.set_vl(rd, rs1, req_vl, new_type)
     }
 
-    fn get_vsew(&self) -> u64 {
-        self.inner.get_vsew()
+    fn vl(&self) -> u64 {
+        self.inner.vl()
     }
 
-    fn get_vlmul(&self) -> i32 {
-        self.inner.get_vlmul()
+    fn vsew(&self) -> u64 {
+        self.inner.vsew()
     }
 
-    fn get_vta(&self) -> bool {
-        self.inner.get_vta()
+    fn vlmul(&self) -> i32 {
+        self.inner.vlmul()
     }
 
-    fn get_vma(&self) -> bool {
-        self.inner.get_vma()
+    fn vta(&self) -> bool {
+        self.inner.vta()
     }
 
-    fn get_vill(&self) -> bool {
-        self.inner.get_vill()
+    fn vma(&self) -> bool {
+        self.inner.vma()
     }
 
-    fn vregisters(&self) -> &[VRegister] {
-        self.inner.vregisters()
-    }
-
-    fn set_vregister(&mut self, idx: usize, value: VRegister) {
-        self.inner.set_vregister(idx, value)
+    fn vill(&self) -> bool {
+        self.inner.vill()
     }
 
     fn isa(&self) -> u8 {

@@ -20,7 +20,7 @@ use crate::{
     decoder::{build_decoder, Decoder},
     instructions::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction, VRegister,
+        is_basic_block_end_instruction,
     },
     machine::{aot::AotCode, VERSION0},
     memory::{
@@ -71,6 +71,20 @@ impl CoreMachine for Box<AsmCoreMachine> {
         self.version
     }
 
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * n;
+        let i1 = i0 + lb;
+        &self.register_file[i0..i1]
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * n;
+        let i1 = i0 + lb;
+        &mut self.register_file[i0..i1]
+    }
+
     fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
         if self.vtype != new_type {
             self.vtype = new_type;
@@ -116,41 +130,28 @@ impl CoreMachine for Box<AsmCoreMachine> {
         self.vstart = 0;
     }
 
-    fn get_vl(&self) -> u64 {
+    fn vl(&self) -> u64 {
         self.vl
     }
 
-    fn get_vsew(&self) -> u64 {
+    fn vsew(&self) -> u64 {
         self.vsew
     }
 
-    fn get_vlmul(&self) -> i32 {
+    fn vlmul(&self) -> i32 {
         self.vlmul
     }
 
-    fn get_vta(&self) -> bool {
+    fn vta(&self) -> bool {
         self.vta
     }
 
-    fn get_vma(&self) -> bool {
+    fn vma(&self) -> bool {
         self.vma
     }
 
-    fn get_vill(&self) -> bool {
+    fn vill(&self) -> bool {
         self.vill
-    }
-
-    fn vregisters(&self) -> &[VRegister] {
-        unreachable!()
-    }
-
-    fn set_vregister(&mut self, idx: usize, value: VRegister) {
-        self.vregisters[idx] = value.to_le_bytes();
-    }
-
-    fn get_vregister(&mut self, idx: usize) -> VRegister {
-        let data = self.vregisters[idx];
-        VRegister::from_le_bytes(self.vsew as u32, data)
     }
 }
 
@@ -248,13 +249,13 @@ fn check_memory_executable(
     Ok(())
 }
 
-// check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
+// check whether a memory address is initialized, `size` should be le RISCV_PAGESIZE
 fn check_memory_inited(
     machine: &mut Box<AsmCoreMachine>,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
-    debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
+    debug_assert!(size <= RISCV_PAGESIZE);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= RISCV_PAGES {
         return Err(Error::OutOfBound);

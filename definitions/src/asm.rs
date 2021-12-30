@@ -53,7 +53,7 @@ pub struct AsmCoreMachine {
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
 
-    pub vregisters: [[u8; 256]; 32],
+    pub register_file: [u8; 8192],
     pub vlmax: u64,
     pub vl: u64,
     pub vtype: u64,

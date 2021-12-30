@@ -12,7 +12,7 @@ pub mod v;
 pub mod v_register;
 
 pub use self::register::Register;
-pub use self::v_register::{VRegister, U1024, U256, U512};
+pub use self::v_register::{RegisterFile, U1024, U256, U512};
 use super::Error;
 pub use ckb_vm_definitions::instructions::{
     self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
