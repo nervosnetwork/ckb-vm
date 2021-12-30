@@ -168,9 +168,9 @@ pub trait SupportMachine: CoreMachine {
                     self.memory_mut()
                         .store_byte(aligned_start, padding_start, 0)?;
                 }
-                bytes = bytes
-                    .checked_add(slice_end - slice_start)
-                    .ok_or(Error::Unexpected)?;
+                bytes = bytes.checked_add(slice_end - slice_start).ok_or_else(|| {
+                    Error::Unexpected(String::from("The bytes count overflowed on loading elf"))
+                })?;
             }
         }
         if update_pc {
@@ -530,9 +530,11 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         if self.inner.version() >= VERSION1 {
             debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
         }
-        let bytes = elf_bytes
-            .checked_add(stack_bytes)
-            .ok_or(Error::Unexpected)?;
+        let bytes = elf_bytes.checked_add(stack_bytes).ok_or_else(|| {
+            Error::Unexpected(String::from(
+                "The bytes count overflowed on loading program",
+            ))
+        })?;
         Ok(bytes)
     }
 

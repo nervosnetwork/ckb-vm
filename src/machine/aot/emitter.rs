@@ -266,7 +266,7 @@ impl Emitter {
                     pc_write = Some(self.emit_value(value)?);
                 }
                 _ => {
-                    return Err(Error::Unexpected);
+                    return Err(Error::Unexpected(String::from("Unexpected write type")));
                 }
             }
         }

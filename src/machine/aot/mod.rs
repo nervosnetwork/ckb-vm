@@ -193,7 +193,7 @@ impl LabelGatheringMachine {
     fn read_pc(&self) -> Result<u64, Error> {
         match &self.pc {
             Value::Imm(pc) => Ok(*pc),
-            _ => Err(Error::Unexpected),
+            _ => Err(Error::Unexpected(String::from("Unexpected value type"))),
         }
     }
 
@@ -476,7 +476,7 @@ impl AotCompilingMachine {
     fn read_pc(&self) -> Result<u64, Error> {
         match &self.pc {
             Value::Imm(pc) => Ok(*pc),
-            _ => Err(Error::Unexpected),
+            _ => Err(Error::Unexpected(String::from("Unexpected value type"))),
         }
     }
 
