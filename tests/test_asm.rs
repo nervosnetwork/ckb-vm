@@ -141,7 +141,7 @@ pub fn test_asm_simple_max_cycles_reached() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
 }
 
 #[test]
@@ -155,7 +155,7 @@ pub fn test_asm_trace() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -169,7 +169,7 @@ pub fn test_asm_jump0() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -185,7 +185,7 @@ pub fn test_asm_write_large_address() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -226,7 +226,7 @@ pub fn test_invalid_read64() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -239,7 +239,7 @@ pub fn test_asm_load_elf_crash_64() {
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -252,7 +252,7 @@ pub fn test_asm_wxorx_crash_64() {
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -351,7 +351,7 @@ pub fn test_asm_outofcycles_in_syscall() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
     assert_eq!(machine.machine.cycles(), 108);
     assert_eq!(machine.machine.registers()[A0], 39);
 }
@@ -389,7 +389,7 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::OutOfBound);
+    assert_eq!(result.unwrap_err(), Error::MemOutOfBound);
 }
 
 pub fn test_asm_step() {

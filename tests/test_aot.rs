@@ -154,7 +154,7 @@ pub fn test_aot_simple_max_cycles_reached() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
 }
 
 #[test]
@@ -170,7 +170,7 @@ pub fn test_aot_trace() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -186,7 +186,7 @@ pub fn test_aot_jump0() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -204,7 +204,7 @@ pub fn test_aot_write_large_address() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -251,7 +251,7 @@ pub fn test_aot_invalid_read64() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -266,7 +266,7 @@ pub fn test_aot_load_elf_crash_64() {
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -281,7 +281,7 @@ pub fn test_aot_wxorx_crash_64() {
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -290,7 +290,7 @@ pub fn test_aot_load_elf_section_crash_64() {
         .unwrap()
         .into();
     let result = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::AotSectionIsEmpty));
 }
 
 #[test]
@@ -299,14 +299,14 @@ pub fn test_aot_load_malformed_elf_crash_64() {
         .unwrap()
         .into();
     let result = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0);
-    assert_eq!(result.err(), Some(Error::ParseError));
+    assert!(matches!(result.err(), Some(Error::ElfParseError(_))));
 }
 
 #[test]
 pub fn test_aot_flat_crash_64() {
     let buffer = fs::read("tests/programs/flat_crash_64").unwrap().into();
     let result = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -417,7 +417,7 @@ pub fn test_aot_outofcycles_in_syscall() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
     assert_eq!(machine.machine.cycles(), 108);
     assert_eq!(machine.machine.registers()[A0], 39);
 }

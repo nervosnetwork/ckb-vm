@@ -36,19 +36,19 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         offset_from_addr: u64,
     ) -> Result<(), Error> {
         if round_page_down(addr) != addr || round_page_up(size) != size {
-            return Err(Error::Unaligned);
+            return Err(Error::MemPageUnalignedAccess);
         }
         if addr > RISCV_MAX_MEMORY as u64
             || size > RISCV_MAX_MEMORY as u64
             || addr + size > RISCV_MAX_MEMORY as u64
             || offset_from_addr > size
         {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
             let page = page_addr / RISCV_PAGESIZE as u64;
             if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
-                return Err(Error::InvalidPermission);
+                return Err(Error::MemWriteOnExecutablePage);
             }
             self.set_flag(page, flags)?;
         }

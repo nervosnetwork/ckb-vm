@@ -108,7 +108,7 @@ pub fn test_trace() {
     let buffer = fs::read("tests/programs/trace64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["trace64".into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -116,7 +116,7 @@ pub fn test_jump0() {
     let buffer = fs::read("tests/programs/jump0_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["jump0_64".into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -139,7 +139,7 @@ pub fn test_invalid_file_offset64() {
         .unwrap()
         .into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::ElfSegmentAddrOrSizeError));
 }
 
 #[test]
@@ -149,7 +149,7 @@ pub fn test_op_rvc_srli_crash_32() {
         .unwrap()
         .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srli_crash_32".into()]);
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -176,14 +176,14 @@ pub fn test_op_rvc_slli_crash_32() {
 pub fn test_load_elf_crash_64() {
     let buffer = fs::read("tests/programs/load_elf_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["load_elf_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
 pub fn test_wxorx_crash_64() {
     let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -193,7 +193,7 @@ pub fn test_flat_crash_64() {
         DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -304,7 +304,7 @@ pub fn test_outofcycles_in_syscall() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
     assert_eq!(machine.cycles(), 108);
     assert_eq!(machine.registers()[A0], 39);
 }

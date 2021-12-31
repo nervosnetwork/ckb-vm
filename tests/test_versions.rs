@@ -101,7 +101,7 @@ pub fn test_rust_version0_read_at_boundary() {
     let mut machine = create_rust_machine("read_at_boundary64".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -197,7 +197,7 @@ pub fn test_asm_version0_read_at_boundary() {
     let mut machine = create_asm_machine("read_at_boundary64".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -303,7 +303,7 @@ pub fn test_aot_version0_read_at_boundary() {
     let mut machine = create_aot_machine("read_at_boundary64".to_string(), &code, VERSION0);
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::OutOfBound));
+    assert_eq!(result.err(), Some(Error::MemOutOfBound));
 }
 
 #[test]
@@ -387,7 +387,7 @@ pub fn test_rust_version0_unaligned64() {
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -409,7 +409,7 @@ pub fn test_asm_version0_unaligned64() {
     let mut machine = AsmMachine::new(core, None);
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]
@@ -433,7 +433,7 @@ pub fn test_aot_version0_unaligned64() {
     let mut machine = AsmMachine::new(core, Some(&code));
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::InvalidPermission));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
 }
 
 #[test]

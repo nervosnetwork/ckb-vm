@@ -34,7 +34,7 @@ impl<R> SparseMemory<R> {
     fn fetch_page(&mut self, aligned_addr: u64) -> Result<&mut Page, Error> {
         let page = aligned_addr / RISCV_PAGESIZE as u64;
         if page >= RISCV_PAGES as u64 {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         let mut index = self.indices[page as usize];
         if index == INVALID_PAGE_INDEX {
@@ -92,7 +92,7 @@ impl<R: Register> Memory for SparseMemory<R> {
         if page < RISCV_PAGES as u64 {
             Ok(self.flags[page as usize])
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -101,7 +101,7 @@ impl<R: Register> Memory for SparseMemory<R> {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -110,7 +110,7 @@ impl<R: Register> Memory for SparseMemory<R> {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 

@@ -57,7 +57,7 @@ impl<R: Register> Memory for FlatMemory<R> {
         if page < RISCV_PAGES as u64 {
             Ok(self.flags[page as usize])
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -66,7 +66,7 @@ impl<R: Register> Memory for FlatMemory<R> {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -75,7 +75,7 @@ impl<R: Register> Memory for FlatMemory<R> {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
-            Err(Error::OutOfBound)
+            Err(Error::MemOutOfBound)
         }
     }
 
@@ -89,8 +89,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(1).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
+        if addr.checked_add(1).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
+            return Err(Error::MemOutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
@@ -100,8 +100,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(2).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
+        if addr.checked_add(2).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
+            return Err(Error::MemOutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
@@ -112,8 +112,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(4).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
+        if addr.checked_add(4).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
+            return Err(Error::MemOutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
@@ -124,8 +124,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(8).ok_or(Error::OutOfBound)? > self.len() as u64 {
-            return Err(Error::OutOfBound);
+        if addr.checked_add(8).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
+            return Err(Error::MemOutOfBound);
         }
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;

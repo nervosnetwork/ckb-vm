@@ -12,8 +12,11 @@ pub fn convert_flags(p_flags: u32, allow_freeze_writable: bool) -> Result<u8, Er
     let readable = p_flags & PF_R != 0;
     let writable = p_flags & PF_W != 0;
     let executable = p_flags & PF_X != 0;
-    if (!readable) || (writable && executable) {
-        return Err(Error::InvalidPermission);
+    if !readable {
+        return Err(Error::ElfSegmentUnreadable);
+    }
+    if writable && executable {
+        return Err(Error::ElfSegmentWritableAndExecutable);
     }
     if executable {
         Ok(FLAG_EXECUTABLE | FLAG_FREEZED)

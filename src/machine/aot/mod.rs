@@ -106,11 +106,11 @@ impl LabelGatheringMachine {
             use goblin_v023::container::Ctx;
             use goblin_v023::elf::{Header, SectionHeader};
 
-            let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
-            let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-            let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+            let header = program.pread::<Header>(0)?;
+            let container = header.container().map_err(|_e| Error::ElfBits)?;
+            let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
             if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                return Err(Error::InvalidElfBits);
+                return Err(Error::ElfBits);
             }
             let ctx = Ctx::new(container, endianness);
             SectionHeader::parse(
@@ -118,8 +118,7 @@ impl LabelGatheringMachine {
                 header.e_shoff as usize,
                 header.e_shnum as usize,
                 ctx,
-            )
-            .map_err(|_e| Error::ParseError)?
+            )?
             .iter()
             .map(elf_adaptor::SectionHeader::from_v0)
             .collect()
@@ -127,11 +126,11 @@ impl LabelGatheringMachine {
             use goblin_v040::container::Ctx;
             use goblin_v040::elf::{Header, SectionHeader};
 
-            let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
-            let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-            let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+            let header = program.pread::<Header>(0)?;
+            let container = header.container().map_err(|_e| Error::ElfBits)?;
+            let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
             if <Self as CoreMachine>::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                return Err(Error::InvalidElfBits);
+                return Err(Error::ElfBits);
             }
             let ctx = Ctx::new(container, endianness);
             SectionHeader::parse(
@@ -139,14 +138,13 @@ impl LabelGatheringMachine {
                 header.e_shoff as usize,
                 header.e_shnum as usize,
                 ctx,
-            )
-            .map_err(|_e| Error::ParseError)?
+            )?
             .iter()
             .map(elf_adaptor::SectionHeader::from_v1)
             .collect()
         };
         if section_headers.len() > MAXIMUM_SECTIONS {
-            return Err(Error::LimitReached);
+            return Err(Error::AotLimitReachedMaximumSections);
         }
         let mut sections: Vec<(u64, u64)> = section_headers
             .iter()
@@ -164,14 +162,14 @@ impl LabelGatheringMachine {
             .collect();
         // Test there's no empty section
         if sections.iter().any(|(s, e)| s >= e) {
-            return Err(Error::OutOfBound);
+            return Err(Error::AotSectionIsEmpty);
         }
         // Test no section overlaps with one another. We first sort section
         // list by start, then we test if each end is equal or less than
         // the next start.
         sections.sort_by_key(|section| section.0);
         if sections.windows(2).any(|w| w[0].1 > w[1].0) {
-            return Err(Error::OutOfBound);
+            return Err(Error::AotSectionOverlaps);
         }
         // DefaultCoreMachine is only used here for loading ELF binaries
         // into memory.
@@ -195,7 +193,7 @@ impl LabelGatheringMachine {
     fn read_pc(&self) -> Result<u64, Error> {
         match &self.pc {
             Value::Imm(pc) => Ok(*pc),
-            _ => Err(Error::Unexpected),
+            _ => Err(Error::Unexpected(String::from("Unexpected value type"))),
         }
     }
 
@@ -222,7 +220,7 @@ impl LabelGatheringMachine {
                             }
                         }
                         if self.labels.len() > MAXIMUM_LABELS {
-                            return Err(Error::LimitReached);
+                            return Err(Error::AotLimitReachedMaximumLabels);
                         }
                         self.pc = Value::from_u64(next_pc);
                     }
@@ -249,7 +247,7 @@ impl LabelGatheringMachine {
                         // allow us to signal correct error and revert back
                         // to assembly VM for those quirky programs.
                         if !start_of_basic_block {
-                            return Err(Error::OutOfBound);
+                            return Err(Error::AotOutOfBoundDueToNotStartOfBasicBlock);
                         }
                         let mut dummy_end = pc + 2;
                         while dummy_end < section_end && self.memory.execute_load16(dummy_end)? == 0
@@ -260,7 +258,7 @@ impl LabelGatheringMachine {
                         // sections won't overlap with each other as well.
                         self.dummy_sections.insert(pc, dummy_end);
                         if self.dummy_sections.len() > MAXIMUM_DUMMY_SECTIONS {
-                            return Err(Error::LimitReached);
+                            return Err(Error::AotLimitReachedMaximumDummySections);
                         }
                         self.pc = Value::from_u64(dummy_end);
                     }
@@ -270,7 +268,7 @@ impl LabelGatheringMachine {
             // A section must end a basic block, otherwise we would run into
             // out of bound error;
             if !start_of_basic_block {
-                return Err(Error::OutOfBound);
+                return Err(Error::AotOutOfBoundDueToNotStartOfBasicBlock);
             }
             debug_assert!(!self.labels.contains(&section_end));
         }
@@ -478,7 +476,7 @@ impl AotCompilingMachine {
     fn read_pc(&self) -> Result<u64, Error> {
         match &self.pc {
             Value::Imm(pc) => Ok(*pc),
-            _ => Err(Error::Unexpected),
+            _ => Err(Error::Unexpected(String::from("Unexpected value type"))),
         }
     }
 
@@ -525,7 +523,7 @@ impl AotCompilingMachine {
         let pc = self.read_pc()?;
         // Emit succeeding PC write only
         if pc >= RISCV_MAX_MEMORY as u64 {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         self.emitter.emit(&Write::Pc {
             value: Value::Imm(pc | ADDRESS_WRITE_ONLY_FLAG),
@@ -619,7 +617,7 @@ impl AotCompilingMachine {
 
     fn optimize_pc(&self, pc: u64) -> Result<u64, Error> {
         if pc >= RISCV_MAX_MEMORY as u64 {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
         if pc < MAXIMUM_ENCODED_ADDRESS {
             if let Some(label) = self.addresses_to_labels.get(&pc) {

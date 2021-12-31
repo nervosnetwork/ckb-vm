@@ -83,7 +83,7 @@ pub trait SupportMachine: CoreMachine {
             .checked_add(cycles)
             .ok_or(Error::CyclesOverflow)?;
         if new_cycles > self.max_cycles() {
-            return Err(Error::InvalidCycles);
+            return Err(Error::CyclesExceeded);
         }
         self.set_cycles(new_cycles);
         Ok(())
@@ -106,11 +106,11 @@ pub trait SupportMachine: CoreMachine {
             if version < VERSION1 {
                 use goblin_v023::container::Ctx;
                 use goblin_v023::elf::{program_header::ProgramHeader, Header};
-                let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
-                let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-                let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+                let header = program.pread::<Header>(0)?;
+                let container = header.container().map_err(|_e| Error::ElfBits)?;
+                let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
                 if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                    return Err(Error::InvalidElfBits);
+                    return Err(Error::ElfBits);
                 }
                 let ctx = Ctx::new(container, endianness);
                 let program_headers = ProgramHeader::parse(
@@ -118,8 +118,7 @@ pub trait SupportMachine: CoreMachine {
                     header.e_phoff as usize,
                     header.e_phnum as usize,
                     ctx,
-                )
-                .map_err(|_e| Error::ParseError)?
+                )?
                 .iter()
                 .map(elf_adaptor::ProgramHeader::from_v0)
                 .collect();
@@ -127,11 +126,11 @@ pub trait SupportMachine: CoreMachine {
             } else {
                 use goblin_v040::container::Ctx;
                 use goblin_v040::elf::{program_header::ProgramHeader, Header};
-                let header = program.pread::<Header>(0).map_err(|_e| Error::ParseError)?;
-                let container = header.container().map_err(|_e| Error::InvalidElfBits)?;
-                let endianness = header.endianness().map_err(|_e| Error::InvalidElfBits)?;
+                let header = program.pread::<Header>(0)?;
+                let container = header.container().map_err(|_e| Error::ElfBits)?;
+                let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
                 if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                    return Err(Error::InvalidElfBits);
+                    return Err(Error::ElfBits);
                 }
                 let ctx = Ctx::new(container, endianness);
                 let program_headers = ProgramHeader::parse(
@@ -139,8 +138,7 @@ pub trait SupportMachine: CoreMachine {
                     header.e_phoff as usize,
                     header.e_phnum as usize,
                     ctx,
-                )
-                .map_err(|_e| Error::ParseError)?
+                )?
                 .iter()
                 .map(elf_adaptor::ProgramHeader::from_v1)
                 .collect();
@@ -157,7 +155,7 @@ pub trait SupportMachine: CoreMachine {
                     .p_offset
                     .wrapping_add(program_header.p_filesz);
                 if slice_start > slice_end || slice_end > program.len() as u64 {
-                    return Err(Error::OutOfBound);
+                    return Err(Error::ElfSegmentAddrOrSizeError);
                 }
                 self.memory_mut().init_pages(
                     aligned_start,
@@ -170,9 +168,9 @@ pub trait SupportMachine: CoreMachine {
                     self.memory_mut()
                         .store_byte(aligned_start, padding_start, 0)?;
                 }
-                bytes = bytes
-                    .checked_add(slice_end - slice_start)
-                    .ok_or(Error::Unexpected)?;
+                bytes = bytes.checked_add(slice_end - slice_start).ok_or_else(|| {
+                    Error::Unexpected(String::from("The bytes count overflowed on loading elf"))
+                })?;
             }
         }
         if update_pc {
@@ -260,7 +258,7 @@ pub trait SupportMachine: CoreMachine {
         }
         if self.registers()[SP].to_u64() < stack_start {
             // args exceed stack size
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfStack);
         }
         Ok(stack_start + stack_size - self.registers()[SP].to_u64())
     }
@@ -478,7 +476,7 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
                     let processed = syscall.ecall(&mut self.inner)?;
                     if processed {
                         if self.cycles() > self.max_cycles() {
-                            return Err(Error::InvalidCycles);
+                            return Err(Error::CyclesExceeded);
                         }
                         return Ok(());
                     }
@@ -532,9 +530,11 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         if self.inner.version() >= VERSION1 {
             debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
         }
-        let bytes = elf_bytes
-            .checked_add(stack_bytes)
-            .ok_or(Error::Unexpected)?;
+        let bytes = elf_bytes.checked_add(stack_bytes).ok_or_else(|| {
+            Error::Unexpected(String::from(
+                "The bytes count overflowed on loading program",
+            ))
+        })?;
         Ok(bytes)
     }
 

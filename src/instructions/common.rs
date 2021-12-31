@@ -84,9 +84,9 @@ pub fn addiw<Mac: Machine>(
 fn check_load_boundary<R: Register>(version0: bool, address: &R, bytes: u64) -> Result<(), Error> {
     if version0 {
         let address = address.to_u64();
-        let end = address.checked_add(bytes).ok_or(Error::OutOfBound)?;
+        let end = address.checked_add(bytes).ok_or(Error::MemOutOfBound)?;
         if end == RISCV_MAX_MEMORY as u64 {
-            return Err(Error::OutOfBound);
+            return Err(Error::MemOutOfBound);
         }
     }
     Ok(())

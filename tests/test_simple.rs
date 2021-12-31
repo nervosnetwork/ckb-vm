@@ -65,7 +65,7 @@ pub fn test_simple_max_cycles_reached() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidCycles);
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
 }
 
 #[test]
@@ -73,7 +73,7 @@ pub fn test_simple_invalid_bits() {
     let buffer = fs::read("tests/programs/simple").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["simple".into()]);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidElfBits);
+    assert_eq!(result.unwrap_err(), Error::ElfBits);
 }
 
 #[test]
