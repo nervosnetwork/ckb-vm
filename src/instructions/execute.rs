@@ -975,6 +975,221 @@ macro_rules! w_wv_iterator_impl {
     };
 }
 
+type WWXIteratorFunc = fn(
+    lhs: [&VRegister; 2],
+    rhs: u64,
+    vd: [&mut VRegister; 2],
+    num: usize,
+    elements_per_register: usize,
+) -> Result<(), Error>;
+
+// Widening operation: 2*SEW = 2*SEW op SEW
+// Have a destination and a source group with EEW=2*SEW and EMUL=2*LMUL
+fn loop_w_wx<Mac: Machine>(
+    inst: Instruction,
+    machine: &mut Mac,
+    func: WWXIteratorFunc,
+) -> Result<(), Error> {
+    let i = VXtype(inst);
+    let elements_per_register = (VLEN / machine.get_vsew()) as usize;
+    let vl = machine.get_vl() as usize;
+    let register_count = ((vl - 1) / elements_per_register) + 1;
+    for j in 0..register_count {
+        let rs1_value = machine.registers()[i.rs1()].to_u64();
+        let vs2_1 = machine.get_vregister(i.vs2() + j * 2);
+        let vs2_2 = machine.get_vregister(i.vs2() + j * 2 + 1);
+        let mut vd1 = machine.get_vregister(i.vd() + j * 2);
+        let mut vd2 = machine.get_vregister(i.vd() + j * 2 + 1);
+
+        let num = if j == (register_count - 1) {
+            vl - j * elements_per_register
+        } else {
+            elements_per_register
+        };
+        func(
+            [&vs2_1, &vs2_2],
+            rs1_value,
+            [&mut vd1, &mut vd2],
+            num,
+            elements_per_register,
+        )?;
+        machine.set_vregister(i.vd() + j * 2, vd1);
+        if num > (elements_per_register / 2) {
+            machine.set_vregister(i.vd() + j * 2 + 1, vd2);
+        }
+    }
+    Ok(())
+}
+
+macro_rules! w_wx_iterator_impl {
+    ($func_1024:tt,
+    $func_512:tt,
+    $func_256:tt,
+    $func_128:tt,
+    $func_64:tt,
+    $func_32:tt,
+    $func_16:tt,
+    $func_8:tt) => {
+        pub fn wx_iterator_func(
+            vs2: [&VRegister; 2],
+            vs1: u64,
+            vd: [&mut VRegister; 2],
+            num: usize,
+            elements_per_register: usize,
+        ) -> Result<(), Error> {
+            let half = elements_per_register / 2;
+            match (vs2, vd) {
+                (
+                    [VRegister::U1024(ref a1), VRegister::U1024(ref a2)],
+                    [VRegister::U1024(ref mut r1), VRegister::U1024(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_1024([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_1024([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U512(ref a1), VRegister::U512(ref a2)],
+                    [VRegister::U512(ref mut r1), VRegister::U512(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_512([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_512([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U256(ref a1), VRegister::U256(ref a2)],
+                    [VRegister::U256(ref mut r1), VRegister::U256(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_256([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_256([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U128(ref a1), VRegister::U128(ref a2)],
+                    [VRegister::U128(ref mut r1), VRegister::U128(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_128([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_128([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U64(ref a1), VRegister::U64(ref a2)],
+                    [VRegister::U64(ref mut r1), VRegister::U64(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_64([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_64([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U32(ref a1), VRegister::U32(ref a2)],
+                    [VRegister::U32(ref mut r1), VRegister::U32(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_32([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_32([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U16(ref a1), VRegister::U16(ref a2)],
+                    [VRegister::U16(ref mut r1), VRegister::U16(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_16([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_16([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                (
+                    [VRegister::U8(ref a1), VRegister::U8(ref a2)],
+                    [VRegister::U8(ref mut r1), VRegister::U8(ref mut r2)],
+                ) => {
+                    for i in 0..num {
+                        if i >= half {
+                            let index = 2 * i - elements_per_register;
+                            let (res1, res2) = $func_8([&a2[index], &a2[index + 1]], vs1);
+                            r2[index] = res1;
+                            r2[index + 1] = res2;
+                        } else {
+                            let index = 2 * i;
+                            let (res1, res2) = $func_8([&a1[index], &a1[index + 1]], vs1);
+                            r1[index] = res1;
+                            r1[index + 1] = res2;
+                        }
+                    }
+                }
+                _ => return Err(Error::Unexpected),
+            }
+            Ok(())
+        }
+    };
+}
+
 fn load_elements<Mac: Machine>(
     machine: &mut Mac,
     start_reg_index: usize,
@@ -3361,6 +3576,102 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_w_wv(inst, machine, wv_iterator_func)?;
         }
+        insts::OP_VWADDU_WX => {
+            w_wx_iterator_impl! {
+                {|a:[&U1024; 2], b: u64| {
+                    let c = U2048{lo: *a[0], hi: *a[1]} + U64(b).widening_u2048();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U512; 2], b: u64| {
+                    let c = U1024{lo: *a[0], hi: *a[1]} + U64(b).widening_u1024();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U256; 2], b: u64| {
+                    let c = U512{lo: *a[0], hi: *a[1]} + U64(b).widening_u512();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U128; 2], b: u64| {
+                    let c = U256{lo: *a[0], hi: *a[1]} + U64(b).widening_u256();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U64; 2], b: u64| {
+                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(U64(b).widening_u().0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:[&U32; 2], b: u64| {
+                    let bb = U64(b).narrowing_u32();
+                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(bb.widening_u().0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:[&U16; 2], b: u64| {
+                    let bb = U64(b).narrowing_u16();
+                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(bb.widening_u().0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:[&U8; 2], b: u64| {
+                    let bb = U64(b).narrowing_u8();
+                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(bb.widening_u().0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_wx(inst, machine, wx_iterator_func)?;
+        }
+        insts::OP_VWADD_WX => {
+            w_wx_iterator_impl! {
+                {|a:[&U1024; 2], b: u64| {
+                    let c = U2048{lo: *a[0], hi: *a[1]} + U64(b).widening_s2048();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U512; 2], b: u64| {
+                    let c = U1024{lo: *a[0], hi: *a[1]} + U64(b).widening_s1024();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U256; 2], b: u64| {
+                    let c = U512{lo: *a[0], hi: *a[1]} + U64(b).widening_s512();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U128; 2], b: u64| {
+                    let c = U256{lo: *a[0], hi: *a[1]} + U64(b).widening_s256();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U64; 2], b: u64| {
+                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(U64(b).widening_s().0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:[&U32; 2], b: u64| {
+                    let bb = U64(b).narrowing_u32();
+                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(bb.widening_s().0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:[&U16; 2], b: u64| {
+                    let bb = U64(b).narrowing_u16();
+                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(bb.widening_s().0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:[&U8; 2], b: u64| {
+                    let bb = U64(b).narrowing_u8();
+                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_add(bb.widening_s().0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_wx(inst, machine, wx_iterator_func)?;
+        }
         insts::OP_VWADD_VV => {
             w_vv_iterator_impl! {
                 {|a:&U1024, b: &U1024| {
@@ -3474,25 +3785,25 @@ pub fn execute_instruction<Mac: Machine>(
                 }},
                 {|a:[&U64; 2], b: &U64| {
                     let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_s().0;
+                    let c = aa.wrapping_add(b.widening_s().0);
                     let res = unsafe { transmute::<u128, [u64; 2]>(c) };
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:[&U32; 2], b: &U32| {
                     let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_s().0;
+                    let c = aa.wrapping_add(b.widening_s().0);
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:[&U16; 2], b: &U16| {
                     let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_s().0;
+                    let c = aa.wrapping_add(b.widening_s().0);
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:[&U8; 2], b: &U8| {
                     let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
-                    let c = aa + b.widening_s().0;
+                    let c = aa.wrapping_add(b.widening_s().0);
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
                 }}
@@ -3540,6 +3851,51 @@ pub fn execute_instruction<Mac: Machine>(
                 }}
             };
             loop_w_vv(inst, machine, vv_iterator_func)?;
+        }
+        insts::OP_VWSUBU_WV => {
+            w_wv_iterator_impl! {
+                {|a:[&U1024; 2], b: &U1024| {
+                    let c = U2048{lo: *a[0], hi: *a[1]} - b.widening_u();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U512; 2], b: &U512| {
+                    let c = U1024{lo: *a[0], hi: *a[1]} - b.widening_u();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U256; 2], b: &U256| {
+                    let c = U512{lo: *a[0], hi: *a[1]} - b.widening_u();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U128; 2], b: &U128| {
+                    let c = U256{lo: *a[0], hi: *a[1]} - b.widening_u();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U64; 2], b: &U64| {
+                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_u().0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:[&U32; 2], b: &U32| {
+                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_u().0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:[&U16; 2], b: &U16| {
+                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_u().0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:[&U8; 2], b: &U8| {
+                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_u().0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_wv(inst, machine, wv_iterator_func)?;
         }
         insts::OP_VWSUBU_VX => {
             w_vx_iterator_impl! {
@@ -3680,7 +4036,147 @@ pub fn execute_instruction<Mac: Machine>(
             };
             loop_w_vx(inst, machine, vx_iterator_func)?;
         }
-
+        insts::OP_VWSUB_WV => {
+            w_wv_iterator_impl! {
+                {|a:[&U1024; 2], b: &U1024| {
+                    let c = U2048{lo: *a[0], hi: *a[1]} - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U512; 2], b: &U512| {
+                    let c = U1024{lo: *a[0], hi: *a[1]} - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U256; 2], b: &U256| {
+                    let c = U512{lo: *a[0], hi: *a[1]} - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U128; 2], b: &U128| {
+                    let c = U256{lo: *a[0], hi: *a[1]} - b.widening_s();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U64; 2], b: &U64| {
+                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_s().0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:[&U32; 2], b: &U32| {
+                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_s().0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:[&U16; 2], b: &U16| {
+                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_s().0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:[&U8; 2], b: &U8| {
+                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(b.widening_s().0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_wv(inst, machine, wv_iterator_func)?;
+        }
+        insts::OP_VWSUBU_WX => {
+            w_wx_iterator_impl! {
+                {|a:[&U1024; 2], b: u64| {
+                    let c = U2048{lo: *a[0], hi: *a[1]} - U64(b).widening_u2048();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U512; 2], b: u64| {
+                    let c = U1024{lo: *a[0], hi: *a[1]} - U64(b).widening_u1024();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U256; 2], b: u64| {
+                    let c = U512{lo: *a[0], hi: *a[1]} - U64(b).widening_u512();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U128; 2], b: u64| {
+                    let c = U256{lo: *a[0], hi: *a[1]} - U64(b).widening_u256();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U64; 2], b: u64| {
+                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(U64(b).widening_u().0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:[&U32; 2], b: u64| {
+                    let bb = U64(b).narrowing_u32();
+                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(bb.widening_u().0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:[&U16; 2], b: u64| {
+                    let bb = U64(b).narrowing_u16();
+                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(bb.widening_u().0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:[&U8; 2], b: u64| {
+                    let bb = U64(b).narrowing_u8();
+                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(bb.widening_u().0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_wx(inst, machine, wx_iterator_func)?;
+        }
+        insts::OP_VWSUB_WX => {
+            w_wx_iterator_impl! {
+                {|a:[&U1024; 2], b: u64| {
+                    let c = U2048{lo: *a[0], hi: *a[1]} - U64(b).widening_s2048();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U512; 2], b: u64| {
+                    let c = U1024{lo: *a[0], hi: *a[1]} - U64(b).widening_s1024();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U256; 2], b: u64| {
+                    let c = U512{lo: *a[0], hi: *a[1]} - U64(b).widening_s512();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U128; 2], b: u64| {
+                    let c = U256{lo: *a[0], hi: *a[1]} - U64(b).widening_s256();
+                    (c.lo, c.hi)
+                }},
+                {|a:[&U64; 2], b: u64| {
+                    let aa = unsafe { transmute::<[u64; 2], u128>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(U64(b).widening_s().0);
+                    let res = unsafe { transmute::<u128, [u64; 2]>(c) };
+                    (U64(res[0]), U64(res[1]))
+                }},
+                {|a:[&U32; 2], b: u64| {
+                    let bb = U64(b).narrowing_u32();
+                    let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(bb.widening_s().0);
+                    let res = unsafe { transmute::<u64, [u32; 2]>(c) };
+                    (U32(res[0]), U32(res[1]))
+                }},
+                {|a:[&U16; 2], b: u64| {
+                    let bb = U64(b).narrowing_u16();
+                    let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(bb.widening_s().0);
+                    let res = unsafe { transmute::<u32, [u16; 2]>(c) };
+                    (U16(res[0]), U16(res[1]))
+                }},
+                {|a:[&U8; 2], b: u64| {
+                    let bb = U64(b).narrowing_u8();
+                    let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
+                    let c = aa.wrapping_sub(bb.widening_s().0);
+                    let res = unsafe { transmute::<u16, [u8; 2]>(c) };
+                    (U8(res[0]), U8(res[1]))
+                }}
+            };
+            loop_w_wx(inst, machine, wx_iterator_func)?;
+        }
         insts::OP_VAADD_VV => {
             vv_iterator_impl! {
                 {|a: &U1024, b: &U1024| a.average_add_s(*b)},
