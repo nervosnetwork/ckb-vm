@@ -34,20 +34,26 @@
 #define REGISTER_BASE x22
 #define ZERO_VALUE xzr
 
+#ifdef __APPLE__
+#define SEP %%
+#else
+#define SEP ;
+#endif
+
 #define PREPCALL \
-  stp x0, x8, [sp, -96]!; \
-  stp x9, x10, [sp, 16]; \
-  stp x11, x12, [sp, 32]; \
-  stp x13, x14, [sp, 48]; \
-  stp x15, x16, [sp, 64]; \
+  stp x0, x8, [sp, -96]! SEP \
+  stp x9, x10, [sp, 16] SEP \
+  stp x11, x12, [sp, 32] SEP \
+  stp x13, x14, [sp, 48] SEP \
+  stp x15, x16, [sp, 64] SEP \
   stp x17, x18, [sp, 80]
 
 #define POSTCALL \
-  ldp x17, x18, [sp, 80]; \
-  ldp x15, x16, [sp, 64]; \
-  ldp x13, x14, [sp, 48]; \
-  ldp x11, x12, [sp, 32]; \
-  ldp x9, x10, [sp, 16]; \
+  ldp x17, x18, [sp, 80] SEP \
+  ldp x15, x16, [sp, 64] SEP \
+  ldp x13, x14, [sp, 48] SEP \
+  ldp x11, x12, [sp, 32] SEP \
+  ldp x9, x10, [sp, 16] SEP \
   ldp x0, x8, [sp], 96
 
 #define REGISTER_ADDRESS(r) [REGISTER_BASE, r, lsl 3]
@@ -58,53 +64,53 @@
 #define VERSION_ADDRESS [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION]
 
 #define LOAD_VERSION(r) \
-  add r, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION; \
+  add r, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION SEP \
   ldr r, [r]
 
 #define WRITE_RD(v) \
-  str v, REGISTER_ADDRESS(RD); \
+  str v, REGISTER_ADDRESS(RD) SEP \
   str ZERO_VALUE, ZERO_ADDRESS
 
 #define WRITE_RS1(v) \
-  str v, REGISTER_ADDRESS(RS1); \
+  str v, REGISTER_ADDRESS(RS1) SEP \
   str ZERO_VALUE, ZERO_ADDRESS
 
 #define WRITE_RS2(v) \
-  str v, REGISTER_ADDRESS(RS2); \
+  str v, REGISTER_ADDRESS(RS2) SEP \
   str ZERO_VALUE, ZERO_ADDRESS
 
 #define WRITE_RS3(v) \
-  str v, REGISTER_ADDRESS(RS3); \
+  str v, REGISTER_ADDRESS(RS3) SEP \
   str ZERO_VALUE, ZERO_ADDRESS
 
 #define NEXT_INST \
-  ldr TEMP1, [INST_ARGS]; \
-  add INST_ARGS, INST_ARGS, 8; \
-  ubfx RD, TEMP1, 8, 8; \
-  asr TEMP1, TEMP1, 24; \
-  ubfx FLAG, TEMP1, 0, 8; \
-  asr TEMP1, TEMP1, 8; \
-  ldr x9, [INST_PC]; \
-  add INST_PC, INST_PC, 8; \
+  ldr TEMP1, [INST_ARGS] SEP \
+  add INST_ARGS, INST_ARGS, 8 SEP \
+  ubfx RD, TEMP1, 8, 8 SEP \
+  asr TEMP1, TEMP1, 24 SEP \
+  ubfx FLAG, TEMP1, 0, 8 SEP \
+  asr TEMP1, TEMP1, 8 SEP \
+  ldr x9, [INST_PC] SEP \
+  add INST_PC, INST_PC, 8 SEP \
   br x9
 
 #define DECODE_R \
-  ubfx RS1, TEMP1, 0, 8; \
+  ubfx RS1, TEMP1, 0, 8 SEP \
   ubfx RS2, TEMP1, 8, 8
 
 #define DECODE_I \
-  ubfx RS1, TEMP1, 0, 8; \
+  ubfx RS1, TEMP1, 0, 8 SEP \
   asr IMMEDIATE, TEMP1, 8
 
 #define DECODE_S \
-  mov RS2, RD; \
-  ubfx RS1, TEMP1, 0, 8; \
+  mov RS2, RD SEP \
+  ubfx RS1, TEMP1, 0, 8 SEP \
   asr IMMEDIATE, TEMP1, 8
 
 #define DECODE_R4 \
-  ubfx RS1, TEMP1, 0, 8; \
-  ubfx RS2, TEMP1, 8, 8; \
-  asr TEMP1, TEMP1, 16; \
+  ubfx RS1, TEMP1, 0, 8 SEP \
+  ubfx RS2, TEMP1, 8, 8 SEP \
+  asr TEMP1, TEMP1, 16 SEP \
   ubfx RS3, TEMP1, 0, 8
 
 #define DECODE_U \
@@ -117,109 +123,109 @@
 #endif
 
 #define CHECK_READ_BOUND_VERSION1(length) \
-  ldr RS1, REGISTER_ADDRESS(RS1); \
-  add RS1, RS1, IMMEDIATE; \
-  mov TEMP1, RS1; \
-  cmp TEMP1, CKB_VM_ASM_RISCV_MAX_MEMORY; \
-  bhs .exit_out_of_bound; \
-  add TEMP1, TEMP1, length; \
-  cmp TEMP1, CKB_VM_ASM_RISCV_MAX_MEMORY; \
+  ldr RS1, REGISTER_ADDRESS(RS1) SEP \
+  add RS1, RS1, IMMEDIATE SEP \
+  mov TEMP1, RS1 SEP \
+  cmp TEMP1, CKB_VM_ASM_RISCV_MAX_MEMORY SEP \
+  bhs .exit_out_of_bound SEP \
+  add TEMP1, TEMP1, length SEP \
+  cmp TEMP1, CKB_VM_ASM_RISCV_MAX_MEMORY SEP \
   bhi .exit_out_of_bound
 
 #define CHECK_READ(address_reg, length) \
-  mov TEMP1, address_reg; \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS; \
-  cmp TEMP1, CKB_VM_ASM_MEMORY_FRAMES; \
-  bhs .exit_out_of_bound; \
-  ldr TEMP4, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES; \
-  add TEMP5, TEMP1, TEMP4; \
-  ldrb TEMP2w, [MACHINE, TEMP5]; \
-  cmp TEMP2, 0; \
-  bne 1f; \
-  mov TEMP3, 1; \
-  strb TEMP3w, [MACHINE, TEMP5]; \
-  PREPCALL; \
-  mov x1, MACHINE; \
-  mov x0, TEMP1; \
-  CALL_INITED_MEMORY; \
-  POSTCALL; \
+  mov TEMP1, address_reg SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
+  cmp TEMP1, CKB_VM_ASM_MEMORY_FRAMES SEP \
+  bhs .exit_out_of_bound SEP \
+  ldr TEMP4, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES SEP \
+  add TEMP5, TEMP1, TEMP4 SEP \
+  ldrb TEMP2w, [MACHINE, TEMP5] SEP \
+  cmp TEMP2, 0 SEP \
+  bne 1f SEP \
+  mov TEMP3, 1 SEP \
+  strb TEMP3w, [MACHINE, TEMP5] SEP \
+  PREPCALL SEP \
+  mov x1, MACHINE SEP \
+  mov x0, TEMP1 SEP \
+  CALL_INITED_MEMORY SEP \
+  POSTCALL SEP \
 1: \
-  mov TEMP1, address_reg; \
-  add TEMP1, TEMP1, length; \
-  sub TEMP1, TEMP1, 1; \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS; \
-  cmp TEMP1, CKB_VM_ASM_MEMORY_FRAMES; \
-  bhs .exit_out_of_bound; \
-  add TEMP5, TEMP1, TEMP4; \
-  ldrb TEMP2w, [MACHINE, TEMP5]; \
-  cmp TEMP2, 0; \
-  bne 2f; \
-  strb TEMP3w, [MACHINE, TEMP5]; \
-  PREPCALL; \
-  mov x1, MACHINE; \
-  mov x0, TEMP1; \
-  CALL_INITED_MEMORY; \
-  POSTCALL; \
+  mov TEMP1, address_reg SEP \
+  add TEMP1, TEMP1, length SEP \
+  sub TEMP1, TEMP1, 1 SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
+  cmp TEMP1, CKB_VM_ASM_MEMORY_FRAMES SEP \
+  bhs .exit_out_of_bound SEP \
+  add TEMP5, TEMP1, TEMP4 SEP \
+  ldrb TEMP2w, [MACHINE, TEMP5] SEP \
+  cmp TEMP2, 0 SEP \
+  bne 2f SEP \
+  strb TEMP3w, [MACHINE, TEMP5] SEP \
+  PREPCALL SEP \
+  mov x1, MACHINE SEP \
+  mov x0, TEMP1 SEP \
+  CALL_INITED_MEMORY SEP \
+  POSTCALL SEP \
 2:
 
 #define CHECK_WRITE(address_reg, length) \
-  mov TEMP1, address_reg; \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS; \
-  cmp TEMP1, CKB_VM_ASM_RISCV_PAGES; \
-  bhs .exit_out_of_bound; \
-  add TEMP5, TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS; \
-  ldrb TEMP3w, [MACHINE, TEMP5]; \
-  mov TEMP2, TEMP3; \
-  and TEMP3, TEMP3, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT; \
-  cmp TEMP3, CKB_VM_ASM_MEMORY_FLAG_WRITABLE; \
-  bne .exit_invalid_permission; \
-  orr TEMP2, TEMP2, CKB_VM_ASM_MEMORY_FLAG_DIRTY; \
-  strb TEMP2w, [MACHINE, TEMP5]; \
-  mov TEMP2, TEMP1; \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS; \
-  ldr TEMP5, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES; \
-  add TEMP5, TEMP1, TEMP5; \
-  ldrb TEMP3w, [MACHINE, TEMP5]; \
-  cmp TEMP3, 0; \
-  bne 1f; \
-  mov TEMP4, 1; \
-  strb TEMP4w, [MACHINE, TEMP5]; \
-  PREPCALL; \
-  mov x1, MACHINE;\
-  mov x0, TEMP1; \
-  CALL_INITED_MEMORY; \
-  POSTCALL; \
+  mov TEMP1, address_reg SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
+  cmp TEMP1, CKB_VM_ASM_RISCV_PAGES SEP \
+  bhs .exit_out_of_bound SEP \
+  add TEMP5, TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS SEP \
+  ldrb TEMP3w, [MACHINE, TEMP5] SEP \
+  mov TEMP2, TEMP3 SEP \
+  and TEMP3, TEMP3, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT SEP \
+  cmp TEMP3, CKB_VM_ASM_MEMORY_FLAG_WRITABLE SEP \
+  bne .exit_invalid_permission SEP \
+  orr TEMP2, TEMP2, CKB_VM_ASM_MEMORY_FLAG_DIRTY SEP \
+  strb TEMP2w, [MACHINE, TEMP5] SEP \
+  mov TEMP2, TEMP1 SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS SEP \
+  ldr TEMP5, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES SEP \
+  add TEMP5, TEMP1, TEMP5 SEP \
+  ldrb TEMP3w, [MACHINE, TEMP5] SEP \
+  cmp TEMP3, 0 SEP \
+  bne 1f SEP \
+  mov TEMP4, 1 SEP \
+  strb TEMP4w, [MACHINE, TEMP5] SEP \
+  PREPCALL SEP \
+  mov x1, MACHINE SEP \
+  mov x0, TEMP1 SEP \
+  CALL_INITED_MEMORY SEP \
+  POSTCALL SEP \
 1: \
-  mov TEMP1, TEMP2; \
-  add TEMP1, TEMP1, 1;\
-  lsl TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS; \
-  mov TEMP2, address_reg; \
-  add TEMP2, TEMP2, length; \
-  cmp TEMP2, TEMP1; \
-  bls 2f; \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS; \
-  cmp TEMP1, CKB_VM_ASM_RISCV_PAGES; \
-  bhs .exit_out_of_bound; \
-  add TEMP5, TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS; \
-  ldrb TEMP3w, [MACHINE, TEMP5]; \
-  mov TEMP2, TEMP3; \
-  and TEMP3, TEMP3, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT; \
-  cmp TEMP3, CKB_VM_ASM_MEMORY_FLAG_WRITABLE; \
-  bne .exit_invalid_permission; \
-  orr TEMP2, TEMP2, CKB_VM_ASM_MEMORY_FLAG_DIRTY; \
-  strb TEMP2w, [MACHINE, TEMP5]; \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS; \
-  ldr TEMP5, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES; \
-  add TEMP5, TEMP1, TEMP5; \
-  ldrb TEMP3w, [MACHINE, TEMP5]; \
-  cmp TEMP3, 0; \
-  bne 2f; \
-  strb TEMP4w, [MACHINE, TEMP5]; \
-  PREPCALL; \
-  mov x1, MACHINE;\
-  mov x0, TEMP1; \
-  CALL_INITED_MEMORY; \
-  POSTCALL; \
+  mov TEMP1, TEMP2 SEP \
+  add TEMP1, TEMP1, 1 SEP \
+  lsl TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
+  mov TEMP2, address_reg SEP \
+  add TEMP2, TEMP2, length SEP \
+  cmp TEMP2, TEMP1 SEP \
+  bls 2f SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
+  cmp TEMP1, CKB_VM_ASM_RISCV_PAGES SEP \
+  bhs .exit_out_of_bound SEP \
+  add TEMP5, TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS SEP \
+  ldrb TEMP3w, [MACHINE, TEMP5] SEP \
+  mov TEMP2, TEMP3 SEP \
+  and TEMP3, TEMP3, CKB_VM_ASM_MEMORY_FLAG_WXORX_BIT SEP \
+  cmp TEMP3, CKB_VM_ASM_MEMORY_FLAG_WRITABLE SEP \
+  bne .exit_invalid_permission SEP \
+  orr TEMP2, TEMP2, CKB_VM_ASM_MEMORY_FLAG_DIRTY SEP \
+  strb TEMP2w, [MACHINE, TEMP5] SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
+  ldr TEMP5, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES SEP \
+  add TEMP5, TEMP1, TEMP5 SEP \
+  ldrb TEMP3w, [MACHINE, TEMP5] SEP \
+  cmp TEMP3, 0 SEP \
+  bne 2f SEP \
+  strb TEMP4w, [MACHINE, TEMP5] SEP \
+  PREPCALL SEP \
+  mov x1, MACHINE SEP \
+  mov x0, TEMP1 SEP \
+  CALL_INITED_MEMORY SEP \
+  POSTCALL SEP \
 2:
 
 .p2align 3
