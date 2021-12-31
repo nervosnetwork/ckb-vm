@@ -56,6 +56,12 @@ pub trait Element:
     /// sign-extended to SEW bits, unless otherwise specified.
     fn vi(i: i32) -> Self;
 
+    /// Returns the lower 8 bits
+    fn u8(self) -> u8;
+
+    /// Returns the lower 16 bits
+    fn u16(self) -> u16;
+
     /// Returns the lower 32 bits.
     fn u32(self) -> u32;
 
@@ -391,7 +397,12 @@ macro_rules! uint_wrap_impl {
                 assert!(i <= 15);
                 Self(i as $uint)
             }
-
+            fn u8(self) -> u8 {
+                self.0 as u8
+            }
+            fn u16(self) -> u16 {
+                self.0 as u16
+            }
             fn u32(self) -> u32 {
                 self.0 as u32
             }
@@ -877,11 +888,15 @@ macro_rules! uint_impl {
                 assert!(i <= 15);
                 Self::from(i)
             }
-
+            fn u8(self) -> u8 {
+                self.lo.u8()
+            }
+            fn u16(self) -> u16 {
+                self.lo.u16()
+            }
             fn u32(self) -> u32 {
                 self.lo.u32()
             }
-
             fn u64(self) -> u64 {
                 self.lo.u64()
             }
@@ -1382,18 +1397,6 @@ impl U64 {
     }
     pub fn widening_u2048(&self) -> U2048 {
         self.widening_u().widening_u().widening_u().widening_u().widening_u()
-    }
-    pub fn narrowing_u32(&self) -> U32 {
-        let res = unsafe { transmute::<u64, [u32; 2]>(self.0) };
-        U32::from(res[0])
-    }
-    pub fn narrowing_u16(&self) -> U16 {
-        let res = unsafe { transmute::<u64, [u16; 4]>(self.0) };
-        U16::from(res[0])
-    }
-    pub fn narrowing_u8(&self) -> U8 {
-        let res = unsafe { transmute::<u64, [u8; 8]>(self.0) };
-        U8::from(res[0])
     }
 }
 

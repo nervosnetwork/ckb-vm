@@ -3511,20 +3511,20 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u32();
-                    let c = u64::from(a.0) + b_n.widening_u().0;
+                    let bb = U32(b.u32());
+                    let c = u64::from(a.0) + bb.widening_u().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u16();
-                    let c = u32::from(a.0) + b_n.widening_u().0;
+                    let bb = U16(b.u16());
+                    let c = u32::from(a.0) + bb.widening_u().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u8();
-                    let c = u16::from(a.0) + b_n.widening_u().0;
+                    let bb = U8(b.u8());
+                    let c = u16::from(a.0) + bb.widening_u().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
                 }}
@@ -3601,21 +3601,21 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:[&U32; 2], b: u64| {
-                    let bb = U64(b).narrowing_u32();
+                    let bb = U32(U64(b).u32());
                     let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
                     let c = aa.wrapping_add(bb.widening_u().0);
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:[&U16; 2], b: u64| {
-                    let bb = U64(b).narrowing_u16();
+                    let bb = U16(U64(b).u16());
                     let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
                     let c = aa.wrapping_add(bb.widening_u().0);
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:[&U8; 2], b: u64| {
-                    let bb = U64(b).narrowing_u8();
+                    let bb = U8(U64(b).u8());
                     let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
                     let c = aa.wrapping_add(bb.widening_u().0);
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
@@ -3649,21 +3649,21 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:[&U32; 2], b: u64| {
-                    let bb = U64(b).narrowing_u32();
+                    let bb = U32(U64(b).u32());
                     let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
                     let c = aa.wrapping_add(bb.widening_s().0);
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:[&U16; 2], b: u64| {
-                    let bb = U64(b).narrowing_u16();
+                    let bb = U16(U64(b).u16());
                     let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
                     let c = aa.wrapping_add(bb.widening_s().0);
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:[&U8; 2], b: u64| {
-                    let bb = U64(b).narrowing_u8();
+                    let bb = U8(U64(b).u8());
                     let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
                     let c = aa.wrapping_add(bb.widening_s().0);
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
@@ -3745,20 +3745,20 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u32();
-                    let c = a.widening_s().0 + b_n.widening_s().0;
+                    let bb = U32(b.u32());
+                    let c = a.widening_s().0 + bb.widening_s().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u16();
-                    let c = a.widening_s().0 + b_n.widening_s().0;
+                    let bb = U16(b.u16());
+                    let c = a.widening_s().0 + bb.widening_s().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u8();
-                    let c = a.widening_s().0 + b_n.widening_s().0;
+                    let bb = U8(b.u8());
+                    let c = a.widening_s().0 + bb.widening_s().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
                 }}
@@ -3921,20 +3921,20 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u32();
-                    let c = u64::from(a.0) - b_n.widening_u().0;
+                    let bb = U32(b.u32());
+                    let c = u64::from(a.0) - bb.widening_u().0;
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u16();
-                    let c = u32::from(a.0) - b_n.widening_u().0;
+                    let bb = U16(b.u16());
+                    let c = u32::from(a.0) - bb.widening_u().0;
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u8();
-                    let c = u16::from(a.0) - b_n.widening_u().0;
+                    let bb = U8(b.u8());
+                    let c = u16::from(a.0) - bb.widening_u().0;
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
                     (U8(res[0]), U8(res[1]))
                 }}
@@ -4016,20 +4016,20 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:&U32, b: &U64| {
-                    let b_n = b.narrowing_u32();
-                    let c = a.widening_s() - b_n.widening_s();
+                    let bb = U32(b.u32());
+                    let c = a.widening_s() - bb.widening_s();
                     let res = unsafe { transmute::<u64, [u32; 2]>(c.0) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:&U16, b: &U64| {
-                    let b_n = b.narrowing_u16();
-                    let c = a.widening_s() - b_n.widening_s();
+                    let bb = U16(b.u16());
+                    let c = a.widening_s() - bb.widening_s();
                     let res = unsafe { transmute::<u32, [u16; 2]>(c.0) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:&U8, b: &U64| {
-                    let b_n = b.narrowing_u8();
-                    let c = a.widening_s() - b_n.widening_s();
+                    let bb = U8(b.u8());
+                    let c = a.widening_s() - bb.widening_s();
                     let res = unsafe { transmute::<u16, [u8; 2]>(c.0) };
                     (U8(res[0]), U8(res[1]))
                 }}
@@ -4106,21 +4106,21 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:[&U32; 2], b: u64| {
-                    let bb = U64(b).narrowing_u32();
+                    let bb = U32(U64(b).u32());
                     let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
                     let c = aa.wrapping_sub(bb.widening_u().0);
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:[&U16; 2], b: u64| {
-                    let bb = U64(b).narrowing_u16();
+                    let bb = U16(U64(b).u16());
                     let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
                     let c = aa.wrapping_sub(bb.widening_u().0);
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:[&U8; 2], b: u64| {
-                    let bb = U64(b).narrowing_u8();
+                    let bb = U8(U64(b).u8());
                     let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
                     let c = aa.wrapping_sub(bb.widening_u().0);
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
@@ -4154,21 +4154,21 @@ pub fn execute_instruction<Mac: Machine>(
                     (U64(res[0]), U64(res[1]))
                 }},
                 {|a:[&U32; 2], b: u64| {
-                    let bb = U64(b).narrowing_u32();
+                    let bb = U32(U64(b).u32());
                     let aa = unsafe { transmute::<[u32; 2], u64>([a[0].0, a[1].0])};
                     let c = aa.wrapping_sub(bb.widening_s().0);
                     let res = unsafe { transmute::<u64, [u32; 2]>(c) };
                     (U32(res[0]), U32(res[1]))
                 }},
                 {|a:[&U16; 2], b: u64| {
-                    let bb = U64(b).narrowing_u16();
+                    let bb = U16(U64(b).u16());
                     let aa = unsafe { transmute::<[u16; 2], u32>([a[0].0, a[1].0])};
                     let c = aa.wrapping_sub(bb.widening_s().0);
                     let res = unsafe { transmute::<u32, [u16; 2]>(c) };
                     (U16(res[0]), U16(res[1]))
                 }},
                 {|a:[&U8; 2], b: u64| {
-                    let bb = U64(b).narrowing_u8();
+                    let bb = U8(U64(b).u8());
                     let aa = unsafe { transmute::<[u8; 2], u16>([a[0].0, a[1].0])};
                     let c = aa.wrapping_sub(bb.widening_s().0);
                     let res = unsafe { transmute::<u16, [u8; 2]>(c) };
