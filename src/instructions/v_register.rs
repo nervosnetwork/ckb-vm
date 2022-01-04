@@ -19,6 +19,11 @@ impl Default for VRegister {
 }
 
 impl VRegister {
+    pub fn clone_with_eew(&self, veew: usize) -> VRegister {
+        let bytes = self.to_le_bytes();
+        VRegister::from_le_bytes(veew as u32, bytes)
+    }
+
     pub fn to_le_bytes(&self) -> [u8; 256] {
         let mut r = [0x00; 256];
         match self {

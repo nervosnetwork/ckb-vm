@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 pub trait Element:
     Copy
     + Clone
@@ -53,6 +55,12 @@ pub trait Element:
     /// For integer operations, the scalar can be a 5-bit immediate, imm[4:0], encoded in the rs1 field. The value is
     /// sign-extended to SEW bits, unless otherwise specified.
     fn vi(i: i32) -> Self;
+
+    /// Returns the lower 8 bits
+    fn u8(self) -> u8;
+
+    /// Returns the lower 16 bits
+    fn u16(self) -> u16;
 
     /// Returns the lower 32 bits.
     fn u32(self) -> u32;
@@ -389,7 +397,12 @@ macro_rules! uint_wrap_impl {
                 assert!(i <= 15);
                 Self(i as $uint)
             }
-
+            fn u8(self) -> u8 {
+                self.0 as u8
+            }
+            fn u16(self) -> u16 {
+                self.0 as u16
+            }
             fn u32(self) -> u32 {
                 self.0 as u32
             }
@@ -875,11 +888,15 @@ macro_rules! uint_impl {
                 assert!(i <= 15);
                 Self::from(i)
             }
-
+            fn u8(self) -> u8 {
+                self.lo.u8()
+            }
+            fn u16(self) -> u16 {
+                self.lo.u16()
+            }
             fn u32(self) -> u32 {
                 self.lo.u32()
             }
-
             fn u64(self) -> u64 {
                 self.lo.u64()
             }
@@ -1288,6 +1305,148 @@ macro_rules! uint_impl {
     };
 }
 
+impl U1024 {
+    pub fn widening_s(&self) -> U2048 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U2048{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U2048 {
+        U2048{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U512 {
+    pub fn widening_s(&self) -> U1024 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U1024{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U1024 {
+        U1024{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U256 {
+    pub fn widening_s(&self) -> U512 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U512{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U512 {
+        U512{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U128 {
+    pub fn widening_s(&self) -> U256 {
+        let hi = if self.is_negative() {
+            Self::MAX
+        } else {
+            Self::MIN
+        };
+        U256{hi, lo: *self}
+    }
+    pub fn widening_u(&self) -> U256 {
+        U256{hi: Self::MIN, lo: *self}
+    }
+}
+
+impl U64 {
+    pub fn widening_s(&self) -> U128 {
+        let hi = if self.is_negative() {
+            u64::MAX
+        } else {
+            u64::MIN
+        };
+        let res = unsafe { transmute::<[u64; 2], u128>([self.0, hi]) };
+        U128(res)
+    }
+    pub fn widening_u(&self) -> U128 {
+        U128::from(self.0)
+    }
+    pub fn widening_s256(&self) -> U256 {
+        self.widening_s().widening_s()
+    }
+    pub fn widening_u256(&self) -> U256 {
+        self.widening_u().widening_u()
+    }
+    pub fn widening_s512(&self) -> U512 {
+        self.widening_s().widening_s().widening_s()
+    }
+    pub fn widening_u512(&self) -> U512 {
+        self.widening_u().widening_u().widening_u()
+    }
+    pub fn widening_s1024(&self) -> U1024 {
+        self.widening_s().widening_s().widening_s().widening_s()
+    }
+    pub fn widening_u1024(&self) -> U1024 {
+        self.widening_u().widening_u().widening_u().widening_u()
+    }
+    pub fn widening_s2048(&self) -> U2048 {
+        self.widening_s().widening_s().widening_s().widening_s().widening_s()
+    }
+    pub fn widening_u2048(&self) -> U2048 {
+        self.widening_u().widening_u().widening_u().widening_u().widening_u()
+    }
+}
+
+impl U32 {
+    pub fn widening_s(&self) -> U64 {
+        let hi = if self.is_negative() {
+            u32::MAX
+        } else {
+            u32::MIN
+        };
+        let res = unsafe { transmute::<[u32; 2], u64>([self.0, hi]) };
+        U64(res)
+    }
+    pub fn widening_u(&self) -> U64 {
+        U64::from(self.0)
+    }
+}
+
+
+impl U16 {
+    pub fn widening_s(&self) -> U32 {
+        let hi = if self.is_negative() {
+            u16::MAX
+        } else {
+            u16::MIN
+        };
+        let res = unsafe { transmute::<[u16; 2], u32>([self.0, hi]) };
+        U32(res)
+    }
+    pub fn widening_u(&self) -> U32 {
+        U32::from(self.0)
+    }
+}
+
+impl U8 {
+    pub fn widening_s(&self) -> U16 {
+        let hi = if self.is_negative() {
+            u8::MAX
+        } else {
+            u8::MIN
+        };
+        let res = unsafe { transmute::<[u8; 2], u16>([self.0, hi]) };
+        U16(res)
+    }
+    pub fn widening_u(&self) -> U16 {
+        U16::from(self.0)
+    }
+}
+
+
 macro_rules! uint_impl_from_u {
     ($name:ident, $half:ty) => {
         impl std::convert::From<$half> for $name {
@@ -1366,3 +1525,20 @@ uint_impl_from_i!(U1024, U512, i16);
 uint_impl_from_i!(U1024, U512, i32);
 uint_impl_from_i!(U1024, U512, i64);
 uint_impl_from_i!(U1024, U512, i128);
+
+uint_impl!(U2048, U1024);
+uint_impl_from_u!(U2048, U1024, bool);
+uint_impl_from_u!(U2048, U1024, u8);
+uint_impl_from_u!(U2048, U1024, u16);
+uint_impl_from_u!(U2048, U1024, u32);
+uint_impl_from_u!(U2048, U1024, u64);
+uint_impl_from_u!(U2048, U1024, u128);
+uint_impl_from_u!(U2048, U1024, U128);
+uint_impl_from_u!(U2048, U1024, U256);
+uint_impl_from_u!(U2048, U1024, U512);
+uint_impl_from_u!(U2048, U1024);
+uint_impl_from_i!(U2048, U1024, i8);
+uint_impl_from_i!(U2048, U1024, i16);
+uint_impl_from_i!(U2048, U1024, i32);
+uint_impl_from_i!(U2048, U1024, i64);
+uint_impl_from_i!(U2048, U1024, i128);
