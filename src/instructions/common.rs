@@ -387,12 +387,12 @@ pub fn set_vl<Mac: Machine>(
     machine: &mut Mac,
     rd: RegisterIndex,
     rs1: RegisterIndex,
-    reqvl: u32,
-    new_type: u32,
+    req_vl: u64,
+    new_type: u64,
 ) -> Result<(), Error> {
     let old_vsew = machine.get_vsew();
-    machine.set_vl(rd, rs1, Mac::REG::from_u32(reqvl), new_type);
-    update_register(machine, rd, Mac::REG::from_u32(machine.get_vl()));
+    machine.set_vl(rd, rs1, req_vl, new_type);
+    update_register(machine, rd, Mac::REG::from_u64(machine.get_vl()));
     // https://github.com/riscv/riscv-v-spec/blob/master/v-spec.adoc#344-vector-type-illegal-vill
     //
     // > If the vill bit is set, then any attempt to execute a vector instruction that

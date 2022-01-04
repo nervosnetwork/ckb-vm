@@ -1,6 +1,5 @@
 use std::mem::transmute;
 
-use crate::instructions::Register;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -11,7 +10,7 @@ use ckb_vm_definitions::{
         TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
+    ELEN, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS, VLEN,
 };
 use libc::c_uchar;
@@ -72,68 +71,73 @@ impl CoreMachine for Box<AsmCoreMachine> {
         self.version
     }
 
-    fn set_vl(&mut self, rd: usize, rs1: usize, reqvl: Self::REG, new_type: u32) {
-        self.vtype_sew = 1 << (((new_type >> 3) & 0x7) + 3);
-        self.vtype_lmul = match new_type & 0x7 {
-            0b_000 => 1,
-            0b_001 => 2,
-            0b_010 => 4,
-            0b_011 => 8,
-            0b_111 => -2,
-            0b_110 => -4,
-            0b_101 => -8,
-            0b_100 => -16, // reserved
-            _ => unreachable!(),
-        };
-        let vlmax = if self.vtype_lmul >= 0 {
-            (VLEN / self.vtype_sew) * (self.vtype_lmul as u32)
-        } else {
-            (VLEN / self.vtype_sew) / ((-self.vtype_lmul) as u32)
-        };
-        self.vtype_vta = ((new_type >> 6) & 0x1) != 0;
-        self.vtype_vma = ((new_type >> 7) & 0x1) != 0;
-        self.vtype_vill = (new_type >> 8) != 0
-            || if self.vtype_lmul < 0 {
-                self.vtype_sew > VLEN / (-self.vtype_lmul) as u32
-            } else {
-                false
+    fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
+        if self.vtype != new_type {
+            self.vtype = new_type;
+            self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
+            self.vlmul = match new_type & 0x7 {
+                0b000 => 1,
+                0b001 => 2,
+                0b010 => 4,
+                0b011 => 8,
+                0b111 => -2,
+                0b110 => -4,
+                0b101 => -8,
+                _ => -16,
             };
-
-        self.vl = if vlmax == 0 {
-            0
+            self.vlmax = if self.vlmul >= 0 {
+                (VLEN as u64 / self.vsew) * (self.vlmul.abs() as u64)
+            } else {
+                (VLEN as u64 / self.vsew) / (self.vlmul.abs() as u64)
+            };
+            self.vta = ((new_type >> 6) & 0x1) != 0;
+            self.vma = ((new_type >> 7) & 0x1) != 0;
+            self.vill = self.vlmul == -16
+                || (new_type >> 8) != 0
+                || if self.vlmul < 0 {
+                    self.vsew as u64 > ELEN as u64 / self.vlmul.abs() as u64
+                } else {
+                    self.vsew as u64 > ELEN as u64
+                };
+            if self.vill {
+                self.vlmax = 0;
+                self.vtype = 1 << 63;
+            }
+        }
+        if self.vlmax == 0 {
+            self.vl = 0;
         } else if rd == 0 && rs1 == 0 {
-            std::cmp::min(self.vl, vlmax)
+            self.vl = std::cmp::min(self.vl, self.vlmax);
         } else if rd != 0 && rs1 == 0 {
-            vlmax
+            self.vl = self.vlmax;
         } else if rs1 != 0 {
-            std::cmp::min(reqvl.to_u32(), vlmax)
-        } else {
-            self.vl
-        };
+            self.vl = std::cmp::min(req_vl, self.vlmax);
+        }
+        self.vstart = 0;
     }
 
-    fn get_vl(&self) -> u32 {
+    fn get_vl(&self) -> u64 {
         self.vl
     }
 
-    fn get_vsew(&self) -> u32 {
-        self.vtype_sew
+    fn get_vsew(&self) -> u64 {
+        self.vsew
     }
 
     fn get_vlmul(&self) -> i32 {
-        self.vtype_lmul
+        self.vlmul
     }
 
     fn get_vta(&self) -> bool {
-        self.vtype_vta
+        self.vta
     }
 
     fn get_vma(&self) -> bool {
-        self.vtype_vma
+        self.vma
     }
 
     fn get_vill(&self) -> bool {
-        self.vtype_vill
+        self.vill
     }
 
     fn vregisters(&self) -> &[VRegister] {
@@ -146,7 +150,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
 
     fn get_vregister(&mut self, idx: usize) -> VRegister {
         let data = self.vregisters[idx];
-        VRegister::from_le_bytes(self.vtype_sew, data)
+        VRegister::from_le_bytes(self.vsew as u32, data)
     }
 }
 

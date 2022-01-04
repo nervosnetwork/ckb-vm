@@ -20,9 +20,9 @@ fn loop_vv<Mac: Machine>(
     func: VVIteratorFunc,
 ) -> Result<(), Error> {
     let i = VVtype(inst);
-    let vlmax = VLEN / machine.get_vsew();
+    let vlmax = VLEN as u64 / machine.get_vsew();
     let num = machine.get_vl() as usize;
-    for j in 0..((num as u32 - 1) / vlmax) + 1 {
+    for j in 0..((num as u64 - 1) / vlmax) + 1 {
         let vs1 = machine.get_vregister(i.vs1() as usize + j as usize);
         let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
         let mut vd = machine.get_vregister(i.vd() + j as usize);
@@ -103,9 +103,9 @@ fn loop_vx<Mac: Machine>(
     func: VXIteratorFunc,
 ) -> Result<(), Error> {
     let i = VXtype(inst);
-    let vlmax = VLEN / machine.get_vsew();
+    let vlmax = VLEN as u64 / machine.get_vsew();
     let num = machine.get_vl() as usize;
-    for j in 0..((num as u32 - 1) / vlmax) + 1 {
+    for j in 0..((num as u64 - 1) / vlmax) + 1 {
         let rs1 = machine.registers()[i.rs1() as usize + j as usize].to_u64();
         let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
         let mut vd = machine.get_vregister(i.vd() + j as usize);
@@ -187,9 +187,9 @@ fn loop_vi<Mac: Machine>(
     func: VIIteratorFunc,
 ) -> Result<(), Error> {
     let i = VItype(inst);
-    let vlmax = VLEN / machine.get_vsew();
+    let vlmax = VLEN as u64 / machine.get_vsew();
     let num = machine.get_vl() as usize;
-    for j in 0..((num as u32 - 1) / vlmax) + 1 {
+    for j in 0..((num as u64 - 1) / vlmax) + 1 {
         let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
         let imm = i.immediate_s();
         let mut vd = machine.get_vregister(i.vd() + j as usize);
@@ -271,7 +271,7 @@ fn loop_vi2<Mac: Machine>(
     func: VI2IteratorFunc,
 ) -> Result<(), Error> {
     let i = VItype(inst);
-    let vlmax = VLEN / machine.get_vsew();
+    let vlmax = VLEN as u64 / machine.get_vsew();
     let num = machine.get_vl() as usize;
     for j in 0..((machine.get_vl() - 1) / vlmax) + 1 {
         let vs2 = machine.get_vregister(i.vs2() as usize + j as usize);
@@ -370,7 +370,7 @@ fn loop_w_vv<Mac: Machine>(
     func: WVVIteratorFunc,
 ) -> Result<(), Error> {
     let i = VVtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew()) as usize;
+    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
     let vl = machine.get_vl() as usize;
     let register_count = ((vl - 1) / elements_per_register) + 1;
     for j in 0..register_count {
@@ -570,7 +570,7 @@ fn loop_w_vx<Mac: Machine>(
     func_vx: WVXIteratorFunc,
 ) -> Result<(), Error> {
     let i = VXtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew()) as usize;
+    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
     let vl = machine.get_vl() as usize;
     let register_count = ((vl - 1) / elements_per_register) + 1;
     for j in 0..register_count {
@@ -768,7 +768,7 @@ fn loop_w_wv<Mac: Machine>(
     func: WWVIteratorFunc,
 ) -> Result<(), Error> {
     let i = VVtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew()) as usize;
+    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
     let vl = machine.get_vl() as usize;
     let register_count = ((vl - 1) / elements_per_register) + 1;
     for j in 0..register_count {
@@ -991,7 +991,7 @@ fn loop_w_wx<Mac: Machine>(
     func: WWXIteratorFunc,
 ) -> Result<(), Error> {
     let i = VXtype(inst);
-    let elements_per_register = (VLEN / machine.get_vsew()) as usize;
+    let elements_per_register = (VLEN / machine.get_vsew() as usize) as usize;
     let vl = machine.get_vl() as usize;
     let register_count = ((vl - 1) / elements_per_register) + 1;
     for j in 0..register_count {
@@ -2134,13 +2134,13 @@ pub fn execute_instruction<Mac: Machine>(
                 machine,
                 i.rd(),
                 i.rs1(),
-                machine.registers()[i.rs1()].to_u32(),
-                i.immediate(),
+                machine.registers()[i.rs1()].to_u64(),
+                i.immediate() as u64,
             )?;
         }
         insts::OP_VSETIVLI => {
             let i = Itype(inst);
-            common::set_vl(machine, i.rd(), 33, i.rs1() as u32, i.immediate())?;
+            common::set_vl(machine, i.rd(), 33, i.rs1() as u64, i.immediate() as u64)?;
         }
         insts::OP_VSETVL => {
             let i = Rtype(inst);
@@ -2148,8 +2148,8 @@ pub fn execute_instruction<Mac: Machine>(
                 machine,
                 i.rd(),
                 i.rs1(),
-                machine.registers()[i.rs1()].to_u32(),
-                machine.registers()[i.rs2()].to_u32(),
+                machine.registers()[i.rs1()].to_u64(),
+                machine.registers()[i.rs2()].to_u64(),
             )?;
         }
         insts::OP_VLM_V => {

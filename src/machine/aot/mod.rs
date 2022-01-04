@@ -332,15 +332,15 @@ impl CoreMachine for LabelGatheringMachine {
         self.version
     }
 
-    fn set_vl(&mut self, _rd: usize, _rs1: usize, _reqvl: Self::REG, _new_type: u32) {
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _req_vl: u64, _new_type: u64) {
         unreachable!()
     }
 
-    fn get_vl(&self) -> u32 {
+    fn get_vl(&self) -> u64 {
         unreachable!()
     }
 
-    fn get_vsew(&self) -> u32 {
+    fn get_vsew(&self) -> u64 {
         unreachable!()
     }
 
@@ -727,15 +727,15 @@ impl CoreMachine for AotCompilingMachine {
         self.version
     }
 
-    fn set_vl(&mut self, _rd: usize, _rs1: usize, _reqvl: Self::REG, _new_type: u32) {
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _req_vl: u64, _new_type: u64) {
         unreachable!()
     }
 
-    fn get_vl(&self) -> u32 {
+    fn get_vl(&self) -> u64 {
         unreachable!()
     }
 
-    fn get_vsew(&self) -> u32 {
+    fn get_vsew(&self) -> u64 {
         unreachable!()
     }
 
