@@ -13,7 +13,7 @@ use crate::{
     decoder::build_decoder,
     instructions::{
         ast::Value, execute, instruction_length, is_basic_block_end_instruction,
-        is_slowpath_instruction, Instruction, VRegister,
+        is_slowpath_instruction, Instruction,
     },
     machine::{elf_adaptor, SupportMachine, VERSION1},
     CoreMachine, DefaultCoreMachine, Error, FlatMemory, InstructionCycleFunc, Machine, Memory,
@@ -332,43 +332,39 @@ impl CoreMachine for LabelGatheringMachine {
         self.version
     }
 
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
     fn set_vl(&mut self, _rd: usize, _rs1: usize, _req_vl: u64, _new_type: u64) {
         unreachable!()
     }
 
-    fn get_vl(&self) -> u64 {
+    fn vl(&self) -> u64 {
         unreachable!()
     }
 
-    fn get_vsew(&self) -> u64 {
+    fn vsew(&self) -> u64 {
         unreachable!()
     }
 
-    fn get_vlmul(&self) -> i32 {
+    fn vlmul(&self) -> i32 {
         unreachable!()
     }
 
-    fn get_vta(&self) -> bool {
+    fn vta(&self) -> bool {
         unreachable!()
     }
 
-    fn get_vma(&self) -> bool {
+    fn vma(&self) -> bool {
         unreachable!()
     }
 
-    fn get_vill(&self) -> bool {
-        unreachable!()
-    }
-
-    fn vregisters(&self) -> &[VRegister] {
-        unreachable!()
-    }
-
-    fn set_vregister(&mut self, _idx: usize, _value: VRegister) {
-        unreachable!()
-    }
-
-    fn get_vregister(&mut self, _idx: usize) -> VRegister {
+    fn vill(&self) -> bool {
         unreachable!()
     }
 }
@@ -727,43 +723,39 @@ impl CoreMachine for AotCompilingMachine {
         self.version
     }
 
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
     fn set_vl(&mut self, _rd: usize, _rs1: usize, _req_vl: u64, _new_type: u64) {
         unreachable!()
     }
 
-    fn get_vl(&self) -> u64 {
+    fn vl(&self) -> u64 {
         unreachable!()
     }
 
-    fn get_vsew(&self) -> u64 {
+    fn vsew(&self) -> u64 {
         unreachable!()
     }
 
-    fn get_vlmul(&self) -> i32 {
+    fn vlmul(&self) -> i32 {
         unreachable!()
     }
 
-    fn get_vta(&self) -> bool {
+    fn vta(&self) -> bool {
         unreachable!()
     }
 
-    fn get_vma(&self) -> bool {
+    fn vma(&self) -> bool {
         unreachable!()
     }
 
-    fn get_vill(&self) -> bool {
-        unreachable!()
-    }
-
-    fn vregisters(&self) -> &[VRegister] {
-        unreachable!()
-    }
-
-    fn set_vregister(&mut self, _idx: usize, _value: VRegister) {
-        unreachable!()
-    }
-
-    fn get_vregister(&mut self, _idx: usize) -> VRegister {
+    fn vill(&self) -> bool {
         unreachable!()
     }
 }

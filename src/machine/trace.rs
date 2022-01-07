@@ -3,7 +3,6 @@ use super::{
         decoder::build_decoder,
         instructions::{
             execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
-            VRegister,
         },
         Error,
     },
@@ -71,44 +70,40 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.set_register(idx, value)
     }
 
-    fn get_vl(&self) -> u64 {
-        self.machine.get_vl()
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.machine.element_ref(reg, sew, n)
+    }
+
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.machine.element_mut(reg, sew, n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
         self.machine.set_vl(rd, rs1, req_vl, new_type)
     }
 
-    fn get_vsew(&self) -> u64 {
-        self.machine.get_vsew()
+    fn vl(&self) -> u64 {
+        self.machine.vl()
     }
 
-    fn get_vlmul(&self) -> i32 {
-        self.machine.get_vlmul()
+    fn vsew(&self) -> u64 {
+        self.machine.vsew()
     }
 
-    fn get_vta(&self) -> bool {
-        self.machine.get_vta()
+    fn vlmul(&self) -> i32 {
+        self.machine.vlmul()
     }
 
-    fn get_vma(&self) -> bool {
-        self.machine.get_vma()
+    fn vta(&self) -> bool {
+        self.machine.vta()
     }
 
-    fn get_vill(&self) -> bool {
-        self.machine.get_vill()
+    fn vma(&self) -> bool {
+        self.machine.vma()
     }
 
-    fn vregisters(&self) -> &[VRegister] {
-        self.machine.vregisters()
-    }
-
-    fn set_vregister(&mut self, idx: usize, value: VRegister) {
-        self.machine.set_vregister(idx, value)
-    }
-
-    fn get_vregister(&mut self, idx: usize) -> VRegister {
-        self.machine.get_vregister(idx)
+    fn vill(&self) -> bool {
+        self.machine.vill()
     }
 
     fn isa(&self) -> u8 {
