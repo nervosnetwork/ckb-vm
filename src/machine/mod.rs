@@ -460,14 +460,17 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
     }
 }
 
-impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R> + Default> DefaultCoreMachine<R, M> {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
-        Self {
+        let mut r = Self {
             isa,
             version,
             max_cycles,
             ..Default::default()
-        }
+        };
+        // Default to illegal configuration
+        r.set_vl(0, 0, 0, u64::MAX);
+        r
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {

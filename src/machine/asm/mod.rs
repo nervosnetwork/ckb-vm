@@ -517,7 +517,10 @@ impl<'a> AsmMachine<'a> {
         machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
         aot_code: Option<&'a AotCode>,
     ) -> Self {
-        Self { machine, aot_code }
+        let mut r = Self { machine, aot_code };
+        // Default to illegal configuration
+        r.set_vl(0, 0, 0, u64::MAX);
+        r
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
