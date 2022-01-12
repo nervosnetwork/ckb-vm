@@ -85,7 +85,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
         &mut self.register_file[i0..i1]
     }
 
-    fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
         if self.vtype != new_type {
             self.vtype = new_type;
             self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
@@ -125,7 +125,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
         } else if rd != 0 && rs1 == 0 {
             self.vl = self.vlmax;
         } else if rs1 != 0 {
-            self.vl = std::cmp::min(req_vl, self.vlmax);
+            self.vl = std::cmp::min(avl, self.vlmax);
         }
         self.vstart = 0;
     }

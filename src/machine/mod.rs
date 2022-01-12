@@ -49,7 +49,7 @@ pub trait CoreMachine {
     // Vector extension
     fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8];
     fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8];
-    fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64);
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64);
     fn vl(&self) -> u64;
     fn vsew(&self) -> u64;
     fn vlmul(&self) -> i32;
@@ -345,7 +345,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.register_file.element_mut(reg, sew, n)
     }
 
-    fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
         if self.vtype != new_type {
             self.vtype = new_type;
             self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
@@ -385,7 +385,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         } else if rd != 0 && rs1 == 0 {
             self.vl = self.vlmax;
         } else if rs1 != 0 {
-            self.vl = std::cmp::min(req_vl, self.vlmax);
+            self.vl = std::cmp::min(avl, self.vlmax);
         }
         self.vstart = 0;
     }
@@ -535,8 +535,8 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         self.inner.element_mut(reg, sew, n)
     }
 
-    fn set_vl(&mut self, rd: usize, rs1: usize, req_vl: u64, new_type: u64) {
-        self.inner.set_vl(rd, rs1, req_vl, new_type)
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        self.inner.set_vl(rd, rs1, avl, new_type)
     }
 
     fn vl(&self) -> u64 {

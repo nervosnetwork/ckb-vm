@@ -340,7 +340,7 @@ impl CoreMachine for LabelGatheringMachine {
         unreachable!()
     }
 
-    fn set_vl(&mut self, _rd: usize, _rs1: usize, _req_vl: u64, _new_type: u64) {
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
         unreachable!()
     }
 
@@ -731,7 +731,7 @@ impl CoreMachine for AotCompilingMachine {
         unreachable!()
     }
 
-    fn set_vl(&mut self, _rd: usize, _rs1: usize, _req_vl: u64, _new_type: u64) {
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
         unreachable!()
     }
 

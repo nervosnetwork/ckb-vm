@@ -386,10 +386,10 @@ pub fn set_vl<Mac: Machine>(
     machine: &mut Mac,
     rd: RegisterIndex,
     rs1: RegisterIndex,
-    req_vl: u64,
+    avl: u64,
     new_type: u64,
 ) -> Result<(), Error> {
-    machine.set_vl(rd, rs1, req_vl, new_type);
+    machine.set_vl(rd, rs1, avl, new_type);
     update_register(machine, rd, Mac::REG::from_u64(machine.vl()));
     // https://github.com/riscv/riscv-v-spec/blob/master/v-spec.adoc#344-vector-type-illegal-vill
     //
