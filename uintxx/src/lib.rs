@@ -419,6 +419,24 @@ pub mod alu {
     pub fn mv<T: Element>(_: T, rhs: T) -> T {
         rhs
     }
+
+    /// Signed multiply, returning high bits of product.
+    pub fn mulh<T: Element>(lhs: T, rhs: T) -> T {
+        let (_, hi) = lhs.widening_mul_s(rhs);
+        hi
+    }
+
+    /// Unsigned multiply, returning high bits of product.
+    pub fn mulhu<T: Element>(lhs: T, rhs: T) -> T {
+        let (_, hi) = lhs.widening_mul(rhs);
+        hi
+    }
+
+    /// Signed(vs2)-Unsigned multiply, returning high bits of product.
+    pub fn mulhsu<T: Element>(lhs: T, rhs: T) -> T {
+        let (_, hi) = lhs.widening_mul_su(rhs);
+        hi
+    }
 }
 
 macro_rules! uint_wrap_impl {
