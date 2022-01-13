@@ -73,6 +73,16 @@ pub trait Element:
     /// Returns the lower 64 bits.
     fn u64(self) -> u64;
 
+    /// Returns the lower part with same type.
+    fn lo_zext(self) -> Self {
+        self << Self::BITS / 2 >> Self::BITS / 2
+    }
+
+    /// Returns the higher partr with same type.
+    fn hi_zext(self) -> Self {
+        self >> Self::BITS / 2
+    }
+
     /// Returns true if self is positive and false if the number is zero or negative.
     fn is_positive(self) -> bool;
 
@@ -245,9 +255,46 @@ pub trait Element:
         (lo, hi)
     }
 
-    /// Function mul_full returns the 256-bit product of x and y: (lo, hi) = x * y
+    /// Function widening_mul returns the product of x and y: (lo, hi) = x * y
     /// with the product bits' upper half returned in hi and the lower half returned in lo.
-    fn widening_mul(self, other: Self) -> (Self, Self);
+    ///
+    /// Inspired by https://pkg.go.dev/math/bits@go1.17.2#Mul64
+    fn widening_mul(self, other: Self) -> (Self, Self) {
+        let x0 = self.lo_zext();
+        let x1 = self.hi_zext();
+        let y0 = other.lo_zext();
+        let y1 = other.hi_zext();
+        let w0 = x0 * y0;
+        let t = x1 * y0 + w0.hi_zext();
+        let w1 = t.lo_zext();
+        let w2 = t.hi_zext();
+        let w1 = w1 + x0 * y1;
+        let hi = x1 * y1 + w2 + w1.hi_zext();
+        let lo = self.wrapping_mul(other);
+        (lo, hi)
+    }
+
+    /// Signed interger widening multiple.
+    ///
+    /// Inspired by https://sqlite.in/?qa=668884/c-32-bit-signed-integer-multiplication-without-using-64-bit-data-type
+    fn widening_mul_s(self, other: Self) -> (Self, Self) {
+        let (lo, hi) = self.widening_mul(other);
+        let hi = hi
+            - if self.is_negative() { other } else { Self::MIN }
+            - if other.is_negative() { self } else { Self::MIN };
+        (lo, hi)
+    }
+
+    /// Widening signed and unsigned integer multiply.
+    fn widening_mul_su(self, other: Self) -> (Self, Self) {
+        if !other.is_negative() {
+            self.widening_mul_s(other)
+        } else {
+            let (lo, hi) = self.widening_mul_s(other);
+            let hi = hi + self;
+            (lo, hi)
+        }
+    }
 }
 
 pub mod alu {
@@ -381,19 +428,37 @@ macro_rules! uint_wrap_impl {
 
         impl std::fmt::LowerHex for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{:032x}", self.0)
+                let a = format!("{:x}", self.0);
+                write!(
+                    f,
+                    "{}",
+                    String::from("0").repeat(Self::BITS as usize / 4 - a.len())
+                )?;
+                write!(f, "{}", a)
             }
         }
 
         impl std::fmt::Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{:032x}", self.0)
+                let a = format!("{:x}", self.0);
+                write!(
+                    f,
+                    "{}",
+                    String::from("0").repeat(Self::BITS as usize / 4 - a.len())
+                )?;
+                write!(f, "{}", a)
             }
         }
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{:032x}", self.0)
+                let a = format!("{:x}", self.0);
+                write!(
+                    f,
+                    "{}",
+                    String::from("0").repeat(Self::BITS as usize / 4 - a.len())
+                )?;
+                write!(f, "{}", a)
             }
         }
 
@@ -787,24 +852,6 @@ macro_rules! uint_wrap_impl {
             fn wrapping_sra(self, other: u32) -> Self {
                 Self((self.0 as $sint).wrapping_shr(other) as $uint)
             }
-
-            /// Inspired by https://pkg.go.dev/math/bits@go1.17.2#Mul64
-            fn widening_mul(self, other: Self) -> (Self, Self) {
-                let lo = |x: $uint| x << Self::BITS / 2 >> Self::BITS / 2;
-                let hi = |x: $uint| x >> Self::BITS / 2;
-                let x0 = lo(self.0);
-                let x1 = hi(self.0);
-                let y0 = lo(other.0);
-                let y1 = hi(other.0);
-                let w0 = x0 * y0;
-                let t = x1 * y0 + hi(w0);
-                let w1 = lo(t);
-                let w2 = hi(t);
-                let w1 = w1 + x0 * y1;
-                let hi = x1 * y1 + w2 + hi(w1);
-                let lo = self.0.wrapping_mul(other.0);
-                (Self(lo), Self(hi))
-            }
         }
 
         impl $name {
@@ -1146,6 +1193,14 @@ macro_rules! uint_impl {
                 self.lo.u64()
             }
 
+            fn lo_zext(self) -> Self {
+                Self::from(self.lo)
+            }
+
+            fn hi_zext(self) -> Self {
+                Self::from(self.hi)
+            }
+
             fn is_positive(self) -> bool {
                 self != <$name>::MIN && self.wrapping_shr(Self::BITS - 1) == <$name>::MIN
             }
@@ -1400,24 +1455,6 @@ macro_rules! uint_impl {
                 };
                 let lo = self.wrapping_shr(shamt);
                 hi | lo
-            }
-
-            fn widening_mul(self, other: Self) -> (Self, Self) {
-                let lo = |x: Self| Self::from(x.lo);
-                let hi = |x: Self| Self::from(x.hi);
-
-                let x0 = lo(self);
-                let x1 = hi(self);
-                let y0 = lo(other);
-                let y1 = hi(other);
-                let w0 = x0 * y0;
-                let t = x1 * y0 + hi(w0);
-                let w1 = lo(t);
-                let w2 = hi(t);
-                let w1 = w1 + x0 * y1;
-                let hi = x1 * y1 + w2 + hi(w1);
-                let lo = self.wrapping_mul(other);
-                (lo, hi)
             }
         }
 

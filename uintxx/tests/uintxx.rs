@@ -1,7 +1,7 @@
-use uintxx::{Element, U128, U256};
+use uintxx::{Element, U128, U256, U32};
 
 #[test]
-fn test_div() {
+fn test_wrapping_div() {
     let case_list = [[
         U256 {
             lo: U128(0xd3e04adfb2db76e8ce58bba4207434a4),
@@ -26,7 +26,7 @@ fn test_div() {
 }
 
 #[test]
-fn test_div_s() {
+fn test_wrapping_div_s() {
     let case_list = [
         [
             U256 {
@@ -81,7 +81,7 @@ fn test_div_s() {
 }
 
 #[test]
-fn test_rem() {
+fn test_wrapping_rem() {
     let case_list = [[
         U256 {
             lo: U128(0x00000000000000000000000000000007),
@@ -106,7 +106,7 @@ fn test_rem() {
 }
 
 #[test]
-fn test_rem_s() {
+fn test_wrapping_rem_s() {
     let case_list = [
         [
             U256 {
@@ -198,6 +198,24 @@ fn test_average_add() {
         let e = case[2];
         let r = lhs.average_add(rhs);
         assert_eq!(r, e);
+    }
+}
+
+#[test]
+fn test_widening_mul_s() {
+    let case_list = [
+        [U32(0xffffffff), U32(0xffffffff), U32(0x00000001), U32(0x00000000)],
+        [U32(0x00000002), U32(0xffffffff), U32(0xfffffffe), U32(0xffffffff)],
+        [U32(0x00000002), U32(0x00000002), U32(0x00000004), U32(0x00000000)],
+    ];
+    for case in &case_list {
+        let lhs = case[0];
+        let rhs = case[1];
+        let elo = case[2];
+        let ehi = case[3];
+        let (rlo, rhi) = lhs.widening_mul_s(rhs);
+        assert_eq!(rlo, elo);
+        assert_eq!(rhi, ehi);
     }
 }
 

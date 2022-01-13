@@ -438,7 +438,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
         return None;
     }
     let inst = match opcode(instruction_bits) {
-        0b_0000111 => {
+        0b0000111 => {
             #[rustfmt::skip]
             let inst_opt = match instruction_bits {
                 x if x & 0b11111111111100000111000001111111 == 0b00000010101100000000000000000111 => Some(insts::OP_VLM_V),
@@ -462,7 +462,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                 .0
             })
         }
-        0b_0100111 => {
+        0b0100111 => {
             #[rustfmt::skip]
             let inst_opt = match instruction_bits {
                 x if x & 0b11111111111100000111000001111111 == 0b00000010101100000000000000100111 => Some(insts::OP_VSM_V),
@@ -486,8 +486,8 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                 .0
             })
         }
-        0b_1010111 => match funct3(instruction_bits) {
-            0b_000 => {
+        0b1010111 => match funct3(instruction_bits) {
+            0b000 => {
                 #[rustfmt::skip]
                 let inst_opt = match instruction_bits {
                     x if x & 0b11111100000000000111000001111111 == 0b00000000000000000000000001010111 => Some(insts::OP_VADD_VV),
@@ -527,7 +527,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     .0
                 })
             }
-            0b_010 => {
+            0b010 => {
                 #[rustfmt::skip]
                 let inst_opt = match instruction_bits {
                     x if x & 0b11111100000000000111000001111111 == 0b10000000000000000010000001010111 => Some(insts::OP_VDIVU_VV),
@@ -540,14 +540,17 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b00101100000000000010000001010111 => Some(insts::OP_VASUB_VV),
                     x if x & 0b11111100000000000111000001111111 == 0b00101000000000000010000001010111 => Some(insts::OP_VASUBU_VV),
                     x if x & 0b11111100000011111111000001111111 == 0b01000000000010001010000001010111 => Some(insts::OP_VFIRST_M),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110000_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWADDU_VV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110001_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWADD_VV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110010_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWSUBU_VV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110011_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWSUB_VV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110100_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWADDU_WV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110101_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWADD_WV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110110_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWSUBU_WV),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110111_0_00000_00000_010_00000_1010111 => Some(insts::OP_VWSUB_WV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11000000000000000010000001010111 => Some(insts::OP_VWADDU_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11000100000000000010000001010111 => Some(insts::OP_VWADD_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11001000000000000010000001010111 => Some(insts::OP_VWSUBU_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11001100000000000010000001010111 => Some(insts::OP_VWSUB_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11010000000000000010000001010111 => Some(insts::OP_VWADDU_WV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11010100000000000010000001010111 => Some(insts::OP_VWADD_WV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11011000000000000010000001010111 => Some(insts::OP_VWSUBU_WV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11011100000000000010000001010111 => Some(insts::OP_VWSUB_WV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11100000000000000010000001010111 => Some(insts::OP_VWMULU_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11101000000000000010000001010111 => Some(insts::OP_VWMULSU_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b11101100000000000010000001010111 => Some(insts::OP_VWMUL_VV),
                     x if x & 0b11111100000011111111000001111111 == 0b01001000000000110010000001010111 => Some(insts::OP_VZEXT_VF2),
                     x if x & 0b11111100000011111111000001111111 == 0b01001000000000100010000001010111 => Some(insts::OP_VZEXT_VF4),
                     x if x & 0b11111100000011111111000001111111 == 0b01001000000000010010000001010111 => Some(insts::OP_VZEXT_VF8),
@@ -567,7 +570,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     .0
                 })
             }
-            0b_011 => {
+            0b011 => {
                 #[rustfmt::skip]
                 let inst_opt = match instruction_bits {
                     x if x & 0b11111100000000000111000001111111 == 0b00000000000000000011000001010111 => Some(insts::OP_VADD_VI),
@@ -604,7 +607,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     .0
                 })
             }
-            0b_100 => {
+            0b100 => {
                 #[rustfmt::skip]
                 let inst_opt = match instruction_bits {
                     x if x & 0b11111100000000000111000001111111 == 0b00000000000000000100000001010111 => Some(insts::OP_VADD_VX),
@@ -646,7 +649,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     .0
                 })
             }
-            0b_110 => {
+            0b110 => {
                 #[rustfmt::skip]
                 let inst_opt = match instruction_bits {
                     x if x & 0b11111100000000000111000001111111 == 0b10000000000000000110000001010111 => Some(insts::OP_VDIVU_VX),
@@ -654,14 +657,17 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10001000000000000110000001010111 => Some(insts::OP_VREMU_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b10001100000000000110000001010111 => Some(insts::OP_VREM_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b10010100000000000110000001010111 => Some(insts::OP_VMUL_VX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110000_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWADDU_VX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110001_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWADD_VX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110010_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWSUBU_VX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110011_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWSUB_VX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110100_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWADDU_WX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110101_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWADD_WX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110110_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWSUBU_WX),
-                    x if x & 0b_111111_0_00000_00000_111_00000_1111111 == 0b_110111_0_00000_00000_110_00000_1010111 => Some(insts::OP_VWSUB_WX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11000000000000000110000001010111 => Some(insts::OP_VWADDU_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11000100000000000110000001010111 => Some(insts::OP_VWADD_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11001000000000000110000001010111 => Some(insts::OP_VWSUBU_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11100000000000000110000001010111 => Some(insts::OP_VWMULU_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11101000000000000110000001010111 => Some(insts::OP_VWMULSU_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11101100000000000110000001010111 => Some(insts::OP_VWMUL_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11001100000000000110000001010111 => Some(insts::OP_VWSUB_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11010000000000000110000001010111 => Some(insts::OP_VWADDU_WX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11010100000000000110000001010111 => Some(insts::OP_VWADD_WX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11011000000000000110000001010111 => Some(insts::OP_VWSUBU_WX),
+                    x if x & 0b11111100000000000111000001111111 == 0b11011100000000000110000001010111 => Some(insts::OP_VWSUB_WX),
                     x if x & 0b11111100000000000111000001111111 == 0b00100100000000000110000001010111 => Some(insts::OP_VAADD_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b00100000000000000110000001010111 => Some(insts::OP_VAADDU_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b00101100000000000110000001010111 => Some(insts::OP_VASUB_VX),
@@ -679,7 +685,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     .0
                 })
             }
-            0b_111 => {
+            0b111 => {
                 #[rustfmt::skip]
                 let r = match instruction_bits {
                     x if x & 0b10000000000000000111000001111111 == 0b00000000000000000111000001010111 => Some(Itype::new(insts::OP_VSETVLI, rd(instruction_bits), rs1(instruction_bits), utils::x(instruction_bits, 20, 11, 0)).0),

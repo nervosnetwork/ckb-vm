@@ -2563,6 +2563,24 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWSUB_WX => {
             wx_loop_s!(inst, machine, { Element::wrapping_sub });
         }
+        insts::OP_VWMULU_VV => {
+            vv_loop_u_widen!(inst, machine, { Element::widening_mul });
+        }
+        insts::OP_VWMULU_VX => {
+            vx_loop_u_widen!(inst, machine, { Element::widening_mul });
+        }
+        insts::OP_VWMULSU_VV => {
+            vv_loop_u_widen!(inst, machine, { Element::widening_mul_su });
+        }
+        insts::OP_VWMULSU_VX => {
+            vx_loop_u_widen!(inst, machine, { Element::widening_mul_su });
+        }
+        insts::OP_VWMUL_VV => {
+            vv_loop_s_widen!(inst, machine, { Element::widening_mul_s });
+        }
+        insts::OP_VWMUL_VX => {
+            vx_loop_s_widen!(inst, machine, { Element::widening_mul_s });
+        }
         insts::OP_VAADD_VV => {
             vv_loop_s!(inst, machine, { Element::average_add_s });
         }
