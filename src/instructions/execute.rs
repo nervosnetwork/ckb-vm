@@ -2295,6 +2295,24 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VMUL_VX => {
             vx_loop_s!(inst, machine, { Element::wrapping_mul });
         }
+        insts::OP_VMULH_VV => {
+            vv_loop_s!(inst, machine, { alu::mulh });
+        }
+        insts::OP_VMULH_VX => {
+            vx_loop_s!(inst, machine, { alu::mulh });
+        }
+        insts::OP_VMULHU_VV => {
+            vv_loop_u!(inst, machine, { alu::mulhu });
+        }
+        insts::OP_VMULHU_VX => {
+            vx_loop_u!(inst, machine, { alu::mulhu });
+        }
+        insts::OP_VMULHSU_VV => {
+            vv_loop_u!(inst, machine, { alu::mulhsu });
+        }
+        insts::OP_VMULHSU_VX => {
+            vx_loop_u!(inst, machine, { alu::mulhsu });
+        }
         insts::OP_VDIVU_VV => {
             vv_loop_u!(inst, machine, { Element::wrapping_div });
         }
