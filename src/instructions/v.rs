@@ -514,6 +514,8 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10001000000000000000000001010111 => Some(insts::OP_VSSUBU_VV),
                     x if x & 0b11111100000000000111000001111111 == 0b10001100000000000000000001010111 => Some(insts::OP_VSSUB_VV),
                     x if x & 0b11111111111100000111000001111111 == 0b01011110000000000000000001010111 => Some(insts::OP_VMV_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b10110000000000000000000001010111 => Some(insts::OP_VNSRL_WV),
+                    x if x & 0b11111100000000000111000001111111 == 0b10110100000000000000000001010111 => Some(insts::OP_VNSRA_WV),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -597,6 +599,8 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10000000000000000011000001010111 => Some(insts::OP_VSADDU_VI),
                     x if x & 0b11111100000000000111000001111111 == 0b10000100000000000011000001010111 => Some(insts::OP_VSADD_VI),
                     x if x & 0b11111111111100000111000001111111 == 0b01011110000000000011000001010111 => Some(insts::OP_VMV_VI),
+                    x if x & 0b11111100000000000111000001111111 == 0b10110000000000000011000001010111 => Some(insts::OP_VNSRL_WI),
+                    x if x & 0b11111100000000000111000001111111 == 0b10110100000000000011000001010111 => Some(insts::OP_VNSRA_WI),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -639,6 +643,8 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10001000000000000100000001010111 => Some(insts::OP_VSSUBU_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b10001100000000000100000001010111 => Some(insts::OP_VSSUB_VX),
                     x if x & 0b11111111111100000111000001111111 == 0b01011110000000000100000001010111 => Some(insts::OP_VMV_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b10110000000000000100000001010111 => Some(insts::OP_VNSRL_WX),
+                    x if x & 0b11111100000000000111000001111111 == 0b10110100000000000100000001010111 => Some(insts::OP_VNSRA_WX),
                     _ => None,
                 };
                 inst_opt.map(|inst| {

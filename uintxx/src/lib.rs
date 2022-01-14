@@ -95,6 +95,9 @@ pub trait Element:
     /// Save the integer as a byte array in little-endian byte order to memory.
     fn save(&self, b: &mut [u8]);
 
+    /// Save the lower part integer as a byte array in little-endian byte order to memory.
+    fn save_lo(&self, b: &mut [u8]);
+
     /// Returns the number of leading zeros in the binary representation of self.
     fn leading_zeros(self) -> u32;
 
@@ -713,6 +716,11 @@ macro_rules! uint_wrap_impl {
                 b.copy_from_slice(&buf);
             }
 
+            fn save_lo(&self, b: &mut [u8]) {
+                let buf = self.0.to_le_bytes();
+                b.copy_from_slice(&buf[0..buf.len() >> 1]);
+            }
+
             fn leading_zeros(self) -> u32 {
                 self.0.leading_zeros()
             }
@@ -1242,6 +1250,10 @@ macro_rules! uint_impl {
                     .save(&mut b[Self::BITS as usize >> 4..Self::BITS as usize >> 3]);
             }
 
+            fn save_lo(&self, b: &mut [u8]) {
+                self.lo.save(b);
+            }
+
             fn leading_zeros(self) -> u32 {
                 if self.hi == <$half>::MIN {
                     Self::BITS / 2 + self.lo.leading_zeros()
@@ -1466,7 +1478,7 @@ macro_rules! uint_impl {
 
             fn wrapping_sra(self, other: u32) -> Self {
                 let shamt = other % Self::BITS;
-                let hi = if self.is_negative() {
+                let hi = if self.is_negative() && shamt != 0 {
                     Self::MAX << (Self::BITS - shamt)
                 } else {
                     Self::MIN
