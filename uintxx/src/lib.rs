@@ -75,7 +75,12 @@ pub trait Element:
 
     /// Returns the lower part with same type.
     fn lo_zext(self) -> Self {
-        self << Self::BITS / 2 >> Self::BITS / 2
+        self.wrapping_shl(Self::BITS / 2).wrapping_shr(Self::BITS / 2)
+    }
+
+    /// Returns the lower part with sign extented.
+    fn lo_sext(self) -> Self {
+        self.wrapping_shl(Self::BITS / 2).wrapping_sra(Self::BITS / 2)
     }
 
     /// Returns the higher partr with same type.
