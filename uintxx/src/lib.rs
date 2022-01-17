@@ -445,6 +445,12 @@ pub mod alu {
         let (_, hi) = lhs.widening_mul_su(rhs);
         hi
     }
+
+    /// Get carry out of addition.
+    pub fn madc<T: Element>(lhs: T, rhs: T) -> bool {
+        let (_, carry) = lhs.overflowing_add(rhs);
+        carry
+    }
 }
 
 macro_rules! uint_wrap_impl {

@@ -2798,6 +2798,15 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VNSRA_WI => {
             v_wi_loop_u!(inst, machine, { Element::wrapping_sra_e });
         }
+        insts::OP_VMADC_VV => {
+            m_vv_loop_s!(inst, machine, { alu::madc });
+        }
+        insts::OP_VMADC_VX => {
+            m_vx_loop_s!(inst, machine, { alu::madc });
+        }
+        insts::OP_VMADC_VI => {
+            m_vi_loop_s!(inst, machine, { alu::madc });
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let m = U2048::read(machine.element_ref(i.rs2(), VLEN as u64, 0));

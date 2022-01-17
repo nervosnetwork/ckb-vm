@@ -516,6 +516,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111111111100000111000001111111 == 0b01011110000000000000000001010111 => Some(insts::OP_VMV_VV),
                     x if x & 0b11111100000000000111000001111111 == 0b10110000000000000000000001010111 => Some(insts::OP_VNSRL_WV),
                     x if x & 0b11111100000000000111000001111111 == 0b10110100000000000000000001010111 => Some(insts::OP_VNSRA_WV),
+                    x if x & 0b11111110000000000111000001111111 == 0b01000110000000000000000001010111 => Some(insts::OP_VMADC_VV),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -601,6 +602,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111111111100000111000001111111 == 0b01011110000000000011000001010111 => Some(insts::OP_VMV_VI),
                     x if x & 0b11111100000000000111000001111111 == 0b10110000000000000011000001010111 => Some(insts::OP_VNSRL_WI),
                     x if x & 0b11111100000000000111000001111111 == 0b10110100000000000011000001010111 => Some(insts::OP_VNSRA_WI),
+                    x if x & 0b11111110000000000111000001111111 == 0b01000110000000000011000001010111 => Some(insts::OP_VMADC_VI),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -645,6 +647,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111111111100000111000001111111 == 0b01011110000000000100000001010111 => Some(insts::OP_VMV_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b10110000000000000100000001010111 => Some(insts::OP_VNSRL_WX),
                     x if x & 0b11111100000000000111000001111111 == 0b10110100000000000100000001010111 => Some(insts::OP_VNSRA_WX),
+                    x if x & 0b11111110000000000111000001111111 == 0b01000110000000000100000001010111 => Some(insts::OP_VMADC_VX),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
