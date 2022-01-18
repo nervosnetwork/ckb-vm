@@ -49,6 +49,7 @@ pub trait CoreMachine {
     // Vector extension
     fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8];
     fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8];
+    fn mbit(&self, n: usize) -> bool;
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64);
     fn vl(&self) -> u64;
     fn vsew(&self) -> u64;
@@ -345,6 +346,10 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.register_file.element_mut(reg, sew, n)
     }
 
+    fn mbit(&self, n: usize) -> bool {
+        self.register_file.mbit(n)
+    }
+
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
         if self.vtype != new_type {
             self.vtype = new_type;
@@ -536,6 +541,10 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
         self.inner.element_mut(reg, sew, n)
+    }
+
+    fn mbit(&self, n: usize) -> bool {
+        self.inner.mbit(n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {

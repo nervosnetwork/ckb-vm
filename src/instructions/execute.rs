@@ -1383,10 +1383,8 @@ macro_rules! v_vvm_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         let i = VVtype($inst);
         let sew = $machine.vsew();
-        let mut m = [0u8; 256];
-        m.copy_from_slice($machine.element_ref(0, 2048, 0));
         for j in 0..$machine.vl() as usize {
-            let mbit = (m[j / 8] << (7 - j % 8) >> (7 - j % 8)) != 0;
+            let mbit = $machine.mbit(j);
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -1452,10 +1450,8 @@ macro_rules! v_vxm_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         let i = VXtype($inst);
         let sew = $machine.vsew();
-        let mut m = [0u8; 256];
-        m.copy_from_slice($machine.element_ref(0, 2048, 0));
         for j in 0..$machine.vl() as usize {
-            let mbit = (m[j / 8] << (7 - j % 8) >> (7 - j % 8)) != 0;
+            let mbit = $machine.mbit(j);
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -1553,10 +1549,8 @@ macro_rules! v_vim_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         let i = VItype($inst);
         let sew = $machine.vsew();
-        let mut m = [0u8; 256];
-        m.copy_from_slice($machine.element_ref(0, 2048, 0));
         for j in 0..$machine.vl() as usize {
-            let mbit = (m[j / 8] << (7 - j % 8) >> (7 - j % 8)) != 0;
+            let mbit = $machine.mbit(j);
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));

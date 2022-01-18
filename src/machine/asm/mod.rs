@@ -85,6 +85,10 @@ impl CoreMachine for Box<AsmCoreMachine> {
         &mut self.register_file[i0..i1]
     }
 
+    fn mbit(&self, n: usize) -> bool {
+        (self.register_file[n / 8] << (7 - n % 8) >> (7 - n % 8)) != 0
+    }
+
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
         if self.vtype != new_type {
             self.vtype = new_type;
@@ -519,7 +523,7 @@ impl<'a> AsmMachine<'a> {
     ) -> Self {
         let mut r = Self { machine, aot_code };
         // Default to illegal configuration
-        r.set_vl(0, 0, 0, u64::MAX);
+        r.machine.set_vl(0, 0, 0, u64::MAX);
         r
     }
 

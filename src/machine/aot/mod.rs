@@ -340,6 +340,10 @@ impl CoreMachine for LabelGatheringMachine {
         unreachable!()
     }
 
+    fn mbit(&self, _n: usize) -> bool {
+        unreachable!()
+    }
+
     fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
         unreachable!()
     }
@@ -728,6 +732,10 @@ impl CoreMachine for AotCompilingMachine {
     }
 
     fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
+    fn mbit(&self, _n: usize) -> bool {
         unreachable!()
     }
 

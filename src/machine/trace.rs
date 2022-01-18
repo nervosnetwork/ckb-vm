@@ -78,6 +78,10 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.element_mut(reg, sew, n)
     }
 
+    fn mbit(&self, n: usize) -> bool {
+        self.machine.mbit(n)
+    }
+
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
         self.machine.set_vl(rd, rs1, avl, new_type)
     }

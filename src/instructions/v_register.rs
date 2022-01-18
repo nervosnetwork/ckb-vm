@@ -23,4 +23,8 @@ impl RegisterFile {
         let i1 = i0 + lb;
         &mut self.0[i0..i1]
     }
+
+    pub fn mbit(&self, n: usize) -> bool {
+        (self.0[n / 8] << (7 - n % 8) >> (7 - n % 8)) != 0
+    }
 }
