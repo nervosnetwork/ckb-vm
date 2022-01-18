@@ -1379,6 +1379,277 @@ macro_rules! v_wi_loop_u {
     };
 }
 
+macro_rules! v_vvm_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        let mut m = [0u8; 256];
+        m.copy_from_slice($machine.element_ref(0, 2048, 0));
+        for j in 0..$machine.vl() as usize {
+            let mbit = (m[j / 8] << (7 - j % 8) >> (7 - j % 8)) != 0;
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::read($machine.element_ref(i.vs1(), sew, j));
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! v_vvm_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vvm_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! v_vxm_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        let mut m = [0u8; 256];
+        m.copy_from_slice($machine.element_ref(0, 2048, 0));
+        for j in 0..$machine.vl() as usize {
+            let mbit = (m[j / 8] << (7 - j % 8) >> (7 - j % 8)) != 0;
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U8::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U8::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U16::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U16::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U32::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U32::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U64::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U64::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U128::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U128::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U256::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U256::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U512::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U512::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U1024::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U1024::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! v_vxm_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vxm_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! v_vim_loop {
+    ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        let mut m = [0u8; 256];
+        m.copy_from_slice($machine.element_ref(0, 2048, 0));
+        for j in 0..$machine.vl() as usize {
+            let mbit = (m[j / 8] << (7 - j % 8) >> (7 - j % 8)) != 0;
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U8::vi_s(i.immediate_s())
+                    } else {
+                        U8::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U16::vi_s(i.immediate_s())
+                    } else {
+                        U16::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U32::vi_s(i.immediate_s())
+                    } else {
+                        U32::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U64::vi_s(i.immediate_s())
+                    } else {
+                        U64::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U128::vi_s(i.immediate_s())
+                    } else {
+                        U128::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U256::vi_s(i.immediate_s())
+                    } else {
+                        U256::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U512::vi_s(i.immediate_s())
+                    } else {
+                        U512::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U1024::vi_s(i.immediate_s())
+                    } else {
+                        U1024::vi_u(i.immediate_u())
+                    };
+                    let r = $body(b, a, mbit);
+                    r.save($machine.element_mut(i.vd(), sew, j));
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! v_vim_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        v_vim_loop!($inst, $machine, $body, 1);
+    };
+}
+
 macro_rules! v_vv_loop_s_ext {
     ($inst:expr, $machine:expr, $size:expr) => {
         let i = VVtype($inst);
@@ -2813,6 +3084,26 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VMSBC_VX => {
             m_vx_loop_s!(inst, machine, { alu::msbc });
         }
+        insts::OP_VADC_VVM => {
+            v_vvm_loop_s!(inst, machine, { alu::adc });
+        }
+        insts::OP_VADC_VXM => {
+            v_vxm_loop_s!(inst, machine, { alu::adc });
+        }
+        insts::OP_VADC_VIM => {
+            v_vim_loop_s!(inst, machine, { alu::adc });
+        }
+        insts::OP_VMADC_VVM => {}
+        insts::OP_VMADC_VXM => {}
+        insts::OP_VMADC_VIM => {}
+        insts::OP_VSBC_VVM => {
+            v_vvm_loop_s!(inst, machine, { alu::sbc });
+        }
+        insts::OP_VSBC_VXM => {
+            v_vxm_loop_s!(inst, machine, { alu::sbc });
+        }
+        insts::OP_VMSBC_VVM => {}
+        insts::OP_VMSBC_VXM => {}
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let m = U2048::read(machine.element_ref(i.rs2(), VLEN as u64, 0));

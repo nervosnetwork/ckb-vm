@@ -233,6 +233,20 @@ pub trait Element:
         self.wrapping_sra(other.u32())
     }
 
+    /// Calculates self + rhs + carry without the ability to overflow.
+    fn carrying_add(self, other: Self, carry: bool) -> (Self, bool) {
+        let (r, carry0) = self.overflowing_add(other);
+        let (r, carry1) = r.overflowing_add(if carry { Self::ONE } else { Self::MIN });
+        (r, carry0 | carry1)
+    }
+
+    /// Calculates self - rhs - borrow without the ability to overflow.
+    fn carrying_sub(self, other: Self, carry: bool) -> (Self, bool) {
+        let (r, borrow0) = self.overflowing_sub(other);
+        let (r, borrow1) = r.overflowing_sub(if carry { Self::ONE } else { Self::MIN });
+        (r, borrow0 | borrow1)
+    }
+
     /// Widening add.
     fn widening_add(self, other: Self) -> (Self, Self) {
         let (lo, carry) = self.overflowing_add(other);
@@ -456,6 +470,18 @@ pub mod alu {
     pub fn msbc<T: Element>(lhs: T, rhs: T) -> bool {
         let (_, borrow) = lhs.overflowing_sub(rhs);
         borrow
+    }
+
+    /// Calculates self + rhs + carry without the ability to overflow.
+    pub fn adc<T: Element>(lhs: T, rhs: T, carry: bool) -> T {
+        let (r, _) = lhs.carrying_add(rhs, carry);
+        r
+    }
+
+    /// Calculates self - rhs - borrow without the ability to overflow.
+    pub fn sbc<T: Element>(lhs: T, rhs: T, borrow: bool) -> T {
+        let (r, _) = lhs.carrying_sub(rhs, borrow);
+        r
     }
 }
 
