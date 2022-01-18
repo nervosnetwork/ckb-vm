@@ -451,6 +451,12 @@ pub mod alu {
         let (_, carry) = lhs.overflowing_add(rhs);
         carry
     }
+
+    /// Get the borrow out of subtraction.
+    pub fn msbc<T: Element>(lhs: T, rhs: T) -> bool {
+        let (_, borrow) = lhs.overflowing_sub(rhs);
+        borrow
+    }
 }
 
 macro_rules! uint_wrap_impl {
