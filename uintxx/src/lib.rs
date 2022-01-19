@@ -483,6 +483,18 @@ pub mod alu {
         let (r, _) = lhs.carrying_sub(rhs, borrow);
         r
     }
+
+    /// Calculates carry_out(self + rhs + carry) without the ability to overflow.
+    pub fn madcm<T: Element>(lhs: T, rhs: T, carry: bool) -> bool {
+        let (_, r) = lhs.carrying_add(rhs, carry);
+        r
+    }
+
+    /// Calculates borrow_out(self - rhs - borrow) without the ability to overflow.
+    pub fn msbcm<T: Element>(lhs: T, rhs: T, borrow: bool) -> bool {
+        let (_, r) = lhs.carrying_sub(rhs, borrow);
+        r
+    }
 }
 
 macro_rules! uint_wrap_impl {

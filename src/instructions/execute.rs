@@ -310,100 +310,87 @@ macro_rules! v_vi_loop_u {
     };
 }
 
-fn set_bit(b8: u8, position: usize) -> u8 {
-    b8 | (1 << position)
-}
-
-fn clr_bit(b8: u8, position: usize) -> u8 {
-    b8 & !(1 << position)
-}
-
 macro_rules! m_vv_loop {
     ($inst:expr, $machine:expr, $cond:expr) => {
         let i = VVtype($inst);
         let sew = $machine.vsew();
-        let mut out = [0u8; VLEN >> 3];
-        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
         for j in 0..$machine.vl() as usize {
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U8::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 16 => {
                     let b = U16::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U16::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 32 => {
                     let b = U32::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U32::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 64 => {
                     let b = U64::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U64::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 128 => {
                     let b = U128::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U128::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 256 => {
                     let b = U256::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U256::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 512 => {
                     let b = U512::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U512::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 1024 => {
                     let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
                     let a = U1024::read($machine.element_ref(i.vs1(), sew, j));
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 _ => return Err(Error::Unexpected),
             }
         }
-        $machine
-            .element_mut(i.vd(), VLEN as u64, 0)
-            .copy_from_slice(&out);
     };
 }
 
@@ -423,8 +410,6 @@ macro_rules! m_vx_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         let i = VXtype($inst);
         let sew = $machine.vsew();
-        let mut out = [0u8; VLEN >> 3];
-        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
         for j in 0..$machine.vl() as usize {
             match sew {
                 8 => {
@@ -434,10 +419,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U8::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 16 => {
@@ -447,10 +432,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U16::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 32 => {
@@ -460,10 +445,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U32::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 64 => {
@@ -473,10 +458,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U64::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 128 => {
@@ -486,10 +471,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U128::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 256 => {
@@ -499,10 +484,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U256::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 512 => {
@@ -512,10 +497,10 @@ macro_rules! m_vx_loop {
                     } else {
                         U512::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 1024 => {
@@ -525,18 +510,15 @@ macro_rules! m_vx_loop {
                     } else {
                         U1024::vx_u($machine.registers()[i.rs1()].to_u64())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 _ => return Err(Error::Unexpected),
             }
         }
-        $machine
-            .element_mut(i.vd(), VLEN as u64, 0)
-            .copy_from_slice(&out);
     };
 }
 
@@ -556,8 +538,6 @@ macro_rules! m_vi_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         let i = VItype($inst);
         let sew = $machine.vsew();
-        let mut out = [0u8; VLEN >> 3];
-        out.copy_from_slice($machine.element_ref(i.vd(), VLEN as u64, 0));
         for j in 0..$machine.vl() as usize {
             match sew {
                 8 => {
@@ -567,10 +547,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U8::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 16 => {
@@ -580,10 +560,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U16::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 32 => {
@@ -593,10 +573,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U32::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 64 => {
@@ -606,10 +586,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U64::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 128 => {
@@ -619,10 +599,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U128::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 256 => {
@@ -632,10 +612,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U256::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 512 => {
@@ -645,10 +625,10 @@ macro_rules! m_vi_loop {
                     } else {
                         U512::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 1024 => {
@@ -658,18 +638,15 @@ macro_rules! m_vi_loop {
                     } else {
                         U1024::vi_u(i.immediate_u())
                     };
-                    out[j / 8] = if $cond(b, a) {
-                        set_bit(out[j / 8], j % 8)
+                    if $cond(b, a) {
+                        $machine.set_bit(i.vd(), j);
                     } else {
-                        clr_bit(out[j / 8], j % 8)
+                        $machine.clr_bit(i.vd(), j);
                     };
                 }
                 _ => return Err(Error::Unexpected),
             }
         }
-        $machine
-            .element_mut(i.vd(), VLEN as u64, 0)
-            .copy_from_slice(&out);
     };
 }
 
@@ -1384,7 +1361,7 @@ macro_rules! v_vvm_loop {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
-            let mbit = $machine.mbit(j);
+            let mbit = $machine.get_bit(0, j);
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -1451,7 +1428,7 @@ macro_rules! v_vxm_loop {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
-            let mbit = $machine.mbit(j);
+            let mbit = $machine.get_bit(0, j);
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -1550,7 +1527,7 @@ macro_rules! v_vim_loop {
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
-            let mbit = $machine.mbit(j);
+            let mbit = $machine.get_bit(0, j);
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -1641,6 +1618,343 @@ macro_rules! v_vim_loop {
 macro_rules! v_vim_loop_s {
     ($inst:expr, $machine:expr, $body:expr) => {
         v_vim_loop!($inst, $machine, $body, 1);
+    };
+}
+
+macro_rules! m_vvm_loop {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U8::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U16::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U32::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U64::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U128::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U256::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U512::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = U1024::read($machine.element_ref(i.vs1(), sew, j));
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! m_vvm_loop_s {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        m_vvm_loop!($inst, $machine, $body);
+    };
+}
+
+macro_rules! m_vxm_loop {
+    ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
+        let i = VXtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U8::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U8::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U16::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U16::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U32::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U32::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U64::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U64::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U128::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U128::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U256::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U256::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U512::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U512::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U1024::vx_s($machine.registers()[i.rs1()].to_u64())
+                    } else {
+                        U1024::vx_u($machine.registers()[i.rs1()].to_u64())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! m_vxm_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vxm_loop!($inst, $machine, $cond, 1);
+    };
+}
+
+macro_rules! m_vim_loop {
+    ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
+        let i = VItype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            let mbit = $machine.get_bit(0, j);
+            match sew {
+                8 => {
+                    let b = U8::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U8::vi_s(i.immediate_s())
+                    } else {
+                        U8::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                16 => {
+                    let b = U16::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U16::vi_s(i.immediate_s())
+                    } else {
+                        U16::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                32 => {
+                    let b = U32::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U32::vi_s(i.immediate_s())
+                    } else {
+                        U32::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                64 => {
+                    let b = U64::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U64::vi_s(i.immediate_s())
+                    } else {
+                        U64::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                128 => {
+                    let b = U128::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U128::vi_s(i.immediate_s())
+                    } else {
+                        U128::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                256 => {
+                    let b = U256::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U256::vi_s(i.immediate_s())
+                    } else {
+                        U256::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                512 => {
+                    let b = U512::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U512::vi_s(i.immediate_s())
+                    } else {
+                        U512::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                1024 => {
+                    let b = U1024::read($machine.element_ref(i.vs2(), sew, j));
+                    let a = if $sign != 0 {
+                        U1024::vi_s(i.immediate_s())
+                    } else {
+                        U1024::vi_u(i.immediate_u())
+                    };
+                    if $cond(b, a, mbit) {
+                        $machine.set_bit(i.vd(), j);
+                    } else {
+                        $machine.clr_bit(i.vd(), j);
+                    };
+                }
+                _ => return Err(Error::Unexpected),
+            }
+        }
+    };
+}
+
+macro_rules! m_vim_loop_s {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vim_loop!($inst, $machine, $cond, 1);
     };
 }
 
@@ -3087,17 +3401,27 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VADC_VIM => {
             v_vim_loop_s!(inst, machine, { alu::adc });
         }
-        insts::OP_VMADC_VVM => {}
-        insts::OP_VMADC_VXM => {}
-        insts::OP_VMADC_VIM => {}
+        insts::OP_VMADC_VVM => {
+            m_vvm_loop_s!(inst, machine, { alu::madcm });
+        }
+        insts::OP_VMADC_VXM => {
+            m_vxm_loop_s!(inst, machine, { alu::madcm });
+        }
+        insts::OP_VMADC_VIM => {
+            m_vim_loop_s!(inst, machine, { alu::madcm });
+        }
         insts::OP_VSBC_VVM => {
             v_vvm_loop_s!(inst, machine, { alu::sbc });
         }
         insts::OP_VSBC_VXM => {
             v_vxm_loop_s!(inst, machine, { alu::sbc });
         }
-        insts::OP_VMSBC_VVM => {}
-        insts::OP_VMSBC_VXM => {}
+        insts::OP_VMSBC_VVM => {
+            m_vvm_loop_s!(inst, machine, { alu::msbcm });
+        }
+        insts::OP_VMSBC_VXM => {
+            m_vxm_loop_s!(inst, machine, { alu::msbcm });
+        }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);
             let m = U2048::read(machine.element_ref(i.rs2(), VLEN as u64, 0));

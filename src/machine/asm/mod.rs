@@ -85,8 +85,19 @@ impl CoreMachine for Box<AsmCoreMachine> {
         &mut self.register_file[i0..i1]
     }
 
-    fn mbit(&self, n: usize) -> bool {
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        let n = reg * VLEN + n;
         (self.register_file[n / 8] << (7 - n % 8) >> (7 - n % 8)) != 0
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        let n = reg * VLEN + n;
+        self.register_file[n / 8] |= 1 << (n % 8)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        let n = reg * VLEN + n;
+        self.register_file[n / 8] &= !(1 << (n % 8))
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {

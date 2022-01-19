@@ -78,8 +78,16 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.element_mut(reg, sew, n)
     }
 
-    fn mbit(&self, n: usize) -> bool {
-        self.machine.mbit(n)
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.machine.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.machine.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.machine.clr_bit(reg, n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {

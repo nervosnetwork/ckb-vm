@@ -49,7 +49,9 @@ pub trait CoreMachine {
     // Vector extension
     fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8];
     fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8];
-    fn mbit(&self, n: usize) -> bool;
+    fn get_bit(&self, reg: usize, n: usize) -> bool;
+    fn set_bit(&mut self, reg: usize, n: usize);
+    fn clr_bit(&mut self, reg: usize, n: usize);
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64);
     fn vl(&self) -> u64;
     fn vsew(&self) -> u64;
@@ -346,8 +348,16 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.register_file.element_mut(reg, sew, n)
     }
 
-    fn mbit(&self, n: usize) -> bool {
-        self.register_file.mbit(n)
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.register_file.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.register_file.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.register_file.clr_bit(reg, n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
@@ -543,8 +553,16 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         self.inner.element_mut(reg, sew, n)
     }
 
-    fn mbit(&self, n: usize) -> bool {
-        self.inner.mbit(n)
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.inner.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.inner.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.inner.clr_bit(reg, n)
     }
 
     fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {

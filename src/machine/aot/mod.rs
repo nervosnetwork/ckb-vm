@@ -340,7 +340,15 @@ impl CoreMachine for LabelGatheringMachine {
         unreachable!()
     }
 
-    fn mbit(&self, _n: usize) -> bool {
+    fn get_bit(&self, _reg: usize, _n: usize) -> bool {
+        unreachable!()
+    }
+
+    fn set_bit(&mut self, _reg: usize, _n: usize) {
+        unreachable!()
+    }
+
+    fn clr_bit(&mut self, _reg: usize, _n: usize) {
         unreachable!()
     }
 
@@ -735,7 +743,7 @@ impl CoreMachine for AotCompilingMachine {
         unreachable!()
     }
 
-    fn mbit(&self, _n: usize) -> bool {
+    fn get_bit(&self, _reg: usize, _n: usize) -> bool {
         unreachable!()
     }
 
