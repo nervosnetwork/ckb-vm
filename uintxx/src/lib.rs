@@ -119,12 +119,18 @@ pub trait Element:
     /// If an overflow would have occurred then the wrapped value is returned.
     fn overflowing_add(self, other: Self) -> (Self, bool);
 
+    /// Signed overflowing add.
+    fn overflowing_add_s(self, other: Self) -> (Self, bool);
+
     /// Calculates self - other
     ///
     /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow would
     /// occur.
     /// If an overflow would have occurred then the wrapped value is returned.
     fn overflowing_sub(self, other: Self) -> (Self, bool);
+
+    /// Signed overflowing sub.
+    fn overflowing_sub_s(self, other: Self) -> (Self, bool);
 
     /// Calculates the multiplication of self and other.
     ///
@@ -240,10 +246,24 @@ pub trait Element:
         (r, carry0 | carry1)
     }
 
+    /// Signed carring add.
+    fn carrying_add_s(self, other: Self, carry: bool) -> (Self, bool) {
+        let (r, carry0) = self.overflowing_add_s(other);
+        let (r, carry1) = r.overflowing_add_s(if carry { Self::ONE } else { Self::MIN });
+        (r, carry0 | carry1)
+    }
+
     /// Calculates self - rhs - borrow without the ability to overflow.
     fn carrying_sub(self, other: Self, carry: bool) -> (Self, bool) {
         let (r, borrow0) = self.overflowing_sub(other);
         let (r, borrow1) = r.overflowing_sub(if carry { Self::ONE } else { Self::MIN });
+        (r, borrow0 | borrow1)
+    }
+
+    /// Signed carrying sub.
+    fn carrying_sub_s(self, other: Self, carry: bool) -> (Self, bool) {
+        let (r, borrow0) = self.overflowing_sub_s(other);
+        let (r, borrow1) = r.overflowing_sub_s(if carry { Self::ONE } else { Self::MIN });
         (r, borrow0 | borrow1)
     }
 
@@ -462,37 +482,37 @@ pub mod alu {
 
     /// Get carry out of addition.
     pub fn madc<T: Element>(lhs: T, rhs: T) -> bool {
-        let (_, carry) = lhs.overflowing_add(rhs);
+        let (_, carry) = lhs.overflowing_add_s(rhs);
         carry
     }
 
     /// Get the borrow out of subtraction.
     pub fn msbc<T: Element>(lhs: T, rhs: T) -> bool {
-        let (_, borrow) = lhs.overflowing_sub(rhs);
+        let (_, borrow) = lhs.overflowing_sub_s(rhs);
         borrow
     }
 
     /// Calculates self + rhs + carry without the ability to overflow.
     pub fn adc<T: Element>(lhs: T, rhs: T, carry: bool) -> T {
-        let (r, _) = lhs.carrying_add(rhs, carry);
+        let (r, _) = lhs.carrying_add_s(rhs, carry);
         r
     }
 
     /// Calculates self - rhs - borrow without the ability to overflow.
     pub fn sbc<T: Element>(lhs: T, rhs: T, borrow: bool) -> T {
-        let (r, _) = lhs.carrying_sub(rhs, borrow);
+        let (r, _) = lhs.carrying_sub_s(rhs, borrow);
         r
     }
 
     /// Calculates carry_out(self + rhs + carry) without the ability to overflow.
     pub fn madcm<T: Element>(lhs: T, rhs: T, carry: bool) -> bool {
-        let (_, r) = lhs.carrying_add(rhs, carry);
+        let (_, r) = lhs.carrying_add_s(rhs, carry);
         r
     }
 
     /// Calculates borrow_out(self - rhs - borrow) without the ability to overflow.
     pub fn msbcm<T: Element>(lhs: T, rhs: T, borrow: bool) -> bool {
-        let (_, r) = lhs.carrying_sub(rhs, borrow);
+        let (_, r) = lhs.carrying_sub_s(rhs, borrow);
         r
     }
 }
@@ -793,9 +813,19 @@ macro_rules! uint_wrap_impl {
                 (Self(r), b)
             }
 
+            fn overflowing_add_s(self, other: Self) -> (Self, bool) {
+                let (r, carry) = (self.0 as $sint).overflowing_add(other.0 as $sint);
+                (Self(r as $uint), carry)
+            }
+
             fn overflowing_sub(self, other: Self) -> (Self, bool) {
                 let (r, b) = self.0.overflowing_sub(other.0);
                 (Self(r), b)
+            }
+
+            fn overflowing_sub_s(self, other: Self) -> (Self, bool) {
+                let (r, borrow) = (self.0 as $sint).overflowing_sub(other.0 as $sint);
+                (Self(r as $uint), borrow)
             }
 
             fn overflowing_mul(self, other: Self) -> (Self, bool) {
@@ -1343,11 +1373,29 @@ macro_rules! uint_impl {
                 (Self { lo, hi }, hi_carry_1 || hi_carry_2)
             }
 
+            fn overflowing_add_s(self, other: Self) -> (Self, bool) {
+                let r = self.wrapping_add(other);
+                if self.is_negative() == other.is_negative() {
+                    (r, r.is_negative() != self.is_negative())
+                } else {
+                    (r, false)
+                }
+            }
+
             fn overflowing_sub(self, other: Self) -> (Self, bool) {
                 let (lo, lo_borrow) = self.lo.overflowing_sub(other.lo);
                 let (hi, hi_borrow_1) = self.hi.overflowing_sub(<$half>::from(lo_borrow));
                 let (hi, hi_borrow_2) = hi.overflowing_sub(other.hi);
                 (Self { lo, hi }, hi_borrow_1 || hi_borrow_2)
+            }
+
+            fn overflowing_sub_s(self, other: Self) -> (Self, bool) {
+                let r = self.wrapping_sub(other);
+                if self.is_negative() == other.is_negative() {
+                    (r, false)
+                } else {
+                    (r, r.is_negative() != self.is_negative())
+                }
             }
 
             fn overflowing_mul(self, other: Self) -> (Self, bool) {
