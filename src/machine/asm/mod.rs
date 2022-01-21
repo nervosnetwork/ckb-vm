@@ -50,7 +50,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
     }
 
     fn memory(&self) -> &Self {
-        &self
+        self
     }
 
     fn memory_mut(&mut self) -> &mut Self {

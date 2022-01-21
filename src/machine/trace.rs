@@ -43,7 +43,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
     type MEM = <Inner as CoreMachine>::MEM;
 
     fn pc(&self) -> &Self::REG {
-        &self.machine.pc()
+        self.machine.pc()
     }
 
     fn update_pc(&mut self, pc: Self::REG) {

@@ -395,7 +395,7 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
     type MEM = <Inner as CoreMachine>::MEM;
 
     fn pc(&self) -> &Self::REG {
-        &self.inner.pc()
+        self.inner.pc()
     }
 
     fn update_pc(&mut self, pc: Self::REG) {

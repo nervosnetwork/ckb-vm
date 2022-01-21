@@ -18,7 +18,7 @@ pub fn add<Mac: Machine>(
 ) {
     let rs1_value = &machine.registers()[rs1 as usize];
     let rs2_value = &machine.registers()[rs2 as usize];
-    let value = rs1_value.overflowing_add(&rs2_value);
+    let value = rs1_value.overflowing_add(rs2_value);
     update_register(machine, rd, value);
 }
 
@@ -30,7 +30,7 @@ pub fn addw<Mac: Machine>(
 ) {
     let rs1_value = &machine.registers()[rs1 as usize];
     let rs2_value = &machine.registers()[rs2 as usize];
-    let value = rs1_value.overflowing_add(&rs2_value);
+    let value = rs1_value.overflowing_add(rs2_value);
     update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
@@ -42,7 +42,7 @@ pub fn sub<Mac: Machine>(
 ) {
     let rs1_value = &machine.registers()[rs1 as usize];
     let rs2_value = &machine.registers()[rs2 as usize];
-    let value = rs1_value.overflowing_sub(&rs2_value);
+    let value = rs1_value.overflowing_sub(rs2_value);
     update_register(machine, rd, value);
 }
 
@@ -54,7 +54,7 @@ pub fn subw<Mac: Machine>(
 ) {
     let rs1_value = &machine.registers()[rs1 as usize];
     let rs2_value = &machine.registers()[rs2 as usize];
-    let value = rs1_value.overflowing_sub(&rs2_value);
+    let value = rs1_value.overflowing_sub(rs2_value);
     update_register(machine, rd, value.sign_extend(&Mac::REG::from_u8(32)));
 }
 
