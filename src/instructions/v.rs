@@ -453,11 +453,12 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Itype::new(
+                VXtype::new(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
-                    vm(instruction_bits) as u32,
+                    rs2(instruction_bits),
+                    vm(instruction_bits),
                 )
                 .0
             })
@@ -477,11 +478,12 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Itype::new(
+                VXtype::new(
                     inst,
                     rd(instruction_bits),
                     rs1(instruction_bits),
-                    vm(instruction_bits) as u32,
+                    rs2(instruction_bits),
+                    vm(instruction_bits),
                 )
                 .0
             })

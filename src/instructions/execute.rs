@@ -9,24 +9,38 @@ use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
 pub use uintxx::{alu, Element, U1024, U128, U16, U2048, U256, U32, U512, U64, U8};
 
 macro_rules! ld {
-    ($inst:expr, $machine:expr, $size:expr) => {
-        let i = Itype($inst);
-        let rd = i.rd();
-        let addr = $machine.registers()[i.rs1()].clone();
-        let data = $machine.memory_mut().load_bytes(addr.to_u64(), $size)?;
-        $machine
-            .element_mut(rd, $size << 3, 0)
-            .copy_from_slice(&data);
+    ($inst:expr, $machine:expr, $vl:expr, $size:expr, $mask:expr) => {
+        let i = VXtype($inst);
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        for j in 0..$vl as usize {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            let data = $machine
+                .memory_mut()
+                .load_bytes(addr + $size * j as u64, $size)?;
+            $machine
+                .element_mut(vd, $size << 3, j)
+                .copy_from_slice(&data);
+        }
     };
 }
 
 macro_rules! sd {
-    ($inst:expr, $machine:expr, $size:expr) => {
-        let i = Itype($inst);
-        let rd = i.rd();
-        let addr = $machine.registers()[i.rs1()].clone();
-        let data = $machine.element_ref(rd, $size << 3, 0).to_vec();
-        $machine.memory_mut().store_bytes(addr.to_u64(), &data)?;
+    ($inst:expr, $machine:expr, $vl:expr, $size:expr, $mask:expr) => {
+        let i = VXtype($inst);
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        for j in 0..$vl as usize {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            let data = $machine.element_ref(vd, $size << 3, j).to_vec();
+            $machine
+                .memory_mut()
+                .store_bytes(addr + $size * j as u64, &data)?;
+        }
     };
 }
 
@@ -35,6 +49,9 @@ macro_rules! v_vv_loop {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -107,6 +124,9 @@ macro_rules! v_vx_loop {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -211,6 +231,9 @@ macro_rules! v_vi_loop {
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -315,6 +338,9 @@ macro_rules! m_vv_loop {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -411,6 +437,9 @@ macro_rules! m_vx_loop {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -539,6 +568,9 @@ macro_rules! m_vi_loop {
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -667,6 +699,9 @@ macro_rules! w_vv_loop {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -747,6 +782,9 @@ macro_rules! w_vx_loop {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U8::read($machine.element_ref(i.vs2(), sew, j));
@@ -859,6 +897,9 @@ macro_rules! w_wv_loop {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
@@ -963,6 +1004,9 @@ macro_rules! w_wx_loop {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
@@ -1067,6 +1111,9 @@ macro_rules! v_wv_loop {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
@@ -1165,6 +1212,9 @@ macro_rules! v_wx_loop {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
@@ -1263,6 +1313,9 @@ macro_rules! v_wi_loop {
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             match sew {
                 8 => {
                     let b = U16::read($machine.element_ref(i.vs2(), sew * 2, j));
@@ -1963,6 +2016,9 @@ macro_rules! v_vv_loop_s_ext {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             let mut b = $machine.element_ref(i.vs2(), sew / $size, j).to_vec();
             if b.last().unwrap() > &127 {
                 b.resize(sew as usize >> 3, 0xff);
@@ -1979,6 +2035,9 @@ macro_rules! v_vv_loop_u_ext {
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
             let mut b = $machine.element_ref(i.vs2(), sew / $size, j).to_vec();
             b.resize(sew as usize >> 3, 0x00);
             $machine.element_mut(i.vd(), sew, j).copy_from_slice(&b);
@@ -2906,76 +2965,58 @@ pub fn execute_instruction<Mac: Machine>(
             )?;
         }
         insts::OP_VLM_V => {
-            let size = (machine.vl() + 7) / 8;
-            ld!(inst, machine, size);
+            ld!(inst, machine, (machine.vl() + 7) / 8, 1, 0);
         }
         insts::OP_VLE8_V => {
-            let size = machine.vl() * 8 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 1, 1);
         }
         insts::OP_VLE16_V => {
-            let size = machine.vl() * 16 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 2, 1);
         }
         insts::OP_VLE32_V => {
-            let size = machine.vl() * 32 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 4, 1);
         }
         insts::OP_VLE64_V => {
-            let size = machine.vl() * 64 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 8, 1);
         }
         insts::OP_VLE128_V => {
-            let size = machine.vl() * 128 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 16, 1);
         }
         insts::OP_VLE256_V => {
-            let size = machine.vl() * 256 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 32, 1);
         }
         insts::OP_VLE512_V => {
-            let size = machine.vl() * 512 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 64, 1);
         }
         insts::OP_VLE1024_V => {
-            let size = machine.vl() * 1024 >> 3;
-            ld!(inst, machine, size);
+            ld!(inst, machine, machine.vl(), 128, 1);
         }
         insts::OP_VSM_V => {
-            let size = (machine.vl() + 7) / 8;
-            sd!(inst, machine, size);
+            sd!(inst, machine, (machine.vl() + 7) / 8, 1, 0);
         }
         insts::OP_VSE8_V => {
-            let size = machine.vl() * 8 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 1, 1);
         }
         insts::OP_VSE16_V => {
-            let size = machine.vl() * 16 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 2, 1);
         }
         insts::OP_VSE32_V => {
-            let size = machine.vl() * 32 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 4, 1);
         }
         insts::OP_VSE64_V => {
-            let size = machine.vl() * 64 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 8, 1);
         }
         insts::OP_VSE128_V => {
-            let size = machine.vl() * 128 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 16, 1);
         }
         insts::OP_VSE256_V => {
-            let size = machine.vl() * 256 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 32, 1);
         }
         insts::OP_VSE512_V => {
-            let size = machine.vl() * 512 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 64, 1);
         }
         insts::OP_VSE1024_V => {
-            let size = machine.vl() * 1024 >> 3;
-            sd!(inst, machine, size);
+            sd!(inst, machine, machine.vl(), 128, 1);
         }
         insts::OP_VADD_VV => {
             v_vv_loop_s!(inst, machine, { Element::wrapping_add });

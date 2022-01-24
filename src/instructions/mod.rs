@@ -286,8 +286,8 @@ impl VVtype {
         (self.0 >> 40) as u8 as RegisterIndex
     }
 
-    pub fn vm(self) -> bool {
-        self.0 & 1u64 << 28 != 0
+    pub fn vm(self) -> u64 {
+        (self.0 >> 28) & 1
     }
 }
 
@@ -326,8 +326,8 @@ impl VXtype {
         (self.0 >> 40) as u8 as RegisterIndex
     }
 
-    pub fn vm(self) -> bool {
-        self.0 & 1u64 << 28 != 0
+    pub fn vm(self) -> u64 {
+        (self.0 >> 28) & 1
     }
 }
 
@@ -375,8 +375,8 @@ impl VItype {
         }
     }
 
-    pub fn vm(self) -> bool {
-        self.0 & 1u64 << 28 != 0
+    pub fn vm(self) -> u64 {
+        (self.0 >> 28) & 1
     }
 }
 
