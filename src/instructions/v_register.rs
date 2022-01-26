@@ -26,7 +26,7 @@ impl RegisterFile {
 
     pub fn get_bit(&self, reg: usize, n: usize) -> bool {
         let n = reg * VLEN + n;
-        (self.0[n / 8] << (7 - n % 8) >> (7 - n % 8)) != 0
+        (self.0[n / 8] << (7 - n % 8) >> 7) != 0
     }
 
     pub fn set_bit(&mut self, reg: usize, n: usize) {

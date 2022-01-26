@@ -329,12 +329,20 @@ pub const OP_VMV2R_V: InstructionOpcode = 0xa1f0;
 pub const OP_VMV4R_V: InstructionOpcode = 0xa2f0;
 pub const OP_VMV8R_V: InstructionOpcode = 0xa3f0;
 pub const OP_VFIRST_M: InstructionOpcode = 0xa4f0;
+pub const OP_VMAND_MM: InstructionOpcode = 0xa5f0;
+pub const OP_VMNAND_MM: InstructionOpcode = 0xa6f0;
+pub const OP_VMANDNOT_MM: InstructionOpcode = 0xa7f0;
+pub const OP_VMXOR_MM: InstructionOpcode = 0xa8f0;
+pub const OP_VMOR_MM: InstructionOpcode = 0xa9f0;
+pub const OP_VMNOR_MM: InstructionOpcode = 0xaaf0;
+pub const OP_VMORNOT_MM: InstructionOpcode = 0xabf0;
+pub const OP_VMXNOR_MM: InstructionOpcode = 0xacf0;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
 pub const LEVEL2_V_OPCODE: InstructionOpcode = 0xf0;
 pub const MINIMAL_LEVEL2_OPCODE: InstructionOpcode = 0x00;
-pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0xa4;
+pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0xac;
 
 pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize + 1] = [
     "UNLOADED",
@@ -628,6 +636,14 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL2: [&str;
     "VMV4R_V",
     "VMV8R_V",
     "VFIRST_M",
+    "VMAND_MM",
+    "VMNAND_MM",
+    "VMANDNOT_MM",
+    "VMXOR_MM",
+    "VMOR_MM",
+    "VMNOR_MM",
+    "VMORNOT_MM",
+    "VMXNOR_MM",
 ];
 
 pub fn instruction_opcode_name(i: InstructionOpcode) -> &'static str {

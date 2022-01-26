@@ -164,6 +164,14 @@ insts = [
     "VMV4R_V",
     "VMV8R_V",
     "VFIRST_M",
+    "VMAND_MM",
+    "VMNAND_MM",
+    "VMANDNOT_MM",
+    "VMXOR_MM",
+    "VMOR_MM",
+    "VMNOR_MM",
+    "VMORNOT_MM",
+    "VMXNOR_MM",
 ]
 
 for (i, e) in enumerate(insts):
