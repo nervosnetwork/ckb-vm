@@ -9,37 +9,45 @@ use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
 pub use uintxx::{alu, Element, U1024, U128, U16, U2048, U256, U32, U512, U64, U8};
 
 macro_rules! ld {
-    ($inst:expr, $machine:expr, $vl:expr, $size:expr, $mask:expr) => {
+    ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
         let i = VXtype($inst);
         let vd = i.vd();
         let addr = $machine.registers()[i.rs1()].to_u64();
-        for j in 0..$vl as usize {
-            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j) {
+        let stride = if $stride != 0 {
+            $machine.registers()[i.vs2()].to_u64()
+        } else {
+            $size
+        };
+        for j in 0..$vl {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j as usize) {
                 continue;
             }
-            let data = $machine
-                .memory_mut()
-                .load_bytes(addr + $size * j as u64, $size)?;
+            let data = $machine.memory_mut().load_bytes(addr + stride * j, $size)?;
             $machine
-                .element_mut(vd, $size << 3, j)
+                .element_mut(vd, $size << 3, j as usize)
                 .copy_from_slice(&data);
         }
     };
 }
 
 macro_rules! sd {
-    ($inst:expr, $machine:expr, $vl:expr, $size:expr, $mask:expr) => {
+    ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
         let i = VXtype($inst);
         let vd = i.vd();
         let addr = $machine.registers()[i.rs1()].to_u64();
-        for j in 0..$vl as usize {
-            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j) {
+        let stride = if $stride != 0 {
+            $machine.registers()[i.vs2()].to_u64()
+        } else {
+            $size
+        };
+        for j in 0..$vl {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j as usize) {
                 continue;
             }
-            let data = $machine.element_ref(vd, $size << 3, j).to_vec();
+            let data = $machine.element_ref(vd, $size << 3, j as usize).to_vec();
             $machine
                 .memory_mut()
-                .store_bytes(addr + $size * j as u64, &data)?;
+                .store_bytes(addr + stride * j, &data)?;
         }
     };
 }
@@ -2980,58 +2988,58 @@ pub fn execute_instruction<Mac: Machine>(
             )?;
         }
         insts::OP_VLM_V => {
-            ld!(inst, machine, (machine.vl() + 7) / 8, 1, 0);
+            ld!(inst, machine, (machine.vl() + 7) / 8, 0, 1, 0);
         }
         insts::OP_VLE8_V => {
-            ld!(inst, machine, machine.vl(), 1, 1);
+            ld!(inst, machine, machine.vl(), 0, 1, 1);
         }
         insts::OP_VLE16_V => {
-            ld!(inst, machine, machine.vl(), 2, 1);
+            ld!(inst, machine, machine.vl(), 0, 2, 1);
         }
         insts::OP_VLE32_V => {
-            ld!(inst, machine, machine.vl(), 4, 1);
+            ld!(inst, machine, machine.vl(), 0, 4, 1);
         }
         insts::OP_VLE64_V => {
-            ld!(inst, machine, machine.vl(), 8, 1);
+            ld!(inst, machine, machine.vl(), 0, 8, 1);
         }
         insts::OP_VLE128_V => {
-            ld!(inst, machine, machine.vl(), 16, 1);
+            ld!(inst, machine, machine.vl(), 0, 16, 1);
         }
         insts::OP_VLE256_V => {
-            ld!(inst, machine, machine.vl(), 32, 1);
+            ld!(inst, machine, machine.vl(), 0, 32, 1);
         }
         insts::OP_VLE512_V => {
-            ld!(inst, machine, machine.vl(), 64, 1);
+            ld!(inst, machine, machine.vl(), 0, 64, 1);
         }
         insts::OP_VLE1024_V => {
-            ld!(inst, machine, machine.vl(), 128, 1);
+            ld!(inst, machine, machine.vl(), 0, 128, 1);
         }
         insts::OP_VSM_V => {
-            sd!(inst, machine, (machine.vl() + 7) / 8, 1, 0);
+            sd!(inst, machine, (machine.vl() + 7) / 8, 0, 1, 0);
         }
         insts::OP_VSE8_V => {
-            sd!(inst, machine, machine.vl(), 1, 1);
+            sd!(inst, machine, machine.vl(), 0, 1, 1);
         }
         insts::OP_VSE16_V => {
-            sd!(inst, machine, machine.vl(), 2, 1);
+            sd!(inst, machine, machine.vl(), 0, 2, 1);
         }
         insts::OP_VSE32_V => {
-            sd!(inst, machine, machine.vl(), 4, 1);
+            sd!(inst, machine, machine.vl(), 0, 4, 1);
         }
         insts::OP_VSE64_V => {
-            sd!(inst, machine, machine.vl(), 8, 1);
+            sd!(inst, machine, machine.vl(), 0, 8, 1);
         }
         insts::OP_VSE128_V => {
-            sd!(inst, machine, machine.vl(), 16, 1);
+            sd!(inst, machine, machine.vl(), 0, 16, 1);
         }
         insts::OP_VSE256_V => {
-            sd!(inst, machine, machine.vl(), 32, 1);
+            sd!(inst, machine, machine.vl(), 0, 32, 1);
         }
         insts::OP_VSE512_V => {
-            sd!(inst, machine, machine.vl(), 64, 1);
+            sd!(inst, machine, machine.vl(), 0, 64, 1);
         }
         insts::OP_VSE1024_V => {
-            sd!(inst, machine, machine.vl(), 128, 1);
+            sd!(inst, machine, machine.vl(), 0, 128, 1);
         }
         insts::OP_VADD_VV => {
             v_vv_loop_s!(inst, machine, Element::wrapping_add);
@@ -3501,6 +3509,54 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMXNOR_MM => {
             m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
+        }
+        insts::OP_VLSE8_V => {
+            ld!(inst, machine, machine.vl(), 1, 1, 1);
+        }
+        insts::OP_VLSE16_V => {
+            ld!(inst, machine, machine.vl(), 1, 2, 1);
+        }
+        insts::OP_VLSE32_V => {
+            ld!(inst, machine, machine.vl(), 1, 4, 1);
+        }
+        insts::OP_VLSE64_V => {
+            ld!(inst, machine, machine.vl(), 1, 8, 1);
+        }
+        insts::OP_VLSE128_V => {
+            ld!(inst, machine, machine.vl(), 1, 16, 1);
+        }
+        insts::OP_VLSE256_V => {
+            ld!(inst, machine, machine.vl(), 1, 32, 1);
+        }
+        insts::OP_VLSE512_V => {
+            ld!(inst, machine, machine.vl(), 1, 64, 1);
+        }
+        insts::OP_VLSE1024_V => {
+            ld!(inst, machine, machine.vl(), 1, 128, 1);
+        }
+        insts::OP_VSSE8_V => {
+            sd!(inst, machine, machine.vl(), 1, 1, 1);
+        }
+        insts::OP_VSSE16_V => {
+            sd!(inst, machine, machine.vl(), 1, 2, 1);
+        }
+        insts::OP_VSSE32_V => {
+            sd!(inst, machine, machine.vl(), 1, 4, 1);
+        }
+        insts::OP_VSSE64_V => {
+            sd!(inst, machine, machine.vl(), 1, 8, 1);
+        }
+        insts::OP_VSSE128_V => {
+            sd!(inst, machine, machine.vl(), 1, 16, 1);
+        }
+        insts::OP_VSSE256_V => {
+            sd!(inst, machine, machine.vl(), 1, 32, 1);
+        }
+        insts::OP_VSSE512_V => {
+            sd!(inst, machine, machine.vl(), 1, 64, 1);
+        }
+        insts::OP_VSSE1024_V => {
+            sd!(inst, machine, machine.vl(), 1, 128, 1);
         }
         insts::OP_VFIRST_M => {
             let i = Rtype(inst);

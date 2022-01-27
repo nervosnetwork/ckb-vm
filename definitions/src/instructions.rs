@@ -337,12 +337,28 @@ pub const OP_VMOR_MM: InstructionOpcode = 0xa9f0;
 pub const OP_VMNOR_MM: InstructionOpcode = 0xaaf0;
 pub const OP_VMORNOT_MM: InstructionOpcode = 0xabf0;
 pub const OP_VMXNOR_MM: InstructionOpcode = 0xacf0;
+pub const OP_VLSE8_V: InstructionOpcode = 0xadf0;
+pub const OP_VLSE16_V: InstructionOpcode = 0xaef0;
+pub const OP_VLSE32_V: InstructionOpcode = 0xaff0;
+pub const OP_VLSE64_V: InstructionOpcode = 0xb0f0;
+pub const OP_VLSE128_V: InstructionOpcode = 0xb1f0;
+pub const OP_VLSE256_V: InstructionOpcode = 0xb2f0;
+pub const OP_VLSE512_V: InstructionOpcode = 0xb3f0;
+pub const OP_VLSE1024_V: InstructionOpcode = 0xb4f0;
+pub const OP_VSSE8_V: InstructionOpcode = 0xb5f0;
+pub const OP_VSSE16_V: InstructionOpcode = 0xb6f0;
+pub const OP_VSSE32_V: InstructionOpcode = 0xb7f0;
+pub const OP_VSSE64_V: InstructionOpcode = 0xb8f0;
+pub const OP_VSSE128_V: InstructionOpcode = 0xb9f0;
+pub const OP_VSSE256_V: InstructionOpcode = 0xbaf0;
+pub const OP_VSSE512_V: InstructionOpcode = 0xbbf0;
+pub const OP_VSSE1024_V: InstructionOpcode = 0xbcf0;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
 pub const LEVEL2_V_OPCODE: InstructionOpcode = 0xf0;
 pub const MINIMAL_LEVEL2_OPCODE: InstructionOpcode = 0x00;
-pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0xac;
+pub const MAXIMUM_LEVEL2_OPCODE: InstructionOpcode = 0xbc;
 
 pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize + 1] = [
     "UNLOADED",
@@ -644,6 +660,22 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL2: [&str;
     "VMNOR_MM",
     "VMORNOT_MM",
     "VMXNOR_MM",
+    "VLSE8_V",
+    "VLSE16_V",
+    "VLSE32_V",
+    "VLSE64_V",
+    "VLSE128_V",
+    "VLSE256_V",
+    "VLSE512_V",
+    "VLSE1024_V",
+    "VSSE8_V",
+    "VSSE16_V",
+    "VSSE32_V",
+    "VSSE64_V",
+    "VSSE128_V",
+    "VSSE256_V",
+    "VSSE512_V",
+    "VSSE1024_V",
 ];
 
 pub fn instruction_opcode_name(i: InstructionOpcode) -> &'static str {

@@ -172,6 +172,22 @@ insts = [
     "VMNOR_MM",
     "VMORNOT_MM",
     "VMXNOR_MM",
+    "VLSE8_V",
+    "VLSE16_V",
+    "VLSE32_V",
+    "VLSE64_V",
+    "VLSE128_V",
+    "VLSE256_V",
+    "VLSE512_V",
+    "VLSE1024_V",
+    "VSSE8_V",
+    "VSSE16_V",
+    "VSSE32_V",
+    "VSSE64_V",
+    "VSSE128_V",
+    "VSSE256_V",
+    "VSSE512_V",
+    "VSSE1024_V",
 ]
 
 for (i, e) in enumerate(insts):
