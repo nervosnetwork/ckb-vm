@@ -101,7 +101,12 @@ macro_rules! v_vv_loop {
                     let r = $body(b, a);
                     r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vv_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -208,7 +213,12 @@ macro_rules! v_vx_loop {
                     let r = $body(b, a);
                     r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vx_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -315,7 +325,12 @@ macro_rules! v_vi_loop {
                     let r = $body(b, a);
                     r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vi_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -414,7 +429,12 @@ macro_rules! m_vv_loop {
                         $machine.clr_bit(i.vd(), j);
                     };
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vv_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -545,7 +565,12 @@ macro_rules! m_vx_loop {
                         $machine.clr_bit(i.vd(), j);
                     };
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vx_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -676,7 +701,12 @@ macro_rules! m_vi_loop {
                         $machine.clr_bit(i.vd(), j);
                     };
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vi_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -774,7 +804,12 @@ macro_rules! w_vv_loop {
                     lo.save($machine.element_mut(i.vd(), sew, j * 2));
                     hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vv_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -889,7 +924,12 @@ macro_rules! w_vx_loop {
                     lo.save($machine.element_mut(i.vd(), sew, j * 2));
                     hi.save($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_vx_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -996,7 +1036,12 @@ macro_rules! w_wv_loop {
                     let r = $body(b, a);
                     r.save($machine.element_mut(i.vd(), sew * 2, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_wv_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1103,7 +1148,12 @@ macro_rules! w_wx_loop {
                     let r = $body(b, a);
                     r.save($machine.element_mut(i.vd(), sew * 2, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in w_wv_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1210,7 +1260,12 @@ macro_rules! v_wv_loop {
                     let r = $body(b, a);
                     r.save_lo($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_wv_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1311,7 +1366,12 @@ macro_rules! v_wx_loop {
                     let r = $body(b, a);
                     r.save_lo($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_wx_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1412,7 +1472,12 @@ macro_rules! v_wi_loop {
                     let r = $body(b, a);
                     r.save_lo($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_wi_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1479,7 +1544,12 @@ macro_rules! v_vvm_loop {
                     let r = $body(b, a, mbit);
                     r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vvm_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1578,7 +1648,12 @@ macro_rules! v_vxm_loop {
                     let r = $body(b, a, mbit);
                     r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vxm_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1677,7 +1752,12 @@ macro_rules! v_vim_loop {
                     let r = $body(b, a, mbit);
                     r.save($machine.element_mut(i.vd(), sew, j));
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vim_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1768,7 +1848,12 @@ macro_rules! m_vvm_loop {
                         $machine.clr_bit(i.vd(), j);
                     };
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vvm_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -1891,7 +1976,12 @@ macro_rules! m_vxm_loop {
                         $machine.clr_bit(i.vd(), j);
                     };
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in v_vxm_loop",
+                        sew
+                    )));
+                }
             }
         }
     };
@@ -2014,7 +2104,12 @@ macro_rules! m_vim_loop {
                         $machine.clr_bit(i.vd(), j);
                     };
                 }
-                _ => return Err(Error::Unexpected),
+                _ => {
+                    return Err(Error::InvalidSew(format!(
+                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in m_vim_loop",
+                        sew
+                    )));
+                }
             }
         }
     };

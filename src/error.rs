@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::io::{Error as IOError, ErrorKind};
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq, Display)]
+#[derive(Debug, PartialEq, Clone, Eq, Display)]
 pub enum Error {
     #[display(fmt = "parse error")]
     ParseError,
@@ -39,6 +39,8 @@ pub enum Error {
     Unimplemented,
     #[display(fmt = "vill")]
     Vill,
+    #[display(fmt = "invalid SEW: {}", "_0")]
+    InvalidSew(String),
 }
 
 impl StdError for Error {}
