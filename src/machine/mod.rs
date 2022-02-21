@@ -17,7 +17,8 @@ use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, VLEN,
+    Error, DEFAULT_STACK_SIZE, ELEN, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    VLEN,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -381,7 +382,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
                 || if self.vlmul < 0 {
                     self.vsew > VLEN as u64 / self.vlmul.abs() as u64
                 } else {
-                    self.vsew > VLEN as u64
+                    self.vsew > ELEN as u64
                 };
             if self.vill {
                 self.vlmax = 0;

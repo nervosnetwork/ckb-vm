@@ -126,9 +126,9 @@ impl CoreMachine for Box<AsmCoreMachine> {
             self.vill = self.vlmul == -16
                 || (new_type >> 8) != 0
                 || if self.vlmul < 0 {
-                    self.vsew as u64 > ELEN as u64 / self.vlmul.abs() as u64
+                    self.vsew > VLEN as u64 / self.vlmul.abs() as u64
                 } else {
-                    self.vsew as u64 > ELEN as u64
+                    self.vsew > ELEN as u64
                 };
             if self.vill {
                 self.vlmax = 0;
