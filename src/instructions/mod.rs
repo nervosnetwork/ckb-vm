@@ -11,6 +11,7 @@ pub mod rvc;
 pub mod tagged;
 pub mod v;
 pub mod v_alu;
+pub mod v_execute_macros;
 pub mod v_register;
 
 pub use self::register::Register;
