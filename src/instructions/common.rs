@@ -396,14 +396,5 @@ pub fn set_vl<Mac: Machine>(
 ) -> Result<(), Error> {
     machine.set_vl(rd, rs1, avl, new_type);
     update_register(machine, rd, Mac::REG::from_u64(machine.vl()));
-    // https://github.com/riscv/riscv-v-spec/blob/master/v-spec.adoc#344-vector-type-illegal-vill
-    //
-    // > If the vill bit is set, then any attempt to execute a vector instruction that
-    // > depends upon vtype will raise an illegal-instruction exception.
-    //
-    // Check vill right here can reduce repeated vill checks.
-    if machine.vill() {
-        return Err(Error::Vill);
-    }
     Ok(())
 }
