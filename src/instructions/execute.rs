@@ -1734,6 +1734,9 @@ pub fn execute_instruction<Mac: Machine>(
             w_vs_loop_u!(inst, machine, Eint::wrapping_add);
         }
         insts::OP_VMSBF_M => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let mut found_first_mask = false;
             for j in 0..VLEN {
@@ -1752,6 +1755,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VMSOF_M => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let mut found_first_mask = false;
             for j in 0..VLEN {
@@ -1767,6 +1773,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VMSIF_M => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let mut found_first_mask = false;
             for j in 0..VLEN {
@@ -1791,6 +1800,9 @@ pub fn execute_instruction<Mac: Machine>(
             return Err(Error::InvalidOp(op));
         }
         insts::OP_VID_V => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let sew = machine.vsew();
             for j in 0..VLEN {
@@ -1811,6 +1823,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VMV_X_S => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let sew = machine.vsew();
             let r = match sew {
@@ -1827,6 +1842,9 @@ pub fn execute_instruction<Mac: Machine>(
             update_register(machine, i.vd(), Mac::REG::from_u64(r));
         }
         insts::OP_VMV_S_X => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let sew = machine.vsew();
             match sew {
@@ -1871,6 +1889,9 @@ pub fn execute_instruction<Mac: Machine>(
             };
         }
         insts::OP_VCOMPRESS_VM => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let sew = machine.vsew();
             let mut k = 0;
@@ -1883,6 +1904,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VSLIDE1UP_VX => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VXtype(inst);
             let sew = machine.vsew();
             match sew {
@@ -1931,6 +1955,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VSLIDEUP_VX => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VXtype(inst);
             let sew = machine.vsew();
             let offset = machine.registers()[i.rs1()].to_u64();
@@ -1949,6 +1976,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VSLIDEUP_VI => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VItype(inst);
             let sew = machine.vsew();
             let offset = i.immediate_u() as u64;
@@ -1967,6 +1997,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VSLIDE1DOWN_VX => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VXtype(inst);
             let sew = machine.vsew();
             match sew {
@@ -2021,6 +2054,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VSLIDEDOWN_VX => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VXtype(inst);
             let sew = machine.vsew();
             let offset = machine.registers()[i.rs1()].to_u64();
@@ -2043,6 +2079,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VSLIDEDOWN_VI => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VItype(inst);
             let sew = machine.vsew();
             let offset = i.immediate_u() as u64;
@@ -2065,6 +2104,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VRGATHER_VV => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
@@ -2084,6 +2126,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VRGATHER_VX => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VXtype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
@@ -2101,6 +2146,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VRGATHER_VI => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VItype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
@@ -2118,6 +2166,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VRGATHEREI16_VV => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
@@ -2135,6 +2186,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VFIRST_M => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let m = if i.vm() == 0 {
                 E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
@@ -2150,6 +2204,9 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VCPOP_M => {
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
             let i = VVtype(inst);
             let m = if i.vm() == 0 {
                 E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
