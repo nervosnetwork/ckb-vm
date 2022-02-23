@@ -1796,8 +1796,31 @@ pub fn execute_instruction<Mac: Machine>(
             }
         }
         insts::OP_VIOTA_M => {
-            // TODO
-            return Err(Error::InvalidOp(op));
+            if machine.vill() {
+                return Err(Error::Vill);
+            }
+            let i = VVtype(inst);
+            let sew = machine.vsew();
+            let mut iota: u32 = 0;
+            for j in 0..machine.vl() as usize {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
+                    continue;
+                }
+                match sew {
+                    8 => E8::from(iota as u8).put(machine.element_mut(i.vd(), sew, j)),
+                    16 => E16::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    32 => E32::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    64 => E64::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    128 => E128::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    256 => E256::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    512 => E512::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    1024 => E1024::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    _ => return Err(Error::Unexpected("".into())),
+                }
+                if machine.get_bit(i.vs2(), j) {
+                    iota += 1;
+                }
+            }
         }
         insts::OP_VID_V => {
             if machine.vill() {
