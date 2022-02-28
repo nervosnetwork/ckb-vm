@@ -39,13 +39,24 @@ fn main() {
         let enable_aot = cfg!(feature = "aot");
 
         fn run_command(mut c: Command) {
-            let status = c.status().unwrap_or_else(|e| {
-                panic!("Error running command: {:?} error: {:?}", c, e);
+            println!("Running Command[{:?}]", c);
+
+            let output = c.output().unwrap_or_else(|e| {
+                panic!("Error running Command[{:?}], error: {:?}", c, e);
             });
-            if !status.success() {
+
+            if !output.status.success() {
+                use std::io::{self, Write};
+                io::stdout()
+                    .write_all(&output.stdout)
+                    .expect("stdout write");
+                io::stderr()
+                    .write_all(&output.stderr)
+                    .expect("stderr write");
+
                 panic!(
-                    "Command {:? }exits with non-success status: {:?}",
-                    c, status
+                    "Command[{:?}] exits with non-success status: {:?}",
+                    c, output.status
                 );
             }
         }
