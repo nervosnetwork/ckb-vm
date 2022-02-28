@@ -1,5 +1,5 @@
-use ckb_vm::registers::A7;
-use ckb_vm::{CoreMachine, Register, SupportMachine, Syscalls};
+use ckb_vm::registers::{A0, A7};
+use ckb_vm::{CoreMachine, Memory, Register, SupportMachine, Syscalls};
 
 pub struct CustomSyscall {}
 
@@ -13,6 +13,25 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
         if code.to_i32() != 2177 {
             return Ok(false);
         }
+
+        let mut addr = machine.registers()[A0].to_u64();
+        let mut buffer = Vec::new();
+
+        loop {
+            let byte = machine
+                .memory_mut()
+                .load8(&Mac::REG::from_u64(addr))?
+                .to_u8();
+            if byte == 0 {
+                break;
+            }
+            buffer.push(byte);
+            addr += 1;
+        }
+
+        let s = String::from_utf8(buffer).unwrap();
+        println!("{:?}", s);
+
         Ok(true)
     }
 }
