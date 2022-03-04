@@ -1769,6 +1769,8 @@ pub fn execute_instruction<Mac: Machine>(
                     found_first_mask = true;
                     machine.set_bit(i.vd(), j);
                     continue;
+                } else {
+                    machine.clr_bit(i.vd(), j);
                 }
             }
         }
