@@ -1648,12 +1648,10 @@ pub fn execute_instruction<Mac: Machine>(
             v_vi_loop_u!(inst, machine, alu::sra);
         }
         insts::OP_VSMUL_VV => {
-            // TODO
-            return Err(Error::InvalidOp(op));
+            v_vv_loop_s!(inst, machine, alu::smul);
         }
         insts::OP_VSMUL_VX => {
-            // TODO
-            return Err(Error::InvalidOp(op));
+            v_vx_loop_s!(inst, machine, alu::smul);
         }
         insts::OP_VWMACCU_VV => {
             w_vv_loop_destructive_s!(inst, machine, alu::wmaccu);

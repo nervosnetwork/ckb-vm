@@ -251,3 +251,14 @@ pub fn srl<T: Eint>(lhs: T, rhs: T) -> T {
 pub fn sra<T: Eint>(lhs: T, rhs: T) -> T {
     lhs.wrapping_sra(rhs.u32())
 }
+
+pub fn smul<T: Eint>(lhs: T, rhs: T) -> T {
+    if lhs == rhs && lhs == T::MIN_S {
+        return T::MAX_S;
+    } else {
+        let result = lhs.widening_mul_s(rhs);
+        let shamt = T::BITS - 1;
+        let lo = result.0.wrapping_shr(shamt) | result.1.wrapping_shl(1);
+        return lo
+    }
+}
