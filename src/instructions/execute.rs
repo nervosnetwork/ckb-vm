@@ -1828,21 +1828,23 @@ pub fn execute_instruction<Mac: Machine>(
             }
             let i = VVtype(inst);
             let sew = machine.vsew();
-            for j in 0..VLEN {
+            let mut index : u64 = 0;
+            for j in 0..machine.vl() as usize {
                 if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 match sew {
-                    8 => E8::from(j as u8).put(machine.element_mut(i.vd(), sew, j)),
-                    16 => E16::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    32 => E32::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    64 => E64::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    128 => E128::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    256 => E256::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    512 => E512::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    1024 => E1024::from(j as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    8 => E8::from(index as u8).put(machine.element_mut(i.vd(), sew, j)),
+                    16 => E16::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    32 => E32::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    64 => E64::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    128 => E128::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    256 => E256::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    512 => E512::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
+                    1024 => E1024::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
                     _ => return Err(Error::Unexpected("".into())),
                 }
+                index += 1;
             }
         }
         insts::OP_VMV_X_S => {
