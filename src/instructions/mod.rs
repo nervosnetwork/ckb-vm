@@ -8,17 +8,19 @@ pub mod b;
 pub mod i;
 pub mod m;
 pub mod rvc;
+pub mod tagged;
 
 pub use self::register::Register;
 use super::Error;
 pub use ckb_vm_definitions::instructions::{
     self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
 };
+use core::fmt;
 pub use execute::{execute, execute_instruction};
 
-type RegisterIndex = usize;
-type SImmediate = i32;
-type UImmediate = u32;
+pub type RegisterIndex = usize;
+pub type SImmediate = i32;
+pub type UImmediate = u32;
 
 #[inline(always)]
 pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
@@ -33,7 +35,7 @@ pub fn blank_instruction(op: InstructionOpcode) -> Instruction {
     (op as u64 >> 8 << 16) | (op as u64 & 0xff)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rtype(pub Instruction);
 
 impl Rtype {
@@ -69,7 +71,20 @@ impl Rtype {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+impl fmt::Display for Rtype {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {},{},{}",
+            instruction_opcode_name(self.op()),
+            self.rd(),
+            self.rs1(),
+            self.rs2()
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Itype(pub Instruction);
 
 impl Itype {
@@ -120,7 +135,26 @@ impl Itype {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+impl fmt::Display for Itype {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // TODO: there are 2 simplifications here:
+        // 1. It will print `addi a1,s0,-64` as `addi a1,-64(s0)`, and also print
+        // `ld ra,88(sp)` as `ld ra,88(sp)`
+        // 2. It will always use signed immediate numbers.
+        // It is debatable if we should do a per-instruction pattern match to show
+        // more patterns.
+        write!(
+            f,
+            "{} {},{}({})",
+            instruction_opcode_name(self.op()),
+            self.rd(),
+            self.immediate_s(),
+            self.rs1()
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Stype(pub Instruction);
 
 impl Stype {
@@ -171,7 +205,20 @@ impl Stype {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+impl fmt::Display for Stype {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {},{},{}",
+            instruction_opcode_name(self.op()),
+            self.rs1(),
+            self.rs2(),
+            self.immediate_s()
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Utype(pub Instruction);
 
 impl Utype {
@@ -205,7 +252,19 @@ impl Utype {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+impl fmt::Display for Utype {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {},{}",
+            instruction_opcode_name(self.op()),
+            self.rd(),
+            self.immediate_s()
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct R4type(pub Instruction);
 
 impl R4type {
@@ -244,6 +303,20 @@ impl R4type {
 
     pub fn rs3(self) -> RegisterIndex {
         (self.0 >> 48) as u8 as RegisterIndex
+    }
+}
+
+impl fmt::Display for R4type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {},{},{},{}",
+            instruction_opcode_name(self.op()),
+            self.rd(),
+            self.rs1(),
+            self.rs2(),
+            self.rs3()
+        )
     }
 }
 
