@@ -1828,7 +1828,7 @@ pub fn execute_instruction<Mac: Machine>(
             }
             let i = VVtype(inst);
             let sew = machine.vsew();
-            let mut index : u64 = 0;
+            let mut index: u64 = 0;
             for j in 0..machine.vl() as usize {
                 if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
@@ -1873,37 +1873,37 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VVtype(inst);
             let sew = machine.vsew();
             match sew {
-                8 => E8::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                8 => E8::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
                 )),
-                16 => E16::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                16 => E16::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
                 )),
-                32 => E32::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                32 => E32::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
                 )),
-                64 => E64::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                64 => E64::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
                 )),
-                128 => E128::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                128 => E128::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
                 )),
-                256 => E256::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                256 => E256::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
                 )),
-                512 => E512::from(machine.registers()[i.vs2()].to_u64()).put(machine.element_mut(
+                512 => E512::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
                     i.vd(),
                     sew,
                     0,
