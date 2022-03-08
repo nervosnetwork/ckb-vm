@@ -210,10 +210,12 @@ impl LabelGatheringMachine {
                         if start_of_basic_block {
                             self.labels.insert(pc);
                         }
-                        start_of_basic_block = is_basic_block_end_instruction(instruction);
+                        let is_slowpath = is_slowpath_instruction(instruction);
+                        start_of_basic_block =
+                            is_basic_block_end_instruction(instruction) | is_slowpath;
                         let next_pc = pc + u64::from(instruction_length(instruction));
                         self.update_pc(Value::from_u64(next_pc));
-                        if !is_slowpath_instruction(instruction) {
+                        if !is_slowpath {
                             execute(instruction, self)?;
                         }
                         for label in self.labels_to_test.drain(..) {
@@ -635,6 +637,7 @@ impl AotCompilingMachine {
                     count += 1;
                     current_pc += u64::from(instruction_length(instruction));
                     if is_basic_block_end_instruction(instruction)
+                        || is_slowpath_instruction(instruction)
                         || self.addresses_to_labels.contains_key(&current_pc)
                     {
                         break;

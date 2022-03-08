@@ -2,7 +2,7 @@ use ckb_vm_definitions::{
     asm::{
         AsmCoreMachine, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH,
+        RET_SLOWPATH_INSTRUCTION, TRACE_ITEM_LENGTH,
     },
     instructions::{Instruction, INSTRUCTION_OPCODE_NAMES_LEVEL1, MAXIMUM_LEVEL1_OPCODE},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
@@ -61,6 +61,10 @@ fn main() {
         RET_INVALID_PERMISSION
     );
     println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
+    println!(
+        "#define CKB_VM_ASM_RET_SLOWPATH_INSTRUCTION {}",
+        RET_SLOWPATH_INSTRUCTION
+    );
     println!();
 
     println!("#define CKB_VM_ASM_REGISTER_RA {}", RA);
@@ -98,6 +102,10 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_CYCLES {}",
         (&t.cycles as *const u64 as usize) - t_address
+    );
+    println!(
+        "#define CKB_VM_ASM_TRACE_OFFSET_SLOWPATH {}",
+        (&t.slowpath as *const u8 as usize) - t_address
     );
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS {}",
