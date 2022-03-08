@@ -1,5 +1,6 @@
 use std::mem::transmute;
 
+use crate::instructions::is_slowpath_instruction;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -7,7 +8,7 @@ use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_SLOWPATH_INSTRUCTION, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
     ELEN, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
@@ -21,7 +22,7 @@ use std::collections::HashMap;
 use crate::{
     decoder::{build_decoder, Decoder},
     instructions::{
-        blank_instruction, execute_instruction, extract_opcode, instruction_length,
+        blank_instruction, execute, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
     machine::VERSION0,
@@ -600,6 +601,7 @@ impl<'a> AsmMachine<'a> {
                     let mut i = 0;
                     while i < TRACE_ITEM_LENGTH {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
+                        trace.slowpath |= is_slowpath_instruction(instruction) as u8;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
                         trace.instructions[i] = instruction;
@@ -640,6 +642,17 @@ impl<'a> AsmMachine<'a> {
                 RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
                 RET_SLOWPATH => {
+                    let pc = *self.machine.pc();
+                    let slot = calculate_slot(pc);
+                    let instructions = self.machine.inner.traces[slot].instructions;
+                    for instruction in &instructions {
+                        if *instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                            break;
+                        }
+                        execute(*instruction, &mut self.machine)?;
+                    }
+                }
+                RET_SLOWPATH_INSTRUCTION => {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                     execute_instruction(instruction, &mut self.machine)?;

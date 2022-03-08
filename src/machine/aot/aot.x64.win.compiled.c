@@ -2570,7 +2570,7 @@ int aot_ebreak(AotContext* context)
 
 int aot_slowpath(AotContext* context)
 {
-  return aot_exit(context, CKB_VM_ASM_RET_SLOWPATH);
+  return aot_exit(context, CKB_VM_ASM_RET_SLOWPATH_INSTRUCTION);
 }
 
 int aot_mov_pc_internal(AotContext* context, AotValue value)

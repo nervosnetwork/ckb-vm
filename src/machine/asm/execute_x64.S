@@ -365,6 +365,9 @@ ckb_vm_x64_execute:
   cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
+  movq CKB_VM_ASM_TRACE_OFFSET_SLOWPATH(TRACE), %rax
+  cmp $0, %rax
+  jne .exit_slowpath
   addq %rdx, PC_ADDRESS
   lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC

@@ -401,7 +401,7 @@ pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
             | insts::OP_JAL
             | insts::OP_FAR_JUMP_ABS
             | insts::OP_FAR_JUMP_REL
-    ) | is_slowpath_instruction(i)
+    )
 }
 
 #[inline(always)]
