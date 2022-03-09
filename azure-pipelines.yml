@@ -220,6 +220,7 @@ jobs:
         parameters:
           rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
       - script: |
+          sudo apt update -y &&
           sudo apt install -y git \
                               build-essential \
                               autoconf \
