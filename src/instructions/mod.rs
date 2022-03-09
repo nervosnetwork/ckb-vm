@@ -12,8 +12,9 @@ pub mod tagged;
 
 pub use self::register::Register;
 use super::Error;
-pub use ckb_vm_definitions::instructions::{
-    self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
+pub use ckb_vm_definitions::{
+    instructions::{self as insts, instruction_opcode_name, Instruction, InstructionOpcode},
+    registers::REGISTER_ABI_NAMES,
 };
 use core::fmt;
 pub use execute::{execute, execute_instruction};
@@ -77,9 +78,9 @@ impl fmt::Display for Rtype {
             f,
             "{} {},{},{}",
             instruction_opcode_name(self.op()),
-            self.rd(),
-            self.rs1(),
-            self.rs2()
+            REGISTER_ABI_NAMES[self.rd()],
+            REGISTER_ABI_NAMES[self.rs1()],
+            REGISTER_ABI_NAMES[self.rs2()]
         )
     }
 }
@@ -147,9 +148,9 @@ impl fmt::Display for Itype {
             f,
             "{} {},{}({})",
             instruction_opcode_name(self.op()),
-            self.rd(),
+            REGISTER_ABI_NAMES[self.rd()],
             self.immediate_s(),
-            self.rs1()
+            REGISTER_ABI_NAMES[self.rs1()]
         )
     }
 }
@@ -211,8 +212,8 @@ impl fmt::Display for Stype {
             f,
             "{} {},{},{}",
             instruction_opcode_name(self.op()),
-            self.rs1(),
-            self.rs2(),
+            REGISTER_ABI_NAMES[self.rs1()],
+            REGISTER_ABI_NAMES[self.rs2()],
             self.immediate_s()
         )
     }
@@ -258,7 +259,7 @@ impl fmt::Display for Utype {
             f,
             "{} {},{}",
             instruction_opcode_name(self.op()),
-            self.rd(),
+            REGISTER_ABI_NAMES[self.rd()],
             self.immediate_s()
         )
     }
@@ -312,10 +313,10 @@ impl fmt::Display for R4type {
             f,
             "{} {},{},{},{}",
             instruction_opcode_name(self.op()),
-            self.rd(),
-            self.rs1(),
-            self.rs2(),
-            self.rs3()
+            REGISTER_ABI_NAMES[self.rd()],
+            REGISTER_ABI_NAMES[self.rs1()],
+            REGISTER_ABI_NAMES[self.rs2()],
+            REGISTER_ABI_NAMES[self.rs3()]
         )
     }
 }
