@@ -256,7 +256,7 @@ ckb_vm_x64_execute:
   cmp TEMP4, TEMP3
   bne .exit_trace
   ldrb TEMP3w, [TRACE, CKB_VM_ASM_TRACE_OFFSET_LENGTH]
-  cmp TEMP4, 0
+  cmp TEMP3w, 0
   beq .exit_trace
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES]
   ldr TEMP1, [TRACE, CKB_VM_ASM_TRACE_OFFSET_CYCLES]
@@ -516,7 +516,7 @@ ckb_vm_x64_execute:
   add TEMP1, TEMP1, 1
   cmp TEMP1, CKB_VM_ASM_RISCV_MAX_MEMORY
   bhs .exit_out_of_bound
-  CHECK_READ(RS1, 1)  
+  CHECK_READ(RS1, 1)
   add RS1, RS1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY
   ldrb RS1w, [MACHINE, RS1]
   WRITE_RD(RS1)
