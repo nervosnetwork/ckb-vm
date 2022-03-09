@@ -77,7 +77,7 @@ impl fmt::Display for Rtype {
         write!(
             f,
             "{} {},{},{}",
-            instruction_opcode_name(self.op()),
+            instruction_opcode_name(self.op()).to_lowercase(),
             REGISTER_ABI_NAMES[self.rd()],
             REGISTER_ABI_NAMES[self.rs1()],
             REGISTER_ABI_NAMES[self.rs2()]
@@ -147,7 +147,7 @@ impl fmt::Display for Itype {
         write!(
             f,
             "{} {},{}({})",
-            instruction_opcode_name(self.op()),
+            instruction_opcode_name(self.op()).to_lowercase(),
             REGISTER_ABI_NAMES[self.rd()],
             self.immediate_s(),
             REGISTER_ABI_NAMES[self.rs1()]
@@ -211,7 +211,7 @@ impl fmt::Display for Stype {
         write!(
             f,
             "{} {},{},{}",
-            instruction_opcode_name(self.op()),
+            instruction_opcode_name(self.op()).to_lowercase(),
             REGISTER_ABI_NAMES[self.rs1()],
             REGISTER_ABI_NAMES[self.rs2()],
             self.immediate_s()
@@ -258,7 +258,7 @@ impl fmt::Display for Utype {
         write!(
             f,
             "{} {},{}",
-            instruction_opcode_name(self.op()),
+            instruction_opcode_name(self.op()).to_lowercase(),
             REGISTER_ABI_NAMES[self.rd()],
             self.immediate_s()
         )
@@ -312,7 +312,7 @@ impl fmt::Display for R4type {
         write!(
             f,
             "{} {},{},{},{}",
-            instruction_opcode_name(self.op()),
+            instruction_opcode_name(self.op()).to_lowercase(),
             REGISTER_ABI_NAMES[self.rd()],
             REGISTER_ABI_NAMES[self.rs1()],
             REGISTER_ABI_NAMES[self.rs2()],
