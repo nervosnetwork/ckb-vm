@@ -1970,7 +1970,7 @@ pub fn execute_instruction<Mac: Machine>(
                 _ => return Err(Error::Unexpected("".into())),
             }
             for j in 1..machine.vl() {
-                if i.vm() == 1 && machine.get_bit(0, j as usize) {
+                if i.vm() == 1 && !machine.get_bit(0, j as usize) {
                     continue;
                 }
                 let data = machine.element_ref(i.vs2(), sew, (j - 1) as usize).to_vec();
@@ -1988,7 +1988,7 @@ pub fn execute_instruction<Mac: Machine>(
             let offset = machine.registers()[i.rs1()].to_u64();
             if offset < machine.vl() {
                 for j in offset..machine.vl() {
-                    if i.vm() == 1 && machine.get_bit(0, j as usize) {
+                    if i.vm() == 1 && !machine.get_bit(0, j as usize) {
                         continue;
                     }
                     let data = machine
@@ -2009,7 +2009,7 @@ pub fn execute_instruction<Mac: Machine>(
             let offset = i.immediate_u() as u64;
             if offset < machine.vl() {
                 for j in offset..machine.vl() {
-                    if i.vm() == 1 && machine.get_bit(0, j as usize) {
+                    if i.vm() == 1 && !machine.get_bit(0, j as usize) {
                         continue;
                     }
                     let data = machine
@@ -2063,7 +2063,7 @@ pub fn execute_instruction<Mac: Machine>(
                 _ => return Err(Error::Unexpected("".into())),
             }
             for j in 0..machine.vl() {
-                if i.vm() == 1 && machine.get_bit(0, j as usize) {
+                if i.vm() == 1 && !machine.get_bit(0, j as usize) {
                     continue;
                 }
                 if (j + 1) < machine.vlmax() {
@@ -2082,7 +2082,7 @@ pub fn execute_instruction<Mac: Machine>(
             let sew = machine.vsew();
             let offset = machine.registers()[i.rs1()].to_u64();
             for j in 0..machine.vl() {
-                if i.vm() == 1 && machine.get_bit(0, j as usize) {
+                if i.vm() == 1 && !machine.get_bit(0, j as usize) {
                     continue;
                 }
                 if (j + offset) < machine.vlmax() {
@@ -2107,7 +2107,7 @@ pub fn execute_instruction<Mac: Machine>(
             let sew = machine.vsew();
             let offset = i.immediate_u() as u64;
             for j in 0..machine.vl() {
-                if i.vm() == 1 && machine.get_bit(0, j as usize) {
+                if i.vm() == 1 && !machine.get_bit(0, j as usize) {
                     continue;
                 }
                 if (j + offset) < machine.vlmax() {
@@ -2131,7 +2131,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VVtype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let mut data = machine.element_ref(i.vs1(), sew, j).to_vec();
@@ -2153,7 +2153,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VXtype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = machine.registers()[i.rs1()].to_u64();
@@ -2173,7 +2173,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VItype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = i.immediate_u() as u64;
@@ -2193,7 +2193,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VVtype(inst);
             let sew = machine.vsew();
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = E16::get(&machine.element_ref(i.vs1(), 16, j).to_vec()).u64();
