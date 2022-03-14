@@ -592,6 +592,8 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10111100000000000000000001010111 => Some(insts::OP_VNCLIP_WV),
                     x if x & 0b11111100000000000111000001111111 == 0b11000000000000000000000001010111 => Some(insts::OP_VWREDSUMU_VS),
                     x if x & 0b11111100000000000111000001111111 == 0b11000100000000000000000001010111 => Some(insts::OP_VWREDSUM_VS),
+                    x if x & 0b11111100000000000111000001111111 == 0b00110000000000000000000001010111 => Some(insts::OP_VRGATHER_VV),
+                    x if x & 0b11111100000000000111000001111111 == 0b00111000000000000000000001010111 => Some(insts::OP_VRGATHEREI16_VV),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -718,6 +720,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10111100000000000011000001010111 => Some(insts::OP_VNCLIP_WI),
                     x if x & 0b11111100000000000111000001111111 == 0b00111000000000000011000001010111 => Some(insts::OP_VSLIDEUP_VI),
                     x if x & 0b11111100000000000111000001111111 == 0b00111100000000000011000001010111 => Some(insts::OP_VSLIDEDOWN_VI),
+                    x if x & 0b11111100000000000111000001111111 == 0b00110000000000000011000001010111 => Some(insts::OP_VRGATHER_VI),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
@@ -776,6 +779,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                     x if x & 0b11111100000000000111000001111111 == 0b10111100000000000100000001010111 => Some(insts::OP_VNCLIP_WX),
                     x if x & 0b11111100000000000111000001111111 == 0b00111100000000000100000001010111 => Some(insts::OP_VSLIDEDOWN_VX),
                     x if x & 0b11111100000000000111000001111111 == 0b00111000000000000100000001010111 => Some(insts::OP_VSLIDEUP_VX),
+                    x if x & 0b11111100000000000111000001111111 == 0b00110000000000000100000001010111 => Some(insts::OP_VRGATHER_VX),
                     _ => None,
                 };
                 inst_opt.map(|inst| {
