@@ -89,7 +89,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
 
     fn get_bit(&self, reg: usize, n: usize) -> bool {
         let n = reg * VLEN + n;
-        (self.register_file[n / 8] << (7 - n % 8) >> (7 - n % 8)) != 0
+        (self.register_file[n / 8] << (7 - n % 8) >> 7) != 0
     }
 
     fn set_bit(&mut self, reg: usize, n: usize) {
