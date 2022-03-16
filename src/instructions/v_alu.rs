@@ -195,35 +195,32 @@ pub fn nmsub<T: Eint>(lhs: T, rhs: T, r: T) -> T {
 }
 
 /// Widening unsigned-integer multiply-add, overwrite addend
-pub fn wmaccu<T: Eint>(lhs: T, rhs: T, r: T) -> (T, T) {
+pub fn wmaccu<T: Eint>(lhs: T, rhs: T, r_lo: T, r_hi: T) -> (T, T) {
     let (lo, hi) = lhs.widening_mul_u(rhs);
-    let (lo, carry) = lo.overflowing_add_u(r);
-    let hi = hi.wrapping_add(T::from(carry));
+    let (lo, carry) = lo.overflowing_add_u(r_lo);
+    let hi = hi.wrapping_add(T::from(carry)).wrapping_add(r_hi);
     (lo, hi)
 }
 
 /// Widening signed-integer multiply-add, overwrite addend
-pub fn wmacc<T: Eint>(lhs: T, rhs: T, r: T) -> (T, T) {
+pub fn wmacc<T: Eint>(lhs: T, rhs: T, r_lo: T, r_hi: T) -> (T, T) {
     let (lo, hi) = lhs.widening_mul_s(rhs);
-    let (lo, carry) = lo.overflowing_add_u(r);
-    let hi = hi.wrapping_add(T::from(carry));
+    let (lo, carry) = lo.overflowing_add_u(r_lo);
+    let hi = hi.wrapping_add(T::from(carry)).wrapping_add(r_hi);
     (lo, hi)
 }
 
 /// Widening signed-unsigned-integer multiply-add, overwrite addend
-pub fn wmaccsu<T: Eint>(lhs: T, rhs: T, r: T) -> (T, T) {
-    let (lo, hi) = lhs.widening_mul_su(rhs);
-    let (lo, carry) = lo.overflowing_add_u(r);
-    let hi = hi.wrapping_add(T::from(carry));
+pub fn wmaccsu<T: Eint>(lhs: T, rhs: T, r_lo: T, r_hi: T) -> (T, T) {
+    let (lo, hi) = rhs.widening_mul_su(lhs);
+    let (lo, carry) = lo.overflowing_add_u(r_lo);
+    let hi = hi.wrapping_add(T::from(carry)).wrapping_add(r_hi);
     (lo, hi)
 }
 
 /// Widening unsigned-signed-integer multiply-add, overwrite addend
-pub fn wmaccus<T: Eint>(lhs: T, rhs: T, r: T) -> (T, T) {
-    let (lo, hi) = rhs.widening_mul_su(lhs);
-    let (lo, carry) = lo.overflowing_add_u(r);
-    let hi = hi.wrapping_add(T::from(carry));
-    (lo, hi)
+pub fn wmaccus<T: Eint>(lhs: T, rhs: T, r_lo: T, r_hi: T) -> (T, T) {
+    wmaccsu(rhs, lhs, r_lo, r_hi)
 }
 
 /// The vector integer merge instructions combine two source operands based on a mask
