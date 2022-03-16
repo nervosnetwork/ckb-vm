@@ -17,7 +17,6 @@ pub const RET_CYCLES_OVERFLOW: u8 = 6;
 pub const RET_OUT_OF_BOUND: u8 = 7;
 pub const RET_INVALID_PERMISSION: u8 = 8;
 pub const RET_SLOWPATH: u8 = 9;
-pub const RET_SLOWPATH_INSTRUCTION: u8 = 10;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
@@ -30,7 +29,6 @@ pub struct Trace {
     pub address: u64,
     pub length: u8,
     pub cycles: u64,
-    pub slowpath: u8,
     pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code

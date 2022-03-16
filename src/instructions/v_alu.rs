@@ -259,6 +259,6 @@ pub fn smul<T: Eint>(lhs: T, rhs: T) -> T {
         let result = lhs.widening_mul_s(rhs);
         let shamt = T::BITS - 1;
         let lo = result.0.wrapping_shr(shamt) | result.1.wrapping_shl(1);
-        return lo;
+        return lo
     }
 }
