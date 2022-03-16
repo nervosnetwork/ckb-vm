@@ -1672,7 +1672,7 @@ pub fn execute_instruction<Mac: Machine>(
             w_vx_loop_destructive_s!(inst, machine, alu::wmaccsu);
         }
         insts::OP_VWMACCUS_VX => {
-            w_vv_loop_destructive_s!(inst, machine, alu::wmaccus);
+            w_vx_loop_destructive_s!(inst, machine, alu::wmaccus);
         }
         insts::OP_VMERGE_VVM => {
             v_vvm_loop_s!(inst, machine, alu::merge);

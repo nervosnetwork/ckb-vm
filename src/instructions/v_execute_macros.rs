@@ -2582,66 +2582,74 @@ macro_rules! w_vv_loop_destructive {
                 8 => {
                     let b = E8::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E8::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E8::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E8::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E8::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 16 => {
                     let b = E16::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E16::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E16::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E16::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E16::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 32 => {
                     let b = E32::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E32::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E32::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E32::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E32::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 64 => {
                     let b = E64::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E64::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E64::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E64::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E64::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 128 => {
                     let b = E128::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E128::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E128::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E128::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E128::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 256 => {
                     let b = E256::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E256::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E256::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E256::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E256::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 512 => {
                     let b = E512::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E512::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E512::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E512::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E512::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 1024 => {
                     let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
                     let a = E1024::get($machine.element_ref(i.vs1(), sew, j));
-                    let c = E1024::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E1024::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E1024::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 _ => {
                     return Err(Error::InvalidSew(format!(
@@ -2679,10 +2687,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E8::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E8::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E8::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E8::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 16 => {
                     let b = E16::get($machine.element_ref(i.vs2(), sew, j));
@@ -2691,10 +2700,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E16::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E16::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E16::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E16::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 32 => {
                     let b = E32::get($machine.element_ref(i.vs2(), sew, j));
@@ -2703,10 +2713,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E32::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E32::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E32::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E32::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 64 => {
                     let b = E64::get($machine.element_ref(i.vs2(), sew, j));
@@ -2715,10 +2726,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E64::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E64::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E64::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E64::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 128 => {
                     let b = E128::get($machine.element_ref(i.vs2(), sew, j));
@@ -2727,10 +2739,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E128::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E128::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E128::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E128::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 256 => {
                     let b = E256::get($machine.element_ref(i.vs2(), sew, j));
@@ -2739,10 +2752,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E256::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E256::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E256::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E256::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 512 => {
                     let b = E512::get($machine.element_ref(i.vs2(), sew, j));
@@ -2751,10 +2765,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E512::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E512::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E512::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E512::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 1024 => {
                     let b = E1024::get($machine.element_ref(i.vs2(), sew, j));
@@ -2763,10 +2778,11 @@ macro_rules! w_vx_loop_destructive {
                     } else {
                         E1024::from($machine.registers()[i.rs1()].to_u64())
                     };
-                    let c = E1024::get($machine.element_ref(i.vd(), sew, j));
-                    let (lo, hi) = $body(b, a, c);
-                    lo.put($machine.element_mut(i.vd(), sew, j * 2));
-                    hi.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
+                    let c = E1024::get($machine.element_ref(i.vd(), sew, j * 2));
+                    let d = E1024::get($machine.element_ref(i.vd(), sew, j * 2 + 1));
+                    let r = $body(b, a, c, d);
+                    r.0.put($machine.element_mut(i.vd(), sew, j * 2));
+                    r.1.put($machine.element_mut(i.vd(), sew, j * 2 + 1));
                 }
                 _ => {
                     return Err(Error::InvalidSew(format!(
