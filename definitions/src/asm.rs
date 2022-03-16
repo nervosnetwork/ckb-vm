@@ -1,6 +1,6 @@
 use crate::{
     instructions::Instruction, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGES,
+    RISCV_PAGES, VLEN,
 };
 use std::alloc::{alloc, Layout};
 
@@ -53,7 +53,7 @@ pub struct AsmCoreMachine {
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
 
-    pub register_file: [u8; 8192],
+    pub register_file: [u8; 4 * VLEN],
     pub vlmax: u64,
     pub vl: u64,
     pub vtype: u64,
@@ -96,6 +96,7 @@ impl AsmCoreMachine {
             machine.traces[i] = Trace::default();
         }
         machine.frames = [0; MEMORY_FRAMES];
+        machine.register_file = [0; 4 * VLEN];
         machine
     }
 }
