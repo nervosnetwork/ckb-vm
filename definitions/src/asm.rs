@@ -54,15 +54,21 @@ pub struct AsmCoreMachine {
     pub traces: [Trace; TRACE_SIZE],
 
     pub register_file: [u8; 4 * VLEN],
-    pub vlmax: u64,
-    pub vl: u64,
+    pub vstart: u64,
+    pub vxsat: bool,
+    pub vxrm: u8,
+    pub vcsr: u64,
     pub vtype: u64,
+    pub vl: u64,
+    pub vlenb: u64,
+
     pub vill: bool,
     pub vma: bool,
     pub vta: bool,
     pub vlmul: i32,
     pub vsew: u64,
-    pub vstart: u64,
+
+    pub vlmax: u64,
 }
 
 impl AsmCoreMachine {
