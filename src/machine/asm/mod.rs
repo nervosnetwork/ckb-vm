@@ -174,6 +174,10 @@ impl CoreMachine for Box<AsmCoreMachine> {
     fn vill(&self) -> bool {
         self.vill
     }
+
+    fn vlenb(&self) -> u64 {
+        self.vlenb
+    }
 }
 
 // This function is exported for asm and aot machine.
