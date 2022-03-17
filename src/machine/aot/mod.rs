@@ -384,6 +384,10 @@ impl CoreMachine for LabelGatheringMachine {
     fn vill(&self) -> bool {
         unreachable!()
     }
+
+    fn vlenb(&self) -> u64 {
+        unreachable!()
+    }
 }
 
 impl Machine for LabelGatheringMachine {
@@ -775,6 +779,10 @@ impl CoreMachine for AotCompilingMachine {
     }
 
     fn vill(&self) -> bool {
+        unreachable!()
+    }
+
+    fn vlenb(&self) -> u64 {
         unreachable!()
     }
 }

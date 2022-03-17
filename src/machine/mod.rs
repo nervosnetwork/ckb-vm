@@ -60,6 +60,7 @@ pub trait CoreMachine {
     fn vta(&self) -> bool;
     fn vma(&self) -> bool;
     fn vill(&self) -> bool;
+    fn vlenb(&self) -> u64;
 
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
@@ -303,7 +304,6 @@ pub struct DefaultCoreMachine<R, M> {
     vcsr: u64,
     vtype: u64,
     vl: u64,
-    #[allow(dead_code)]
     vlenb: u64,
 
     vill: bool,
@@ -439,6 +439,10 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.vill
     }
 
+    fn vlenb(&self) -> u64 {
+        self.vlenb
+    }
+
     fn isa(&self) -> u8 {
         self.isa
     }
@@ -491,6 +495,7 @@ impl<R: Register, M: Memory<REG = R> + Default> DefaultCoreMachine<R, M> {
             isa,
             version,
             max_cycles,
+            vlenb: VLEN as u64 >> 3,
             ..Default::default()
         };
         // Default to illegal configuration
@@ -605,6 +610,10 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn vill(&self) -> bool {
         self.inner.vill()
+    }
+
+    fn vlenb(&self) -> u64 {
+        self.inner.vlenb()
     }
 
     fn isa(&self) -> u8 {

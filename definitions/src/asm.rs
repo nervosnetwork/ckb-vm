@@ -103,6 +103,7 @@ impl AsmCoreMachine {
         }
         machine.frames = [0; MEMORY_FRAMES];
         machine.register_file = [0; 4 * VLEN];
+        machine.vlenb = VLEN as u64 >> 3;
         machine
     }
 }

@@ -122,6 +122,10 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.vill()
     }
 
+    fn vlenb(&self) -> u64 {
+        self.machine.vlenb()
+    }
+
     fn isa(&self) -> u8 {
         self.machine.isa()
     }
