@@ -294,15 +294,25 @@ pub struct DefaultCoreMachine<R, M> {
     version: u32,
 
     register_file: RegisterFile,
-    vlmax: u64,
-    vl: u64,
+    vstart: u64,
+    #[allow(dead_code)]
+    vxsat: bool,
+    #[allow(dead_code)]
+    vxrm: u8,
+    #[allow(dead_code)]
+    vcsr: u64,
     vtype: u64,
+    vl: u64,
+    #[allow(dead_code)]
+    vlenb: u64,
+
     vill: bool,
     vma: bool,
     vta: bool,
     vlmul: i32,
     vsew: u64,
-    vstart: u64,
+
+    vlmax: u64,
 }
 
 impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
