@@ -983,6 +983,54 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VSE1024_V => {
             sd!(inst, machine, machine.vl(), 0, 128, 1);
         }
+        insts::OP_VLSE8_V => {
+            ld!(inst, machine, machine.vl(), 1, 1, 1);
+        }
+        insts::OP_VLSE16_V => {
+            ld!(inst, machine, machine.vl(), 1, 2, 1);
+        }
+        insts::OP_VLSE32_V => {
+            ld!(inst, machine, machine.vl(), 1, 4, 1);
+        }
+        insts::OP_VLSE64_V => {
+            ld!(inst, machine, machine.vl(), 1, 8, 1);
+        }
+        insts::OP_VLSE128_V => {
+            ld!(inst, machine, machine.vl(), 1, 16, 1);
+        }
+        insts::OP_VLSE256_V => {
+            ld!(inst, machine, machine.vl(), 1, 32, 1);
+        }
+        insts::OP_VLSE512_V => {
+            ld!(inst, machine, machine.vl(), 1, 64, 1);
+        }
+        insts::OP_VLSE1024_V => {
+            ld!(inst, machine, machine.vl(), 1, 128, 1);
+        }
+        insts::OP_VSSE8_V => {
+            sd!(inst, machine, machine.vl(), 1, 1, 1);
+        }
+        insts::OP_VSSE16_V => {
+            sd!(inst, machine, machine.vl(), 1, 2, 1);
+        }
+        insts::OP_VSSE32_V => {
+            sd!(inst, machine, machine.vl(), 1, 4, 1);
+        }
+        insts::OP_VSSE64_V => {
+            sd!(inst, machine, machine.vl(), 1, 8, 1);
+        }
+        insts::OP_VSSE128_V => {
+            sd!(inst, machine, machine.vl(), 1, 16, 1);
+        }
+        insts::OP_VSSE256_V => {
+            sd!(inst, machine, machine.vl(), 1, 32, 1);
+        }
+        insts::OP_VSSE512_V => {
+            sd!(inst, machine, machine.vl(), 1, 64, 1);
+        }
+        insts::OP_VSSE1024_V => {
+            sd!(inst, machine, machine.vl(), 1, 128, 1);
+        }
         insts::OP_VADD_VV => {
             v_vv_loop_s!(inst, machine, Eint::wrapping_add);
         }
@@ -1451,54 +1499,6 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMXNOR_MM => {
             m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
-        }
-        insts::OP_VLSE8_V => {
-            ld!(inst, machine, machine.vl(), 1, 1, 1);
-        }
-        insts::OP_VLSE16_V => {
-            ld!(inst, machine, machine.vl(), 1, 2, 1);
-        }
-        insts::OP_VLSE32_V => {
-            ld!(inst, machine, machine.vl(), 1, 4, 1);
-        }
-        insts::OP_VLSE64_V => {
-            ld!(inst, machine, machine.vl(), 1, 8, 1);
-        }
-        insts::OP_VLSE128_V => {
-            ld!(inst, machine, machine.vl(), 1, 16, 1);
-        }
-        insts::OP_VLSE256_V => {
-            ld!(inst, machine, machine.vl(), 1, 32, 1);
-        }
-        insts::OP_VLSE512_V => {
-            ld!(inst, machine, machine.vl(), 1, 64, 1);
-        }
-        insts::OP_VLSE1024_V => {
-            ld!(inst, machine, machine.vl(), 1, 128, 1);
-        }
-        insts::OP_VSSE8_V => {
-            sd!(inst, machine, machine.vl(), 1, 1, 1);
-        }
-        insts::OP_VSSE16_V => {
-            sd!(inst, machine, machine.vl(), 1, 2, 1);
-        }
-        insts::OP_VSSE32_V => {
-            sd!(inst, machine, machine.vl(), 1, 4, 1);
-        }
-        insts::OP_VSSE64_V => {
-            sd!(inst, machine, machine.vl(), 1, 8, 1);
-        }
-        insts::OP_VSSE128_V => {
-            sd!(inst, machine, machine.vl(), 1, 16, 1);
-        }
-        insts::OP_VSSE256_V => {
-            sd!(inst, machine, machine.vl(), 1, 32, 1);
-        }
-        insts::OP_VSSE512_V => {
-            sd!(inst, machine, machine.vl(), 1, 64, 1);
-        }
-        insts::OP_VSSE1024_V => {
-            sd!(inst, machine, machine.vl(), 1, 128, 1);
         }
         insts::OP_VLUXEI8_V => {
             ld_index!(inst, machine, 8);
