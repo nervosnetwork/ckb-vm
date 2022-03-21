@@ -17,7 +17,9 @@ macro_rules! ld {
             if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j as usize) {
                 continue;
             }
-            let data = $machine.memory_mut().load_bytes(addr + stride * j, $size)?;
+            let data = $machine
+                .memory_mut()
+                .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), $size)?;
             $machine
                 .element_mut(vd, $size << 3, j as usize)
                 .copy_from_slice(&data);
@@ -140,7 +142,7 @@ macro_rules! sd {
             let data = $machine.element_ref(vd, $size << 3, j as usize).to_vec();
             $machine
                 .memory_mut()
-                .store_bytes(addr + stride * j, &data)?;
+                .store_bytes(stride.wrapping_mul(j).wrapping_add(addr), &data)?;
         }
     };
 }
