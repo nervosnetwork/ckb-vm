@@ -187,6 +187,8 @@ fn main() {
     for _ in MAXIMUM_LEVEL1_OPCODE + 1..0xF0 {
         println!("\t.long\t.CKB_VM_ASM_LABEL_OP_UNLOADED - .CKB_VM_ASM_LABEL_TABLE");
     }
-    println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
+    for _ in 0..16 {
+        println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
+    }
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
 }
