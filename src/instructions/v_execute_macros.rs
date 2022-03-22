@@ -42,67 +42,126 @@ macro_rules! ld_index {
             }
             match sew {
                 8 => {
-                    let offset = E8::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 16 => {
-                    let offset = E16::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 32 => {
-                    let offset = E32::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 64 => {
-                    let offset = E64::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 128 => {
-                    let offset = E128::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 256 => {
-                    let offset = E256::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 512 => {
-                    let offset = E512::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
                 1024 => {
-                    let offset = E1024::get($machine.element_ref(i.vs2(), $size, j)).u64();
-                    let data = $machine.memory_mut().load_bytes(addr + offset, sew >> 3)?;
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
+                    let data = $machine
+                        .memory_mut()
+                        .load_bytes(addr.wrapping_add(offset), sew >> 3)?;
                     $machine
                         .element_mut(vd, sew, j as usize)
                         .copy_from_slice(&data);
                 }
-                _ => {
-                    return Err(Error::InvalidSew(format!(
-                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in ld_index",
-                        sew
-                    )));
-                }
+                _ => unreachable!(),
             }
         }
     };
