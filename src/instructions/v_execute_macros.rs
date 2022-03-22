@@ -221,51 +221,110 @@ macro_rules! sd_index {
             }
             match sew {
                 8 => {
-                    let offset = E8::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 16 => {
-                    let offset = E16::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 32 => {
-                    let offset = E32::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 64 => {
-                    let offset = E64::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 128 => {
-                    let offset = E128::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 256 => {
-                    let offset = E256::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 512 => {
-                    let offset = E512::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
                 1024 => {
-                    let offset = E1024::get($machine.element_ref(i.vs2(), $size, j)).u64();
+                    let offset = match $size {
+                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        _ => unreachable!(),
+                    };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
-                    $machine.memory_mut().store_bytes(addr + offset, &data)?;
+                    $machine
+                        .memory_mut()
+                        .store_bytes(addr.wrapping_add(offset), &data)?;
                 }
-                _ => {
-                    return Err(Error::InvalidSew(format!(
-                        "The SEW can only be 8, 16, ..., 512, 1024. It's found as {} in sd_index",
-                        sew
-                    )));
-                }
+                _ => unreachable!(),
             }
         }
     };
