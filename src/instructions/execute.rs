@@ -1031,6 +1031,54 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VSSE1024_V => {
             sd!(inst, machine, machine.vl(), 1, 128, 1);
         }
+        insts::OP_VLUXEI8_V => {
+            ld_index!(inst, machine, 8);
+        }
+        insts::OP_VLUXEI16_V => {
+            ld_index!(inst, machine, 16);
+        }
+        insts::OP_VLUXEI32_V => {
+            ld_index!(inst, machine, 32);
+        }
+        insts::OP_VLUXEI64_V => {
+            ld_index!(inst, machine, 64);
+        }
+        insts::OP_VLOXEI8_V => {
+            ld_index!(inst, machine, 8);
+        }
+        insts::OP_VLOXEI16_V => {
+            ld_index!(inst, machine, 16);
+        }
+        insts::OP_VLOXEI32_V => {
+            ld_index!(inst, machine, 32);
+        }
+        insts::OP_VLOXEI64_V => {
+            ld_index!(inst, machine, 64);
+        }
+        insts::OP_VSUXEI8_V => {
+            sd_index!(inst, machine, 8);
+        }
+        insts::OP_VSUXEI16_V => {
+            sd_index!(inst, machine, 16);
+        }
+        insts::OP_VSUXEI32_V => {
+            sd_index!(inst, machine, 32);
+        }
+        insts::OP_VSUXEI64_V => {
+            sd_index!(inst, machine, 64);
+        }
+        insts::OP_VSOXEI8_V => {
+            sd_index!(inst, machine, 8);
+        }
+        insts::OP_VSOXEI16_V => {
+            sd_index!(inst, machine, 16);
+        }
+        insts::OP_VSOXEI32_V => {
+            sd_index!(inst, machine, 32);
+        }
+        insts::OP_VSOXEI64_V => {
+            sd_index!(inst, machine, 64);
+        }
         insts::OP_VADD_VV => {
             v_vv_loop_s!(inst, machine, Eint::wrapping_add);
         }
@@ -1499,54 +1547,6 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMXNOR_MM => {
             m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
-        }
-        insts::OP_VLUXEI8_V => {
-            ld_index!(inst, machine, 8);
-        }
-        insts::OP_VLUXEI16_V => {
-            ld_index!(inst, machine, 16);
-        }
-        insts::OP_VLUXEI32_V => {
-            ld_index!(inst, machine, 32);
-        }
-        insts::OP_VLUXEI64_V => {
-            ld_index!(inst, machine, 64);
-        }
-        insts::OP_VLOXEI8_V => {
-            ld_index!(inst, machine, 8);
-        }
-        insts::OP_VLOXEI16_V => {
-            ld_index!(inst, machine, 16);
-        }
-        insts::OP_VLOXEI32_V => {
-            ld_index!(inst, machine, 32);
-        }
-        insts::OP_VLOXEI64_V => {
-            ld_index!(inst, machine, 64);
-        }
-        insts::OP_VSUXEI8_V => {
-            sd_index!(inst, machine, 8);
-        }
-        insts::OP_VSUXEI16_V => {
-            sd_index!(inst, machine, 16);
-        }
-        insts::OP_VSUXEI32_V => {
-            sd_index!(inst, machine, 32);
-        }
-        insts::OP_VSUXEI64_V => {
-            sd_index!(inst, machine, 64);
-        }
-        insts::OP_VSOXEI8_V => {
-            sd_index!(inst, machine, 8);
-        }
-        insts::OP_VSOXEI16_V => {
-            sd_index!(inst, machine, 16);
-        }
-        insts::OP_VSOXEI32_V => {
-            sd_index!(inst, machine, 32);
-        }
-        insts::OP_VSOXEI64_V => {
-            sd_index!(inst, machine, 64);
         }
         insts::OP_VL1RE8_V => {
             ld_whole!(inst, machine, VLEN as u64 / 8);
