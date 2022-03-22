@@ -2135,7 +2135,16 @@ pub fn execute_instruction<Mac: Machine>(
                     continue;
                 }
                 let mut data = machine.element_ref(i.vs1(), sew, j).to_vec();
-                data.resize(8, 0);
+                if data.len() > 8 {
+                    for i in 8..data.len() {
+                        if data[i] != 0 {
+                            data = Vec::from([0xFF; 8]);
+                            break;
+                        }
+                    }
+                } else {
+                    data.resize(8, 0);
+                }
                 let index = E64::get(&data).u64();
                 if index < machine.vlmax() {
                     let data = machine.element_ref(i.vs2(), sew, index as usize).to_vec();
