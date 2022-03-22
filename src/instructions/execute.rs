@@ -1160,6 +1160,54 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VRSUB_VI => {
             v_vi_loop_s!(inst, machine, alu::rsub);
         }
+        insts::OP_VWADDU_VV => {
+            w_vv_loop_u!(inst, machine, Eint::widening_add_u);
+        }
+        insts::OP_VWADDU_VX => {
+            w_vx_loop_u!(inst, machine, Eint::widening_add_u);
+        }
+        insts::OP_VWSUBU_VV => {
+            w_vv_loop_u!(inst, machine, Eint::widening_sub_u);
+        }
+        insts::OP_VWSUBU_VX => {
+            w_vx_loop_u!(inst, machine, Eint::widening_sub_u);
+        }
+        insts::OP_VWADD_VV => {
+            w_vv_loop_s!(inst, machine, Eint::widening_add_s);
+        }
+        insts::OP_VWADD_VX => {
+            w_vx_loop_s!(inst, machine, Eint::widening_add_s);
+        }
+        insts::OP_VWSUB_VV => {
+            w_vv_loop_s!(inst, machine, Eint::widening_sub_s);
+        }
+        insts::OP_VWSUB_VX => {
+            w_vx_loop_s!(inst, machine, Eint::widening_sub_s);
+        }
+        insts::OP_VWADDU_WV => {
+            w_wv_loop_u!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWADDU_WX => {
+            w_wx_loop_u!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWSUBU_WV => {
+            w_wv_loop_u!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWSUBU_WX => {
+            w_wx_loop_u!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWADD_WV => {
+            w_wv_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWADD_WX => {
+            w_wx_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWSUB_WV => {
+            w_wv_loop_s!(inst, machine, Eint::wrapping_sub);
+        }
+        insts::OP_VWSUB_WX => {
+            w_wx_loop_s!(inst, machine, Eint::wrapping_sub);
+        }
         insts::OP_VMUL_VV => {
             v_vv_loop_s!(inst, machine, Eint::wrapping_mul);
         }
@@ -1403,54 +1451,6 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSSUB_VX => {
             v_vx_loop_s!(inst, machine, alu::ssub);
-        }
-        insts::OP_VWADDU_VV => {
-            w_vv_loop_u!(inst, machine, Eint::widening_add_u);
-        }
-        insts::OP_VWADDU_VX => {
-            w_vx_loop_u!(inst, machine, Eint::widening_add_u);
-        }
-        insts::OP_VWADDU_WV => {
-            w_wv_loop_u!(inst, machine, Eint::wrapping_add);
-        }
-        insts::OP_VWADDU_WX => {
-            w_wx_loop_u!(inst, machine, Eint::wrapping_add);
-        }
-        insts::OP_VWADD_WX => {
-            w_wx_loop_s!(inst, machine, Eint::wrapping_add);
-        }
-        insts::OP_VWADD_VV => {
-            w_vv_loop_s!(inst, machine, Eint::widening_add_s);
-        }
-        insts::OP_VWADD_VX => {
-            w_vx_loop_s!(inst, machine, Eint::widening_add_s);
-        }
-        insts::OP_VWADD_WV => {
-            w_wv_loop_s!(inst, machine, Eint::wrapping_add);
-        }
-        insts::OP_VWSUBU_VV => {
-            w_vv_loop_u!(inst, machine, Eint::widening_sub_u);
-        }
-        insts::OP_VWSUBU_WV => {
-            w_wv_loop_u!(inst, machine, Eint::wrapping_sub);
-        }
-        insts::OP_VWSUBU_VX => {
-            w_vx_loop_u!(inst, machine, Eint::widening_sub_u);
-        }
-        insts::OP_VWSUB_VV => {
-            w_vv_loop_s!(inst, machine, Eint::widening_sub_s);
-        }
-        insts::OP_VWSUB_VX => {
-            w_vx_loop_s!(inst, machine, Eint::widening_sub_s);
-        }
-        insts::OP_VWSUB_WV => {
-            w_wv_loop_s!(inst, machine, Eint::wrapping_sub);
-        }
-        insts::OP_VWSUBU_WX => {
-            w_wx_loop_u!(inst, machine, Eint::wrapping_sub);
-        }
-        insts::OP_VWSUB_WX => {
-            w_wx_loop_s!(inst, machine, Eint::wrapping_sub);
         }
         insts::OP_VWMULU_VV => {
             w_vv_loop_u!(inst, machine, Eint::widening_mul_u);
