@@ -39,7 +39,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let code = std::fs::read(&args[1])?.into();
-    let riscv_args: Vec<Bytes> = if args.len() > 1 {
+    let riscv_args: Vec<Bytes> = if args.len() > 2 {
         (&args[2..]).into_iter().map(|s| s.clone().into()).collect()
     } else {
         Vec::new()
