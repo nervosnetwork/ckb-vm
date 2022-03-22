@@ -1,5 +1,5 @@
 use ckb_vm::registers::{A0, A7};
-use ckb_vm::{CoreMachine, Memory, Register, SupportMachine, Syscalls};
+use ckb_vm::{Bytes, CoreMachine, Memory, Register, SupportMachine, Syscalls};
 
 pub struct CustomSyscall {}
 
@@ -39,7 +39,11 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let code = std::fs::read(&args[1])?.into();
-
+    let riscv_args: Vec<Bytes> = if args.len() > 2 {
+        (&args[2..]).into_iter().map(|s| s.clone().into()).collect()
+    } else {
+        Vec::new()
+    };
     let asm_core = ckb_vm::machine::asm::AsmCoreMachine::new(
         ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_V,
         ckb_vm::machine::VERSION1,
@@ -52,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, None);
 
-    machine.load_program(&code, &vec!["main".into()]).unwrap();
+    machine.load_program(&code, &riscv_args).unwrap();
 
     let exit = machine.run();
     let cycles = machine.machine.cycles();
