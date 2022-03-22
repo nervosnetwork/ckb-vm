@@ -1920,7 +1920,7 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VVtype(inst);
             let sew = machine.vsew();
             let mut k = 0;
-            for j in 0..VLEN as usize {
+            for j in 0..machine.vl() as usize {
                 if machine.get_bit(i.vs1(), j) {
                     let data = machine.element_ref(i.vs2(), sew, j).to_vec();
                     machine.element_mut(i.vd(), sew, k).copy_from_slice(&data);
@@ -2030,35 +2030,35 @@ pub fn execute_instruction<Mac: Machine>(
             match sew {
                 8 => {
                     let vd0 = E8::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 16 => {
                     let vd0 = E16::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 32 => {
                     let vd0 = E32::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 64 => {
                     let vd0 = E64::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 128 => {
                     let vd0 = E128::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 256 => {
                     let vd0 = E256::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 512 => {
                     let vd0 = E512::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 1024 => {
                     let vd0 = E1024::from(machine.registers()[i.rs1()].to_u64());
-                    vd0.put(machine.element_mut(i.vd(), sew, 0));
+                    vd0.put(machine.element_mut(i.vd(), sew, (machine.vl() - 1) as usize));
                 }
                 _ => return Err(Error::Unexpected("".into())),
             }
@@ -2071,10 +2071,6 @@ pub fn execute_instruction<Mac: Machine>(
                     machine
                         .element_mut(i.vd(), sew, j as usize)
                         .copy_from_slice(&data);
-                } else {
-                    machine
-                        .element_mut(i.vd(), sew, j as usize)
-                        .copy_from_slice(&vec![0; sew as usize >> 3]);
                 }
             }
         }
