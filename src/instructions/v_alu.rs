@@ -140,13 +140,13 @@ pub fn mulhsu<T: Eint>(lhs: T, rhs: T) -> T {
 
 /// Get carry out of addition.
 pub fn madc<T: Eint>(lhs: T, rhs: T) -> bool {
-    let (_, carry) = lhs.overflowing_add_s(rhs);
+    let (_, carry) = lhs.overflowing_add_u(rhs);
     carry
 }
 
 /// Get the borrow out of subtraction.
 pub fn msbc<T: Eint>(lhs: T, rhs: T) -> bool {
-    let (_, borrow) = lhs.overflowing_sub_s(rhs);
+    let (_, borrow) = lhs.overflowing_sub_u(rhs);
     borrow
 }
 
@@ -162,15 +162,15 @@ pub fn sbc<T: Eint>(lhs: T, rhs: T, borrow: bool) -> T {
 
 /// Calculates carry_out(self + rhs + carry) without the ability to overflow.
 pub fn madcm<T: Eint>(lhs: T, rhs: T, carry: bool) -> bool {
-    let (r, carry_0) = lhs.overflowing_add_s(rhs);
-    let (_, carry_1) = r.overflowing_add_s(T::from(carry));
+    let (r, carry_0) = lhs.overflowing_add_u(rhs);
+    let (_, carry_1) = r.overflowing_add_u(T::from(carry));
     carry_0 | carry_1
 }
 
 /// Calculates borrow_out(self - rhs - borrow) without the ability to overflow.
 pub fn msbcm<T: Eint>(lhs: T, rhs: T, borrow: bool) -> bool {
-    let (r, carry_0) = lhs.overflowing_sub_s(rhs);
-    let (_, carry_1) = r.overflowing_sub_s(T::from(borrow));
+    let (r, carry_0) = lhs.overflowing_sub_u(rhs);
+    let (_, carry_1) = r.overflowing_sub_u(T::from(borrow));
     carry_0 | carry_1
 }
 
