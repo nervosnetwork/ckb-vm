@@ -2134,11 +2134,14 @@ pub fn execute_instruction<Mac: Machine>(
                 if i.vm() == 0 && machine.get_bit(0, j) {
                     continue;
                 }
-                let mut data = machine.element_ref(i.vs1(), sew, j).to_vec();
-                data.resize(8, 0);
-                let index = E64::get(&data).u64();
-                if index < machine.vlmax() {
-                    let data = machine.element_ref(i.vs2(), sew, index as usize).to_vec();
+                let index = {
+                    let mut data = machine.element_ref(i.vs1(), sew, j).to_vec();
+                    data.resize(128, 0);
+                    E1024::get(&data)
+                };
+
+                if index < E1024::from(machine.vlmax()) {
+                    let data = machine.element_ref(i.vs2(), sew, index.u64() as usize).to_vec();
                     machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
                 } else {
                     let data = vec![0; sew as usize >> 3];
