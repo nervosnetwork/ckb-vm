@@ -2141,7 +2141,9 @@ pub fn execute_instruction<Mac: Machine>(
                 };
 
                 if index < E1024::from(machine.vlmax()) {
-                    let data = machine.element_ref(i.vs2(), sew, index.u64() as usize).to_vec();
+                    let data = machine
+                        .element_ref(i.vs2(), sew, index.u64() as usize)
+                        .to_vec();
                     machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
                 } else {
                     let data = vec![0; sew as usize >> 3];

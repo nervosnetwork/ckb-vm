@@ -5,6 +5,7 @@ mod utils;
 
 pub mod ast;
 pub mod b;
+pub mod cost_model;
 pub mod i;
 pub mod m;
 pub mod rvc;

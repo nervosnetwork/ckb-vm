@@ -611,7 +611,7 @@ impl<'a> AsmMachine<'a> {
                             .machine
                             .instruction_cycle_func()
                             .as_ref()
-                            .map(|f| f(instruction))
+                            .map(|f| f(instruction, 0, 0))
                             .unwrap_or(0);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
@@ -647,6 +647,15 @@ impl<'a> AsmMachine<'a> {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                     execute_instruction(instruction, &mut self.machine)?;
+                    let vl = self.machine.vl();
+                    let sew = self.machine.vsew();
+                    let cycles = self
+                        .machine
+                        .instruction_cycle_func()
+                        .as_ref()
+                        .map(|f| f(instruction, vl, sew))
+                        .unwrap_or(0);
+                    self.machine.add_cycles(cycles)?;
                 }
                 _ => return Err(Error::Asm(result)),
             }
@@ -662,11 +671,13 @@ impl<'a> AsmMachine<'a> {
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
         trace.instructions[0] = instruction;
+        let vl = self.machine.vl();
+        let sew = self.machine.vsew();
         trace.cycles += self
             .machine
             .instruction_cycle_func()
             .as_ref()
-            .map(|f| f(instruction))
+            .map(|f| f(instruction, vl, sew))
             .unwrap_or(0);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {

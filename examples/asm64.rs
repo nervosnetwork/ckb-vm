@@ -1,6 +1,6 @@
+use ckb_vm::instructions::cost_model::instruction_cycles;
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{Bytes, CoreMachine, Memory, Register, SupportMachine, Syscalls};
-
 pub struct CustomSyscall {}
 
 impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
@@ -49,11 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
-    let core =
-        ckb_vm::DefaultMachineBuilder::<Box<ckb_vm::machine::asm::AsmCoreMachine>>::new(asm_core)
-            .instruction_cycle_func(Box::new(|_| 1))
-            .syscall(Box::new(CustomSyscall {}))
-            .build();
+    let core = ckb_vm::DefaultMachineBuilder::new(asm_core)
+        .instruction_cycle_func(Box::new(instruction_cycles))
+        .syscall(Box::new(CustomSyscall {}))
+        .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, None);
 
     machine.load_program(&code, &riscv_args).unwrap();

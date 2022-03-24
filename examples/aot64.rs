@@ -1,3 +1,4 @@
+use ckb_vm::instructions::cost_model::instruction_cycles;
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{CoreMachine, Memory, Register, SupportMachine, Syscalls};
 
@@ -42,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut aot_machine = ckb_vm::machine::aot::AotCompilingMachine::load(
         &code,
-        Some(Box::new(|_| 1)),
+        Some(Box::new(instruction_cycles)),
         ckb_vm::ISA_IMC | ckb_vm::ISA_V,
         ckb_vm::machine::VERSION1,
     )
@@ -56,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let core =
         ckb_vm::DefaultMachineBuilder::<Box<ckb_vm::machine::asm::AsmCoreMachine>>::new(asm_core)
-            .instruction_cycle_func(Box::new(|_| 1))
+            .instruction_cycle_func(Box::new(instruction_cycles))
             .syscall(Box::new(CustomSyscall {}))
             .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, Some(&aot_code));
