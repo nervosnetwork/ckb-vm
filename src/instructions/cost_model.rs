@@ -1,4 +1,4 @@
-use super::extract_opcode;
+use super::{extract_opcode, is_slowpath_opcode};
 use ckb_vm_definitions::instructions::{self as insts, Instruction, InstructionOpcode};
 
 fn v_instruction_cycles(
@@ -8,7 +8,7 @@ fn v_instruction_cycles(
     skip_counting: bool,
 ) -> Option<u64> {
     // Not V Instruction
-    if opcode < insts::LEVEL2_V_OPCODE {
+    if !is_slowpath_opcode(opcode) {
         return None;
     }
     if skip_counting {
