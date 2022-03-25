@@ -7,7 +7,8 @@ fn v_instruction_cycles(
     sew: u64,
     skip_counting: bool,
 ) -> Option<u64> {
-    if opcode < insts::LEVEL2_V_OPCODE || opcode > insts::OP_VRGATHER_VI {
+    // Not V Instruction
+    if opcode < insts::LEVEL2_V_OPCODE {
         return None;
     }
     if skip_counting {
