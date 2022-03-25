@@ -565,7 +565,7 @@ impl AotCompilingMachine {
             cycles += self
                 .instruction_cycle_func
                 .as_ref()
-                .map(|f| f(*instruction, 0, 0))
+                .map(|f| f(*instruction, 0, 0, false))
                 .unwrap_or(0);
         }
         self.emitter.emit_add_cycles(cycles)?;

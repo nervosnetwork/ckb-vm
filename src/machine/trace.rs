@@ -197,7 +197,7 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
                     .machine
                     .instruction_cycle_func()
                     .as_ref()
-                    .map(|f| f(i, 0, 0))
+                    .map(|f| f(i, 0, 0, true))
                     .unwrap_or(0);
                 self.machine.add_cycles(cycles)?;
                 execute(i, self)?;

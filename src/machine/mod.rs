@@ -512,7 +512,7 @@ impl<R: Register, M: Memory<REG = R> + Default> DefaultCoreMachine<R, M> {
     }
 }
 
-pub type InstructionCycleFunc = dyn Fn(Instruction, u64, u64) -> u64;
+pub type InstructionCycleFunc = dyn Fn(Instruction, u64, u64, bool) -> u64;
 
 #[derive(Default)]
 pub struct DefaultMachine<'a, Inner> {
@@ -778,7 +778,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         let cycles = self
             .instruction_cycle_func()
             .as_ref()
-            .map(|f| f(instruction, vl, sew))
+            .map(|f| f(instruction, vl, sew, false))
             .unwrap_or(0);
         self.add_cycles(cycles)?;
         execute(instruction, self)

@@ -607,11 +607,13 @@ impl<'a> AsmMachine<'a> {
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
                         trace.instructions[i] = instruction;
+                        // don't count cycles in trace for RVV instructions. They
+                        // will be counted in slow path.
                         trace.cycles += self
                             .machine
                             .instruction_cycle_func()
                             .as_ref()
-                            .map(|f| f(instruction, 0, 0))
+                            .map(|f| f(instruction, 0, 0, true))
                             .unwrap_or(0);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
@@ -646,16 +648,16 @@ impl<'a> AsmMachine<'a> {
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                    execute_instruction(instruction, &mut self.machine)?;
                     let vl = self.machine.vl();
                     let sew = self.machine.vsew();
                     let cycles = self
                         .machine
                         .instruction_cycle_func()
                         .as_ref()
-                        .map(|f| f(instruction, vl, sew))
+                        .map(|f| f(instruction, vl, sew, false))
                         .unwrap_or(0);
                     self.machine.add_cycles(cycles)?;
+                    execute_instruction(instruction, &mut self.machine)?;
                 }
                 _ => return Err(Error::Asm(result)),
             }
@@ -677,7 +679,7 @@ impl<'a> AsmMachine<'a> {
             .machine
             .instruction_cycle_func()
             .as_ref()
-            .map(|f| f(instruction, vl, sew))
+            .map(|f| f(instruction, vl, sew, false))
             .unwrap_or(0);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {

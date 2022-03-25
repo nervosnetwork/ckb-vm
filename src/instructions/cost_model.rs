@@ -1,15 +1,35 @@
 use super::extract_opcode;
 use ckb_vm_definitions::instructions::{self as insts, Instruction, InstructionOpcode};
 
-fn v_instruction_cycles(_opcode: InstructionOpcode, vl: u64, sew: u64) -> Option<u64> {
-    let factor = if sew > 64 { sew / 64 } else { 1 };
-    let base = 1;
-    // TODO: get base according to opcodes
+fn v_instruction_cycles(
+    opcode: InstructionOpcode,
+    vl: u64,
+    sew: u64,
+    skip_counting: bool,
+) -> Option<u64> {
+    if opcode < insts::LEVEL2_V_OPCODE || opcode > insts::OP_VRGATHER_VI {
+        return None;
+    }
+    if skip_counting {
+        return Some(0);
+    }
+    let base;
+    match opcode {
+        // `setvl` operations are constant, not changed by `vl` and `sew`
+        insts::OP_VSETVLI | insts::OP_VSETIVLI | insts::OP_VSETVL => return Some(1),
+        // vadd.vv as unit, 1
+        insts::OP_VADD_VV => base = 1,
+        // vmul.vv
+        insts::OP_VMUL_VV => base = 4,
+        // TODO: get base according to opcodes
+        _ => base = 1,
+    }
+    let factor = if sew >= 64 { sew / 64 } else { 1 };
     Some(base * factor * vl)
 }
 
 /// Returns the spent cycles to execute the specific instruction.
-pub fn instruction_cycles(i: Instruction, vl: u64, sew: u64) -> u64 {
+pub fn instruction_cycles(i: Instruction, vl: u64, sew: u64, skip_counting: bool) -> u64 {
     match extract_opcode(i) {
         // IMC
         insts::OP_JALR => 3,
@@ -56,13 +76,8 @@ pub fn instruction_cycles(i: Instruction, vl: u64, sew: u64) -> u64 {
         insts::OP_FAR_JUMP_ABS => 3,
         opcode => {
             // RVV
-            if let Some(cycles) = v_instruction_cycles(opcode, vl, sew) {
-                // never return zero cost
-                if cycles == 0 {
-                    1
-                } else {
-                    cycles
-                }
+            if let Some(cycles) = v_instruction_cycles(opcode, vl, sew, skip_counting) {
+                cycles
             } else {
                 1
             }
