@@ -110,7 +110,7 @@ pub fn test_aot_ebreak() {
     assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction, _: u64, _: u64, _: bool) -> u64 {
     1
 }
 
@@ -404,11 +404,12 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
 pub fn test_aot_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer, Some(Box::new(|_| 1)), ISA_IMC, VERSION0).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(|_, _, _, _| 1)), ISA_IMC, VERSION0)
+            .unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
     let core = DefaultMachineBuilder::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(|_, _, _, _| 1))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, Some(&code));
@@ -426,13 +427,14 @@ pub fn test_aot_outofcycles_in_syscall() {
 pub fn test_aot_cycles_overflow() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let mut aot_machine =
-        AotCompilingMachine::load(&buffer, Some(Box::new(|_| 1)), ISA_IMC, VERSION1).unwrap();
+        AotCompilingMachine::load(&buffer, Some(Box::new(|_, _, _, _| 1)), ISA_IMC, VERSION1)
+            .unwrap();
     let code = aot_machine.compile().unwrap();
 
     let mut asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::MAX);
     asm_core.cycles = u64::MAX - 10;
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(|_, _, _, _| 1))
         .build();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
