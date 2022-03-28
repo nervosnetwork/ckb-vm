@@ -2906,7 +2906,7 @@ macro_rules! w_vs_loop {
                         E16::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             16 => {
@@ -2927,7 +2927,7 @@ macro_rules! w_vs_loop {
                         E32::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             32 => {
@@ -2948,7 +2948,7 @@ macro_rules! w_vs_loop {
                         E64::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             64 => {
@@ -2969,7 +2969,7 @@ macro_rules! w_vs_loop {
                         E128::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             128 => {
@@ -2990,7 +2990,7 @@ macro_rules! w_vs_loop {
                         E256::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             256 => {
@@ -3011,7 +3011,7 @@ macro_rules! w_vs_loop {
                         E512::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             512 => {
@@ -3032,7 +3032,7 @@ macro_rules! w_vs_loop {
                         E1024::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             1024 => {
@@ -3053,7 +3053,7 @@ macro_rules! w_vs_loop {
                         E2048::from(a)
                     };
                     b = $body(b, a);
-                    b.put($machine.element_mut(i.vd(), sew * 2, j));
+                    b.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
             }
             _ => unreachable!(),

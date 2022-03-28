@@ -1726,10 +1726,10 @@ pub fn execute_instruction<Mac: Machine>(
             v_vs_loop_s!(inst, machine, alu::max);
         }
         insts::OP_VWREDSUMU_VS => {
-            w_vs_loop_s!(inst, machine, Eint::wrapping_add);
+            w_vs_loop_u!(inst, machine, Eint::wrapping_add);
         }
         insts::OP_VWREDSUM_VS => {
-            w_vs_loop_u!(inst, machine, Eint::wrapping_add);
+            w_vs_loop_s!(inst, machine, Eint::wrapping_add);
         }
         insts::OP_VMSBF_M => {
             if machine.vill() {
