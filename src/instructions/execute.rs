@@ -1517,33 +1517,44 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VNMSUB_VX => {
             v_vx_loop_destructive_s!(inst, machine, alu::nmsub);
         }
-        insts::OP_VMV1R_V => {
-            let i = VItype(inst);
-            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
-            machine
-                .element_mut(i.vd(), (VLEN as u64) * 1, 0)
-                .copy_from_slice(&data);
+        insts::OP_VWMACCU_VV => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmaccu);
         }
-        insts::OP_VMV2R_V => {
-            let i = VItype(inst);
-            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 2, 0).to_vec();
-            machine
-                .element_mut(i.vd(), (VLEN as u64) * 2, 0)
-                .copy_from_slice(&data);
+        insts::OP_VWMACCU_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmaccu);
         }
-        insts::OP_VMV4R_V => {
-            let i = VItype(inst);
-            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 4, 0).to_vec();
-            machine
-                .element_mut(i.vd(), (VLEN as u64) * 4, 0)
-                .copy_from_slice(&data);
+        insts::OP_VWMACC_VV => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmacc);
         }
-        insts::OP_VMV8R_V => {
-            let i = VItype(inst);
-            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 8, 0).to_vec();
-            machine
-                .element_mut(i.vd(), (VLEN as u64) * 8, 0)
-                .copy_from_slice(&data);
+        insts::OP_VWMACC_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmacc);
+        }
+        insts::OP_VWMACCSU_VV => {
+            w_vv_loop_destructive_s!(inst, machine, alu::wmaccsu);
+        }
+        insts::OP_VWMACCSU_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmaccsu);
+        }
+        insts::OP_VWMACCUS_VX => {
+            w_vx_loop_destructive_s!(inst, machine, alu::wmaccus);
+        }
+        insts::OP_VMERGE_VVM => {
+            v_vvm_loop_s!(inst, machine, alu::merge);
+        }
+        insts::OP_VMERGE_VXM => {
+            v_vxm_loop_s!(inst, machine, alu::merge);
+        }
+        insts::OP_VMERGE_VIM => {
+            v_vim_loop_s!(inst, machine, alu::merge);
+        }
+        insts::OP_VMV_V_V => {
+            v_vv_loop_s!(inst, machine, alu::mv);
+        }
+        insts::OP_VMV_V_X => {
+            v_vx_loop_s!(inst, machine, alu::mv);
+        }
+        insts::OP_VMV_V_I => {
+            v_vi_loop_s!(inst, machine, alu::mv);
         }
         insts::OP_VSADDU_VV => {
             v_vv_loop_u!(inst, machine, alu::saddu);
@@ -1599,14 +1610,75 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VASUBU_VX => {
             v_vx_loop_u!(inst, machine, Eint::average_sub_u);
         }
-        insts::OP_VMV_V_V => {
-            v_vv_loop_s!(inst, machine, alu::mv);
+        insts::OP_VSMUL_VV => {
+            v_vv_loop_s!(inst, machine, alu::smul);
         }
-        insts::OP_VMV_V_X => {
-            v_vx_loop_s!(inst, machine, alu::mv);
+        insts::OP_VSMUL_VX => {
+            v_vx_loop_s!(inst, machine, alu::smul);
         }
-        insts::OP_VMV_V_I => {
-            v_vi_loop_s!(inst, machine, alu::mv);
+        insts::OP_VSSRL_VV => {
+            v_vv_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSSRL_VX => {
+            v_vx_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSSRL_VI => {
+            v_vi_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VSSRA_VV => {
+            v_vv_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSSRA_VX => {
+            v_vx_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VSSRA_VI => {
+            v_vi_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNCLIPU_WV => {
+            v_wv_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNCLIPU_WX => {
+            v_wx_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNCLIPU_WI => {
+            v_wi_loop_u!(inst, machine, alu::srl);
+        }
+        insts::OP_VNCLIP_WV => {
+            v_wv_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNCLIP_WX => {
+            v_wx_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VNCLIP_WI => {
+            v_wi_loop_u!(inst, machine, alu::sra);
+        }
+        insts::OP_VMV1R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 1, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VMV2R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 2, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 2, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VMV4R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 4, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 4, 0)
+                .copy_from_slice(&data);
+        }
+        insts::OP_VMV8R_V => {
+            let i = VItype(inst);
+            let data = machine.element_ref(i.vs2(), (VLEN as u64) * 8, 0).to_vec();
+            machine
+                .element_mut(i.vd(), (VLEN as u64) * 8, 0)
+                .copy_from_slice(&data);
         }
         insts::OP_VMAND_MM => {
             m_mm_loop!(inst, machine, |b, a| b & a);
@@ -1631,78 +1703,6 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMXNOR_MM => {
             m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
-        }
-        insts::OP_VSSRL_VV => {
-            v_vv_loop_u!(inst, machine, alu::srl);
-        }
-        insts::OP_VSSRL_VX => {
-            v_vx_loop_u!(inst, machine, alu::srl);
-        }
-        insts::OP_VSSRL_VI => {
-            v_vi_loop_u!(inst, machine, alu::srl);
-        }
-        insts::OP_VSSRA_VV => {
-            v_vv_loop_u!(inst, machine, alu::sra);
-        }
-        insts::OP_VSSRA_VX => {
-            v_vx_loop_u!(inst, machine, alu::sra);
-        }
-        insts::OP_VSSRA_VI => {
-            v_vi_loop_u!(inst, machine, alu::sra);
-        }
-        insts::OP_VSMUL_VV => {
-            v_vv_loop_s!(inst, machine, alu::smul);
-        }
-        insts::OP_VSMUL_VX => {
-            v_vx_loop_s!(inst, machine, alu::smul);
-        }
-        insts::OP_VWMACCU_VV => {
-            w_vv_loop_destructive_s!(inst, machine, alu::wmaccu);
-        }
-        insts::OP_VWMACCU_VX => {
-            w_vx_loop_destructive_s!(inst, machine, alu::wmaccu);
-        }
-        insts::OP_VWMACC_VV => {
-            w_vv_loop_destructive_s!(inst, machine, alu::wmacc);
-        }
-        insts::OP_VWMACC_VX => {
-            w_vx_loop_destructive_s!(inst, machine, alu::wmacc);
-        }
-        insts::OP_VWMACCSU_VV => {
-            w_vv_loop_destructive_s!(inst, machine, alu::wmaccsu);
-        }
-        insts::OP_VWMACCSU_VX => {
-            w_vx_loop_destructive_s!(inst, machine, alu::wmaccsu);
-        }
-        insts::OP_VWMACCUS_VX => {
-            w_vx_loop_destructive_s!(inst, machine, alu::wmaccus);
-        }
-        insts::OP_VMERGE_VVM => {
-            v_vvm_loop_s!(inst, machine, alu::merge);
-        }
-        insts::OP_VMERGE_VXM => {
-            v_vxm_loop_s!(inst, machine, alu::merge);
-        }
-        insts::OP_VMERGE_VIM => {
-            v_vim_loop_s!(inst, machine, alu::merge);
-        }
-        insts::OP_VNCLIPU_WV => {
-            v_wv_loop_u!(inst, machine, alu::srl);
-        }
-        insts::OP_VNCLIPU_WX => {
-            v_wx_loop_u!(inst, machine, alu::srl);
-        }
-        insts::OP_VNCLIPU_WI => {
-            v_wi_loop_u!(inst, machine, alu::srl);
-        }
-        insts::OP_VNCLIP_WV => {
-            v_wv_loop_u!(inst, machine, alu::sra);
-        }
-        insts::OP_VNCLIP_WX => {
-            v_wx_loop_u!(inst, machine, alu::sra);
-        }
-        insts::OP_VNCLIP_WI => {
-            v_wi_loop_u!(inst, machine, alu::sra);
         }
         insts::OP_VREDSUM_VS => {
             v_vs_loop_s!(inst, machine, Eint::wrapping_add);
