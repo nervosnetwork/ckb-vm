@@ -1652,6 +1652,36 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VNCLIP_WI => {
             v_wi_loop_u!(inst, machine, alu::vnclip);
         }
+        insts::OP_VREDSUM_VS => {
+            v_vs_loop_s!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VREDAND_VS => {
+            v_vs_loop_s!(inst, machine, alu::and);
+        }
+        insts::OP_VREDOR_VS => {
+            v_vs_loop_s!(inst, machine, alu::or);
+        }
+        insts::OP_VREDXOR_VS => {
+            v_vs_loop_s!(inst, machine, alu::xor);
+        }
+        insts::OP_VREDMINU_VS => {
+            v_vs_loop_s!(inst, machine, alu::minu);
+        }
+        insts::OP_VREDMIN_VS => {
+            v_vs_loop_s!(inst, machine, alu::min);
+        }
+        insts::OP_VREDMAXU_VS => {
+            v_vs_loop_s!(inst, machine, alu::maxu);
+        }
+        insts::OP_VREDMAX_VS => {
+            v_vs_loop_s!(inst, machine, alu::max);
+        }
+        insts::OP_VWREDSUMU_VS => {
+            w_vs_loop_u!(inst, machine, Eint::wrapping_add);
+        }
+        insts::OP_VWREDSUM_VS => {
+            w_vs_loop_s!(inst, machine, Eint::wrapping_add);
+        }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);
             let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
@@ -1703,36 +1733,6 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMXNOR_MM => {
             m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
-        }
-        insts::OP_VREDSUM_VS => {
-            v_vs_loop_s!(inst, machine, Eint::wrapping_add);
-        }
-        insts::OP_VREDAND_VS => {
-            v_vs_loop_s!(inst, machine, alu::and);
-        }
-        insts::OP_VREDOR_VS => {
-            v_vs_loop_s!(inst, machine, alu::or);
-        }
-        insts::OP_VREDXOR_VS => {
-            v_vs_loop_s!(inst, machine, alu::xor);
-        }
-        insts::OP_VREDMINU_VS => {
-            v_vs_loop_s!(inst, machine, alu::minu);
-        }
-        insts::OP_VREDMIN_VS => {
-            v_vs_loop_s!(inst, machine, alu::min);
-        }
-        insts::OP_VREDMAXU_VS => {
-            v_vs_loop_s!(inst, machine, alu::maxu);
-        }
-        insts::OP_VREDMAX_VS => {
-            v_vs_loop_s!(inst, machine, alu::max);
-        }
-        insts::OP_VWREDSUMU_VS => {
-            w_vs_loop_s!(inst, machine, Eint::wrapping_add);
-        }
-        insts::OP_VWREDSUM_VS => {
-            w_vs_loop_u!(inst, machine, Eint::wrapping_add);
         }
         insts::OP_VMSBF_M => {
             if machine.vill() {
