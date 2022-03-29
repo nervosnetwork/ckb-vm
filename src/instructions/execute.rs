@@ -1635,22 +1635,22 @@ pub fn execute_instruction<Mac: Machine>(
             v_vi_loop_u!(inst, machine, alu::sra);
         }
         insts::OP_VNCLIPU_WV => {
-            v_wv_loop_u!(inst, machine, alu::srl);
+            v_wv_loop_u!(inst, machine, alu::vnclipu);
         }
         insts::OP_VNCLIPU_WX => {
-            v_wx_loop_u!(inst, machine, alu::srl);
+            v_wx_loop_u!(inst, machine, alu::vnclipu);
         }
         insts::OP_VNCLIPU_WI => {
-            v_wi_loop_u!(inst, machine, alu::srl);
+            v_wi_loop_u!(inst, machine, alu::vnclipu);
         }
         insts::OP_VNCLIP_WV => {
-            v_wv_loop_u!(inst, machine, alu::sra);
+            v_wv_loop_u!(inst, machine, alu::vnclip);
         }
         insts::OP_VNCLIP_WX => {
-            v_wx_loop_u!(inst, machine, alu::sra);
+            v_wx_loop_u!(inst, machine, alu::vnclip);
         }
         insts::OP_VNCLIP_WI => {
-            v_wi_loop_u!(inst, machine, alu::sra);
+            v_wi_loop_u!(inst, machine, alu::vnclip);
         }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);

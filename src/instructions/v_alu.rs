@@ -259,3 +259,23 @@ pub fn smul<T: Eint>(lhs: T, rhs: T) -> T {
         return lo;
     }
 }
+
+// Narrowing unsigned clip
+pub fn vnclipu<T: Eint>(lhs: T, rhs: T) -> T {
+    let r = lhs.wrapping_shr(rhs.u32());
+    if r.hi() != T::ZERO { T::MAX_U } else { r }.lo()
+}
+
+// Narrowing signed clip
+pub fn vnclip<T: Eint>(lhs: T, rhs: T) -> T {
+    let r = lhs.wrapping_sra(rhs.u32());
+    if r.is_negative() {
+        if r.cmp_s(&T::MIN_S.hi().lo_sext()) == std::cmp::Ordering::Less {
+            return T::MIN_S.hi().lo_sext();
+        }
+    }
+    if r.cmp_s(&T::MAX_S.hi()) == std::cmp::Ordering::Greater {
+        return T::MAX_S.hi();
+    }
+    r
+}
