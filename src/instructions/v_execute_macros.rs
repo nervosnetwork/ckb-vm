@@ -3060,9 +3060,29 @@ macro_rules! x_m_loop {
     };
 }
 
+macro_rules! m_m_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        if $machine.vill() {
+            return Err(Error::Vill);
+        }
+        let i = VVtype($inst);
+        let vs2 = E2048::get($machine.element_ref(i.vs2(), VLEN as u64, 0));
+        let vd = E2048::get($machine.element_ref(i.vd(), VLEN as u64, 0));
+        let m = if i.vm() == 0 {
+            E2048::get($machine.element_ref(0, VLEN as u64, 0))
+        } else {
+            E2048::MAX_U
+        };
+        let vl = $machine.vl();
+        let r = $body(vs2, vd, m, vl);
+        r.put($machine.element_mut(i.vd(), VLEN as u64, 0));
+    };
+}
+
 pub(crate) use ld;
 pub(crate) use ld_index;
 pub(crate) use ld_whole;
+pub(crate) use m_m_loop;
 pub(crate) use m_mm_loop;
 pub(crate) use m_vi_loop;
 pub(crate) use m_vi_loop_s;
