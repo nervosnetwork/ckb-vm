@@ -1721,6 +1721,12 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VMSOF_M => {
             m_m_loop!(inst, machine, alu::sof);
         }
+        insts::OP_VIOTA_M => {
+            iota_loop!(inst, machine);
+        }
+        insts::OP_VID_V => {
+            id_loop!(inst, machine);
+        }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);
             let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
@@ -1748,58 +1754,6 @@ pub fn execute_instruction<Mac: Machine>(
             machine
                 .element_mut(i.vd(), (VLEN as u64) * 8, 0)
                 .copy_from_slice(&data);
-        }
-        insts::OP_VIOTA_M => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let sew = machine.vsew();
-            let mut iota: u32 = 0;
-            for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && !machine.get_bit(0, j) {
-                    continue;
-                }
-                match sew {
-                    8 => E8::from(iota as u8).put(machine.element_mut(i.vd(), sew, j)),
-                    16 => E16::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    32 => E32::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    64 => E64::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    128 => E128::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    256 => E256::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    512 => E512::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    1024 => E1024::from(iota as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    _ => return Err(Error::Unexpected("".into())),
-                }
-                if machine.get_bit(i.vs2(), j) {
-                    iota += 1;
-                }
-            }
-        }
-        insts::OP_VID_V => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let sew = machine.vsew();
-            let mut index: u64 = 0;
-            for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && !machine.get_bit(0, j) {
-                    continue;
-                }
-                match sew {
-                    8 => E8::from(index as u8).put(machine.element_mut(i.vd(), sew, j)),
-                    16 => E16::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    32 => E32::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    64 => E64::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    128 => E128::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    256 => E256::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    512 => E512::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    1024 => E1024::from(index as u16).put(machine.element_mut(i.vd(), sew, j)),
-                    _ => return Err(Error::Unexpected("".into())),
-                }
-                index += 1;
-            }
         }
         insts::OP_VMV_X_S => {
             if machine.vill() {

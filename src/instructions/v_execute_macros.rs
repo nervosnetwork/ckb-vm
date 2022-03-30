@@ -3079,6 +3079,64 @@ macro_rules! m_m_loop {
     };
 }
 
+macro_rules! iota_loop {
+    ($inst:expr, $machine:expr) => {
+        if $machine.vill() {
+            return Err(Error::Vill);
+        }
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        let mut iota: u32 = 0;
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => E8::from(iota as u8).put($machine.element_mut(i.vd(), sew, j)),
+                16 => E16::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                32 => E32::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                64 => E64::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                128 => E128::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                256 => E256::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                512 => E512::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                1024 => E1024::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
+                _ => unreachable!(),
+            }
+            if $machine.get_bit(i.vs2(), j) {
+                iota += 1;
+            }
+        }
+    };
+}
+
+macro_rules! id_loop {
+    ($inst:expr, $machine:expr) => {
+        if $machine.vill() {
+            return Err(Error::Vill);
+        }
+        let i = VVtype($inst);
+        let sew = $machine.vsew();
+        for j in 0..$machine.vl() as usize {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
+                continue;
+            }
+            match sew {
+                8 => E8::from(j as u8).put($machine.element_mut(i.vd(), sew, j)),
+                16 => E16::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                32 => E32::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                64 => E64::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                128 => E128::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                256 => E256::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                512 => E512::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                1024 => E1024::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
+                _ => unreachable!(),
+            }
+        }
+    };
+}
+
+pub(crate) use id_loop;
+pub(crate) use iota_loop;
 pub(crate) use ld;
 pub(crate) use ld_index;
 pub(crate) use ld_whole;
