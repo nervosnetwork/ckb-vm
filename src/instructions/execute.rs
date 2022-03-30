@@ -1727,6 +1727,12 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VID_V => {
             id_loop!(inst, machine);
         }
+        insts::OP_VMV_X_S => {
+            vmv_x_s!(inst, machine);
+        }
+        insts::OP_VMV_S_X => {
+            vmv_s_x!(inst, machine);
+        }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);
             let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
@@ -1754,72 +1760,6 @@ pub fn execute_instruction<Mac: Machine>(
             machine
                 .element_mut(i.vd(), (VLEN as u64) * 8, 0)
                 .copy_from_slice(&data);
-        }
-        insts::OP_VMV_X_S => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let sew = machine.vsew();
-            let r = match sew {
-                8 => E8::get(machine.element_ref(i.vs2(), sew, 0)).0 as i8 as i64 as u64,
-                16 => E16::get(machine.element_ref(i.vs2(), sew, 0)).0 as i16 as i64 as u64,
-                32 => E32::get(machine.element_ref(i.vs2(), sew, 0)).0 as i32 as i64 as u64,
-                64 => E64::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                128 => E128::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                256 => E256::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                512 => E512::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                1024 => E1024::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                _ => return Err(Error::Unexpected("".into())),
-            };
-            update_register(machine, i.vd(), Mac::REG::from_u64(r));
-        }
-        insts::OP_VMV_S_X => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let sew = machine.vsew();
-            match sew {
-                8 => E8::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                16 => E16::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                32 => E32::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                64 => E64::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                128 => E128::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                256 => E256::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                512 => E512::from(machine.registers()[i.vs1()].to_u64()).put(machine.element_mut(
-                    i.vd(),
-                    sew,
-                    0,
-                )),
-                1024 => E1024::from(machine.registers()[i.vs2()].to_u64())
-                    .put(machine.element_mut(i.vd(), sew, 0)),
-                _ => return Err(Error::Unexpected("".into())),
-            };
         }
         insts::OP_VCOMPRESS_VM => {
             if machine.vill() {
