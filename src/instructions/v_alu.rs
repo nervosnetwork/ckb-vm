@@ -1,4 +1,5 @@
-use eint::Eint;
+use ckb_vm_definitions::VLEN;
+use eint::{Eint, E2048};
 
 /// Set if equal.
 pub fn seq<T: Eint>(lhs: T, rhs: T) -> bool {
@@ -278,4 +279,19 @@ pub fn vnclip<T: Eint>(lhs: T, rhs: T) -> T {
         return T::MAX_S.hi();
     }
     r
+}
+
+// Count population in mask.
+pub fn cpop(vs2: E2048, m: E2048, vl: u64) -> u64 {
+    (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).cpop() as u64
+}
+
+// Find-first-set mask bit.
+pub fn first(vs2: E2048, m: E2048, vl: u64) -> u64 {
+    let r = (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).ctz();
+    if r == 2048 {
+        u64::MAX
+    } else {
+        r as u64
+    }
 }
