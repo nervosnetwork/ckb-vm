@@ -286,7 +286,7 @@ pub fn cpop(vs2: E2048, m: E2048, vl: u64) -> u64 {
     (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).cpop() as u64
 }
 
-// Find-first-set mask bit.
+// Find first set mask bit.
 pub fn first(vs2: E2048, m: E2048, vl: u64) -> u64 {
     let r = (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).ctz();
     if r == 2048 {
@@ -294,4 +294,65 @@ pub fn first(vs2: E2048, m: E2048, vl: u64) -> u64 {
     } else {
         r as u64
     }
+}
+
+// Set before first mask bit.
+pub fn sbf(vs2: E2048, vd: E2048, m: E2048, vl: u64) -> E2048 {
+    let mut found_first_mask = false;
+    let mut r = vd;
+    for j in 0..vl as u32 {
+        if !m.bit(j) {
+            continue;
+        }
+        if !found_first_mask && vs2.bit(j) {
+            found_first_mask = true;
+        }
+        if found_first_mask {
+            r.bit_clr(j);
+        } else {
+            r.bit_set(j);
+        }
+    }
+    return r;
+}
+
+// Set including first mask bit.
+pub fn sif(vs2: E2048, vd: E2048, m: E2048, vl: u64) -> E2048 {
+    let mut found_first_mask = false;
+    let mut r = vd;
+    for j in 0..vl as u32 {
+        if !m.bit(j) {
+            continue;
+        }
+        if !found_first_mask && vs2.bit(j) {
+            found_first_mask = true;
+            r.bit_set(j);
+            continue;
+        }
+        if found_first_mask {
+            r.bit_clr(j);
+        } else {
+            r.bit_set(j);
+        }
+    }
+    return r;
+}
+
+// Set only first mask bit.
+pub fn sof(vs2: E2048, vd: E2048, m: E2048, vl: u64) -> E2048 {
+    let mut found_first_mask = false;
+    let mut r = vd;
+    for j in 0..vl as u32 {
+        if !m.bit(j) {
+            continue;
+        }
+        if !found_first_mask && vs2.bit(j) {
+            found_first_mask = true;
+            r.bit_set(j);
+            continue;
+        } else {
+            r.bit_clr(j);
+        }
+    }
+    return r;
 }

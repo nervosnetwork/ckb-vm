@@ -1712,6 +1712,15 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VFIRST_M => {
             x_m_loop!(inst, machine, alu::first);
         }
+        insts::OP_VMSBF_M => {
+            m_m_loop!(inst, machine, alu::sbf);
+        }
+        insts::OP_VMSIF_M => {
+            m_m_loop!(inst, machine, alu::sif);
+        }
+        insts::OP_VMSOF_M => {
+            m_m_loop!(inst, machine, alu::sof);
+        }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);
             let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
@@ -1739,70 +1748,6 @@ pub fn execute_instruction<Mac: Machine>(
             machine
                 .element_mut(i.vd(), (VLEN as u64) * 8, 0)
                 .copy_from_slice(&data);
-        }
-        insts::OP_VMSBF_M => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let mut found_first_mask = false;
-            for j in 0..VLEN {
-                if i.vm() == 0 && !machine.get_bit(0, j) {
-                    continue;
-                }
-                let m = machine.get_bit(i.vs2(), j);
-                if !found_first_mask && m {
-                    found_first_mask = true;
-                }
-                if found_first_mask {
-                    machine.clr_bit(i.vd(), j);
-                } else {
-                    machine.set_bit(i.vd(), j);
-                }
-            }
-        }
-        insts::OP_VMSOF_M => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let mut found_first_mask = false;
-            for j in 0..VLEN {
-                if i.vm() == 0 && !machine.get_bit(0, j) {
-                    continue;
-                }
-                let m = machine.get_bit(i.vs2(), j);
-                if !found_first_mask && m {
-                    found_first_mask = true;
-                    machine.set_bit(i.vd(), j);
-                    continue;
-                } else {
-                    machine.clr_bit(i.vd(), j);
-                }
-            }
-        }
-        insts::OP_VMSIF_M => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let mut found_first_mask = false;
-            for j in 0..VLEN {
-                if i.vm() == 0 && !machine.get_bit(0, j) {
-                    continue;
-                }
-                let m = machine.get_bit(i.vs2(), j);
-                if !found_first_mask && m {
-                    found_first_mask = true;
-                    machine.set_bit(i.vd(), j);
-                    continue;
-                }
-                if found_first_mask {
-                    machine.clr_bit(i.vd(), j);
-                } else {
-                    machine.set_bit(i.vd(), j);
-                }
-            }
         }
         insts::OP_VIOTA_M => {
             if machine.vill() {
