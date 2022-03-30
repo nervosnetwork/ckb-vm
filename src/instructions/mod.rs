@@ -5,6 +5,7 @@ mod utils;
 
 pub mod ast;
 pub mod b;
+pub mod cost_model;
 pub mod i;
 pub mod m;
 pub mod rvc;
@@ -383,6 +384,10 @@ impl VItype {
 
 pub fn is_slowpath_instruction(i: Instruction) -> bool {
     i as u8 >= 0xF0
+}
+
+pub fn is_slowpath_opcode(i: InstructionOpcode) -> bool {
+    i >= 0xF0
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {

@@ -1,3 +1,4 @@
+use ckb_vm::instructions::cost_model::instruction_cycles;
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{Bytes, CoreMachine, Memory, Register, SupportMachine, Syscalls};
 
@@ -51,8 +52,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         u64::MAX,
     );
 
-    let machine_builder =
-        ckb_vm::DefaultMachineBuilder::new(core_machine).instruction_cycle_func(Box::new(|_| 1));
+    let machine_builder = ckb_vm::DefaultMachineBuilder::new(core_machine)
+        .instruction_cycle_func(Box::new(instruction_cycles));
     let mut machine = machine_builder.syscall(Box::new(CustomSyscall {})).build();
     machine.load_program(&code, &riscv_args).unwrap();
 
