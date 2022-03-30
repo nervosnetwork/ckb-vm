@@ -1682,6 +1682,36 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VWREDSUM_VS => {
             w_vs_loop_s!(inst, machine, Eint::wrapping_add);
         }
+        insts::OP_VMAND_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b & a);
+        }
+        insts::OP_VMNAND_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b & a));
+        }
+        insts::OP_VMANDNOT_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b & !a);
+        }
+        insts::OP_VMXOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b ^ a);
+        }
+        insts::OP_VMOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b | a);
+        }
+        insts::OP_VMNOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b | a));
+        }
+        insts::OP_VMORNOT_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| b | !a);
+        }
+        insts::OP_VMXNOR_MM => {
+            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
+        }
+        insts::OP_VCPOP_M => {
+            x_m_loop!(inst, machine, alu::cpop);
+        }
+        insts::OP_VFIRST_M => {
+            x_m_loop!(inst, machine, alu::first);
+        }
         insts::OP_VMV1R_V => {
             let i = VItype(inst);
             let data = machine.element_ref(i.vs2(), (VLEN as u64) * 1, 0).to_vec();
@@ -1709,30 +1739,6 @@ pub fn execute_instruction<Mac: Machine>(
             machine
                 .element_mut(i.vd(), (VLEN as u64) * 8, 0)
                 .copy_from_slice(&data);
-        }
-        insts::OP_VMAND_MM => {
-            m_mm_loop!(inst, machine, |b, a| b & a);
-        }
-        insts::OP_VMNAND_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b & a));
-        }
-        insts::OP_VMANDNOT_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| b & !a);
-        }
-        insts::OP_VMXOR_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| b ^ a);
-        }
-        insts::OP_VMOR_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| b | a);
-        }
-        insts::OP_VMNOR_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b | a));
-        }
-        insts::OP_VMORNOT_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| b | !a);
-        }
-        insts::OP_VMXNOR_MM => {
-            m_mm_loop!(inst, machine, |b: bool, a: bool| !(b ^ a));
         }
         insts::OP_VMSBF_M => {
             if machine.vill() {
@@ -2213,38 +2219,6 @@ pub fn execute_instruction<Mac: Machine>(
                     machine.element_mut(i.vd(), sew, j).copy_from_slice(&data);
                 }
             }
-        }
-        insts::OP_VFIRST_M => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let m = if i.vm() == 0 {
-                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
-                    & E2048::get(machine.element_ref(0, VLEN as u64, 0))
-            } else {
-                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
-            } & (E2048::MAX_U >> (VLEN as u32 - machine.vl() as u32));
-            let r = m.ctz();
-            if r == 2048 {
-                update_register(machine, i.vd(), Mac::REG::from_u64(0xffff_ffff_ffff_ffff));
-            } else {
-                update_register(machine, i.vd(), Mac::REG::from_u32(r));
-            }
-        }
-        insts::OP_VCPOP_M => {
-            if machine.vill() {
-                return Err(Error::Vill);
-            }
-            let i = VVtype(inst);
-            let m = if i.vm() == 0 {
-                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
-                    & E2048::get(machine.element_ref(0, VLEN as u64, 0))
-            } else {
-                E2048::get(machine.element_ref(i.vs2(), VLEN as u64, 0))
-            } & (E2048::MAX_U >> (VLEN as u32 - machine.vl() as u32));
-            let r = m.cpop();
-            update_register(machine, i.vd(), Mac::REG::from_u32(r));
         }
         _ => return Err(Error::InvalidOp(op)),
     };

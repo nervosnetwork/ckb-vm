@@ -3042,6 +3042,24 @@ macro_rules! v_vv_loop_ext_u {
     };
 }
 
+macro_rules! x_m_loop {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        if $machine.vill() {
+            return Err(Error::Vill);
+        }
+        let i = VVtype($inst);
+        let vs2 = E2048::get($machine.element_ref(i.vs2(), VLEN as u64, 0));
+        let m = if i.vm() == 0 {
+            E2048::get($machine.element_ref(0, VLEN as u64, 0))
+        } else {
+            E2048::MAX_U
+        };
+        let vl = $machine.vl();
+        let r = $body(vs2, m, vl);
+        update_register($machine, i.vd(), Mac::REG::from_u64(r));
+    };
+}
+
 pub(crate) use ld;
 pub(crate) use ld_index;
 pub(crate) use ld_whole;
@@ -3112,3 +3130,4 @@ pub(crate) use w_wv_loop_u;
 pub(crate) use w_wx_loop;
 pub(crate) use w_wx_loop_s;
 pub(crate) use w_wx_loop_u;
+pub(crate) use x_m_loop;
