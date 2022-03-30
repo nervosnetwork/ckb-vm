@@ -105,7 +105,7 @@ pub fn test_asm_ebreak() {
     assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
+fn dummy_cycle_func(_i: Instruction, _: u64, _: u64, _: bool) -> u64 {
     1
 }
 
@@ -342,7 +342,7 @@ pub fn test_asm_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
     let core = DefaultMachineBuilder::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(|_, _, _, _| 1))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -361,7 +361,7 @@ pub fn test_asm_cycles_overflow() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(|_, _, _, _| 1))
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine.machine.set_cycles(u64::MAX - 10);
@@ -380,7 +380,7 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(|_, _, _, _| 1))
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine.machine.set_cycles(u64::MAX - 10);

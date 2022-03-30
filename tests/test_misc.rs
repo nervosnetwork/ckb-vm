@@ -296,7 +296,7 @@ pub fn test_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 20);
     let mut machine = DefaultMachineBuilder::new(core_machine)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(|_, _, _, _| 1))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     machine
