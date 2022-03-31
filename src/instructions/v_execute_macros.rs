@@ -3135,70 +3135,15 @@ macro_rules! id_loop {
     };
 }
 
-macro_rules! vmv_x_s {
-    ($inst:expr, $machine:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
-        let i = VVtype($inst);
-        let sew = $machine.vsew();
-        let r = match sew {
-            8 => E8::get($machine.element_ref(i.vs2(), sew, 0)).0 as i8 as i64 as u64,
-            16 => E16::get($machine.element_ref(i.vs2(), sew, 0)).0 as i16 as i64 as u64,
-            32 => E32::get($machine.element_ref(i.vs2(), sew, 0)).0 as i32 as i64 as u64,
-            64 => E64::get($machine.element_ref(i.vs2(), sew, 0)).u64(),
-            128 => E128::get($machine.element_ref(i.vs2(), sew, 0)).u64(),
-            256 => E256::get($machine.element_ref(i.vs2(), sew, 0)).u64(),
-            512 => E512::get($machine.element_ref(i.vs2(), sew, 0)).u64(),
-            1024 => E1024::get($machine.element_ref(i.vs2(), sew, 0)).u64(),
-            _ => unreachable!(),
-        };
-        update_register($machine, i.vd(), Mac::REG::from_u64(r));
-    };
-}
-
-macro_rules! vmv_s_x {
-    ($inst:expr, $machine:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
-        let i = VVtype($inst);
-        let sew = $machine.vsew();
-        match sew {
-            8 => {
-                let e = E8::from($machine.registers()[i.vs1()].to_u64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            16 => {
-                let e = E16::from($machine.registers()[i.vs1()].to_u64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            32 => {
-                let e = E32::from($machine.registers()[i.vs1()].to_u64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            64 => {
-                let e = E64::from($machine.registers()[i.vs1()].to_u64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            128 => {
-                let e = E128::from($machine.registers()[i.vs1()].to_i64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            256 => {
-                let e = E256::from($machine.registers()[i.vs1()].to_i64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            512 => {
-                let e = E512::from($machine.registers()[i.vs1()].to_i64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            1024 => {
-                let e = E1024::from($machine.registers()[i.vs1()].to_i64());
-                e.put($machine.element_mut(i.vd(), sew, 0));
-            }
-            _ => unreachable!(),
-        };
+macro_rules! vmv_r {
+    ($inst:expr, $machine:expr, $size:expr) => {
+        let i = VItype($inst);
+        let data = $machine
+            .element_ref(i.vs2(), (VLEN as u64) * $size, 0)
+            .to_vec();
+        $machine
+            .element_mut(i.vd(), (VLEN as u64) * $size, 0)
+            .copy_from_slice(&data);
     };
 }
 
@@ -3256,8 +3201,7 @@ pub(crate) use v_wv_loop;
 pub(crate) use v_wv_loop_u;
 pub(crate) use v_wx_loop;
 pub(crate) use v_wx_loop_u;
-pub(crate) use vmv_s_x;
-pub(crate) use vmv_x_s;
+pub(crate) use vmv_r;
 pub(crate) use w_vs_loop;
 pub(crate) use w_vs_loop_s;
 pub(crate) use w_vs_loop_u;
