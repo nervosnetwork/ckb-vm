@@ -1,10 +1,40 @@
 pub use eint::{Eint, E1024, E128, E16, E2048, E256, E32, E512, E64, E8};
 
+pub fn is_aligned(val: u64, pos: u64) -> bool {
+    if pos != 0 {
+        (val & (pos - 1)) == 0
+    } else {
+        true
+    }
+}
+
+macro_rules! require {
+    ($val:expr, $msg:expr) => {
+        if !$val {
+            return Err(Error::RVVTrap($msg));
+        }
+    };
+}
+
+macro_rules! require_vill {
+    ($machine:expr) => {
+        require!(!$machine.vill(), String::from("vill"));
+    };
+}
+
+macro_rules! require_align {
+    ($val:expr, $pos:expr) => {
+        require!(
+            is_aligned(val, pos),
+            format!("require align: val={} pos={}", val, pos)
+        );
+    };
+}
+
 macro_rules! ld {
     ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let vd = i.vd();
         let addr = $machine.registers()[i.rs1()].to_u64();
@@ -29,9 +59,8 @@ macro_rules! ld {
 
 macro_rules! ld_index {
     ($inst:expr, $machine:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         let vd = i.vd();
@@ -169,9 +198,8 @@ macro_rules! ld_index {
 
 macro_rules! ld_whole {
     ($inst:expr, $machine:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let data = $machine.memory_mut().load_bytes(addr, $size)?;
@@ -183,9 +211,8 @@ macro_rules! ld_whole {
 
 macro_rules! sd {
     ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let vd = i.vd();
         let addr = $machine.registers()[i.rs1()].to_u64();
@@ -208,9 +235,8 @@ macro_rules! sd {
 
 macro_rules! sd_index {
     ($inst:expr, $machine:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         let vd = i.vd();
@@ -332,9 +358,8 @@ macro_rules! sd_index {
 
 macro_rules! sd_whole {
     ($inst:expr, $machine:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let data = $machine.element_ref(i.vd(), $size << 3, 0).to_vec();
@@ -344,9 +369,8 @@ macro_rules! sd_whole {
 
 macro_rules! v_vv_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -422,9 +446,8 @@ macro_rules! v_vv_loop_u {
 
 macro_rules! v_vx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -532,9 +555,8 @@ macro_rules! v_vx_loop_u {
 
 macro_rules! v_vi_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -642,9 +664,8 @@ macro_rules! v_vi_loop_u {
 
 macro_rules! m_vv_loop {
     ($inst:expr, $machine:expr, $cond:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -744,9 +765,8 @@ macro_rules! m_vv_loop_u {
 
 macro_rules! m_vx_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -878,9 +898,8 @@ macro_rules! m_vx_loop_u {
 
 macro_rules! m_vi_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1012,9 +1031,8 @@ macro_rules! m_vi_loop_u {
 
 macro_rules! m_mm_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         for j in 0..$machine.vl() as usize {
             let b = $machine.get_bit(i.vs2(), j);
@@ -1030,9 +1048,8 @@ macro_rules! m_mm_loop {
 
 macro_rules! w_vv_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1116,9 +1133,8 @@ macro_rules! w_vv_loop_u {
 
 macro_rules! w_vx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1234,9 +1250,8 @@ macro_rules! w_vx_loop_u {
 
 macro_rules! w_wv_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1344,9 +1359,8 @@ macro_rules! w_wv_loop_u {
 
 macro_rules! w_wx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1454,9 +1468,8 @@ macro_rules! w_wx_loop_u {
 
 macro_rules! v_wv_loop {
     ($inst:expr, $machine:expr, $body:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1558,9 +1571,8 @@ macro_rules! v_wv_loop_u {
 
 macro_rules! v_wx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1662,9 +1674,8 @@ macro_rules! v_wx_loop_u {
 
 macro_rules! v_wi_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1766,9 +1777,8 @@ macro_rules! v_wi_loop_u {
 
 macro_rules! v_vvm_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1836,9 +1846,8 @@ macro_rules! v_vvm_loop_s {
 
 macro_rules! v_vxm_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -1938,9 +1947,8 @@ macro_rules! v_vxm_loop_s {
 
 macro_rules! v_vim_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2040,9 +2048,8 @@ macro_rules! v_vim_loop_s {
 
 macro_rules! m_vvm_loop {
     ($inst:expr, $machine:expr, $cond:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2134,9 +2141,8 @@ macro_rules! m_vvm_loop_s {
 
 macro_rules! m_vxm_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2260,9 +2266,8 @@ macro_rules! m_vxm_loop_s {
 
 macro_rules! m_vim_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VItype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2386,9 +2391,8 @@ macro_rules! m_vim_loop_s {
 
 macro_rules! v_vv_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2466,9 +2470,8 @@ macro_rules! v_vv_loop_destructive_s {
 
 macro_rules! v_vx_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2584,9 +2587,8 @@ macro_rules! v_vx_loop_destructive_s {
 
 macro_rules! w_vv_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2680,9 +2682,8 @@ macro_rules! w_vv_loop_destructive_s {
 
 macro_rules! w_vx_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VXtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -2808,9 +2809,8 @@ macro_rules! w_vx_loop_destructive_s {
 
 macro_rules! v_vs_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         let vs1 = $machine.element_ref(i.vs1(), sew, 0).to_vec();
@@ -2882,9 +2882,8 @@ macro_rules! v_vs_loop_s {
 
 macro_rules! w_vs_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         let vs1 = $machine.element_ref(i.vs1(), sew * 2, 0).to_vec();
@@ -3004,9 +3003,8 @@ macro_rules! w_vs_loop_u {
 
 macro_rules! v_vv_loop_ext_s {
     ($inst:expr, $machine:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -3026,9 +3024,8 @@ macro_rules! v_vv_loop_ext_s {
 
 macro_rules! v_vv_loop_ext_u {
     ($inst:expr, $machine:expr, $size:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -3044,9 +3041,8 @@ macro_rules! v_vv_loop_ext_u {
 
 macro_rules! x_m_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let vs2 = E2048::get($machine.element_ref(i.vs2(), VLEN as u64, 0));
         let m = if i.vm() == 0 {
@@ -3062,9 +3058,8 @@ macro_rules! x_m_loop {
 
 macro_rules! m_m_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let vs2 = E2048::get($machine.element_ref(i.vs2(), VLEN as u64, 0));
         let vd = E2048::get($machine.element_ref(i.vd(), VLEN as u64, 0));
@@ -3081,9 +3076,8 @@ macro_rules! m_m_loop {
 
 macro_rules! iota_loop {
     ($inst:expr, $machine:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         let mut iota: u32 = 0;
@@ -3111,9 +3105,8 @@ macro_rules! iota_loop {
 
 macro_rules! id_loop {
     ($inst:expr, $machine:expr) => {
-        if $machine.vill() {
-            return Err(Error::Vill);
-        }
+        require_vill!($machine);
+
         let i = VVtype($inst);
         let sew = $machine.vsew();
         for j in 0..$machine.vl() as usize {
@@ -3146,6 +3139,10 @@ macro_rules! vmv_r {
             .copy_from_slice(&data);
     };
 }
+
+pub(crate) use require;
+pub(crate) use require_align;
+pub(crate) use require_vill;
 
 pub(crate) use id_loop;
 pub(crate) use iota_loop;
