@@ -1729,9 +1729,8 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMV_X_S => {
             require_vill!(machine);
-
-            let i = VVtype(inst);
             let sew = machine.vsew();
+            let i = VVtype(inst);
             let r = match sew {
                 8 => E8::get(machine.element_ref(i.vs2(), sew, 0)).0 as i8 as i64 as u64,
                 16 => E16::get(machine.element_ref(i.vs2(), sew, 0)).0 as i16 as i64 as u64,
@@ -1747,9 +1746,8 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VMV_S_X => {
             require_vill!(machine);
-
-            let i = VVtype(inst);
             let sew = machine.vsew();
+            let i = VVtype(inst);
             match sew {
                 8 => {
                     let e = E8::from(machine.registers()[i.vs1()].to_u64());
@@ -1788,9 +1786,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSLIDEUP_VX => {
             require_vill!(machine);
-
-            let i = VXtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VXtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             let offset = machine.registers()[i.rs1()].to_u64();
             for j in offset..machine.vl() {
                 if i.vm() == 0 && machine.get_bit(0, j as usize) {
@@ -1806,9 +1808,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSLIDEUP_VI => {
             require_vill!(machine);
-
-            let i = VItype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VItype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             let offset = i.immediate_u() as u64;
             for j in offset..machine.vl() {
                 if i.vm() == 0 && machine.get_bit(0, j as usize) {
@@ -1824,9 +1830,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSLIDEDOWN_VX => {
             require_vill!(machine);
-
-            let i = VXtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VXtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             let offset = machine.registers()[i.rs1()].to_u64();
             for j in 0..machine.vl() {
                 if i.vm() == 0 && machine.get_bit(0, j as usize) {
@@ -1846,9 +1856,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSLIDEDOWN_VI => {
             require_vill!(machine);
-
-            let i = VItype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VItype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             let offset = i.immediate_u() as u64;
             for j in 0..machine.vl() {
                 if i.vm() == 0 && machine.get_bit(0, j as usize) {
@@ -1868,9 +1882,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSLIDE1UP_VX => {
             require_vill!(machine);
-
-            let i = VXtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VXtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             match sew {
                 8 => {
                     let vd0 = E8::from(machine.registers()[i.rs1()].to_u64());
@@ -1918,9 +1936,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VSLIDE1DOWN_VX => {
             require_vill!(machine);
-
-            let i = VXtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VXtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             match sew {
                 8 => {
                     let vd0 = E8::from(machine.registers()[i.rs1()].to_u64());
@@ -1968,9 +1990,14 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VRGATHER_VV => {
             require_vill!(machine);
-
-            let i = VVtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VVtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs1() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             for j in 0..machine.vl() as usize {
                 if i.vm() == 0 && machine.get_bit(0, j) {
                     continue;
@@ -1992,9 +2019,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VRGATHER_VX => {
             require_vill!(machine);
-
-            let i = VXtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VXtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             for j in 0..machine.vl() as usize {
                 if i.vm() == 0 && machine.get_bit(0, j) {
                     continue;
@@ -2010,9 +2041,13 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VRGATHER_VI => {
             require_vill!(machine);
-
-            let i = VItype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VItype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             for j in 0..machine.vl() as usize {
                 if i.vm() == 0 && machine.get_bit(0, j) {
                     continue;
@@ -2028,9 +2063,14 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VRGATHEREI16_VV => {
             require_vill!(machine);
-
-            let i = VVtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VVtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs1() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             for j in 0..machine.vl() as usize {
                 if i.vm() == 0 && machine.get_bit(0, j) {
                     continue;
@@ -2046,9 +2086,14 @@ pub fn execute_instruction<Mac: Machine>(
         }
         insts::OP_VCOMPRESS_VM => {
             require_vill!(machine);
-
-            let i = VVtype(inst);
             let sew = machine.vsew();
+            let vlmul = machine.vlmul();
+            let i = VVtype(inst);
+            if vlmul > 1 {
+                require_align!(i.vd() as u64, vlmul as u64);
+                require_align!(i.vs1() as u64, vlmul as u64);
+                require_align!(i.vs2() as u64, vlmul as u64);
+            }
             let mut k = 0;
             for j in 0..machine.vl() as usize {
                 if machine.get_bit(i.vs1(), j) {
