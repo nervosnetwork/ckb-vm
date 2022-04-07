@@ -2,7 +2,6 @@ parameters:
   rustup_toolchain: ''
 steps:
 - powershell: |
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
     Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
   displayName: Install scoop
 - script: |
