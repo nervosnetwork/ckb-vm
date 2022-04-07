@@ -2,7 +2,7 @@ parameters:
   rustup_toolchain: ''
 steps:
 - script: |
-    set PATH=C:\agents\2.202.0\externals\git\cmd;C:\agents\2.202.0\externals\git\mingw64\bin;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\;
+    set PATH=C:\agents\2.202.0\externals\git\cmd;C:\agents\2.202.0\externals\git\mingw64\bin;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\;C:\Windows;
     echo "##vso[task.setvariable variable=PATH;]%PATH%"
   displayName: Clean environment
 - powershell: |
