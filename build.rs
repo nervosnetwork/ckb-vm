@@ -76,6 +76,7 @@ fn main() {
 
             let compile_path = Path::new(&out_dir).join("execute_x64.o");
             let mut compile_command = Command::new("yasm");
+            compile_command.env_clear();
             compile_command
                 .arg("-p")
                 .arg("gas")
