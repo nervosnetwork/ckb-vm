@@ -1,7 +1,10 @@
 parameters:
   rustup_toolchain: ''
 steps:
-- powershell: Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+- powershell: |
+    iwr -useb get.scoop.sh -outfile 'install.ps1'
+    .\install.ps1 -RunAsAdmin
+    rm install.ps1
   displayName: Install scoop
 - script: |
     set PATH=%PATH%;%USERPROFILE%\scoop\shims
