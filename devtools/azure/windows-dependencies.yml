@@ -1,10 +1,7 @@
 parameters:
   rustup_toolchain: ''
 steps:
-- powershell: |
-    iwr -useb get.scoop.sh -outfile 'install.ps1'
-    .\install.ps1 -RunAsAdmin
-    rm install.ps1
+- powershell: Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
   displayName: Install scoop
 - script: |
     set PATH=%PATH%;%USERPROFILE%\scoop\shims
@@ -13,7 +10,7 @@ steps:
   displayName: Add scoop to path
 - script: scoop install llvm
   displayName: Install LLVM
-- script: vcpkg install yasm-tool:x86-windows
+- script: scoop install yasm
   displayName: Install yasm
 - script: |
     curl -sSf -o rustup-init.exe https://win.rustup.rs
@@ -25,4 +22,5 @@ steps:
     rustc --version
     cargo --version
     clang --version
+    yasm --version
   displayName: Test/query binaries
