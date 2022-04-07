@@ -1,15 +1,15 @@
 parameters:
   rustup_toolchain: ''
 steps:
+- script: |
+    set PATH=C:\agents\2.202.0\externals\git\cmd;C:\agents\2.202.0\externals\git\mingw64\bin;
+    echo "##vso[task.setvariable variable=PATH;]%PATH%"
+  displayName: Clean environment
 - powershell: |
     iwr -useb get.scoop.sh -outfile 'install.ps1'
     .\install.ps1 -RunAsAdmin
     rm install.ps1
   displayName: Install scoop
-- script: |
-    set PATH=C:\agents\2.202.0\externals\git\cmd;C:\agents\2.202.0\externals\git\mingw64\bin;
-    echo "##vso[task.setvariable variable=PATH;]%PATH%"
-  displayName: Clean path
 - script: |
     set PATH=%PATH%;%USERPROFILE%\scoop\shims
     echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\scoop\shims"
