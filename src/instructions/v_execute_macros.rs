@@ -9,6 +9,14 @@ pub fn is_aligned(val: u64, pos: u64) -> bool {
     }
 }
 
+pub fn is_overlapped(astart: u64, asize: u64, bstart: u64, bsize: u64) -> bool {
+    let asize = if asize == 0 { 1 } else { asize };
+    let bsize = if bsize == 0 { 1 } else { bsize };
+    let aend = astart + asize;
+    let bend = bstart + bsize;
+    std::cmp::max(aend, bend) - std::cmp::min(astart, bstart) < asize + bsize
+}
+
 macro_rules! require {
     ($val:expr, $msg:expr) => {
         if !$val {
@@ -31,6 +39,35 @@ macro_rules! require_align {
         );
     };
 }
+
+macro_rules! require_noover {
+    ($astart:expr, $asize:expr, $bstart:expr, $bsize:expr) => {
+        require!(
+            !is_overlapped($astart, $asize, $bstart, $bsize),
+            format!(
+                "require noover: astart={} asize={} bstart={} bsize={}",
+                $astart, $asize, $bstart, $bsize
+            )
+        );
+    };
+}
+
+macro_rules! require_nov0 {
+    ($val:expr) => {
+        if ($val == 0) {
+            return Err(Error::RVVTrap(format!("require nov0: val={}", $val)));
+        }
+    };
+}
+
+// macro_rules! require_noover_widen {
+//     ($astart:expr, $asize:expr, $bstart:expr, $bsize:expr) => {
+//         require!(
+//             !is_overlapped_widen($astart, $asize, $bstart, $bsize),
+//             format!("require noover: astart={} asize={} bstart={} bsize={}", $astart, $asize, $bstart, $bsize)
+//         );
+//     };
+// }
 
 macro_rules! ld {
     ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
@@ -67,9 +104,18 @@ macro_rules! ld_index {
         let sew = $machine.vsew();
         let i = VXtype($inst);
         let vd = i.vd();
+        let vs2 = i.vs2();
         let vlmul = $machine.vlmul();
         if vlmul > 1 {
             require_align!(vd as u64, vlmul as u64);
+        }
+        if $size > sew {
+            require_noover!(
+                vd as u64,
+                std::cmp::max(0, vlmul) as u64,
+                vs2 as u64,
+                $size / sew
+            );
         }
         let addr = $machine.registers()[i.rs1()].to_u64();
         for j in 0..$machine.vl() as usize {
@@ -79,10 +125,10 @@ macro_rules! ld_index {
             match sew {
                 8 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -94,10 +140,10 @@ macro_rules! ld_index {
                 }
                 16 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -109,10 +155,10 @@ macro_rules! ld_index {
                 }
                 32 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -124,10 +170,10 @@ macro_rules! ld_index {
                 }
                 64 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -139,10 +185,10 @@ macro_rules! ld_index {
                 }
                 128 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -154,10 +200,10 @@ macro_rules! ld_index {
                 }
                 256 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -169,10 +215,10 @@ macro_rules! ld_index {
                 }
                 512 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -184,10 +230,10 @@ macro_rules! ld_index {
                 }
                 1024 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine
@@ -251,9 +297,18 @@ macro_rules! sd_index {
         let i = VXtype($inst);
         let sew = $machine.vsew();
         let vd = i.vd();
+        let vs2 = i.vs2();
         let vlmul = $machine.vlmul();
         if vlmul > 1 {
             require_align!(vd as u64, vlmul as u64);
+        }
+        if $size > sew {
+            require_noover!(
+                vd as u64,
+                std::cmp::max(0, vlmul) as u64,
+                vs2 as u64,
+                $size / sew
+            );
         }
         let addr = $machine.registers()[i.rs1()].to_u64();
         for j in 0..$machine.vl() as usize {
@@ -263,10 +318,10 @@ macro_rules! sd_index {
             match sew {
                 8 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -276,10 +331,10 @@ macro_rules! sd_index {
                 }
                 16 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -289,10 +344,10 @@ macro_rules! sd_index {
                 }
                 32 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -302,10 +357,10 @@ macro_rules! sd_index {
                 }
                 64 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -315,10 +370,10 @@ macro_rules! sd_index {
                 }
                 128 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -328,10 +383,10 @@ macro_rules! sd_index {
                 }
                 256 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -341,10 +396,10 @@ macro_rules! sd_index {
                 }
                 512 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -354,10 +409,10 @@ macro_rules! sd_index {
                 }
                 1024 => {
                     let offset = match $size {
-                        8 => E8::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        16 => E16::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        32 => E32::get($machine.element_ref(i.vs2(), $size, j)).u64(),
-                        64 => E64::get($machine.element_ref(i.vs2(), $size, j)).u64(),
+                        8 => E8::get($machine.element_ref(vs2, $size, j)).u64(),
+                        16 => E16::get($machine.element_ref(vs2, $size, j)).u64(),
+                        32 => E32::get($machine.element_ref(vs2, $size, j)).u64(),
+                        64 => E64::get($machine.element_ref(vs2, $size, j)).u64(),
                         _ => unreachable!(),
                     };
                     let data = $machine.element_ref(vd, sew, j as usize).to_vec();
@@ -699,9 +754,12 @@ macro_rules! m_vv_loop {
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, vlmul as u64);
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -805,8 +863,10 @@ macro_rules! m_vx_loop {
         let vlmul = $machine.vlmul();
         let i = VXtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -942,8 +1002,10 @@ macro_rules! m_vi_loop {
         let vlmul = $machine.vlmul();
         let i = VItype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1095,9 +1157,23 @@ macro_rules! w_vv_loop {
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
             require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs1() as u64,
+                vlmul as u64
+            );
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs2() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1185,8 +1261,16 @@ macro_rules! w_vx_loop {
         let vlmul = $machine.vlmul();
         let i = VXtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs2() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1306,9 +1390,23 @@ macro_rules! w_wv_loop {
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
             require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vs1() as u64,
+                vlmul as u64,
+                i.vd() as u64,
+                vlmul as u64 * 2
+            );
+            require_noover!(
+                i.vs1() as u64,
+                vlmul as u64,
+                i.vs2() as u64,
+                vlmul as u64 * 2
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1420,8 +1518,8 @@ macro_rules! w_wx_loop {
         let vlmul = $machine.vlmul();
         let i = VXtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
+            require_align!(i.vs2() as u64, vlmul as u64 * 2);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1535,7 +1633,21 @@ macro_rules! v_wv_loop {
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vs2() as u64,
+                vlmul as u64 * 2,
+                i.vd() as u64,
+                vlmul as u64
+            );
+            require_noover!(
+                i.vs2() as u64,
+                vlmul as u64 * 2,
+                i.vs1() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1642,7 +1754,15 @@ macro_rules! v_wx_loop {
         let i = VXtype($inst);
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vs2() as u64,
+                vlmul as u64 * 2,
+                i.vd() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1749,7 +1869,15 @@ macro_rules! v_wi_loop {
         let i = VItype($inst);
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vs2() as u64,
+                vlmul as u64 * 2,
+                i.vd() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1854,6 +1982,9 @@ macro_rules! v_vvm_loop {
         let sew = $machine.vsew();
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
+        require_nov0!(i.vd());
+        require_nov0!(i.vs1());
+        require_nov0!(i.vs2());
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs1() as u64, vlmul as u64);
@@ -1928,6 +2059,8 @@ macro_rules! v_vxm_loop {
         let sew = $machine.vsew();
         let vlmul = $machine.vlmul();
         let i = VXtype($inst);
+        require_nov0!(i.vd());
+        require_nov0!(i.vs2());
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
@@ -2033,6 +2166,8 @@ macro_rules! v_vim_loop {
         let sew = $machine.vsew();
         let vlmul = $machine.vlmul();
         let i = VItype($inst);
+        require_nov0!(i.vd());
+        require_nov0!(i.vs2());
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
@@ -2138,10 +2273,16 @@ macro_rules! m_vvm_loop {
         let sew = $machine.vsew();
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
+        require_nov0!(i.vs1());
+        require_nov0!(i.vs2());
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, vlmul as u64);
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2236,9 +2377,13 @@ macro_rules! m_vxm_loop {
         let sew = $machine.vsew();
         let vlmul = $machine.vlmul();
         let i = VXtype($inst);
+        require_nov0!(i.vs2());
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2365,9 +2510,13 @@ macro_rules! m_vim_loop {
         let sew = $machine.vsew();
         let vlmul = $machine.vlmul();
         let i = VItype($inst);
+        require_nov0!(i.vs2());
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2687,12 +2836,6 @@ macro_rules! v_vx_loop_destructive_s {
     };
 }
 
-// macro_rules! v_vx_loop_destructive_u {
-//     ($inst:expr, $machine:expr, $body:expr) => {
-//         v_vx_loop_destructive!($inst, $machine, $body, 0);
-//     };
-// }
-
 macro_rules! w_vv_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
@@ -2700,9 +2843,23 @@ macro_rules! w_vv_loop_destructive {
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
             require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs1() as u64,
+                vlmul as u64
+            );
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs2() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -2800,8 +2957,16 @@ macro_rules! w_vx_loop_destructive {
         let vlmul = $machine.vlmul();
         let i = VXtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs2() as u64,
+                vlmul as u64
+            );
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3009,9 +3174,23 @@ macro_rules! w_vs_loop {
         let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+            require_align!(i.vd() as u64, vlmul as u64 * 2);
             require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
+        }
+        if vlmul > 0 {
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs1() as u64,
+                vlmul as u64
+            );
+            require_noover!(
+                i.vd() as u64,
+                vlmul as u64 * 2,
+                i.vs2() as u64,
+                vlmul as u64
+            );
         }
         let vs1 = $machine.element_ref(i.vs1(), sew * 2, 0).to_vec();
         $machine
@@ -3136,7 +3315,6 @@ macro_rules! v_vv_loop_ext_s {
         let i = VVtype($inst);
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
@@ -3162,7 +3340,6 @@ macro_rules! v_vv_loop_ext_u {
         let i = VVtype($inst);
         if vlmul > 1 {
             require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
             require_align!(i.vs2() as u64, vlmul as u64);
         }
         for j in 0..$machine.vl() as usize {
@@ -3209,67 +3386,6 @@ macro_rules! m_m_loop {
     };
 }
 
-macro_rules! iota_loop {
-    ($inst:expr, $machine:expr) => {
-        require_vill!($machine);
-        let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
-        let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
-        }
-        let mut iota: u32 = 0;
-        for j in 0..$machine.vl() as usize {
-            if i.vm() == 0 && !$machine.get_bit(0, j) {
-                continue;
-            }
-            match sew {
-                8 => E8::from(iota as u8).put($machine.element_mut(i.vd(), sew, j)),
-                16 => E16::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                32 => E32::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                64 => E64::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                128 => E128::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                256 => E256::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                512 => E512::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                1024 => E1024::from(iota as u16).put($machine.element_mut(i.vd(), sew, j)),
-                _ => unreachable!(),
-            }
-            if $machine.get_bit(i.vs2(), j) {
-                iota += 1;
-            }
-        }
-    };
-}
-
-macro_rules! id_loop {
-    ($inst:expr, $machine:expr) => {
-        require_vill!($machine);
-        let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
-        let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-        }
-        for j in 0..$machine.vl() as usize {
-            if i.vm() == 0 && !$machine.get_bit(0, j) {
-                continue;
-            }
-            match sew {
-                8 => E8::from(j as u8).put($machine.element_mut(i.vd(), sew, j)),
-                16 => E16::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                32 => E32::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                64 => E64::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                128 => E128::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                256 => E256::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                512 => E512::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                1024 => E1024::from(j as u16).put($machine.element_mut(i.vd(), sew, j)),
-                _ => unreachable!(),
-            }
-        }
-    };
-}
-
 macro_rules! vmv_r {
     ($inst:expr, $machine:expr, $size:expr) => {
         let i = VItype($inst);
@@ -3286,10 +3402,10 @@ macro_rules! vmv_r {
 
 pub(crate) use require;
 pub(crate) use require_align;
+pub(crate) use require_noover;
+pub(crate) use require_nov0;
 pub(crate) use require_vill;
 
-pub(crate) use id_loop;
-pub(crate) use iota_loop;
 pub(crate) use ld;
 pub(crate) use ld_index;
 pub(crate) use ld_whole;
