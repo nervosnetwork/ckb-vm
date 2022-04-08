@@ -13,7 +13,7 @@ variables:
 jobs:
   - job: WinCI
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'windows-2019'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
@@ -23,7 +23,7 @@ jobs:
 
   - job: WinCIChaos
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'windows-2019'
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
