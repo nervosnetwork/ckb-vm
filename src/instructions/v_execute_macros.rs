@@ -31,6 +31,12 @@ macro_rules! require_vill {
     };
 }
 
+macro_rules! require_emul {
+    ($emul:expr) => {
+        require!($emul < 8, format!("require emul: emul={}", $emul));
+    };
+}
+
 macro_rules! require_align {
     ($val:expr, $pos:expr) => {
         require!(
@@ -60,23 +66,19 @@ macro_rules! require_nov0 {
     };
 }
 
-// macro_rules! require_noover_widen {
-//     ($astart:expr, $asize:expr, $bstart:expr, $bsize:expr) => {
-//         require!(
-//             !is_overlapped_widen($astart, $asize, $bstart, $bsize),
-//             format!("require noover: astart={} asize={} bstart={} bsize={}", $astart, $asize, $bstart, $bsize)
-//         );
-//     };
-// }
-
 macro_rules! ld {
     ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
         require_vill!($machine);
-        let vlmul = $machine.vlmul();
+        let lmul = $machine.vlmul();
+        let sew = $machine.vsew();
+        if lmul > 1 && ($size << 3) > sew {
+            let emul = ($size << 3) / sew * lmul as u64;
+            require_emul!(emul);
+        }
         let i = VXtype($inst);
         let vd = i.vd();
-        if $mask == 1 && vlmul > 1 {
-            require_align!(vd as u64, vlmul as u64);
+        if $mask == 1 && lmul > 1 {
+            require_align!(vd as u64, lmul as u64);
         }
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
@@ -101,18 +103,22 @@ macro_rules! ld {
 macro_rules! ld_index {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        if lmul > 1 && $size > sew {
+            let emul = $size / sew * lmul as u64;
+            require_emul!(emul);
+        }
         let i = VXtype($inst);
         let vd = i.vd();
         let vs2 = i.vs2();
-        let vlmul = $machine.vlmul();
-        if vlmul > 1 {
-            require_align!(vd as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(vd as u64, lmul as u64);
         }
         if $size > sew {
             require_noover!(
                 vd as u64,
-                std::cmp::max(0, vlmul) as u64,
+                std::cmp::max(0, lmul) as u64,
                 vs2 as u64,
                 $size / sew
             );
@@ -267,11 +273,16 @@ macro_rules! ld_whole {
 macro_rules! sd {
     ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
         require_vill!($machine);
-        let vlmul = $machine.vlmul();
+        let lmul = $machine.vlmul();
+        let sew = $machine.vsew();
+        if lmul > 1 && ($size << 3) > sew {
+            let emul = ($size << 3) / sew * lmul as u64;
+            require_emul!(emul);
+        }
         let i = VXtype($inst);
         let vd = i.vd();
-        if $mask == 1 && vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
+        if $mask == 1 && lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
         }
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
@@ -294,18 +305,22 @@ macro_rules! sd {
 macro_rules! sd_index {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
-        let i = VXtype($inst);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        if lmul > 1 && $size > sew {
+            let emul = $size / sew * lmul as u64;
+            require_emul!(emul);
+        }
+        let i = VXtype($inst);
         let vd = i.vd();
         let vs2 = i.vs2();
-        let vlmul = $machine.vlmul();
-        if vlmul > 1 {
-            require_align!(vd as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(vd as u64, lmul as u64);
         }
         if $size > sew {
             require_noover!(
                 vd as u64,
-                std::cmp::max(0, vlmul) as u64,
+                std::cmp::max(0, lmul) as u64,
                 vs2 as u64,
                 $size / sew
             );
@@ -442,13 +457,13 @@ macro_rules! sd_whole {
 macro_rules! v_vv_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -525,11 +540,11 @@ macro_rules! v_vx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
+        let lmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -638,11 +653,11 @@ macro_rules! v_vi_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
+        let lmul = $machine.vlmul();
         let i = VItype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -751,15 +766,15 @@ macro_rules! m_vv_loop {
     ($inst:expr, $machine:expr, $cond:expr) => {
         require_vill!($machine);
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
+        let lmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(i.vd() as u64, 1, i.vs1() as u64, vlmul as u64);
-            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, lmul as u64);
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -859,14 +874,14 @@ macro_rules! m_vv_loop_u {
 macro_rules! m_vx_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -998,14 +1013,14 @@ macro_rules! m_vx_loop_u {
 macro_rules! m_vi_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VItype($inst);
-        if vlmul > 1 {
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1153,27 +1168,18 @@ macro_rules! m_mm_loop {
 macro_rules! w_vv_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs1() as u64,
-                vlmul as u64
-            );
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs2() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_emul!(lmul as u64 * 2);
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1257,20 +1263,16 @@ macro_rules! w_vv_loop_u {
 macro_rules! w_vx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs2() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_emul!(lmul as u64 * 2);
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1386,27 +1388,18 @@ macro_rules! w_vx_loop_u {
 macro_rules! w_wv_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64 * 2);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vs1() as u64,
-                vlmul as u64,
-                i.vd() as u64,
-                vlmul as u64 * 2
-            );
-            require_noover!(
-                i.vs1() as u64,
-                vlmul as u64,
-                i.vs2() as u64,
-                vlmul as u64 * 2
-            );
+        if lmul > 0 {
+            require_emul!(lmul * 2);
+            require_noover!(i.vs1() as u64, lmul as u64, i.vd() as u64, lmul as u64 * 2);
+            require_noover!(i.vs1() as u64, lmul as u64, i.vs2() as u64, lmul as u64 * 2);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1514,12 +1507,13 @@ macro_rules! w_wv_loop_u {
 macro_rules! w_wx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        if lmul > 1 {
+            require_emul!(lmul as u64 * 2);
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs2() as u64, lmul as u64 * 2);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1627,27 +1621,18 @@ macro_rules! w_wx_loop_u {
 macro_rules! v_wv_loop {
     ($inst:expr, $machine:expr, $body:expr, $size:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64 * 2);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vs2() as u64,
-                vlmul as u64 * 2,
-                i.vd() as u64,
-                vlmul as u64
-            );
-            require_noover!(
-                i.vs2() as u64,
-                vlmul as u64 * 2,
-                i.vs1() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_emul!(lmul * 2);
+            require_noover!(i.vs2() as u64, lmul as u64 * 2, i.vd() as u64, lmul as u64);
+            require_noover!(i.vs2() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1749,20 +1734,16 @@ macro_rules! v_wv_loop_u {
 macro_rules! v_wx_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64 * 2);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vs2() as u64,
-                vlmul as u64 * 2,
-                i.vd() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_emul!(lmul * 2);
+            require_noover!(i.vs2() as u64, lmul as u64 * 2, i.vd() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1864,20 +1845,16 @@ macro_rules! v_wx_loop_u {
 macro_rules! v_wi_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VItype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64 * 2);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64 * 2);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vs2() as u64,
-                vlmul as u64 * 2,
-                i.vd() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_emul!(lmul * 2);
+            require_noover!(i.vs2() as u64, lmul as u64 * 2, i.vd() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1979,16 +1956,16 @@ macro_rules! v_wi_loop_u {
 macro_rules! v_vvm_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         require_nov0!(i.vd());
         require_nov0!(i.vs1());
         require_nov0!(i.vs2());
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2056,14 +2033,14 @@ macro_rules! v_vvm_loop_s {
 macro_rules! v_vxm_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
         require_nov0!(i.vd());
         require_nov0!(i.vs2());
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2163,14 +2140,14 @@ macro_rules! v_vxm_loop_s {
 macro_rules! v_vim_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VItype($inst);
         require_nov0!(i.vd());
         require_nov0!(i.vs2());
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2270,19 +2247,19 @@ macro_rules! v_vim_loop_s {
 macro_rules! m_vvm_loop {
     ($inst:expr, $machine:expr, $cond:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
         require_nov0!(i.vs1());
         require_nov0!(i.vs2());
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(i.vd() as u64, 1, i.vs1() as u64, vlmul as u64);
-            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, lmul as u64);
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2374,16 +2351,16 @@ macro_rules! m_vvm_loop_s {
 macro_rules! m_vxm_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
         require_nov0!(i.vs2());
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2507,16 +2484,16 @@ macro_rules! m_vxm_loop_s {
 macro_rules! m_vim_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VItype($inst);
         require_nov0!(i.vs2());
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(i.vd() as u64, 1, i.vs2() as u64, vlmul as u64);
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             let mbit = $machine.get_bit(0, j);
@@ -2640,13 +2617,13 @@ macro_rules! m_vim_loop_s {
 macro_rules! v_vv_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -2724,12 +2701,12 @@ macro_rules! v_vv_loop_destructive_s {
 macro_rules! v_vx_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -2839,27 +2816,17 @@ macro_rules! v_vx_loop_destructive_s {
 macro_rules! w_vv_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs1() as u64,
-                vlmul as u64
-            );
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs2() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -2953,20 +2920,15 @@ macro_rules! w_vv_loop_destructive_s {
 macro_rules! w_vx_loop_destructive {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VXtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs2() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3092,13 +3054,13 @@ macro_rules! w_vx_loop_destructive_s {
 macro_rules! v_vs_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         let vs1 = $machine.element_ref(i.vs1(), sew, 0).to_vec();
         $machine.element_mut(i.vd(), sew, 0).copy_from_slice(&vs1);
@@ -3170,27 +3132,17 @@ macro_rules! v_vs_loop_s {
 macro_rules! w_vs_loop {
     ($inst:expr, $machine:expr, $body:expr, $sign:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64 * 2);
-            require_align!(i.vs1() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64 * 2);
+            require_align!(i.vs1() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
-        if vlmul > 0 {
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs1() as u64,
-                vlmul as u64
-            );
-            require_noover!(
-                i.vd() as u64,
-                vlmul as u64 * 2,
-                i.vs2() as u64,
-                vlmul as u64
-            );
+        if lmul > 0 {
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
+            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
         }
         let vs1 = $machine.element_ref(i.vs1(), sew * 2, 0).to_vec();
         $machine
@@ -3310,12 +3262,12 @@ macro_rules! w_vs_loop_u {
 macro_rules! v_vv_loop_ext_s {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3335,12 +3287,12 @@ macro_rules! v_vv_loop_ext_s {
 macro_rules! v_vv_loop_ext_u {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
+        let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let vlmul = $machine.vlmul();
         let i = VVtype($inst);
-        if vlmul > 1 {
-            require_align!(i.vd() as u64, vlmul as u64);
-            require_align!(i.vs2() as u64, vlmul as u64);
+        if lmul > 1 {
+            require_align!(i.vd() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64);
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3402,6 +3354,7 @@ macro_rules! vmv_r {
 
 pub(crate) use require;
 pub(crate) use require_align;
+pub(crate) use require_emul;
 pub(crate) use require_noover;
 pub(crate) use require_nov0;
 pub(crate) use require_vill;
