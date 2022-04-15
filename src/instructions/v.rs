@@ -553,7 +553,6 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
                 #[rustfmt::skip]
                 let inst_opt = match instruction_bits {
                     x if x & 0b11111100000000000111000001111111 == 0b00000000000000000000000001010111 => Some(insts::OP_VADD_VV),
-                    x if x & 0b11111100000000000111000001111111 == 0b00000000000000000000000001010111 => Some(insts::OP_VADD_VV),
                     x if x & 0b11111100000000000111000001111111 == 0b00001000000000000000000001010111 => Some(insts::OP_VSUB_VV),
                     x if x & 0b11111100000000000111000001111111 == 0b00010000000000000000000001010111 => Some(insts::OP_VMINU_VV),
                     x if x & 0b11111100000000000111000001111111 == 0b00010100000000000000000001010111 => Some(insts::OP_VMIN_VV),
