@@ -465,6 +465,9 @@ macro_rules! v_vv_loop {
             require_align!(i.vs1() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64);
         }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
+        }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
                 continue;
@@ -545,6 +548,9 @@ macro_rules! v_vx_loop {
         if lmul > 1 {
             require_align!(i.vd() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -658,6 +664,9 @@ macro_rules! v_vi_loop {
         if lmul > 1 {
             require_align!(i.vd() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
