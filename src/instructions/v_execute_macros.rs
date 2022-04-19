@@ -3337,11 +3337,38 @@ macro_rules! v_vv_loop_ext_s {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
         let lmul = $machine.vlmul();
+        require!(
+            lmul / $size >= -8,
+            String::from("require: lmul / div >= -8")
+        );
         let sew = $machine.vsew();
+        require!(sew / $size >= 8, String::from("require: sew / div >= 8"));
+        require!(sew / $size <= 64, String::from("require: sew / div <= 64"));
         let i = VVtype($inst);
+        require!(i.vd() != i.vs2(), String::from("require: rd != rs2"));
         if lmul > 1 {
             require_align!(i.vd() as u64, lmul as u64);
-            require_align!(i.vs2() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64 / $size);
+        }
+        if lmul < $size as i32 {
+            if lmul > 0 {
+                require_noover!(
+                    i.vd() as u64 * $size,
+                    lmul as u64 * $size,
+                    i.vs2() as u64 * $size,
+                    lmul as u64
+                );
+            }
+        } else {
+            require_noover_widen!(
+                i.vd() as u64,
+                lmul as u64,
+                i.vs2() as u64,
+                lmul as u64 / $size
+            );
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3362,11 +3389,38 @@ macro_rules! v_vv_loop_ext_u {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
         let lmul = $machine.vlmul();
+        require!(
+            lmul / $size >= -8,
+            String::from("require: lmul / div >= -8")
+        );
         let sew = $machine.vsew();
+        require!(sew / $size >= 8, String::from("require: sew / div >= 8"));
+        require!(sew / $size <= 64, String::from("require: sew / div <= 64"));
         let i = VVtype($inst);
+        require!(i.vd() != i.vs2(), String::from("require: rd != rs2"));
         if lmul > 1 {
             require_align!(i.vd() as u64, lmul as u64);
-            require_align!(i.vs2() as u64, lmul as u64);
+            require_align!(i.vs2() as u64, lmul as u64 / $size);
+        }
+        if lmul < $size as i32 {
+            if lmul > 0 {
+                require_noover!(
+                    i.vd() as u64 * $size,
+                    lmul as u64 * $size,
+                    i.vs2() as u64 * $size,
+                    lmul as u64
+                );
+            }
+        } else {
+            require_noover_widen!(
+                i.vd() as u64,
+                lmul as u64,
+                i.vs2() as u64,
+                lmul as u64 / $size
+            );
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
