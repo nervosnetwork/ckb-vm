@@ -1,4 +1,4 @@
-pub use ckb_vm_definitions::VLEN;
+pub use ckb_vm_definitions::{ELEN, VLEN};
 pub use eint::{Eint, E1024, E128, E16, E2048, E256, E32, E512, E64, E8};
 
 pub fn is_aligned(val: u64, pos: u64) -> bool {
@@ -17,6 +17,23 @@ pub fn is_overlapped(astart: u64, asize: u64, bstart: u64, bsize: u64) -> bool {
     std::cmp::max(aend, bend) - std::cmp::min(astart, bstart) < asize + bsize
 }
 
+pub fn is_overlapped_widen(astart: u64, asize: u64, bstart: u64, bsize: u64) -> bool {
+    let asize = if asize == 0 { 1 } else { asize };
+    let bsize = if bsize == 0 { 1 } else { bsize };
+
+    let aend = astart + asize;
+    let bend = bstart + bsize;
+
+    if astart < bstart
+        && is_overlapped(astart, asize, bstart, bsize)
+        && !is_overlapped(astart, asize, bstart + bsize, bsize)
+    {
+        false
+    } else {
+        std::cmp::max(aend, bend) - std::cmp::min(astart, bstart) < asize + bsize
+    }
+}
+
 macro_rules! require {
     ($val:expr, $msg:expr) => {
         if !$val {
@@ -33,7 +50,7 @@ macro_rules! require_vill {
 
 macro_rules! require_emul {
     ($emul:expr) => {
-        require!($emul < 8, format!("require emul: emul={}", $emul));
+        require!($emul <= 8, format!("require emul: emul={}", $emul));
     };
 }
 
@@ -58,10 +75,30 @@ macro_rules! require_noover {
     };
 }
 
+macro_rules! require_noover_widen {
+    ($astart:expr, $asize:expr, $bstart:expr, $bsize:expr) => {
+        require!(
+            !is_overlapped_widen($astart, $asize, $bstart, $bsize),
+            format!(
+                "require noover widen: astart={} asize={} bstart={} bsize={}",
+                $astart, $asize, $bstart, $bsize
+            )
+        );
+    };
+}
+
 macro_rules! require_nov0 {
     ($val:expr) => {
         if ($val == 0) {
             return Err(Error::RVVTrap(format!("require nov0: val={}", $val)));
+        }
+    };
+}
+
+macro_rules! require_vsew {
+    ($val:expr) => {
+        if ($val > ELEN as u64) {
+            return Err(Error::RVVTrap(format!("require vsew: val={}", $val)));
         }
     };
 }
@@ -1179,16 +1216,25 @@ macro_rules! w_vv_loop {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VVtype($inst);
-        if lmul > 1 {
+        if lmul > 0 {
             require_align!(i.vd() as u64, lmul as u64 * 2);
             require_align!(i.vs1() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64);
         }
         if lmul > 0 {
             require_emul!(lmul as u64 * 2);
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+        }
+        if lmul > 0 {
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+        } else {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, 1);
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, 1);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1274,14 +1320,22 @@ macro_rules! w_vx_loop {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VXtype($inst);
-        if lmul > 1 {
+        if lmul > 0 {
             require_align!(i.vd() as u64, lmul as u64 * 2);
             require_align!(i.vs2() as u64, lmul as u64);
         }
         if lmul > 0 {
             require_emul!(lmul as u64 * 2);
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+        }
+        if lmul > 0 {
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+        } else {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, 1);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1399,16 +1453,23 @@ macro_rules! w_wv_loop {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VVtype($inst);
-        if lmul > 1 {
+        if lmul > 0 {
             require_align!(i.vd() as u64, lmul as u64 * 2);
             require_align!(i.vs1() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64 * 2);
         }
         if lmul > 0 {
             require_emul!(lmul * 2);
-            require_noover!(i.vs1() as u64, lmul as u64, i.vd() as u64, lmul as u64 * 2);
-            require_noover!(i.vs1() as u64, lmul as u64, i.vs2() as u64, lmul as u64 * 2);
+        }
+        if lmul > 0 {
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
+        } else {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, 1);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -1518,11 +1579,15 @@ macro_rules! w_wx_loop {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VXtype($inst);
-        if lmul > 1 {
+        if lmul > 0 {
             require_emul!(lmul as u64 * 2);
             require_align!(i.vd() as u64, lmul as u64 * 2);
             require_align!(i.vs2() as u64, lmul as u64 * 2);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3365,8 +3430,10 @@ pub(crate) use require;
 pub(crate) use require_align;
 pub(crate) use require_emul;
 pub(crate) use require_noover;
+pub(crate) use require_noover_widen;
 pub(crate) use require_nov0;
 pub(crate) use require_vill;
+pub(crate) use require_vsew;
 
 pub(crate) use ld;
 pub(crate) use ld_index;
