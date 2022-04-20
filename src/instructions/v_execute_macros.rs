@@ -915,12 +915,6 @@ macro_rules! m_vv_loop_s {
     };
 }
 
-macro_rules! m_vv_loop_u {
-    ($inst:expr, $machine:expr, $body:expr) => {
-        m_vv_loop!($inst, $machine, $body);
-    };
-}
-
 macro_rules! m_vx_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
@@ -1056,12 +1050,6 @@ macro_rules! m_vx_loop_s {
     };
 }
 
-macro_rules! m_vx_loop_u {
-    ($inst:expr, $machine:expr, $cond:expr) => {
-        m_vx_loop!($inst, $machine, $cond, 0);
-    };
-}
-
 macro_rules! m_vi_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
@@ -1194,12 +1182,6 @@ macro_rules! m_vi_loop {
 macro_rules! m_vi_loop_s {
     ($inst:expr, $machine:expr, $cond:expr) => {
         m_vi_loop!($inst, $machine, $cond, 1);
-    };
-}
-
-macro_rules! m_vi_loop_u {
-    ($inst:expr, $machine:expr, $cond:expr) => {
-        m_vi_loop!($inst, $machine, $cond, 0);
     };
 }
 
@@ -3512,17 +3494,14 @@ pub(crate) use m_m_loop;
 pub(crate) use m_mm_loop;
 pub(crate) use m_vi_loop;
 pub(crate) use m_vi_loop_s;
-pub(crate) use m_vi_loop_u;
 pub(crate) use m_vim_loop;
 pub(crate) use m_vim_loop_s;
 pub(crate) use m_vv_loop;
 pub(crate) use m_vv_loop_s;
-pub(crate) use m_vv_loop_u;
 pub(crate) use m_vvm_loop;
 pub(crate) use m_vvm_loop_s;
 pub(crate) use m_vx_loop;
 pub(crate) use m_vx_loop_s;
-pub(crate) use m_vx_loop_u;
 pub(crate) use m_vxm_loop;
 pub(crate) use m_vxm_loop_s;
 pub(crate) use sd;
