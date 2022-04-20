@@ -2896,15 +2896,25 @@ macro_rules! w_vv_loop_destructive {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VVtype($inst);
-        if lmul > 1 {
+        if lmul > 0 {
             require_align!(i.vd() as u64, lmul as u64 * 2);
             require_align!(i.vs1() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64);
         }
         if lmul > 0 {
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+            require_emul!(lmul as u64 * 2);
+        }
+        if lmul > 0 {
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+        } else {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, 1);
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, 1);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
@@ -3000,13 +3010,22 @@ macro_rules! w_vx_loop_destructive {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VXtype($inst);
-        if lmul > 1 {
+        if lmul > 0 {
             require_align!(i.vd() as u64, lmul as u64 * 2);
             require_align!(i.vs2() as u64, lmul as u64);
         }
         if lmul > 0 {
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+            require_emul!(lmul as u64 * 2);
+        }
+        if lmul > 0 {
+            require_noover_widen!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
+        } else {
+            require_noover!(i.vd() as u64, 1, i.vs2() as u64, 1);
+        }
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
         }
         for j in 0..$machine.vl() as usize {
             if i.vm() == 0 && !$machine.get_bit(0, j) {
