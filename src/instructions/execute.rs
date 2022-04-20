@@ -1563,7 +1563,7 @@ pub fn execute_instruction<Mac: Machine>(
             v_vx_loop_u!(inst, machine, alu::saddu);
         }
         insts::OP_VSADDU_VI => {
-            v_vi_loop_u!(inst, machine, alu::saddu);
+            v_vi_loop_s!(inst, machine, alu::saddu);
         }
         insts::OP_VSADD_VV => {
             v_vv_loop_s!(inst, machine, alu::sadd);
@@ -1578,7 +1578,7 @@ pub fn execute_instruction<Mac: Machine>(
             v_vv_loop_u!(inst, machine, alu::ssubu);
         }
         insts::OP_VSSUBU_VX => {
-            v_vx_loop_u!(inst, machine, alu::ssubu);
+            v_vx_loop_s!(inst, machine, alu::ssubu);
         }
         insts::OP_VSSUB_VV => {
             v_vv_loop_s!(inst, machine, alu::ssub);
