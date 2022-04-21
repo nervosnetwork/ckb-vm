@@ -3421,7 +3421,7 @@ macro_rules! v_vv_loop_ext_s {
         require!(sew / $size >= 8, String::from("require: sew / div >= 8"));
         require!(sew / $size <= 64, String::from("require: sew / div <= 64"));
         let i = VVtype($inst);
-        require!(i.vd() != i.vs2(), String::from("require: rd != rs2"));
+        require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
         if lmul > 1 {
             require_align!(i.vd() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64 / $size);
@@ -3473,7 +3473,7 @@ macro_rules! v_vv_loop_ext_u {
         require!(sew / $size >= 8, String::from("require: sew / div >= 8"));
         require!(sew / $size <= 64, String::from("require: sew / div <= 64"));
         let i = VVtype($inst);
-        require!(i.vd() != i.vs2(), String::from("require: rd != rs2"));
+        require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
         if lmul > 1 {
             require_align!(i.vd() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64 / $size);
@@ -3529,6 +3529,10 @@ macro_rules! m_m_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
         let i = VVtype($inst);
+        if i.vm() == 0 {
+            require_nov0!(i.vd());
+        }
+        require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
         let vs2 = E2048::get($machine.element_ref(i.vs2(), VLEN as u64, 0));
         let vd = E2048::get($machine.element_ref(i.vd(), VLEN as u64, 0));
         let m = if i.vm() == 0 {
