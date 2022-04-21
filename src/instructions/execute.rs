@@ -2085,8 +2085,13 @@ pub fn execute_instruction<Mac: Machine>(
                 require_align!(i.vs1() as u64, vlmul as u64);
                 require_align!(i.vs2() as u64, vlmul as u64);
             }
+            require!(i.vd() != i.vs1(), String::from("require: vd != vs1"));
+            require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
+            if i.vm() == 0 {
+                require_nov0!(i.vd());
+            }
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = {
@@ -2113,8 +2118,12 @@ pub fn execute_instruction<Mac: Machine>(
                 require_align!(i.vd() as u64, vlmul as u64);
                 require_align!(i.vs2() as u64, vlmul as u64);
             }
+            require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
+            if i.vm() == 0 {
+                require_nov0!(i.vd());
+            }
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = machine.registers()[i.rs1()].to_u64();
@@ -2135,8 +2144,12 @@ pub fn execute_instruction<Mac: Machine>(
                 require_align!(i.vd() as u64, vlmul as u64);
                 require_align!(i.vs2() as u64, vlmul as u64);
             }
+            require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
+            if i.vm() == 0 {
+                require_nov0!(i.vd());
+            }
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = i.immediate_u() as u64;
@@ -2153,13 +2166,27 @@ pub fn execute_instruction<Mac: Machine>(
             let sew = machine.vsew();
             let vlmul = machine.vlmul();
             let i = VVtype(inst);
+            let flmul = if vlmul < 0 {
+                1.0 / -vlmul as f64
+            } else {
+                vlmul as f64
+            };
+            let vemul = 16.0 / sew as f64 * flmul;
+            require!(vemul >= 0.125 && vemul <= 8.0, String::from(""));
+            if vemul > 1.0 {
+                require_align!(i.vs1() as u64, vemul as u64);
+            }
             if vlmul > 1 {
                 require_align!(i.vd() as u64, vlmul as u64);
-                require_align!(i.vs1() as u64, vlmul as u64);
                 require_align!(i.vs2() as u64, vlmul as u64);
             }
+            require_noover!(i.vd() as u64, flmul as u64, i.vs1() as u64, vemul as u64);
+            require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
+            if i.vm() == 0 {
+                require_nov0!(i.vd());
+            }
             for j in 0..machine.vl() as usize {
-                if i.vm() == 0 && machine.get_bit(0, j) {
+                if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
                 let index = E16::get(&machine.element_ref(i.vs1(), 16, j)).u64();
@@ -2178,9 +2205,10 @@ pub fn execute_instruction<Mac: Machine>(
             let i = VVtype(inst);
             if vlmul > 1 {
                 require_align!(i.vd() as u64, vlmul as u64);
-                require_align!(i.vs1() as u64, vlmul as u64);
                 require_align!(i.vs2() as u64, vlmul as u64);
             }
+            require!(i.vd() != i.vs2(), String::from("require: vd != vs2"));
+            require_noover!(i.vd() as u64, std::cmp::max(0, vlmul) as u64, i.vs1() as u64, 1);
             let mut k = 0;
             for j in 0..machine.vl() as usize {
                 if machine.get_bit(i.vs1(), j) {
