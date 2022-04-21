@@ -3264,112 +3264,132 @@ macro_rules! w_vs_loop {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
+        require_vsew!(sew * 2);
         let i = VVtype($inst);
         if lmul > 1 {
-            require_align!(i.vd() as u64, lmul as u64 * 2);
-            require_align!(i.vs1() as u64, lmul as u64);
             require_align!(i.vs2() as u64, lmul as u64);
         }
-        if lmul > 0 {
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs1() as u64, lmul as u64);
-            require_noover!(i.vd() as u64, lmul as u64 * 2, i.vs2() as u64, lmul as u64);
-        }
-        let vs1 = $machine.element_ref(i.vs1(), sew * 2, 0).to_vec();
-        $machine
-            .element_mut(i.vd(), sew * 2, 0)
-            .copy_from_slice(&vs1);
-        for j in 0..$machine.vl() as usize {
-            if i.vm() == 0 && !$machine.get_bit(0, j) {
-                continue;
-            }
+        if $machine.vl() != 0 {
             match sew {
                 8 => {
-                    let b = E16::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E8::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E16::from(a).lo_sext()
-                    } else {
-                        E16::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E16::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E16::from(E8::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E16::from(E8::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 16 => {
-                    let b = E32::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E16::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E32::from(a).lo_sext()
-                    } else {
-                        E32::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E32::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E32::from(E16::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E32::from(E16::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 32 => {
-                    let b = E64::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E32::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E64::from(a).lo_sext()
-                    } else {
-                        E64::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E64::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E64::from(E32::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E64::from(E32::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 64 => {
-                    let b = E128::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E64::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E128::from(a).lo_sext()
-                    } else {
-                        E128::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E128::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E128::from(E64::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E128::from(E64::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 128 => {
-                    let b = E256::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E128::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E256::from(a).lo_sext()
-                    } else {
-                        E256::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E256::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E256::from(E128::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E256::from(E128::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 256 => {
-                    let b = E512::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E256::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E512::from(a).lo_sext()
-                    } else {
-                        E512::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E512::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E512::from(E256::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E512::from(E256::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 512 => {
-                    let b = E1024::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E512::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E1024::from(a).lo_sext()
-                    } else {
-                        E1024::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E1024::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E1024::from(E512::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E1024::from(E512::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 1024 => {
-                    let b = E2048::get($machine.element_ref(i.vd(), sew * 2, 0));
-                    let a = E1024::get($machine.element_ref(i.vs2(), sew, j));
-                    let a = if $sign != 0 && a.is_negative() {
-                        E2048::from(a).lo_sext()
-                    } else {
-                        E2048::from(a)
-                    };
-                    let r = $body(b, a);
-                    r.put($machine.element_mut(i.vd(), sew * 2, 0));
+                    let mut ret = E2048::get($machine.element_ref(i.vs1(), sew * 2, 0));
+                    for j in 0..$machine.vl() as usize {
+                        if i.vm() == 0 && !$machine.get_bit(0, j) {
+                            continue;
+                        }
+                        let vs2 = if $sign != 0 {
+                            E2048::from(E1024::get($machine.element_ref(i.vs2(), sew, j))).lo_sext()
+                        } else {
+                            E2048::from(E1024::get($machine.element_ref(i.vs2(), sew, j)))
+                        };
+                        ret = $body(ret, vs2);
+                    }
+                    ret.put($machine.element_mut(i.vd(), sew * 2, 0));
                 }
                 _ => unreachable!(),
             }
