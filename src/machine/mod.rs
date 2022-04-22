@@ -56,7 +56,7 @@ pub trait CoreMachine {
     fn vl(&self) -> u64;
     fn vlmax(&self) -> u64;
     fn vsew(&self) -> u64;
-    fn vlmul(&self) -> i32;
+    fn vlmul(&self) -> f64;
     fn vta(&self) -> bool;
     fn vma(&self) -> bool;
     fn vill(&self) -> bool;
@@ -309,7 +309,7 @@ pub struct DefaultCoreMachine<R, M> {
     vill: bool,
     vma: bool,
     vta: bool,
-    vlmul: i32,
+    vlmul: f64,
     vsew: u64,
 
     vlmax: u64,
@@ -371,29 +371,21 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
             self.vtype = new_type;
             self.vsew = 1 << (((new_type >> 3) & 0x7) + 3);
             self.vlmul = match new_type & 0x7 {
-                0b000 => 1,
-                0b001 => 2,
-                0b010 => 4,
-                0b011 => 8,
-                0b111 => -2,
-                0b110 => -4,
-                0b101 => -8,
-                _ => -16,
+                0b000 => 1.0,
+                0b001 => 2.0,
+                0b010 => 4.0,
+                0b011 => 8.0,
+                0b111 => 0.5,
+                0b110 => 0.25,
+                0b101 => 0.125,
+                _ => 0.0625,
             };
-            self.vlmax = if self.vlmul >= 0 {
-                (VLEN as u64 / self.vsew) * (self.vlmul.abs() as u64)
-            } else {
-                (VLEN as u64 / self.vsew) / (self.vlmul.abs() as u64)
-            };
+            self.vlmax = ((VLEN as u64 / self.vsew) as f64 * self.vlmul) as u64;
             self.vta = ((new_type >> 6) & 0x1) != 0;
             self.vma = ((new_type >> 7) & 0x1) != 0;
-            self.vill = self.vlmul == -16
+            self.vill = self.vlmul == 0.0625
                 || (new_type >> 8) != 0
-                || if self.vlmul < 0 {
-                    self.vsew > VLEN as u64 / self.vlmul.abs() as u64
-                } else {
-                    self.vsew > ELEN as u64
-                };
+                || self.vsew as f64 > if self.vlmul > 1.0 { 1.0 } else { self.vlmul } * ELEN as f64;
             if self.vill {
                 self.vlmax = 0;
                 self.vtype = 1 << 63;
@@ -423,7 +415,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.vsew
     }
 
-    fn vlmul(&self) -> i32 {
+    fn vlmul(&self) -> f64 {
         self.vlmul
     }
 
@@ -596,7 +588,7 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         self.inner.vsew()
     }
 
-    fn vlmul(&self) -> i32 {
+    fn vlmul(&self) -> f64 {
         self.inner.vlmul()
     }
 
