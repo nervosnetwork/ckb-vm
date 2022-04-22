@@ -106,7 +106,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
         self.machine.vsew()
     }
 
-    fn vlmul(&self) -> i32 {
+    fn vlmul(&self) -> f64 {
         self.machine.vlmul()
     }
 

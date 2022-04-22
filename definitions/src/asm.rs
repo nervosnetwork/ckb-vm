@@ -65,7 +65,7 @@ pub struct AsmCoreMachine {
     pub vill: bool,
     pub vma: bool,
     pub vta: bool,
-    pub vlmul: i32,
+    pub vlmul: f64,
     pub vsew: u64,
 
     pub vlmax: u64,

@@ -369,7 +369,7 @@ impl CoreMachine for LabelGatheringMachine {
         unreachable!()
     }
 
-    fn vlmul(&self) -> i32 {
+    fn vlmul(&self) -> f64 {
         unreachable!()
     }
 
@@ -767,7 +767,7 @@ impl CoreMachine for AotCompilingMachine {
         unreachable!()
     }
 
-    fn vlmul(&self) -> i32 {
+    fn vlmul(&self) -> f64 {
         unreachable!()
     }
 
