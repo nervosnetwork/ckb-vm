@@ -117,13 +117,20 @@ macro_rules! ld {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let emul = ($size << 3) as f64 / sew as f64 * lmul;
+        let emul = if $mask == 1 {
+            1.0
+        } else {
+            ($size << 3) as f64 / sew as f64 * lmul
+        };
+        let emul = if emul < 1.0 {
+            1.0
+        } else {
+            emul
+        };
         require_emul!(emul);
         let i = VXtype($inst);
         let vd = i.vd();
-        if $mask == 1 {
-            require_align!(vd as u64, lmul as u64);
-        }
+        require_align!(i.vd() as u64, emul as u64);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
             $machine.registers()[i.vs2()].to_u64()
@@ -306,13 +313,20 @@ macro_rules! sd {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let emul = ($size << 3) as f64 / sew as f64 * lmul;
+        let emul = if $mask == 1 {
+            1.0
+        } else {
+            ($size << 3) as f64 / sew as f64 * lmul
+        };
+        let emul = if emul < 1.0 {
+            1.0
+        } else {
+            emul
+        };
         require_emul!(emul);
         let i = VXtype($inst);
         let vd = i.vd();
-        if $mask == 1 {
-            require_align!(i.vd() as u64, lmul as u64);
-        }
+        require_align!(vd as u64, emul as u64);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
             $machine.registers()[i.vs2()].to_u64()
