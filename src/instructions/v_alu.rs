@@ -283,11 +283,18 @@ pub fn vnclip<T: Eint>(lhs: T, rhs: T) -> T {
 
 // Count population in mask.
 pub fn cpop(vs2: E2048, m: E2048, vl: u64) -> u64 {
-    (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).cpop() as u64
+    if vl == 0 {
+        0
+    } else {
+        (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).cpop() as u64
+    }
 }
 
 // Find first set mask bit.
 pub fn first(vs2: E2048, m: E2048, vl: u64) -> u64 {
+    if vl == 0 {
+        return u64::MAX;
+    }
     let r = (vs2 & m & (E2048::MAX_U >> (VLEN as u32 - vl as u32))).ctz();
     if r == 2048 {
         u64::MAX
