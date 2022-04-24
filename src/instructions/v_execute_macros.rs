@@ -122,11 +122,7 @@ macro_rules! ld {
         } else {
             ($size << 3) as f64 / sew as f64 * lmul
         };
-        let emul = if emul < 1.0 {
-            1.0
-        } else {
-            emul
-        };
+        let emul = if emul < 1.0 { 1.0 } else { emul };
         require_emul!(emul);
         let i = VXtype($inst);
         let vd = i.vd();
@@ -318,11 +314,7 @@ macro_rules! sd {
         } else {
             ($size << 3) as f64 / sew as f64 * lmul
         };
-        let emul = if emul < 1.0 {
-            1.0
-        } else {
-            emul
-        };
+        let emul = if emul < 1.0 { 1.0 } else { emul };
         require_emul!(emul);
         let i = VXtype($inst);
         let vd = i.vd();
