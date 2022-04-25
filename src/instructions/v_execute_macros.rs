@@ -127,6 +127,7 @@ macro_rules! ld {
         let i = VXtype($inst);
         let vd = i.vd();
         require_align!(i.vd() as u64, emul as u64);
+        require_vm!(i);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
             $machine.registers()[i.vs2()].to_u64()
