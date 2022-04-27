@@ -1521,7 +1521,7 @@ pub fn execute_instruction<Mac: Machine>(
             w_vv_loop_destructive_s!(inst, machine, alu::wmaccu);
         }
         insts::OP_VWMACCU_VX => {
-            w_vx_loop_destructive_s!(inst, machine, alu::wmaccu);
+            w_vx_loop_destructive_u!(inst, machine, alu::wmaccu);
         }
         insts::OP_VWMACC_VV => {
             w_vv_loop_destructive_s!(inst, machine, alu::wmacc);
@@ -1533,7 +1533,7 @@ pub fn execute_instruction<Mac: Machine>(
             w_vv_loop_destructive_s!(inst, machine, alu::wmaccsu);
         }
         insts::OP_VWMACCSU_VX => {
-            w_vx_loop_destructive_s!(inst, machine, alu::wmaccsu);
+            w_vx_loop_destructive_u!(inst, machine, alu::wmaccsu);
         }
         insts::OP_VWMACCUS_VX => {
             w_vx_loop_destructive_s!(inst, machine, alu::wmaccus);

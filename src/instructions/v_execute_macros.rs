@@ -3047,6 +3047,12 @@ macro_rules! w_vx_loop_destructive_s {
     };
 }
 
+macro_rules! w_vx_loop_destructive_u {
+    ($inst:expr, $machine:expr, $body:expr) => {
+        w_vx_loop_destructive!($inst, $machine, $body, 0);
+    };
+}
+
 macro_rules! v_vs_loop {
     ($inst:expr, $machine:expr, $body:expr) => {
         require_vill!($machine);
@@ -3486,6 +3492,7 @@ pub(crate) use w_vv_loop_u;
 pub(crate) use w_vx_loop;
 pub(crate) use w_vx_loop_destructive;
 pub(crate) use w_vx_loop_destructive_s;
+pub(crate) use w_vx_loop_destructive_u;
 pub(crate) use w_vx_loop_s;
 pub(crate) use w_vx_loop_u;
 pub(crate) use w_wv_loop;
