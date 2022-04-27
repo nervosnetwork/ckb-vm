@@ -213,7 +213,7 @@ pub fn wmacc<T: Eint>(lhs: T, rhs: T, r_lo: T, r_hi: T) -> (T, T) {
 
 /// Widening signed-unsigned-integer multiply-add, overwrite addend
 pub fn wmaccsu<T: Eint>(lhs: T, rhs: T, r_lo: T, r_hi: T) -> (T, T) {
-    let (lo, hi) = lhs.widening_mul_su(rhs);
+    let (lo, hi) = rhs.widening_mul_su(lhs);
     let (lo, carry) = lo.overflowing_add_u(r_lo);
     let hi = hi.wrapping_add(T::from(carry)).wrapping_add(r_hi);
     (lo, hi)
