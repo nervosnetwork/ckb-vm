@@ -117,7 +117,7 @@ macro_rules! ld {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let emul = if $mask == 1 {
+        let emul = if $mask == 0 {
             1.0
         } else {
             ($size << 3) as f64 / sew as f64 * lmul
@@ -127,6 +127,10 @@ macro_rules! ld {
         let i = VXtype($inst);
         let vd = i.vd();
         require_align!(i.vd() as u64, emul as u64);
+        require!(
+            i.vd() + emul as usize <= 32,
+            String::from("require: vd + emul <= 32")
+        );
         require_vm!(i);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
@@ -310,7 +314,7 @@ macro_rules! sd {
         require_vill!($machine);
         let lmul = $machine.vlmul();
         let sew = $machine.vsew();
-        let emul = if $mask == 1 {
+        let emul = if $mask == 0 {
             1.0
         } else {
             ($size << 3) as f64 / sew as f64 * lmul
@@ -319,6 +323,10 @@ macro_rules! sd {
         require_emul!(emul);
         let i = VXtype($inst);
         let vd = i.vd();
+        require!(
+            i.vd() + emul as usize <= 32,
+            String::from("require: vd + emul <= 32")
+        );
         require_align!(vd as u64, emul as u64);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let stride = if $stride != 0 {
