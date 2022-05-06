@@ -1365,7 +1365,7 @@ pub fn execute_instruction<Mac: Machine>(
             m_vv_loop_s!(inst, machine, alu::sltu);
         }
         insts::OP_VMSLTU_VX => {
-            m_vx_loop_s!(inst, machine, alu::sltu);
+            m_vx_loop_u!(inst, machine, alu::sltu);
         }
         insts::OP_VMSLT_VV => {
             m_vv_loop_s!(inst, machine, alu::slt);
@@ -1377,7 +1377,7 @@ pub fn execute_instruction<Mac: Machine>(
             m_vv_loop_s!(inst, machine, alu::sleu);
         }
         insts::OP_VMSLEU_VX => {
-            m_vx_loop_s!(inst, machine, alu::sleu);
+            m_vx_loop_u!(inst, machine, alu::sleu);
         }
         insts::OP_VMSLEU_VI => {
             m_vi_loop_s!(inst, machine, alu::sleu);
@@ -1392,7 +1392,7 @@ pub fn execute_instruction<Mac: Machine>(
             m_vi_loop_s!(inst, machine, alu::sle);
         }
         insts::OP_VMSGTU_VX => {
-            m_vx_loop_s!(inst, machine, alu::sgtu);
+            m_vx_loop_u!(inst, machine, alu::sgtu);
         }
         insts::OP_VMSGTU_VI => {
             m_vi_loop_s!(inst, machine, alu::sgtu);

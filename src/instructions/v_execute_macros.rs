@@ -1024,6 +1024,12 @@ macro_rules! m_vx_loop_s {
     };
 }
 
+macro_rules! m_vx_loop_u {
+    ($inst:expr, $machine:expr, $cond:expr) => {
+        m_vx_loop!($inst, $machine, $cond, 0);
+    };
+}
+
 macro_rules! m_vi_loop {
     ($inst:expr, $machine:expr, $cond:expr, $sign:expr) => {
         require_vill!($machine);
@@ -3454,6 +3460,7 @@ pub(crate) use m_vvm_loop;
 pub(crate) use m_vvm_loop_s;
 pub(crate) use m_vx_loop;
 pub(crate) use m_vx_loop_s;
+pub(crate) use m_vx_loop_u;
 pub(crate) use m_vxm_loop;
 pub(crate) use m_vxm_loop_s;
 pub(crate) use sd;
