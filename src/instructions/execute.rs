@@ -1083,49 +1083,49 @@ pub fn execute_instruction<Mac: Machine>(
             ld_whole!(inst, machine, VLEN as u64 / 8);
         }
         insts::OP_VL1RE16_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 16);
+            ld_whole!(inst, machine, VLEN as u64 / 8);
         }
         insts::OP_VL1RE32_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 32);
+            ld_whole!(inst, machine, VLEN as u64 / 8);
         }
         insts::OP_VL1RE64_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 64);
+            ld_whole!(inst, machine, VLEN as u64 / 8);
         }
         insts::OP_VL2RE8_V => {
             ld_whole!(inst, machine, VLEN as u64 / 4);
         }
         insts::OP_VL2RE16_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 8);
+            ld_whole!(inst, machine, VLEN as u64 / 4);
         }
         insts::OP_VL2RE32_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 16);
+            ld_whole!(inst, machine, VLEN as u64 / 4);
         }
         insts::OP_VL2RE64_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 32);
+            ld_whole!(inst, machine, VLEN as u64 / 4);
         }
         insts::OP_VL4RE8_V => {
             ld_whole!(inst, machine, VLEN as u64 / 2);
         }
         insts::OP_VL4RE16_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 4);
-        }
-        insts::OP_VL4RE32_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 8);
-        }
-        insts::OP_VL4RE64_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 16);
-        }
-        insts::OP_VL8RE8_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 1);
-        }
-        insts::OP_VL8RE16_V => {
             ld_whole!(inst, machine, VLEN as u64 / 2);
         }
+        insts::OP_VL4RE32_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 2);
+        }
+        insts::OP_VL4RE64_V => {
+            ld_whole!(inst, machine, VLEN as u64 / 2);
+        }
+        insts::OP_VL8RE8_V => {
+            ld_whole!(inst, machine, VLEN as u64);
+        }
+        insts::OP_VL8RE16_V => {
+            ld_whole!(inst, machine, VLEN as u64);
+        }
         insts::OP_VL8RE32_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 4);
+            ld_whole!(inst, machine, VLEN as u64);
         }
         insts::OP_VL8RE64_V => {
-            ld_whole!(inst, machine, VLEN as u64 / 8);
+            ld_whole!(inst, machine, VLEN as u64);
         }
         insts::OP_VS1R_V => {
             sd_whole!(inst, machine, VLEN as u64 / 8);

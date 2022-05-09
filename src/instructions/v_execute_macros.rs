@@ -160,13 +160,25 @@ macro_rules! ld_index {
         let emul = $size as f64 / sew as f64 * lmul;
         require_emul!(emul);
         let i = VXtype($inst);
+        require_vm!(i);
         let vd = i.vd();
         let vs2 = i.vs2();
+        require_align!(vs2 as u64, emul as u64);
         require_align!(vd as u64, lmul as u64);
-        require_noover!(vd as u64, lmul as u64, vs2 as u64, emul as u64);
+        if $size > sew {
+            if vd != vs2 {
+                require_noover!(vd as u64, lmul as u64, vs2 as u64, emul as u64);
+            }
+        } else if $size < sew {
+            if emul < 1.0 {
+                require_noover!(vd as u64, lmul as u64, vs2 as u64, emul as u64);
+            } else {
+                require_noover_widen!(vd as u64, lmul as u64, vs2 as u64, emul as u64);
+            }
+        }
         let addr = $machine.registers()[i.rs1()].to_u64();
         for j in 0..$machine.vl() as usize {
-            if i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
                 continue;
             }
             match sew {
@@ -300,7 +312,6 @@ macro_rules! ld_whole {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
         let i = VXtype($inst);
-        require_align!(i.vd() as u64, $size / VLEN as u64);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let data = $machine.memory_mut().load_bytes(addr, $size)?;
         $machine
@@ -356,11 +367,11 @@ macro_rules! sd_index {
         let i = VXtype($inst);
         let vd = i.vd();
         let vs2 = i.vs2();
+        require_align!(vs2 as u64, emul as u64);
         require_align!(vd as u64, lmul as u64);
-        require_noover!(vd as u64, lmul as u64, vs2 as u64, emul as u64);
         let addr = $machine.registers()[i.rs1()].to_u64();
         for j in 0..$machine.vl() as usize {
-            if i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+            if i.vm() == 0 && !$machine.get_bit(0, j) {
                 continue;
             }
             match sew {
@@ -478,7 +489,6 @@ macro_rules! sd_whole {
     ($inst:expr, $machine:expr, $size:expr) => {
         require_vill!($machine);
         let i = VXtype($inst);
-        require_align!(i.vd() as u64, $size / VLEN as u64);
         let addr = $machine.registers()[i.rs1()].to_u64();
         let data = $machine.element_ref(i.vd(), $size << 3, 0).to_vec();
         $machine.memory_mut().store_bytes(addr, &data)?;
