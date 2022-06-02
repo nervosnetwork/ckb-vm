@@ -18,6 +18,7 @@ aot = ["asm"]
 enable-chaos-mode-by-default = ["ckb-vm-definitions/enable-chaos-mode-by-default"]
 # Disable slow tests to run miri on CI
 miri-ci = []
+pprof = []
 
 [dependencies]
 byteorder = "1"

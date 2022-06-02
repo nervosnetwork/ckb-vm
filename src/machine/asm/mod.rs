@@ -412,6 +412,11 @@ impl SupportMachine for Box<AsmCoreMachine> {
     fn set_running(&mut self, running: bool) {
         self.running = if running { 1 } else { 0 }
     }
+
+    #[cfg(feature = "pprof")]
+    fn code(&self) -> &Bytes {
+        unreachable!()
+    }
 }
 
 pub struct AotCode {

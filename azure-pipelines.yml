@@ -209,7 +209,9 @@ jobs:
       - script: |
           sudo apt-get install -y qemu binfmt-support qemu-user-static
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "cd /code && cargo test --features=asm"
+          echo "Comment: updating crates.io cause oom in arm docker, use -v /usr/local/cargo/registry/:/usr/local/cargo/registry/ to skip this problem"
+          cargo update
+          docker run --rm -v `pwd`:/code -v /home/vsts/.cargo/registry/:/usr/local/cargo/registry/ -t arm64v8/rust bash -c "cd /code && cargo test --features=asm"
         displayName: Run ci-asm on arm64 machines
 
   - job: LinuxArm64TestSuite

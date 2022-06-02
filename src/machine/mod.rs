@@ -98,7 +98,7 @@ pub trait SupportMachine: CoreMachine {
         Ok(())
     }
 
-    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
+    fn load_elf_inner(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
         let version = self.version();
         // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
         // * https://github.com/nervosnetwork/ckb-vm/issues/143
@@ -178,6 +178,20 @@ pub trait SupportMachine: CoreMachine {
             self.commit_pc();
         }
         Ok(bytes)
+    }
+
+    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
+        // Allows to override load_elf by writing the real function body in load_elf_inner.
+        //
+        // impl SupportMachine for Somebody {
+        //     fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
+        //         // Do something before load_elf
+        //         let r = self.load_elf_inner(program, update_pc);
+        //         // Do something after
+        //         return r;
+        //     }
+        // }
+        self.load_elf_inner(program, update_pc)
     }
 
     fn initialize_stack(
@@ -262,6 +276,9 @@ pub trait SupportMachine: CoreMachine {
         }
         Ok(stack_start + stack_size - self.registers()[SP].to_u64())
     }
+
+    #[cfg(feature = "pprof")]
+    fn code(&self) -> &Bytes;
 }
 
 #[derive(Default)]
@@ -276,6 +293,8 @@ pub struct DefaultCoreMachine<R, M> {
     running: bool,
     isa: u8,
     version: u32,
+    #[cfg(feature = "pprof")]
+    code: Bytes,
 }
 
 impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -352,6 +371,19 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
 
     fn set_running(&mut self, running: bool) {
         self.running = running;
+    }
+
+    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
+        #[cfg(feature = "pprof")]
+        {
+            self.code = program.clone();
+        }
+        self.load_elf_inner(program, update_pc)
+    }
+
+    #[cfg(feature = "pprof")]
+    fn code(&self) -> &Bytes {
+        &self.code
     }
 }
 
@@ -458,6 +490,11 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
 
     fn set_running(&mut self, running: bool) {
         self.inner.set_running(running);
+    }
+
+    #[cfg(feature = "pprof")]
+    fn code(&self) -> &Bytes {
+        self.inner.code()
     }
 }
 
