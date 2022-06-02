@@ -58,6 +58,18 @@ impl From<R4type> for TaggedInstruction {
     }
 }
 
+impl From<TaggedInstruction> for Instruction {
+    fn from(t: TaggedInstruction) -> Self {
+        match t {
+            TaggedInstruction::Rtype(i) => i.0,
+            TaggedInstruction::Itype(i) => i.0,
+            TaggedInstruction::Stype(i) => i.0,
+            TaggedInstruction::Utype(i) => i.0,
+            TaggedInstruction::R4type(i) => i.0,
+        }
+    }
+}
+
 impl TryFrom<Instruction> for TaggedInstruction {
     type Error = Error;
 
