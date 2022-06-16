@@ -33,6 +33,7 @@ pub struct Trace {
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code
     pub thread: [u64; TRACE_ITEM_LENGTH + 1],
+    pub slowpath: u8,
 }
 
 #[repr(C)]

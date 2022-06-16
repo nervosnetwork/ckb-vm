@@ -21,8 +21,8 @@ use std::collections::HashMap;
 use crate::{
     decoder::{build_decoder, Decoder},
     instructions::{
-        blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction,
+        blank_instruction, execute, execute_instruction, extract_opcode, instruction_length,
+        is_basic_block_end_instruction, is_slowpath_instruction,
     },
     machine::VERSION0,
     memory::{
@@ -603,6 +603,9 @@ impl<'a> AsmMachine<'a> {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
+                        if trace.slowpath == 0 && is_slowpath_instruction(instruction) {
+                            trace.slowpath = 1;
+                        }
                         trace.instructions[i] = instruction;
                         // don't count cycles in trace for RVV instructions. They
                         // will be counted in slow path.
@@ -643,18 +646,31 @@ impl<'a> AsmMachine<'a> {
                 RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
                 RET_SLOWPATH => {
-                    let pc = *self.machine.pc() - 4;
-                    let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                    let vl = self.machine.vl();
-                    let sew = self.machine.vsew();
-                    let cycles = self
-                        .machine
-                        .instruction_cycle_func()
-                        .as_ref()
-                        .map(|f| f(instruction, vl, sew, false))
-                        .unwrap_or(0);
-                    self.machine.add_cycles(cycles)?;
-                    execute_instruction(instruction, &mut self.machine)?;
+                    if self.aot_code.is_none() {
+                        let pc = *self.machine.pc();
+                        let slot = calculate_slot(pc);
+                        let cycles = self.machine.inner_mut().traces[slot].cycles;
+                        self.machine.add_cycles(cycles)?;
+                        for instruction in self.machine.inner_mut().traces[slot].instructions {
+                            if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                                break;
+                            }
+                            execute(instruction, &mut self.machine)?;
+                        }
+                    } else {
+                        let pc = *self.machine.pc() - 4;
+                        let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+                        let vl = self.machine.vl();
+                        let sew = self.machine.vsew();
+                        let cycles = self
+                            .machine
+                            .instruction_cycle_func()
+                            .as_ref()
+                            .map(|f| f(instruction, vl, sew, false))
+                            .unwrap_or(0);
+                        self.machine.add_cycles(cycles)?;
+                        execute_instruction(instruction, &mut self.machine)?;
+                    }
                 }
                 _ => return Err(Error::Asm(result)),
             }

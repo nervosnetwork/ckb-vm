@@ -109,6 +109,10 @@ fn main() {
         "#define CKB_VM_ASM_TRACE_OFFSET_THREAD {}",
         (&t.thread as *const u64 as usize) - t_address
     );
+    println!(
+        "#define CKB_VM_ASM_TRACE_OFFSET_SLOWPATH {}",
+        (&t.slowpath as *const u8 as usize) - t_address
+    );
     println!();
 
     println!(
