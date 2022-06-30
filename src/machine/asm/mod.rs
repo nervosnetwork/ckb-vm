@@ -7,7 +7,7 @@ use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
     ELEN, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
@@ -646,30 +646,20 @@ impl<'a> AsmMachine<'a> {
                 RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
                 RET_SLOWPATH => {
-                    if self.aot_code.is_none() {
-                        let pc = *self.machine.pc();
-                        let slot = calculate_slot(pc);
-                        let cycles = self.machine.inner_mut().traces[slot].cycles;
-                        self.machine.add_cycles(cycles)?;
-                        for instruction in self.machine.inner_mut().traces[slot].instructions {
-                            if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
-                                break;
-                            }
-                            execute(instruction, &mut self.machine)?;
+                    let pc = *self.machine.pc() - 4;
+                    let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+                    execute_instruction(instruction, &mut self.machine)?;
+                }
+                RET_SLOWPATH_TRACE => {
+                    let pc = *self.machine.pc();
+                    let slot = calculate_slot(pc);
+                    let cycles = self.machine.inner_mut().traces[slot].cycles;
+                    self.machine.add_cycles(cycles)?;
+                    for instruction in self.machine.inner_mut().traces[slot].instructions {
+                        if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                            break;
                         }
-                    } else {
-                        let pc = *self.machine.pc() - 4;
-                        let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                        let vl = self.machine.vl();
-                        let sew = self.machine.vsew();
-                        let cycles = self
-                            .machine
-                            .instruction_cycle_func()
-                            .as_ref()
-                            .map(|f| f(instruction, vl, sew, false))
-                            .unwrap_or(0);
-                        self.machine.add_cycles(cycles)?;
-                        execute_instruction(instruction, &mut self.machine)?;
+                        execute(instruction, &mut self.machine)?;
                     }
                 }
                 _ => return Err(Error::Asm(result)),
@@ -720,6 +710,18 @@ impl<'a> AsmMachine<'a> {
                 let pc = *self.machine.pc() - 4;
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                 execute_instruction(instruction, &mut self.machine)?;
+            }
+            RET_SLOWPATH_TRACE => {
+                let pc = *self.machine.pc();
+                let slot = calculate_slot(pc);
+                let cycles = self.machine.inner_mut().traces[slot].cycles;
+                self.machine.add_cycles(cycles)?;
+                for instruction in self.machine.inner_mut().traces[slot].instructions {
+                    if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                        break;
+                    }
+                    execute(instruction, &mut self.machine)?;
+                }
             }
             _ => return Err(Error::Asm(result)),
         }

@@ -47,7 +47,7 @@ fn main_aot(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
     )?;
     let aot_code = aot_machine.compile()?;
     let asm_core = ckb_vm::machine::asm::AsmCoreMachine::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP | ckb_vm::ISA_V,
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
