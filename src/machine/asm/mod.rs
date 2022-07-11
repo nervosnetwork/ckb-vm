@@ -648,6 +648,13 @@ impl<'a> AsmMachine<'a> {
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
+                    let cycles = self
+                        .machine
+                        .instruction_cycle_func()
+                        .as_ref()
+                        .map(|f| f(instruction, self.machine.vl(), self.machine.vsew(), false))
+                        .unwrap_or(0);
+                    self.machine.add_cycles(cycles)?;
                     execute_instruction(instruction, &mut self.machine)?;
                 }
                 RET_SLOWPATH_TRACE => {
@@ -658,6 +665,17 @@ impl<'a> AsmMachine<'a> {
                     for instruction in self.machine.inner_mut().traces[slot].instructions {
                         if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
                             break;
+                        }
+                        if is_slowpath_instruction(instruction) {
+                            let cycles = self
+                                .machine
+                                .instruction_cycle_func()
+                                .as_ref()
+                                .map(|f| {
+                                    f(instruction, self.machine.vl(), self.machine.vsew(), false)
+                                })
+                                .unwrap_or(0);
+                            self.machine.add_cycles(cycles)?;
                         }
                         execute(instruction, &mut self.machine)?;
                     }
