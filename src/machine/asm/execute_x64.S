@@ -359,8 +359,8 @@ ckb_vm_x64_execute:
   movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
   cmp $0, %rdx
   je .exit_trace
-  movzbl CKB_VM_ASM_TRACE_OFFSET_SLOWPATH(TRACE), %rax
-  cmp $0, %rax
+  movzbl CKB_VM_ASM_TRACE_OFFSET_SLOWPATH(TRACE), %eax
+  cmp $0, %eax
   jne .exit_slowpath_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
