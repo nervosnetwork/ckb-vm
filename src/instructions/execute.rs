@@ -1779,14 +1779,14 @@ pub fn execute_instruction<Mac: Machine>(
             let sew = machine.vsew();
             let i = VVtype(inst);
             let r = match sew {
-                8 => E8::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).0 as i8 as i64 as u64,
-                16 => E16::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).0 as i16 as i64 as u64,
-                32 => E32::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).0 as i32 as i64 as u64,
-                64 => E64::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                128 => E128::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                256 => E256::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                512 => E512::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).u64(),
-                1024 => E1024::get_unsafe(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                8 => E8::get(machine.element_ref(i.vs2(), sew, 0)).0 as i8 as i64 as u64,
+                16 => E16::get(machine.element_ref(i.vs2(), sew, 0)).0 as i16 as i64 as u64,
+                32 => E32::get(machine.element_ref(i.vs2(), sew, 0)).0 as i32 as i64 as u64,
+                64 => E64::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                128 => E128::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                256 => E256::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                512 => E512::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
+                1024 => E1024::get(machine.element_ref(i.vs2(), sew, 0)).u64(),
                 _ => unreachable!(),
             };
             update_register(machine, i.vd(), Mac::REG::from_u64(r));
@@ -2059,7 +2059,7 @@ pub fn execute_instruction<Mac: Machine>(
                 let index = {
                     let mut data = machine.element_ref(i.vs1(), sew, j).to_vec();
                     data.resize(128, 0);
-                    E1024::get_unsafe(&data)
+                    E1024::get(&data)
                 };
                 let data = if index < E1024::from(machine.vlmax()) {
                     machine
@@ -2132,7 +2132,7 @@ pub fn execute_instruction<Mac: Machine>(
                 if i.vm() == 0 && !machine.get_bit(0, j) {
                     continue;
                 }
-                let index = E16::get_unsafe(&machine.element_ref(i.vs1(), 16, j)).u64();
+                let index = E16::get(&machine.element_ref(i.vs1(), 16, j)).u64();
                 let data = if index < machine.vlmax() {
                     machine.element_ref(i.vs2(), sew, index as usize).to_vec()
                 } else {
