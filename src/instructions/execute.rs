@@ -14,6 +14,21 @@ pub fn execute_instruction<Mac: Machine>(
     inst: Instruction,
     machine: &mut Mac,
 ) -> Result<(), Error> {
+    let mut r = execute_v_instruction(inst, machine);
+    if r == Ok(false) {
+        r = execute_imc_instruction(inst, machine);
+    }
+    if r == Ok(false) {
+        return Err(Error::InvalidOp(extract_opcode(inst)));
+    }
+    Ok(())
+}
+
+#[inline(never)]
+pub fn execute_imc_instruction<Mac: Machine>(
+    inst: Instruction,
+    machine: &mut Mac,
+) -> Result<bool, Error> {
     let op = extract_opcode(inst);
     match op {
         insts::OP_SUB => {
@@ -905,6 +920,18 @@ pub fn execute_instruction<Mac: Machine>(
             let value = Mac::REG::from_i32(i.immediate_s());
             update_register(machine, i.rd(), value);
         }
+        _ => return Ok(false),
+    };
+    Ok(true)
+}
+
+#[inline(never)]
+pub fn execute_v_instruction<Mac: Machine>(
+    inst: Instruction,
+    machine: &mut Mac,
+) -> Result<bool, Error> {
+    let op = extract_opcode(inst);
+    match op {
         insts::OP_VSETVLI => {
             let i = Itype(inst);
             common::set_vl(
@@ -2171,9 +2198,9 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_VMV8R_V => {
             vmv_r!(inst, machine, 8);
         }
-        _ => return Err(Error::InvalidOp(op)),
+        _ => return Ok(false),
     };
-    Ok(())
+    Ok(true)
 }
 
 pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
