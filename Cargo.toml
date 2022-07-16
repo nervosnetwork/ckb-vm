@@ -4,7 +4,8 @@ description = "CKB's Virtual machine"
 version = "0.21.3"
 license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.61.0"
 build = "build.rs"
 exclude = ["/benches", "/tests"]
 
