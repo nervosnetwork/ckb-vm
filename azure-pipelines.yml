@@ -17,7 +17,7 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.61.0-x86_64-pc-windows-msvc'
       - script: make ci-aot
         displayName: Run unit tests
 
@@ -27,7 +27,7 @@ jobs:
     steps:
       - template: devtools/azure/windows-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-pc-windows-msvc'
+          rustup_toolchain: '1.61.0-x86_64-pc-windows-msvc'
       - script: make ci-aot-chaos
         displayName: Run unit tests with chaos
 
@@ -37,7 +37,7 @@ jobs:
     steps:
       - template: devtools/azure/osx-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-apple-darwin'
+          rustup_toolchain: '1.61.0-x86_64-apple-darwin'
       - script: make ci-aot
         displayName: Run unit tests
 
@@ -47,21 +47,21 @@ jobs:
     steps:
       - template: devtools/azure/osx-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-apple-darwin'
+          rustup_toolchain: '1.61.0-x86_64-apple-darwin'
       - script: make ci-aot-chaos
         displayName: Run unit tests with chaos
 
-  - job: LinuxCIDeps
-    pool:
-      vmImage: 'ubuntu-20.04'
-    steps:
-      - template: devtools/azure/linux-dependencies.yml
-        parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
-      - script: cargo install cargo-deny --locked --version 0.9.0
-        displayName: Install cargo deny
-      - script: make ci-deps
-        displayName: Run ci-deps
+  # - job: LinuxCIDeps
+  #   pool:
+  #     vmImage: 'ubuntu-20.04'
+  #   steps:
+  #     - template: devtools/azure/linux-dependencies.yml
+  #       parameters:
+  #         rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
+  #     - script: cargo install cargo-deny --locked --version 0.12.1
+  #       displayName: Install cargo deny
+  #     - script: make ci-deps
+  #       displayName: Run ci-deps
 
   - job: LinuxCIQuick
     pool:
@@ -69,7 +69,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci-quick
         displayName: Run ci-quick
 
@@ -79,7 +79,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci-generated
         displayName: Run ci-generated
 
@@ -89,7 +89,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make check
         displayName: Run check
 
@@ -99,7 +99,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci-aot
         displayName: Run ci-aot
 
@@ -109,7 +109,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci-asm
         displayName: Run ci-asm
 
@@ -119,7 +119,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci
         displayName: Run ci
 
@@ -129,7 +129,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci-asm-chaos
         displayName: Run ci-asm-chaos
 
@@ -139,20 +139,19 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: make ci-aot-chaos
         displayName: Run ci-aot-chaos
 
-  - job: LinuxCIMiri
-    pool:
-      vmImage: 'ubuntu-20.04'
-    steps:
-      - script: rm rust-toolchain
-      - template: devtools/azure/linux-dependencies.yml
-        parameters:
-          rustup_toolchain: 'nightly-2021-03-20'
-      - script: make ci-miri
-        displayName: Run ci-miri
+  # - job: LinuxCIMiri
+  #   pool:
+  #     vmImage: 'ubuntu-20.04'
+  #   steps:
+  #     - template: devtools/azure/linux-dependencies.yml
+  #       parameters:
+  #         rustup_toolchain: 'nightly-2022-07-16'
+  #     - script: make ci-miri
+  #       displayName: Run ci-miri
 
   - job: LinuxTestSuite
     pool:
@@ -160,7 +159,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: |
           sudo apt install -y git \
                               build-essential \
@@ -189,10 +188,9 @@ jobs:
     pool:
       vmImage: 'ubuntu-20.04'
     steps:
-      - script: rm rust-toolchain
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: 'nightly-2021-03-20'
+          rustup_toolchain: 'nightly-2022-07-16'
       - script: |
           rustup install nightly
           cargo +nightly install cargo-fuzz
@@ -205,7 +203,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: |
           sudo apt-get install -y qemu binfmt-support qemu-user-static
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -220,7 +218,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: |
           sudo apt update -y &&
           sudo apt install -y git \
@@ -265,7 +263,7 @@ jobs:
     steps:
       - template: devtools/azure/linux-dependencies.yml
         parameters:
-          rustup_toolchain: '1.56.1-x86_64-unknown-linux-gnu'
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
       - script: |
           sudo apt install -y git \
                               build-essential \
