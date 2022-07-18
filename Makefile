@@ -44,8 +44,10 @@ fuzz:
 ci: fmt clippy test
 	git diff --exit-code Cargo.lock
 
-ci-deps: security-audit check-licenses check-crates
-	git diff --exit-code Cargo.lock
+ci-deps:
+	echo "skip"
+# ci-deps: security-audit check-licenses check-crates
+#	git diff --exit-code Cargo.lock
 
 ci-quick: test
 	git diff --exit-code Cargo.lock
@@ -63,9 +65,10 @@ ci-aot-chaos: test-aot-chaos
 	git diff --exit-code Cargo.lock
 
 ci-miri:
-	rustup component add miri
-	cargo miri setup
-	MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test --all --features=miri-ci
+	echo "skip"
+#	rustup component add miri
+#	cargo miri setup
+#	MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test --all --features=miri-ci
 
 ci-generated: src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c update-cdefinitions
 	git diff --exit-code src/machine/aot/aot.x64.compiled.c src/machine/aot/aot.x64.win.compiled.c src/machine/asm/cdefinitions_generated.h

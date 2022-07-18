@@ -8,7 +8,7 @@
 
 ## About CKB VM
 
-CKB VM is a pure software implementation of the [RISC-V](https://riscv.org/) instruction set used as scripting VM in CKB. Right now it implements full IMC instructions for both 32-bit and 64-bit register size support. In the future we might also implement V extensions to enable better crypto implementations.
+CKB VM is a pure software implementation of the [RISC-V](https://riscv.org/) instruction set used as scripting VM in CKB. Right now it implements full IMCB instructions for both 32-bit and 64-bit register size support. In the future we might also implement V extensions to enable better crypto implementations.
 
 ## License
 
