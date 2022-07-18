@@ -51,17 +51,17 @@ jobs:
       - script: make ci-aot-chaos
         displayName: Run unit tests with chaos
 
-  # - job: LinuxCIDeps
-  #   pool:
-  #     vmImage: 'ubuntu-20.04'
-  #   steps:
-  #     - template: devtools/azure/linux-dependencies.yml
-  #       parameters:
-  #         rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
-  #     - script: cargo install cargo-deny --locked --version 0.12.1
-  #       displayName: Install cargo deny
-  #     - script: make ci-deps
-  #       displayName: Run ci-deps
+  - job: LinuxCIDeps
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: '1.61.0-x86_64-unknown-linux-gnu'
+      - script: cargo install cargo-deny --locked --version 0.12.1
+        displayName: Install cargo deny
+      - script: make ci-deps
+        displayName: Run ci-deps
 
   - job: LinuxCIQuick
     pool:
@@ -143,16 +143,16 @@ jobs:
       - script: make ci-aot-chaos
         displayName: Run ci-aot-chaos
 
-  # - job: LinuxCIMiri
-  #   pool:
-  #     vmImage: 'ubuntu-20.04'
-  #   steps:
-  #     - script: rm rust-toolchain
-  #     - template: devtools/azure/linux-dependencies.yml
-  #       parameters:
-  #         rustup_toolchain: 'nightly-2022-07-16'
-  #     - script: make ci-miri
-  #       displayName: Run ci-miri
+  - job: LinuxCIMiri
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - script: rm rust-toolchain
+      - template: devtools/azure/linux-dependencies.yml
+        parameters:
+          rustup_toolchain: 'nightly-2022-07-16'
+      - script: make ci-miri
+        displayName: Run ci-miri
 
   - job: LinuxTestSuite
     pool:
