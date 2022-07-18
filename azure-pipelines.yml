@@ -147,6 +147,7 @@ jobs:
   #   pool:
   #     vmImage: 'ubuntu-20.04'
   #   steps:
+  #     - script: rm rust-toolchain
   #     - template: devtools/azure/linux-dependencies.yml
   #       parameters:
   #         rustup_toolchain: 'nightly-2022-07-16'
@@ -188,6 +189,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-20.04'
     steps:
+      - script: rm rust-toolchain
       - template: devtools/azure/linux-dependencies.yml
         parameters:
           rustup_toolchain: 'nightly-2022-07-16'
