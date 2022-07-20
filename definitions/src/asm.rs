@@ -5,8 +5,8 @@ use crate::{
 use std::alloc::{alloc, Layout};
 
 // The number of trace items to keep
-pub const TRACE_SIZE: usize = 8192;
-pub const TRACE_ITEM_LENGTH: usize = 16;
+pub const TRACE_SIZE: usize = 4096;
+pub const TRACE_ITEM_LENGTH: usize = 31;
 
 pub const RET_DECODE_TRACE: u8 = 1;
 pub const RET_ECALL: u8 = 2;

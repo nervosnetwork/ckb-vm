@@ -1,4 +1,5 @@
 use probe::probe;
+pub mod v_trace;
 use std::mem::transmute;
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -543,10 +544,10 @@ pub struct AsmMachine<'a> {
 }
 
 extern "C" {
-    fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
-    fn ckb_vm_asm_labels();
+    pub fn ckb_vm_asm_labels();
 }
 
 impl<'a> AsmMachine<'a> {

@@ -1,10 +1,10 @@
-mod common;
 mod execute;
 mod register;
 mod utils;
 
 pub mod ast;
 pub mod b;
+pub mod common;
 pub mod cost_model;
 pub mod i;
 pub mod m;

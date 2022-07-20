@@ -350,7 +350,7 @@ ckb_vm_x64_execute:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
-  andq $8191, %rax
+  andq $4095, %rax
   imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
   lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
