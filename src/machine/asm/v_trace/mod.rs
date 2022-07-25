@@ -14,7 +14,7 @@ use crate::{
         },
         VERSION0,
     },
-    CoreMachine, DefaultMachine, Machine, Memory, SupportMachine,
+    CoreMachine, DefaultMachine, Machine, SupportMachine,
 };
 use bytes::Bytes;
 use ckb_vm_definitions::{
@@ -436,11 +436,13 @@ fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
         if i.vm() == 0 && !m.get_bit(0, j as usize) {
             continue;
         }
-        let data = m
-            .memory_mut()
-            .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), 32)?;
-        m.element_mut(i.vd(), 32 << 3, j as usize)
-            .copy_from_slice(&data);
+
+        m.mem_to_v(
+            i.vd(),
+            32 << 3,
+            j as usize,
+            stride.wrapping_mul(j).wrapping_add(addr),
+        )?;
     }
     Ok(())
 }
@@ -454,11 +456,12 @@ fn handle_vle256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
         if i.vm() == 0 && !m.get_bit(0, j as usize) {
             continue;
         }
-        let data = m
-            .memory_mut()
-            .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), 32)?;
-        m.element_mut(i.vd(), 32 << 3, j as usize)
-            .copy_from_slice(&data);
+        m.mem_to_v(
+            i.vd(),
+            32 << 3,
+            j as usize,
+            stride.wrapping_mul(j).wrapping_add(addr),
+        )?;
     }
     Ok(())
 }
@@ -472,9 +475,12 @@ fn handle_vse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
         if i.vm() == 0 && !m.get_bit(0, j as usize) {
             continue;
         }
-        let data = m.element_ref(i.vd(), 32 << 3, j as usize).to_vec();
-        m.memory_mut()
-            .store_bytes(stride.wrapping_mul(j).wrapping_add(addr), &data)?;
+        m.v_to_mem(
+            i.vd(),
+            32 << 3,
+            j as usize,
+            stride.wrapping_mul(j).wrapping_add(addr),
+        )?;
     }
     Ok(())
 }

@@ -63,6 +63,23 @@ pub trait CoreMachine {
     fn vill(&self) -> bool;
     fn vlenb(&self) -> u64;
 
+    // Shortcuts(think DMA) to transfer data between vector registers and memories.
+    // On the one hand, it eliminates all the costy Memory operations as well as `to_vec`
+    // to work around life times.
+    //
+    // Another interesting use case here, is that symbolic executions can be leveraged
+    // to eliminate loads. For instance, when executing the following snippet:
+    // * vle256.v v0, (t3)
+    // * vle256.v v4, (t4)
+    // * vmul.vv v0, v0, v4
+    // There is no need to do the first load into v0, instead, one can redirect one
+    // operand of vmul.vv to load from memory directly.
+    //
+    // TODO: those are just an initial attempt for a PoC on rvv optimiztaions, it really
+    // is necessary to revise all the V related trait methods.
+    fn v_to_mem(&mut self, reg: usize, sew: u64, n: usize, addr: u64) -> Result<(), Error>;
+    fn mem_to_v(&mut self, reg: usize, sew: u64, n: usize, addr: u64) -> Result<(), Error>;
+
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
     fn version(&self) -> u32;
@@ -462,6 +479,14 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn v_to_mem(&mut self, _reg: usize, _sew: u64, _n: usize, _addr: u64) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn mem_to_v(&mut self, _reg: usize, _sew: u64, _n: usize, _addr: u64) -> Result<(), Error> {
+        unimplemented!()
+    }
 }
 
 impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMachine<R, M> {
@@ -647,6 +672,14 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
 
     fn version(&self) -> u32 {
         self.inner.version()
+    }
+
+    fn v_to_mem(&mut self, reg: usize, sew: u64, n: usize, addr: u64) -> Result<(), Error> {
+        self.inner.v_to_mem(reg, sew, n, addr)
+    }
+
+    fn mem_to_v(&mut self, reg: usize, sew: u64, n: usize, addr: u64) -> Result<(), Error> {
+        self.inner.mem_to_v(reg, sew, n, addr)
     }
 }
 
