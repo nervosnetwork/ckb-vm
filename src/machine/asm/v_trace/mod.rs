@@ -5,7 +5,7 @@ use crate::{
     instructions::{
         blank_instruction, common, execute, execute_instruction, extract_opcode,
         instruction_length, is_basic_block_end_instruction, is_slowpath_instruction, v_alu as alu,
-        Itype, Register, VVtype, VXtype,
+        Instruction, Itype, Register, VVtype, VXtype,
     },
     machine::{
         asm::{
@@ -150,7 +150,7 @@ impl<'a> VTraceAsmMachine<'a> {
 
                     if trace.slowpath != 0 && self.v_traces.get(&pc).is_none() {
                         if let Some(v_trace) = Self::try_build_v_trace(&trace) {
-                            self.v_traces.insert(pc, v_trace);                            
+                            self.v_traces.insert(pc, v_trace);
                         }
                     }
                     self.machine.inner_mut().traces[slot] = trace;
@@ -238,108 +238,41 @@ impl<'a> VTraceAsmMachine<'a> {
             match opcode {
                 insts::OP_VSETVLI => {
                     execute(inst, &mut infer_machine).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                        let i = Itype(inst);
-                        common::set_vl(
-                            m,
-                            i.rd(),
-                            i.rs1(),
-                            m.registers()[i.rs1()].to_u64(),
-                            i.immediate_u() as u64,
-                        )
-                    }));
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vsetvli(m, inst)));
                 }
                 insts::OP_VLSE256_V => {
                     execute(inst, &mut infer_machine).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                        let i = VXtype(inst);
-                        let addr = m.registers()[i.rs1()].to_u64();
-                        let stride = m.registers()[i.vs2()].to_u64();
-
-                        for j in 0..m.vl() {
-                            if i.vm() == 0 && !m.get_bit(0, j as usize) {
-                                continue;
-                            }
-                            let data = m
-                                .memory_mut()
-                                .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), 32)?;
-                            m.element_mut(i.vd(), 32 << 3, j as usize)
-                                .copy_from_slice(&data);
-                        }
-                        Ok(())
-                    }));
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vlse256(m, inst)));
                 }
                 insts::OP_VLE256_V => {
                     execute(inst, &mut infer_machine).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                        let i = VXtype(inst);
-                        let addr = m.registers()[i.rs1()].to_u64();
-                        let stride = 32u64;
-
-                        for j in 0..m.vl() {
-                            if i.vm() == 0 && !m.get_bit(0, j as usize) {
-                                continue;
-                            }
-                            let data = m
-                                .memory_mut()
-                                .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), 32)?;
-                            m.element_mut(i.vd(), 32 << 3, j as usize)
-                                .copy_from_slice(&data);
-                        }
-                        Ok(())
-                    }));
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vle256(m, inst)));
                 }
                 insts::OP_VSE256_V => {
                     execute(inst, &mut infer_machine).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                        let i = VXtype(inst);
-                        let addr = m.registers()[i.rs1()].to_u64();
-                        let stride = 32u64;
-
-                        for j in 0..m.vl() {
-                            if i.vm() == 0 && !m.get_bit(0, j as usize) {
-                                continue;
-                            }
-                            let data = m.element_ref(i.vd(), 32 << 3, j as usize).to_vec();
-                            m.memory_mut()
-                                .store_bytes(stride.wrapping_mul(j).wrapping_add(addr), &data)?;
-                        }
-                        Ok(())
-                    }));
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vse256(m, inst)));
                 }
                 insts::OP_VADD_VV => {
                     let sew = infer_machine.vsew();
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    let r = Eint::wrapping_add(b, a);
-                                    r.put(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vadd_256(m, inst)));
                         }
                         512 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E512::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E512::get(m.element_ref(i.vs1(), sew, j));
-                                    let r = Eint::wrapping_add(b, a);
-                                    r.put(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vadd_512(m, inst)));
                         }
                         _ => panic!("Unsupported vwadc.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -350,40 +283,14 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    if alu::madc(b, a) {
-                                        m.set_bit(i.vd(), j);
-                                    } else {
-                                        m.clr_bit(i.vd(), j);
-                                    };
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vmadc_256(m, inst)));
                         }
                         512 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E512::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E512::get(m.element_ref(i.vs1(), sew, j));
-                                    if alu::madc(b, a) {
-                                        m.set_bit(i.vd(), j);
-                                    } else {
-                                        m.clr_bit(i.vd(), j);
-                                    };
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vmadc_512(m, inst)));
                         }
                         _ => panic!("Unsupported vmadc.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -394,19 +301,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    let r = Eint::wrapping_sub(b, a);
-                                    r.put(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vsub_256(m, inst)));
                         }
                         _ => panic!("Unsupported vsub.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -417,22 +314,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    if alu::msbc(b, a) {
-                                        m.set_bit(i.vd(), j);
-                                    } else {
-                                        m.clr_bit(i.vd(), j);
-                                    };
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vmsbc_256(m, inst)));
                         }
                         _ => panic!("Unsupported vmsbc.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -443,20 +327,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j as usize) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    let (lo, hi) = Eint::widening_mul_u(b, a);
-                                    lo.put(m.element_mut(i.vd(), sew, j * 2));
-                                    hi.put(m.element_mut(i.vd(), sew, j * 2 + 1));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vmmulu_256(m, inst)));
                         }
                         _ => panic!("Unsupported vwmulu.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -467,19 +340,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j as usize) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    let r = Eint::wrapping_mul(b, a);
-                                    r.put(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vmul_256(m, inst)));
                         }
                         _ => panic!("Unsupported vmulu.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -490,19 +353,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j as usize) {
-                                        continue;
-                                    }
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    let r = alu::xor(b, a);
-                                    r.put(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vxor_256(m, inst)));
                         }
                         _ => panic!("Unsupported vxor.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -513,24 +366,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VXtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    if i.vm() == 0 && !m.get_bit(0, j) {
-                                        continue;
-                                    }
-                                    let b = E512::get(m.element_ref(i.vs2(), sew * 2, j));
-                                    let a = if 0 != 0 {
-                                        E512::from(E256::from(m.registers()[i.rs1()].to_i64()))
-                                            .lo_sext()
-                                    } else {
-                                        E512::from(E256::from(m.registers()[i.rs1()].to_u64()))
-                                    };
-                                    let r = alu::srl(b, a);
-                                    r.put_lo(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vnsrl_256(m, inst)));
                         }
                         _ => panic!("Unsupported vnsrl.wx with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -538,52 +376,24 @@ impl<'a> VTraceAsmMachine<'a> {
                 }
                 insts::OP_VMANDNOT_MM => {
                     execute(inst, &mut infer_machine).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                        let i = VVtype(inst);
-                        for j in 0..m.vl() as usize {
-                            let b = m.get_bit(i.vs2(), j);
-                            let a = m.get_bit(i.vs1(), j);
-                            if b & !a {
-                                m.set_bit(i.vd(), j);
-                            } else {
-                                m.clr_bit(i.vd(), j);
-                            }
-                        }
-                        Ok(())
-                    }));
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vmandnot(m, inst)));
                 }
                 insts::OP_VMXOR_MM => {
                     execute(inst, &mut infer_machine).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                        let i = VVtype(inst);
-                        for j in 0..m.vl() as usize {
-                            let b = m.get_bit(i.vs2(), j);
-                            let a = m.get_bit(i.vs1(), j);
-                            if b ^ a {
-                                m.set_bit(i.vd(), j);
-                            } else {
-                                m.clr_bit(i.vd(), j);
-                            }
-                        }
-                        Ok(())
-                    }));
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vmxor(m, inst)));
                 }
                 insts::OP_VMERGE_VVM => {
                     let sew = infer_machine.vsew();
                     execute(inst, &mut infer_machine).ok()?;
                     match sew {
                         256 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
-                                let i = VVtype(inst);
-                                for j in 0..m.vl() as usize {
-                                    let mbit = m.get_bit(0, j);
-                                    let b = E256::get(m.element_ref(i.vs2(), sew, j));
-                                    let a = E256::get(m.element_ref(i.vs1(), sew, j));
-                                    let r = alu::merge(b, a, mbit);
-                                    r.put(m.element_mut(i.vd(), sew, j));
-                                }
-                                Ok(())
-                            }));
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vmerge_256(m, inst)));
                         }
                         _ => panic!("Unsupported vmerge.vvm with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -597,7 +407,277 @@ impl<'a> VTraceAsmMachine<'a> {
                 // _ => return None,
             };
         }
-        println!("Built trace: {:x}, length: {}", v_trace.address, v_trace.actions.len());
+        println!(
+            "Built trace: {:x}, length: {}",
+            v_trace.address,
+            v_trace.actions.len()
+        );
         Some(v_trace)
     }
+}
+
+fn handle_vsetvli<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    common::set_vl(
+        m,
+        i.rd(),
+        i.rs1(),
+        m.registers()[i.rs1()].to_u64(),
+        i.immediate_u() as u64,
+    )
+}
+
+fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VXtype(inst);
+    let addr = m.registers()[i.rs1()].to_u64();
+    let stride = m.registers()[i.vs2()].to_u64();
+
+    for j in 0..m.vl() {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        let data = m
+            .memory_mut()
+            .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), 32)?;
+        m.element_mut(i.vd(), 32 << 3, j as usize)
+            .copy_from_slice(&data);
+    }
+    Ok(())
+}
+
+fn handle_vle256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VXtype(inst);
+    let addr = m.registers()[i.rs1()].to_u64();
+    let stride = 32u64;
+
+    for j in 0..m.vl() {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        let data = m
+            .memory_mut()
+            .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), 32)?;
+        m.element_mut(i.vd(), 32 << 3, j as usize)
+            .copy_from_slice(&data);
+    }
+    Ok(())
+}
+
+fn handle_vse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VXtype(inst);
+    let addr = m.registers()[i.rs1()].to_u64();
+    let stride = 32u64;
+
+    for j in 0..m.vl() {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        let data = m.element_ref(i.vd(), 32 << 3, j as usize).to_vec();
+        m.memory_mut()
+            .store_bytes(stride.wrapping_mul(j).wrapping_add(addr), &data)?;
+    }
+    Ok(())
+}
+
+fn handle_vadd_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), 256, j));
+        let a = E256::get(m.element_ref(i.vs1(), 256, j));
+        let r = Eint::wrapping_add(b, a);
+        r.put(m.element_mut(i.vd(), 256, j));
+    }
+    Ok(())
+}
+
+fn handle_vadd_512<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E512::get(m.element_ref(i.vs2(), 512, j));
+        let a = E512::get(m.element_ref(i.vs1(), 512, j));
+        let r = Eint::wrapping_add(b, a);
+        r.put(m.element_mut(i.vd(), 512, j));
+    }
+    Ok(())
+}
+
+fn handle_vmadc_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        if alu::madc(b, a) {
+            m.set_bit(i.vd(), j);
+        } else {
+            m.clr_bit(i.vd(), j);
+        };
+    }
+    Ok(())
+}
+
+fn handle_vmadc_512<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 512;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E512::get(m.element_ref(i.vs2(), sew, j));
+        let a = E512::get(m.element_ref(i.vs1(), sew, j));
+        if alu::madc(b, a) {
+            m.set_bit(i.vd(), j);
+        } else {
+            m.clr_bit(i.vd(), j);
+        };
+    }
+    Ok(())
+}
+
+fn handle_vsub_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let r = Eint::wrapping_sub(b, a);
+        r.put(m.element_mut(i.vd(), sew, j));
+    }
+    Ok(())
+}
+
+fn handle_vmsbc_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        if alu::msbc(b, a) {
+            m.set_bit(i.vd(), j);
+        } else {
+            m.clr_bit(i.vd(), j);
+        };
+    }
+    Ok(())
+}
+
+fn handle_vmmulu_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let (lo, hi) = Eint::widening_mul_u(b, a);
+        lo.put(m.element_mut(i.vd(), sew, j * 2));
+        hi.put(m.element_mut(i.vd(), sew, j * 2 + 1));
+    }
+    Ok(())
+}
+
+fn handle_vmul_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let r = Eint::wrapping_mul(b, a);
+        r.put(m.element_mut(i.vd(), sew, j));
+    }
+    Ok(())
+}
+
+fn handle_vxor_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let r = alu::xor(b, a);
+        r.put(m.element_mut(i.vd(), sew, j));
+    }
+    Ok(())
+}
+
+fn handle_vnsrl_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VXtype(inst);
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let b = E512::get(m.element_ref(i.vs2(), sew * 2, j));
+        let a = if 0 != 0 {
+            E512::from(E256::from(m.registers()[i.rs1()].to_i64())).lo_sext()
+        } else {
+            E512::from(E256::from(m.registers()[i.rs1()].to_u64()))
+        };
+        let r = alu::srl(b, a);
+        r.put_lo(m.element_mut(i.vd(), sew, j));
+    }
+    Ok(())
+}
+
+fn handle_vmandnot<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        let b = m.get_bit(i.vs2(), j);
+        let a = m.get_bit(i.vs1(), j);
+        if b & !a {
+            m.set_bit(i.vd(), j);
+        } else {
+            m.clr_bit(i.vd(), j);
+        }
+    }
+    Ok(())
+}
+
+fn handle_vmxor<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        let b = m.get_bit(i.vs2(), j);
+        let a = m.get_bit(i.vs1(), j);
+        if b ^ a {
+            m.set_bit(i.vd(), j);
+        } else {
+            m.clr_bit(i.vd(), j);
+        }
+    }
+    Ok(())
+}
+
+fn handle_vmerge_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VVtype(inst);
+    for j in 0..m.vl() as usize {
+        let mbit = m.get_bit(0, j);
+        let b = E256::get(m.element_ref(i.vs2(), sew, j));
+        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let r = alu::merge(b, a, mbit);
+        r.put(m.element_mut(i.vd(), sew, j));
+    }
+    Ok(())
 }
