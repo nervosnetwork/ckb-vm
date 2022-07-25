@@ -21,12 +21,13 @@ use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH,
     },
     instructions::{self as insts, OP_CUSTOM_TRACE_END},
     ISA_MOP,
 };
 use eint::{Eint, E256, E512};
+use std::collections::HashMap;
 use std::mem::transmute;
 
 pub const VTRACE_MAX_LENGTH: usize = 32;
@@ -54,17 +55,15 @@ type CM<'a> = DefaultMachine<'a, Box<AsmCoreMachine>>;
 pub struct VTraceAsmMachine<'a> {
     pub machine: CM<'a>,
     pub aot_code: Option<&'a AotCode>,
-    pub v_traces: Vec<VTrace<CM<'a>>>,
+    pub v_traces: HashMap<u64, VTrace<CM<'a>>>,
 }
 
 impl<'a> VTraceAsmMachine<'a> {
     pub fn new(machine: CM<'a>, aot_code: Option<&'a AotCode>) -> Self {
-        let mut v_traces = Vec::new();
-        v_traces.resize_with(TRACE_SIZE, Default::default);
         let mut r = Self {
             machine,
             aot_code,
-            v_traces,
+            v_traces: HashMap::default(),
         };
         // Default to illegal configuration
         r.machine.set_vl(0, 0, 0, u64::MAX);
@@ -149,15 +148,12 @@ impl<'a> VTraceAsmMachine<'a> {
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
 
-                    let v_trace = if trace.slowpath != 0 {
-                        Self::try_build_v_trace(&trace)
-                    } else {
-                        None
+                    if trace.slowpath != 0 && self.v_traces.get(&pc).is_none() {
+                        if let Some(v_trace) = Self::try_build_v_trace(&trace) {
+                            self.v_traces.insert(pc, v_trace);                            
+                        }
                     }
-                    .unwrap_or_default();
-
                     self.machine.inner_mut().traces[slot] = trace;
-                    self.v_traces[slot] = v_trace;
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
@@ -177,9 +173,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     let cycles = self.machine.inner_mut().traces[slot].cycles;
                     self.machine.add_cycles(cycles)?;
 
-                    if self.v_traces[slot].address == pc && self.v_traces[slot].code_length > 0 {
+                    if let Some(v_trace) = self.v_traces.get(&pc) {
                         // Optimized VTrace
-                        let v_trace = &self.v_traces[slot];
+                        // println!("Running trace: {:x}, length: {}", v_trace.address, v_trace.actions.len());
                         for (i, action) in v_trace.actions.iter().enumerate() {
                             let instruction_size = v_trace.sizes[i];
                             let next_pc = self
@@ -203,6 +199,7 @@ impl<'a> VTraceAsmMachine<'a> {
                 _ => return Err(Error::Asm(result)),
             }
         }
+        println!("Total v traces: {}", self.v_traces.len());
         Ok(self.machine.exit_code())
     }
 
@@ -600,6 +597,7 @@ impl<'a> VTraceAsmMachine<'a> {
                 // _ => return None,
             };
         }
+        println!("Built trace: {:x}, length: {}", v_trace.address, v_trace.actions.len());
         Some(v_trace)
     }
 }
