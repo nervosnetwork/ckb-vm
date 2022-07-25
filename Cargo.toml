@@ -45,6 +45,7 @@ cc = "1.0"
 [dev-dependencies]
 criterion = "0.3.5"
 proptest = "0.9.1"
+cpuprofiler = "0.0.4"
 
 [[bench]]
 name = "bits_benchmark"
@@ -55,3 +56,6 @@ harness = false
 name = "vm_benchmark"
 path = "benches/vm_benchmark.rs"
 harness = false
+
+[profile.release]
+debug = true
