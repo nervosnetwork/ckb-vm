@@ -504,22 +504,8 @@ pub fn is_slowpath_opcode(i: InstructionOpcode) -> bool {
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
-    matches!(
-        extract_opcode(i),
-        insts::OP_AUIPC
-            | insts::OP_JALR
-            | insts::OP_BEQ
-            | insts::OP_BNE
-            | insts::OP_BLT
-            | insts::OP_BGE
-            | insts::OP_BLTU
-            | insts::OP_BGEU
-            | insts::OP_ECALL
-            | insts::OP_EBREAK
-            | insts::OP_JAL
-            | insts::OP_FAR_JUMP_ABS
-            | insts::OP_FAR_JUMP_REL
-    )
+    let op = extract_opcode(i);
+    op >= insts::OP_AUIPC && op <= insts::OP_FAR_JUMP_ABS
 }
 
 #[inline(always)]
