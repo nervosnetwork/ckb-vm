@@ -20,7 +20,7 @@ pub const RET_SLOWPATH: u8 = 9;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
-    (addr as usize >> 5) & (TRACE_SIZE - 1)
+    (addr as usize >> 2) & (TRACE_SIZE - 1)
 }
 
 #[derive(Default)]

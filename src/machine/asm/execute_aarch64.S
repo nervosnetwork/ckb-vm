@@ -245,7 +245,7 @@ ckb_vm_x64_execute:
 .prepare_trace:
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
   mov TEMP3, TEMP2
-  lsr TEMP2, TEMP2, 5
+  lsr TEMP2, TEMP2, 2
   and TEMP2, TEMP2, 8191
   mov TEMP1, CKB_VM_ASM_TRACE_STRUCT_SIZE
   mul TEMP2, TEMP2, TEMP1
