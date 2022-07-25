@@ -3,9 +3,9 @@ pub mod infer;
 use crate::{
     decoder::build_decoder,
     instructions::{
-        blank_instruction, common, execute, execute_instruction, extract_opcode,
-        instruction_length, is_basic_block_end_instruction, is_slowpath_instruction, v_alu as alu,
-        Instruction, Itype, Register, VVtype, VXtype,
+        blank_instruction, common, execute, extract_opcode, instruction_length,
+        is_basic_block_end_instruction, is_slowpath_instruction, v_alu as alu, Instruction, Itype,
+        Register, Rtype, Stype, VVtype, VXtype,
     },
     machine::{
         asm::{
@@ -220,13 +220,36 @@ impl<'a> VTraceAsmMachine<'a> {
             i += 1;
             v_trace.sizes.push(instruction_length(inst));
 
+            let opcode = extract_opcode(inst);
             if !is_slowpath_instruction(inst) {
-                v_trace
-                    .actions
-                    .push(Box::new(move |m| execute_instruction(inst, m)));
+                match opcode {
+                    insts::OP_ADD => {
+                        v_trace.actions.push(Box::new(move |m| handle_add(m, inst)));
+                    }
+                    insts::OP_ADDI => {
+                        v_trace
+                            .actions
+                            .push(Box::new(move |m| handle_addi(m, inst)));
+                    }
+                    insts::OP_SUB => {
+                        v_trace.actions.push(Box::new(move |m| handle_sub(m, inst)));
+                    }
+                    insts::OP_SLLI => {
+                        v_trace
+                            .actions
+                            .push(Box::new(move |m| handle_slli(m, inst)));
+                    }
+                    insts::OP_BLT => {
+                        v_trace.actions.push(Box::new(move |m| handle_blt(m, inst)));
+                    }
+                    _ => panic!(
+                        "Unexpected IMC instruction: {}",
+                        insts::instruction_opcode_name(opcode)
+                    ),
+                    // _ => return None,
+                }
                 continue;
             }
-            let opcode = extract_opcode(inst);
             if !first_v_processed {
                 // The first V instruction must be vsetvli
                 // so as to guard against vl/vtype values.
@@ -685,5 +708,43 @@ fn handle_vmerge_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error>
         let r = alu::merge(b, a, mbit);
         r.put(m.element_mut(i.vd(), sew, j));
     }
+    Ok(())
+}
+
+fn handle_sub<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    common::sub(m, i.rd(), i.rs1(), i.rs2());
+    Ok(())
+}
+
+fn handle_add<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    common::add(m, i.rd(), i.rs1(), i.rs2());
+    Ok(())
+}
+
+fn handle_addi<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    common::addi(m, i.rd(), i.rs1(), i.immediate_s());
+    Ok(())
+}
+
+fn handle_slli<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    common::slli(m, i.rd(), i.rs1(), i.immediate_u());
+    Ok(())
+}
+
+fn handle_blt<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = m.pc();
+    let rs1_value = &m.registers()[i.rs1()];
+    let rs2_value = &m.registers()[i.rs2()];
+    let condition = rs1_value.lt_s(&rs2_value);
+    let new_pc = condition.cond(
+        &u64::from_i32(i.immediate_s()).wrapping_add(*pc),
+        &u64::from_u8(instruction_length(inst)).wrapping_add(*pc),
+    );
+    m.update_pc(new_pc);
     Ok(())
 }
