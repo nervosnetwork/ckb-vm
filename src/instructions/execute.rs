@@ -14,9 +14,9 @@ pub fn execute_instruction<Mac: Machine>(
     inst: Instruction,
     machine: &mut Mac,
 ) -> Result<(), Error> {
-    let mut r = execute_v_instruction(inst, machine);
+    let mut r = execute_imc_instruction(inst, machine);
     if r == Ok(false) {
-        r = execute_imc_instruction(inst, machine);
+        r = execute_v_instruction(inst, machine);
     }
     if r == Ok(false) {
         return Err(Error::InvalidOp(extract_opcode(inst)));
@@ -24,7 +24,6 @@ pub fn execute_instruction<Mac: Machine>(
     Ok(())
 }
 
-#[inline(never)]
 pub fn execute_imc_instruction<Mac: Machine>(
     inst: Instruction,
     machine: &mut Mac,
@@ -925,7 +924,6 @@ pub fn execute_imc_instruction<Mac: Machine>(
     Ok(true)
 }
 
-#[inline(never)]
 pub fn execute_v_instruction<Mac: Machine>(
     inst: Instruction,
     machine: &mut Mac,
