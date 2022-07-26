@@ -63,7 +63,7 @@ impl<'a> VTraceAsmMachine<'a> {
         let mut r = Self {
             machine,
             aot_code,
-            v_traces: LruCache::new(32),
+            v_traces: LruCache::new(128),
         };
         // Default to illegal configuration
         r.machine.set_vl(0, 0, 0, u64::MAX);
