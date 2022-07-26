@@ -26,7 +26,7 @@ use ckb_vm_definitions::{
     instructions::{self as insts, OP_CUSTOM_TRACE_END},
     ISA_MOP,
 };
-use eint::{Eint, E256, E512};
+use eint::{Eint, E256, E512, E8};
 use std::collections::HashMap;
 use std::mem::transmute;
 
@@ -271,6 +271,12 @@ impl<'a> VTraceAsmMachine<'a> {
                         .actions
                         .push(Box::new(move |m: &mut CM<'a>| handle_vlse256(m, inst)));
                 }
+                insts::OP_VLE8_V => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vle8(m, inst)));
+                }
                 insts::OP_VLE256_V => {
                     execute(inst, &mut infer_machine).ok()?;
                     v_trace
@@ -282,6 +288,19 @@ impl<'a> VTraceAsmMachine<'a> {
                     v_trace
                         .actions
                         .push(Box::new(move |m: &mut CM<'a>| handle_vse256(m, inst)));
+                }
+                insts::OP_VLUXEI8_V => {
+                    let sew = infer_machine.vsew();
+                    execute(inst, &mut infer_machine).ok()?;
+                    match sew {
+                        256 => {
+                            v_trace
+                                .actions
+                                .push(Box::new(move |m: &mut CM<'a>| handle_vluxei8_256(m, inst)));
+                        }
+                        _ => panic!("Unsupported vluxei8.vv with sew: {}", infer_machine.vsew()),
+                        // _ => return None,
+                    }
                 }
                 insts::OP_VADD_VV => {
                     let sew = infer_machine.vsew();
@@ -470,6 +489,25 @@ fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     Ok(())
 }
 
+fn handle_vle8<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = VXtype(inst);
+    let addr = m.registers()[i.rs1()].to_u64();
+    let stride = 1u64;
+
+    for j in 0..m.vl() {
+        if i.vm() == 0 && !m.get_bit(0, j as usize) {
+            continue;
+        }
+        m.mem_to_v(
+            i.vd(),
+            1 << 3,
+            j as usize,
+            stride.wrapping_mul(j).wrapping_add(addr),
+        )?;
+    }
+    Ok(())
+}
+
 fn handle_vle256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let i = VXtype(inst);
     let addr = m.registers()[i.rs1()].to_u64();
@@ -485,6 +523,20 @@ fn handle_vle256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
             j as usize,
             stride.wrapping_mul(j).wrapping_add(addr),
         )?;
+    }
+    Ok(())
+}
+
+fn handle_vluxei8_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let sew = 256;
+    let i = VXtype(inst);
+    let addr = m.registers()[i.rs1()].to_u64();
+    for j in 0..m.vl() as usize {
+        if i.vm() == 0 && !m.get_bit(0, j) {
+            continue;
+        }
+        let offset = E8::get_unsafe(m.element_ref(i.vs2(), 8, j)).u64();
+        m.mem_to_v(i.vd(), sew, j, addr.wrapping_add(offset))?;
     }
     Ok(())
 }
