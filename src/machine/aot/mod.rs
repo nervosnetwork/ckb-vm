@@ -390,11 +390,25 @@ impl CoreMachine for LabelGatheringMachine {
         unreachable!()
     }
 
-    fn v_to_mem(&mut self, _reg: usize, _sew: u64, _n: usize, _addr: u64) -> Result<(), Error> {
+    fn v_to_mem(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _addr: u64,
+    ) -> Result<(), Error> {
         unimplemented!()
     }
 
-    fn mem_to_v(&mut self, _reg: usize, _sew: u64, _n: usize, _addr: u64) -> Result<(), Error> {
+    fn mem_to_v(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _addr: u64,
+    ) -> Result<(), Error> {
         unimplemented!()
     }
 }
@@ -797,11 +811,25 @@ impl CoreMachine for AotCompilingMachine {
         unreachable!()
     }
 
-    fn v_to_mem(&mut self, _reg: usize, _sew: u64, _n: usize, _addr: u64) -> Result<(), Error> {
+    fn v_to_mem(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _addr: u64,
+    ) -> Result<(), Error> {
         unimplemented!()
     }
 
-    fn mem_to_v(&mut self, _reg: usize, _sew: u64, _n: usize, _addr: u64) -> Result<(), Error> {
+    fn mem_to_v(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _addr: u64,
+    ) -> Result<(), Error> {
         unimplemented!()
     }
 }

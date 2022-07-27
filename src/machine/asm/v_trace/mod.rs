@@ -484,6 +484,7 @@ fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
             i.vd(),
             32 << 3,
             j as usize,
+            1,
             stride.wrapping_mul(j).wrapping_add(addr),
         )?;
     }
@@ -495,16 +496,21 @@ fn handle_vle8<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let addr = m.registers()[i.rs1()].to_u64();
     let stride = 1u64;
 
-    for j in 0..m.vl() {
-        if i.vm() == 0 && !m.get_bit(0, j as usize) {
-            continue;
+    if i.vm() != 0 {
+        m.mem_to_v(i.vd(), 1 << 3, 0, m.vl() as usize, addr)?;
+    } else {
+        for j in 0..m.vl() {
+            if !m.get_bit(0, j as usize) {
+                continue;
+            }
+            m.mem_to_v(
+                i.vd(),
+                1 << 3,
+                j as usize,
+                1,
+                stride.wrapping_mul(j).wrapping_add(addr),
+            )?;
         }
-        m.mem_to_v(
-            i.vd(),
-            1 << 3,
-            j as usize,
-            stride.wrapping_mul(j).wrapping_add(addr),
-        )?;
     }
     Ok(())
 }
@@ -514,16 +520,21 @@ fn handle_vle256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let addr = m.registers()[i.rs1()].to_u64();
     let stride = 32u64;
 
-    for j in 0..m.vl() {
-        if i.vm() == 0 && !m.get_bit(0, j as usize) {
-            continue;
+    if i.vm() != 0 {
+        m.mem_to_v(i.vd(), 32 << 3, 0, m.vl() as usize, addr)?;
+    } else {
+        for j in 0..m.vl() {
+            if !m.get_bit(0, j as usize) {
+                continue;
+            }
+            m.mem_to_v(
+                i.vd(),
+                32 << 3,
+                j as usize,
+                1,
+                stride.wrapping_mul(j).wrapping_add(addr),
+            )?;
         }
-        m.mem_to_v(
-            i.vd(),
-            32 << 3,
-            j as usize,
-            stride.wrapping_mul(j).wrapping_add(addr),
-        )?;
     }
     Ok(())
 }
@@ -537,7 +548,7 @@ fn handle_vluxei8_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error
             continue;
         }
         let offset = E8::get(m.element_ref(i.vs2(), 8, j)).u64();
-        m.mem_to_v(i.vd(), sew, j, addr.wrapping_add(offset))?;
+        m.mem_to_v(i.vd(), sew, j, 1, addr.wrapping_add(offset))?;
     }
     Ok(())
 }
@@ -547,16 +558,21 @@ fn handle_vse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let addr = m.registers()[i.rs1()].to_u64();
     let stride = 32u64;
 
-    for j in 0..m.vl() {
-        if i.vm() == 0 && !m.get_bit(0, j as usize) {
-            continue;
+    if i.vm() != 0 {
+        m.v_to_mem(i.vd(), 32 << 3, 0, m.vl() as usize, addr)?;
+    } else {
+        for j in 0..m.vl() {
+            if !m.get_bit(0, j as usize) {
+                continue;
+            }
+            m.v_to_mem(
+                i.vd(),
+                32 << 3,
+                j as usize,
+                1,
+                stride.wrapping_mul(j).wrapping_add(addr),
+            )?;
         }
-        m.v_to_mem(
-            i.vd(),
-            32 << 3,
-            j as usize,
-            stride.wrapping_mul(j).wrapping_add(addr),
-        )?;
     }
     Ok(())
 }

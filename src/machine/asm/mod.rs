@@ -173,31 +173,49 @@ impl CoreMachine for Box<AsmCoreMachine> {
         self.vlenb
     }
 
-    fn v_to_mem(&mut self, reg: usize, sew: u64, n: usize, addr: u64) -> Result<(), Error> {
+    fn v_to_mem(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
         let lb = (sew as usize) >> 3;
-        let i0 = reg * (VLEN >> 3) + lb * n;
-        let i1 = i0 + lb;
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let len = lb * count;
+        let i1 = i0 + len;
 
-        let page_indices = get_page_indices(addr, lb as u64)?;
+        let page_indices = get_page_indices(addr, len as u64)?;
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
 
-        self.memory[addr as usize..addr as usize + lb].copy_from_slice(&self.register_file[i0..i1]);
+        self.memory[addr as usize..addr as usize + len]
+            .copy_from_slice(&self.register_file[i0..i1]);
 
         Ok(())
     }
 
-    fn mem_to_v(&mut self, reg: usize, sew: u64, n: usize, addr: u64) -> Result<(), Error> {
+    fn mem_to_v(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
         let lb = (sew as usize) >> 3;
-        let i0 = reg * (VLEN >> 3) + lb * n;
-        let i1 = i0 + lb;
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let len = lb * count;
+        let i1 = i0 + len;
 
-        check_memory_inited(self, addr, lb as usize)?;
+        check_memory_inited(self, addr, len as usize)?;
 
-        self.register_file[i0..i1].copy_from_slice(&self.memory[addr as usize..addr as usize + lb]);
+        self.register_file[i0..i1]
+            .copy_from_slice(&self.memory[addr as usize..addr as usize + len]);
 
         Ok(())
     }
