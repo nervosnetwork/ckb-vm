@@ -73,12 +73,10 @@ impl CoreMachine for DummyMachine {
         unreachable!()
     }
 
-    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {
-        unreachable!()
-    }
+    fn set_vl(&mut self, _rd: usize, _rs1: usize, _avl: u64, _new_type: u64) {}
 
     fn vl(&self) -> u64 {
-        unreachable!()
+        0
     }
 
     fn vlmax(&self) -> u64 {
@@ -132,7 +130,7 @@ impl CoreMachine for DummyMachine {
     }
 
     fn version(&self) -> u32 {
-        unreachable!()
+        1
     }
 
     fn isa(&self) -> u8 {
@@ -142,11 +140,11 @@ impl CoreMachine for DummyMachine {
 
 impl Machine for DummyMachine {
     fn ecall(&mut self) -> Result<(), Error> {
-        unreachable!()
+        Ok(())
     }
 
     fn ebreak(&mut self) -> Result<(), Error> {
-        unreachable!()
+        Ok(())
     }
 }
 
@@ -197,35 +195,35 @@ impl Memory for DummyMachine {
     }
 
     fn load8(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
-        unreachable!()
+        Ok(8)
     }
 
     fn load16(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
-        unreachable!()
+        Ok(16)
     }
 
     fn load32(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
-        unreachable!()
+        Ok(32)
     }
 
     fn load64(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
-        unreachable!()
+        Ok(64)
     }
 
     fn store8(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
-        unreachable!()
+        Ok(())
     }
 
     fn store16(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
-        unreachable!()
+        Ok(())
     }
 
     fn store32(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
-        unreachable!()
+        Ok(())
     }
 
     fn store64(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
-        unreachable!()
+        Ok(())
     }
 }
 
@@ -240,6 +238,25 @@ proptest! {
             pc,
             next_pc: 0,
             registers: full_registers,
+            can_touch_pc: is_basic_block_end_instruction(inst),
+        };
+        match execute_instruction(inst, &mut machine) {
+            Ok(_) => (),
+            Err(Error::InvalidOp(_)) => (),
+            Err(e) => panic!("Execute error: {}", e),
+        }
+    }
+}
+
+#[test]
+fn test_basic_block_end_imc_inst_can_touch_pc() {
+    for opcode in 0u16..0x100u16 {
+        let inst = blank_instruction(opcode);
+
+        let mut machine = DummyMachine {
+            pc: 0x10000,
+            next_pc: 0,
+            registers: [0u64; 32],
             can_touch_pc: is_basic_block_end_instruction(inst),
         };
         match execute_instruction(inst, &mut machine) {
