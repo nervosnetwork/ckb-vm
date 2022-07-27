@@ -155,6 +155,17 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
     ) -> Result<(), Error> {
         unimplemented!()
     }
+
+    fn v_to_v(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _target_reg: usize,
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
 }
 
 impl<Inner: SupportMachine> Machine for TraceMachine<'_, Inner> {

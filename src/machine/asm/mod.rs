@@ -219,6 +219,27 @@ impl CoreMachine for Box<AsmCoreMachine> {
 
         Ok(())
     }
+
+    fn v_to_v(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        target_reg: usize,
+    ) -> Result<(), Error> {
+        let lb = (sew as usize) >> 3;
+        let len = lb * count;
+
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let i1 = i0 + len;
+
+        let j0 = target_reg * (VLEN >> 3) + lb * skip;
+
+        self.register_file.copy_within(i0..i1, j0);
+
+        Ok(())
+    }
 }
 
 // This function is exported for asm and aot machine.

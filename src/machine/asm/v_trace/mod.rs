@@ -837,10 +837,9 @@ fn handle_vmerge_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error>
     let i = VVtype(inst);
     for j in 0..m.vl() as usize {
         let mbit = m.get_bit(0, j);
-        let b = E256::get(m.element_ref(i.vs2(), sew, j));
-        let a = E256::get(m.element_ref(i.vs1(), sew, j));
-        let r = alu::merge(b, a, mbit);
-        r.put(m.element_mut(i.vd(), sew, j));
+        let src = if mbit { i.vs1() } else { i.vs2() };
+
+        m.v_to_v(src, sew, j, 1, i.vd())?;
     }
     Ok(())
 }

@@ -93,7 +93,14 @@ pub trait CoreMachine {
         count: usize,
         addr: u64,
     ) -> Result<(), Error>;
-
+    fn v_to_v(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        target_reg: usize,
+    ) -> Result<(), Error>;
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
     fn version(&self) -> u32;
@@ -515,6 +522,17 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     ) -> Result<(), Error> {
         unimplemented!()
     }
+
+    fn v_to_v(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _target_reg: usize,
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
 }
 
 impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMachine<R, M> {
@@ -722,6 +740,17 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
         addr: u64,
     ) -> Result<(), Error> {
         self.inner.mem_to_v(reg, sew, skip, count, addr)
+    }
+
+    fn v_to_v(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        target_reg: usize,
+    ) -> Result<(), Error> {
+        self.inner.v_to_v(reg, sew, skip, count, target_reg)
     }
 }
 

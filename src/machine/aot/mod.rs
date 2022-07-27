@@ -411,6 +411,17 @@ impl CoreMachine for LabelGatheringMachine {
     ) -> Result<(), Error> {
         unimplemented!()
     }
+
+    fn v_to_v(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _target_reg: usize,
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
 }
 
 impl Machine for LabelGatheringMachine {
@@ -829,6 +840,17 @@ impl CoreMachine for AotCompilingMachine {
         _skip: usize,
         _count: usize,
         _addr: u64,
+    ) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn v_to_v(
+        &mut self,
+        _reg: usize,
+        _sew: u64,
+        _skip: usize,
+        _count: usize,
+        _target_reg: usize,
     ) -> Result<(), Error> {
         unimplemented!()
     }
