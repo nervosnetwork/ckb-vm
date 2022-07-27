@@ -4,9 +4,9 @@ mod utils;
 use crate::{
     decoder::build_decoder,
     instructions::{
-        blank_instruction, common, execute, extract_opcode, instruction_length,
-        is_basic_block_end_instruction, is_slowpath_instruction, v_alu as alu, Instruction, Itype,
-        Register, Rtype, Stype, VVtype, VXtype,
+        blank_instruction, common, execute, execute_instruction, extract_opcode,
+        instruction_length, is_basic_block_end_instruction, is_slowpath_instruction, v_alu as alu,
+        Instruction, Itype, Register, Rtype, Stype, VVtype, VXtype,
     },
     machine::{
         asm::{
@@ -35,8 +35,8 @@ pub const VTRACE_MAX_LENGTH: usize = 32;
 
 pub struct VTrace<M: Machine> {
     pub address: u64,
-    pub code_length: usize,
-    pub sizes: Vec<u8>,
+    pub code_length: u8,
+    pub last_inst_length: u8,
     pub actions: Vec<Box<dyn Fn(&mut M) -> Result<(), Error>>>,
 }
 
@@ -45,7 +45,7 @@ impl<M: Machine> Default for VTrace<M> {
         VTrace {
             address: 0,
             code_length: 0,
-            sizes: Vec::new(),
+            last_inst_length: 0,
             actions: Vec::new(),
         }
     }
@@ -114,7 +114,9 @@ impl<'a> VTraceAsmMachine<'a> {
                     while i < TRACE_ITEM_LENGTH {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
-                        current_pc += u64::from(instruction_length(instruction));
+                        let length = instruction_length(instruction);
+                        trace.last_inst_length = length;
+                        current_pc += u64::from(length);
                         if trace.slowpath == 0 && is_slowpath_instruction(instruction) {
                             trace.slowpath = 1;
                         }
@@ -171,30 +173,33 @@ impl<'a> VTraceAsmMachine<'a> {
                     if slowpath == 0 {
                         break;
                     }
-                    let cycles = self.machine.inner_mut().traces[slot].cycles;
+                    let cycles = self.machine.inner.traces[slot].cycles;
                     self.machine.add_cycles(cycles)?;
 
                     if let Some(v_trace) = self.v_traces.get(&pc) {
                         // Optimized VTrace
-                        // println!("Running trace: {:x}, length: {}", v_trace.address, v_trace.actions.len());
-                        for (i, action) in v_trace.actions.iter().enumerate() {
-                            let instruction_size = v_trace.sizes[i];
-                            let next_pc = self
-                                .machine
-                                .pc()
-                                .overflowing_add(&(instruction_size as u64));
-                            self.machine.update_pc(next_pc);
+                        setup_pc_for_trace(
+                            &mut self.machine,
+                            v_trace.code_length,
+                            v_trace.last_inst_length,
+                        );
+                        for action in &v_trace.actions {
                             action(&mut self.machine)?;
-                            self.machine.commit_pc();
                         }
+                        self.machine.commit_pc();
                     } else {
                         // VTrace is not avaiable, fallback to plain executing mode
-                        for instruction in self.machine.inner_mut().traces[slot].instructions {
+                        let code_length = self.machine.inner.traces[slot].length;
+                        let last_inst_length = self.machine.inner.traces[slot].last_inst_length;
+
+                        setup_pc_for_trace(&mut self.machine, code_length, last_inst_length);
+                        for instruction in self.machine.inner.traces[slot].instructions {
                             if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
                                 break;
                             }
-                            execute(instruction, &mut self.machine)?;
+                            execute_instruction(instruction, &mut self.machine)?;
                         }
+                        self.machine.commit_pc();
                     }
                 },
                 _ => return Err(Error::Asm(result)),
@@ -209,7 +214,7 @@ impl<'a> VTraceAsmMachine<'a> {
         // V instructions.
         let mut v_trace = VTrace {
             address: trace.address,
-            code_length: trace.length as usize,
+            code_length: trace.length,
             ..Default::default()
         };
 
@@ -219,7 +224,7 @@ impl<'a> VTraceAsmMachine<'a> {
         while extract_opcode(trace.instructions[i]) != OP_CUSTOM_TRACE_END {
             let inst = trace.instructions[i];
             i += 1;
-            v_trace.sizes.push(instruction_length(inst));
+            v_trace.last_inst_length = instruction_length(inst);
 
             let opcode = extract_opcode(inst);
             if !is_slowpath_instruction(inst) {
@@ -876,4 +881,21 @@ fn handle_blt<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     );
     m.update_pc(new_pc);
     Ok(())
+}
+
+// One observation from ckb-vm, is that only the last instruction of each trace
+// could read/write pc value. Using this assumption, there is no need to invoke
+// update_pc/commit_pc for each individual instruction in a trace. The following
+// actions should be enough before running the trace:
+// * commit pc to the address before the last instruction in a trace
+// * update pc to the address after the whole trace
+// This way a huge number of update_pc/commit_pc calls can be saved. Notice this
+// very technique applies to both IMC traces, and V traces.
+fn setup_pc_for_trace<'a>(m: &mut CM<'a>, code_length: u8, last_inst_length: u8) {
+    let pc = *m.pc();
+    let trace_end_pc = pc.wrapping_add(code_length as u64);
+    let before_last_inst_pc = trace_end_pc.wrapping_sub(last_inst_length as u64);
+    m.update_pc(before_last_inst_pc);
+    m.commit_pc();
+    m.update_pc(trace_end_pc);
 }
