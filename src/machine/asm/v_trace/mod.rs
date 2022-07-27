@@ -683,9 +683,11 @@ fn handle_vmsbc_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
         if i.vm() == 0 && !m.get_bit(0, j) {
             continue;
         }
-        let b = E256::get(m.element_ref(i.vs2(), sew, j));
-        let a = E256::get(m.element_ref(i.vs1(), sew, j));
-        if alu::msbc(b, a) {
+        let c = utils::msbc_256(
+            m.element_ref(i.vs2(), sew, j).as_ptr(),
+            m.element_ref(i.vs1(), sew, j).as_ptr(),
+        );
+        if c {
             m.set_bit(i.vd(), j);
         } else {
             m.clr_bit(i.vd(), j);
@@ -758,18 +760,25 @@ fn handle_vxor_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
 fn handle_vnsrl_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let sew = 256;
     let i = VXtype(inst);
-    for j in 0..m.vl() as usize {
-        if i.vm() == 0 && !m.get_bit(0, j) {
-            continue;
+    if i.vm() != 0 {
+        utils::narrowing_right_shift_512(
+            m.element_ref(i.vs2(), sew * 2, 0).as_ptr(),
+            m.element_mut(i.vd(), sew, 0).as_mut_ptr(),
+            m.registers()[i.rs1()].to_u32(),
+            m.vl() as usize,
+        );
+    } else {
+        for j in 0..m.vl() as usize {
+            if !m.get_bit(0, j) {
+                continue;
+            }
+            utils::narrowing_right_shift_512(
+                m.element_ref(i.vs2(), sew * 2, j).as_ptr(),
+                m.element_mut(i.vd(), sew, j).as_mut_ptr(),
+                m.registers()[i.rs1()].to_u32(),
+                1,
+            );
         }
-        let b = E512::get(m.element_ref(i.vs2(), sew * 2, j));
-        let a = if 0 != 0 {
-            E512::from(E256::from(m.registers()[i.rs1()].to_i64())).lo_sext()
-        } else {
-            E512::from(E256::from(m.registers()[i.rs1()].to_u64()))
-        };
-        let r = alu::srl(b, a);
-        r.put_lo(m.element_mut(i.vd(), sew, j));
     }
     Ok(())
 }
