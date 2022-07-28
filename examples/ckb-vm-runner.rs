@@ -1,7 +1,7 @@
 use ckb_vm::instructions::cost_model::instruction_cycles;
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{Bytes, CoreMachine, Memory, Register, SupportMachine, Syscalls};
-
+use probe::probe;
 pub struct DebugSyscall {}
 
 impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
@@ -76,6 +76,9 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
+    let ptr = (&asm_core.pc) as *const u64;
+    probe!(default, machine_pc_location, ptr as isize);
+
     let core = ckb_vm::DefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(Box::new(instruction_cycles))
         .syscall(Box::new(DebugSyscall {}))
