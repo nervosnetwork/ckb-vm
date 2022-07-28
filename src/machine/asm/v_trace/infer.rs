@@ -265,39 +265,6 @@ impl CoreMachine for VInferMachine {
     fn isa(&self) -> u8 {
         unimplemented!()
     }
-
-    fn v_to_mem(
-        &mut self,
-        _reg: usize,
-        _sew: u64,
-        _skip: usize,
-        _count: usize,
-        _addr: u64,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    fn mem_to_v(
-        &mut self,
-        _reg: usize,
-        _sew: u64,
-        _skip: usize,
-        _count: usize,
-        _addr: u64,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    fn v_to_v(
-        &mut self,
-        _reg: usize,
-        _sew: u64,
-        _skip: usize,
-        _count: usize,
-        _target_reg: usize,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
 }
 
 impl Machine for VInferMachine {

@@ -133,39 +133,6 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
     fn version(&self) -> u32 {
         self.machine.version()
     }
-
-    fn v_to_mem(
-        &mut self,
-        _reg: usize,
-        _sew: u64,
-        _skip: usize,
-        _count: usize,
-        _addr: u64,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    fn mem_to_v(
-        &mut self,
-        _reg: usize,
-        _sew: u64,
-        _skip: usize,
-        _count: usize,
-        _addr: u64,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    fn v_to_v(
-        &mut self,
-        _reg: usize,
-        _sew: u64,
-        _skip: usize,
-        _count: usize,
-        _target_reg: usize,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
 }
 
 impl<Inner: SupportMachine> Machine for TraceMachine<'_, Inner> {

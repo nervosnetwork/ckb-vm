@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
-    let core = ckb_vm::DefaultMachineBuilder::new(asm_core)
+    let core = ckb_vm::DefaultMachineBuilder::new(asm_core.into())
         .instruction_cycle_func(Box::new(instruction_cycles))
         .syscall(Box::new(CustomSyscall {}))
         .syscall(Box::new(TimeSyscall::new()))

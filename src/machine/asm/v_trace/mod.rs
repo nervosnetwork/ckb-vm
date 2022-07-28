@@ -10,12 +10,13 @@ use crate::{
     },
     machine::{
         asm::{
-            ckb_vm_asm_labels, ckb_vm_x64_execute, v_trace::infer::VInferMachine, AotCode,
-            AsmCoreMachine, Error,
+            check_memory, check_memory_inited, check_permission, ckb_vm_asm_labels,
+            ckb_vm_x64_execute, v_trace::infer::VInferMachine, AotCode, AsmCoreMachine, Error,
         },
         VERSION0,
     },
-    CoreMachine, DefaultMachine, Machine, SupportMachine,
+    memory::{get_page_indices, FLAG_DIRTY, FLAG_WRITABLE},
+    CoreMachine, DefaultMachine, Machine, Memory, SupportMachine,
 };
 use bytes::Bytes;
 use ckb_vm_definitions::{
@@ -25,7 +26,7 @@ use ckb_vm_definitions::{
         RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH,
     },
     instructions::{self as insts, OP_CUSTOM_TRACE_END},
-    ISA_MOP,
+    ISA_MOP, VLEN,
 };
 use eint::{Eint, E256, E512, E8};
 use lru::LruCache;
@@ -33,14 +34,261 @@ use std::mem::{transmute, MaybeUninit};
 
 pub const VTRACE_MAX_LENGTH: usize = 32;
 
-pub struct VTrace<M: Machine> {
+// This simply wraps AsmCoreMachine so we can introduce custom V processing functions
+pub struct VTraceCoreMachine {
+    inner: Box<AsmCoreMachine>,
+}
+
+impl VTraceCoreMachine {
+    fn v_ref(&self, reg: usize, sew: u64, skip: usize, count: usize) -> &[u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let len = lb * count;
+        let i1 = i0 + len;
+
+        &self.inner.register_file[i0..i1]
+    }
+
+    fn v_mut(&mut self, reg: usize, sew: u64, skip: usize, count: usize) -> &mut [u8] {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let len = lb * count;
+        let i1 = i0 + len;
+
+        &mut self.inner.register_file[i0..i1]
+    }
+
+    // Shortcuts(think DMA) to transfer data between vector registers and memories.
+    // On the one hand, it eliminates all the costy Memory operations as well as `to_vec`
+    // to work around life times.
+    //
+    // Another interesting use case here, is that symbolic executions can be leveraged
+    // to eliminate loads. For instance, when executing the following snippet:
+    // * vle256.v v0, (t3)
+    // * vle256.v v4, (t4)
+    // * vmul.vv v0, v0, v4
+    // There is no need to do the first load into v0, instead, one can redirect one
+    // operand of vmul.vv to load from memory directly.
+    //
+    // TODO: those are just an initial attempt for a PoC on rvv optimiztaions, it really
+    // is necessary to revise all the V related trait methods.
+    fn v_to_mem(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let len = lb * count;
+        let i1 = i0 + len;
+
+        let page_indices = get_page_indices(addr, len as u64)?;
+        for page in page_indices.0..=page_indices.1 {
+            check_permission(&mut self.inner, page, FLAG_WRITABLE)?;
+            check_memory(&mut self.inner, page);
+            self.inner.set_flag(page, FLAG_DIRTY)?;
+        }
+
+        self.inner.memory[addr as usize..addr as usize + len]
+            .copy_from_slice(&self.inner.register_file[i0..i1]);
+
+        Ok(())
+    }
+
+    fn mem_to_v(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
+        let lb = (sew as usize) >> 3;
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let len = lb * count;
+        let i1 = i0 + len;
+
+        check_memory_inited(&mut self.inner, addr, len as usize)?;
+
+        self.inner.register_file[i0..i1]
+            .copy_from_slice(&self.inner.memory[addr as usize..addr as usize + len]);
+
+        Ok(())
+    }
+
+    fn v_to_v(
+        &mut self,
+        reg: usize,
+        sew: u64,
+        skip: usize,
+        count: usize,
+        target_reg: usize,
+    ) -> Result<(), Error> {
+        let lb = (sew as usize) >> 3;
+        let len = lb * count;
+
+        let i0 = reg * (VLEN >> 3) + lb * skip;
+        let i1 = i0 + len;
+
+        let j0 = target_reg * (VLEN >> 3) + lb * skip;
+
+        self.inner.register_file.copy_within(i0..i1, j0);
+
+        Ok(())
+    }
+}
+
+impl From<Box<AsmCoreMachine>> for VTraceCoreMachine {
+    fn from(m: Box<AsmCoreMachine>) -> VTraceCoreMachine {
+        VTraceCoreMachine { inner: m }
+    }
+}
+
+impl CoreMachine for VTraceCoreMachine {
+    type REG = u64;
+    type MEM = <Box<AsmCoreMachine> as CoreMachine>::MEM;
+
+    fn pc(&self) -> &Self::REG {
+        self.inner.pc()
+    }
+
+    fn update_pc(&mut self, pc: Self::REG) {
+        self.inner.update_pc(pc)
+    }
+
+    fn commit_pc(&mut self) {
+        self.inner.commit_pc()
+    }
+
+    fn memory(&self) -> &Self::MEM {
+        self.inner.memory()
+    }
+
+    fn memory_mut(&mut self) -> &mut Self::MEM {
+        self.inner.memory_mut()
+    }
+
+    fn registers(&self) -> &[Self::REG] {
+        self.inner.registers()
+    }
+
+    fn set_register(&mut self, idx: usize, value: Self::REG) {
+        self.inner.set_register(idx, value)
+    }
+
+    fn isa(&self) -> u8 {
+        self.inner.isa()
+    }
+
+    fn version(&self) -> u32 {
+        self.inner.version()
+    }
+
+    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
+        unreachable!()
+    }
+
+    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
+        unreachable!()
+    }
+
+    fn get_bit(&self, reg: usize, n: usize) -> bool {
+        self.inner.get_bit(reg, n)
+    }
+
+    fn set_bit(&mut self, reg: usize, n: usize) {
+        self.inner.set_bit(reg, n)
+    }
+
+    fn clr_bit(&mut self, reg: usize, n: usize) {
+        self.inner.clr_bit(reg, n)
+    }
+
+    fn set_vl(&mut self, rd: usize, rs1: usize, avl: u64, new_type: u64) {
+        self.inner.set_vl(rd, rs1, avl, new_type)
+    }
+
+    fn vl(&self) -> u64 {
+        self.inner.vl()
+    }
+
+    fn vlmax(&self) -> u64 {
+        self.inner.vlmax()
+    }
+
+    fn vsew(&self) -> u64 {
+        self.inner.vsew()
+    }
+
+    fn vlmul(&self) -> f64 {
+        self.inner.vlmul()
+    }
+
+    fn vta(&self) -> bool {
+        self.inner.vta()
+    }
+
+    fn vma(&self) -> bool {
+        self.inner.vma()
+    }
+
+    fn vill(&self) -> bool {
+        self.inner.vill()
+    }
+
+    fn vlenb(&self) -> u64 {
+        self.inner.vlenb()
+    }
+}
+
+impl SupportMachine for VTraceCoreMachine {
+    fn cycles(&self) -> u64 {
+        self.inner.cycles()
+    }
+
+    fn set_cycles(&mut self, cycles: u64) {
+        self.inner.set_cycles(cycles)
+    }
+
+    fn max_cycles(&self) -> u64 {
+        self.inner.max_cycles()
+    }
+
+    fn reset(&mut self, max_cycles: u64) {
+        self.inner.reset(max_cycles)
+    }
+
+    fn reset_signal(&mut self) -> bool {
+        self.inner.reset_signal()
+    }
+
+    fn running(&self) -> bool {
+        self.inner.running()
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.inner.set_running(running)
+    }
+
+    #[cfg(feature = "pprof")]
+    fn code(&self) -> &Bytes {
+        self.inner.code()
+    }
+}
+
+type CM<'a> = DefaultMachine<'a, VTraceCoreMachine>;
+
+pub struct VTrace<'a> {
     pub address: u64,
     pub code_length: u8,
     pub last_inst_length: u8,
-    pub actions: Vec<Box<dyn Fn(&mut M) -> Result<(), Error>>>,
+    pub actions: Vec<Box<dyn Fn(&mut CM<'a>) -> Result<(), Error>>>,
 }
 
-impl<M: Machine> Default for VTrace<M> {
+impl<'a> Default for VTrace<'a> {
     fn default() -> Self {
         VTrace {
             address: 0,
@@ -51,12 +299,10 @@ impl<M: Machine> Default for VTrace<M> {
     }
 }
 
-type CM<'a> = DefaultMachine<'a, Box<AsmCoreMachine>>;
-
 pub struct VTraceAsmMachine<'a> {
     pub machine: CM<'a>,
     pub aot_code: Option<&'a AotCode>,
-    pub v_traces: LruCache<u64, VTrace<CM<'a>>>,
+    pub v_traces: LruCache<u64, VTrace<'a>>,
 }
 
 impl<'a> VTraceAsmMachine<'a> {
@@ -72,7 +318,7 @@ impl<'a> VTraceAsmMachine<'a> {
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner.max_cycles = cycles;
+        self.machine.inner.inner.max_cycles = cycles;
     }
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
@@ -97,12 +343,12 @@ impl<'a> VTraceAsmMachine<'a> {
                     let f = unsafe {
                         transmute::<u64, fn(*mut AsmCoreMachine, u64) -> u8>(base_address)
                     };
-                    f(&mut (**self.machine.inner_mut()), offset_address)
+                    f(&mut (*self.machine.inner_mut().inner), offset_address)
                 } else {
-                    unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                    unsafe { ckb_vm_x64_execute(&mut (*self.machine.inner_mut().inner)) }
                 }
             } else {
-                unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+                unsafe { ckb_vm_x64_execute(&mut (*self.machine.inner_mut().inner)) }
             };
             match result {
                 RET_DECODE_TRACE => {
@@ -156,7 +402,7 @@ impl<'a> VTraceAsmMachine<'a> {
                             self.v_traces.put(pc, v_trace);
                         }
                     }
-                    self.machine.inner_mut().traces[slot] = trace;
+                    self.machine.inner_mut().inner.traces[slot] = trace;
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
@@ -168,12 +414,12 @@ impl<'a> VTraceAsmMachine<'a> {
                 RET_SLOWPATH_TRACE => loop {
                     let pc = *self.machine.pc();
                     let slot = calculate_slot(pc);
-                    let slowpath = self.machine.inner_mut().traces[slot].slowpath;
+                    let slowpath = self.machine.inner.inner.traces[slot].slowpath;
 
                     if slowpath == 0 {
                         break;
                     }
-                    let cycles = self.machine.inner.traces[slot].cycles;
+                    let cycles = self.machine.inner.inner.traces[slot].cycles;
                     self.machine.add_cycles(cycles)?;
 
                     if let Some(v_trace) = self.v_traces.get(&pc) {
@@ -189,11 +435,12 @@ impl<'a> VTraceAsmMachine<'a> {
                         self.machine.commit_pc();
                     } else {
                         // VTrace is not avaiable, fallback to plain executing mode
-                        let code_length = self.machine.inner.traces[slot].length;
-                        let last_inst_length = self.machine.inner.traces[slot].last_inst_length;
+                        let code_length = self.machine.inner.inner.traces[slot].length;
+                        let last_inst_length =
+                            self.machine.inner.inner.traces[slot].last_inst_length;
 
                         setup_pc_for_trace(&mut self.machine, code_length, last_inst_length);
-                        for instruction in self.machine.inner.traces[slot].instructions {
+                        for instruction in self.machine.inner.inner.traces[slot].instructions {
                             if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
                                 break;
                             }
@@ -209,9 +456,7 @@ impl<'a> VTraceAsmMachine<'a> {
         Ok(self.machine.exit_code())
     }
 
-    pub fn try_build_v_trace(trace: &Trace) -> Option<VTrace<CM<'a>>> {
-        // TODO: run the trace first on a dummy machine to *typecheck*
-        // V instructions.
+    pub fn try_build_v_trace(trace: &Trace) -> Option<VTrace<'a>> {
         let mut v_trace = VTrace {
             address: trace.address,
             code_length: trace.length,
@@ -485,7 +730,7 @@ fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
             continue;
         }
 
-        m.mem_to_v(
+        m.inner.mem_to_v(
             i.vd(),
             32 << 3,
             j as usize,
@@ -502,13 +747,13 @@ fn handle_vle8<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let stride = 1u64;
 
     if i.vm() != 0 {
-        m.mem_to_v(i.vd(), 1 << 3, 0, m.vl() as usize, addr)?;
+        m.inner.mem_to_v(i.vd(), 1 << 3, 0, m.vl() as usize, addr)?;
     } else {
         for j in 0..m.vl() {
             if !m.get_bit(0, j as usize) {
                 continue;
             }
-            m.mem_to_v(
+            m.inner.mem_to_v(
                 i.vd(),
                 1 << 3,
                 j as usize,
@@ -526,13 +771,14 @@ fn handle_vle256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let stride = 32u64;
 
     if i.vm() != 0 {
-        m.mem_to_v(i.vd(), 32 << 3, 0, m.vl() as usize, addr)?;
+        m.inner
+            .mem_to_v(i.vd(), 32 << 3, 0, m.vl() as usize, addr)?;
     } else {
         for j in 0..m.vl() {
             if !m.get_bit(0, j as usize) {
                 continue;
             }
-            m.mem_to_v(
+            m.inner.mem_to_v(
                 i.vd(),
                 32 << 3,
                 j as usize,
@@ -552,8 +798,9 @@ fn handle_vluxei8_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error
         if i.vm() == 0 && !m.get_bit(0, j) {
             continue;
         }
-        let offset = E8::get(m.element_ref(i.vs2(), 8, j)).u64();
-        m.mem_to_v(i.vd(), sew, j, 1, addr.wrapping_add(offset))?;
+        let offset = E8::get(m.inner.v_ref(i.vs2(), 8, j, 1)).u64();
+        m.inner
+            .mem_to_v(i.vd(), sew, j, 1, addr.wrapping_add(offset))?;
     }
     Ok(())
 }
@@ -564,13 +811,14 @@ fn handle_vse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let stride = 32u64;
 
     if i.vm() != 0 {
-        m.v_to_mem(i.vd(), 32 << 3, 0, m.vl() as usize, addr)?;
+        m.inner
+            .v_to_mem(i.vd(), 32 << 3, 0, m.vl() as usize, addr)?;
     } else {
         for j in 0..m.vl() {
             if !m.get_bit(0, j as usize) {
                 continue;
             }
-            m.v_to_mem(
+            m.inner.v_to_mem(
                 i.vd(),
                 32 << 3,
                 j as usize,
@@ -585,11 +833,12 @@ fn handle_vse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
 fn handle_vadd_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let i = VVtype(inst);
     if i.vm() != 0 {
+        let vl = m.vl() as usize;
         utils::wrapping_add_256(
-            m.element_ref(i.vs1(), 256, 0).as_ptr(),
-            m.element_ref(i.vs2(), 256, 0).as_ptr(),
-            m.element_mut(i.vd(), 256, 0).as_mut_ptr(),
-            m.vl() as usize,
+            m.inner.v_ref(i.vs1(), 256, 0, vl).as_ptr(),
+            m.inner.v_ref(i.vs2(), 256, 0, vl).as_ptr(),
+            m.inner.v_mut(i.vd(), 256, 0, vl).as_mut_ptr(),
+            vl,
         );
     } else {
         for j in 0..m.vl() as usize {
@@ -598,9 +847,9 @@ fn handle_vadd_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
             }
 
             utils::wrapping_add_256(
-                m.element_ref(i.vs1(), 256, j).as_ptr(),
-                m.element_ref(i.vs2(), 256, j).as_ptr(),
-                m.element_mut(i.vd(), 256, j).as_mut_ptr(),
+                m.inner.v_ref(i.vs1(), 256, j, 1).as_ptr(),
+                m.inner.v_ref(i.vs2(), 256, j, 1).as_ptr(),
+                m.inner.v_mut(i.vd(), 256, j, 1).as_mut_ptr(),
                 1,
             );
         }
@@ -611,11 +860,12 @@ fn handle_vadd_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
 fn handle_vadd_512<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let i = VVtype(inst);
     if i.vm() != 0 {
+        let vl = m.vl() as usize;
         utils::wrapping_add_512(
-            m.element_ref(i.vs1(), 512, 0).as_ptr(),
-            m.element_ref(i.vs2(), 512, 0).as_ptr(),
-            m.element_mut(i.vd(), 512, 0).as_mut_ptr(),
-            m.vl() as usize,
+            m.inner.v_ref(i.vs1(), 512, 0, vl).as_ptr(),
+            m.inner.v_ref(i.vs2(), 512, 0, vl).as_ptr(),
+            m.inner.v_mut(i.vd(), 512, 0, vl).as_mut_ptr(),
+            vl,
         );
     } else {
         for j in 0..m.vl() as usize {
@@ -624,9 +874,9 @@ fn handle_vadd_512<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
             }
 
             utils::wrapping_add_512(
-                m.element_ref(i.vs1(), 512, j).as_ptr(),
-                m.element_ref(i.vs2(), 512, j).as_ptr(),
-                m.element_mut(i.vd(), 512, j).as_mut_ptr(),
+                m.inner.v_ref(i.vs1(), 512, j, 1).as_ptr(),
+                m.inner.v_ref(i.vs2(), 512, j, 1).as_ptr(),
+                m.inner.v_mut(i.vd(), 512, j, 1).as_mut_ptr(),
                 1,
             );
         }
@@ -641,8 +891,8 @@ fn handle_vmadc_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
         if i.vm() == 0 && !m.get_bit(0, j) {
             continue;
         }
-        let b = E256::get(m.element_ref(i.vs2(), sew, j));
-        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let b = E256::get(m.inner.v_ref(i.vs2(), sew, j, 1));
+        let a = E256::get(m.inner.v_ref(i.vs1(), sew, j, 1));
         if alu::madc(b, a) {
             m.set_bit(i.vd(), j);
         } else {
@@ -659,8 +909,8 @@ fn handle_vmadc_512<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
         if i.vm() == 0 && !m.get_bit(0, j) {
             continue;
         }
-        let b = E512::get(m.element_ref(i.vs2(), sew, j));
-        let a = E512::get(m.element_ref(i.vs1(), sew, j));
+        let b = E512::get(m.inner.v_ref(i.vs2(), sew, j, 1));
+        let a = E512::get(m.inner.v_ref(i.vs1(), sew, j, 1));
         if alu::madc(b, a) {
             m.set_bit(i.vd(), j);
         } else {
@@ -674,11 +924,12 @@ fn handle_vsub_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let sew = 256;
     let i = VVtype(inst);
     if i.vm() != 0 {
+        let vl = m.vl() as usize;
         utils::wrapping_sub_256(
-            m.element_ref(i.vs2(), sew, 0).as_ptr(),
-            m.element_ref(i.vs1(), sew, 0).as_ptr(),
-            m.element_mut(i.vd(), sew, 0).as_mut_ptr(),
-            m.vl() as usize,
+            m.inner.v_ref(i.vs2(), sew, 0, vl).as_ptr(),
+            m.inner.v_ref(i.vs1(), sew, 0, vl).as_ptr(),
+            m.inner.v_mut(i.vd(), sew, 0, vl).as_mut_ptr(),
+            vl,
         );
     } else {
         for j in 0..m.vl() as usize {
@@ -687,9 +938,9 @@ fn handle_vsub_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
             }
 
             utils::wrapping_sub_256(
-                m.element_ref(i.vs2(), sew, j).as_ptr(),
-                m.element_ref(i.vs1(), sew, j).as_ptr(),
-                m.element_mut(i.vd(), sew, j).as_mut_ptr(),
+                m.inner.v_ref(i.vs2(), sew, j, 1).as_ptr(),
+                m.inner.v_ref(i.vs1(), sew, j, 1).as_ptr(),
+                m.inner.v_mut(i.vd(), sew, j, 1).as_mut_ptr(),
                 1,
             );
         }
@@ -705,8 +956,8 @@ fn handle_vmsbc_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
             continue;
         }
         let c = utils::msbc_256(
-            m.element_ref(i.vs2(), sew, j).as_ptr(),
-            m.element_ref(i.vs1(), sew, j).as_ptr(),
+            m.inner.v_ref(i.vs2(), sew, j, 1).as_ptr(),
+            m.inner.v_ref(i.vs1(), sew, j, 1).as_ptr(),
         );
         if c {
             m.set_bit(i.vd(), j);
@@ -721,11 +972,12 @@ fn handle_vmmulu_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error>
     let sew = 256;
     let i = VVtype(inst);
     if i.vm() != 0 && i.vs1() != i.vs2() && i.vs1() != i.vd() && i.vs2() != i.vd() {
+        let vl = m.vl() as usize;
         utils::widening_mul_256_non_overlapping(
-            m.element_ref(i.vs1(), sew, 0).as_ptr(),
-            m.element_ref(i.vs2(), sew, 0).as_ptr(),
-            m.element_mut(i.vd(), sew * 2, 0).as_mut_ptr(),
-            m.vl() as usize,
+            m.inner.v_ref(i.vs1(), sew, 0, vl).as_ptr(),
+            m.inner.v_ref(i.vs2(), sew, 0, vl).as_ptr(),
+            m.inner.v_mut(i.vd(), sew * 2, 0, vl).as_mut_ptr(),
+            vl,
         );
     } else {
         for j in 0..m.vl() as usize {
@@ -736,13 +988,13 @@ fn handle_vmmulu_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error>
             let mut c: [u8; 64] = unsafe { MaybeUninit::uninit().assume_init() };
 
             utils::widening_mul_256_non_overlapping(
-                m.element_ref(i.vs1(), sew, j).as_ptr(),
-                m.element_ref(i.vs2(), sew, j).as_ptr(),
+                m.inner.v_ref(i.vs1(), sew, j, 1).as_ptr(),
+                m.inner.v_ref(i.vs2(), sew, j, 1).as_ptr(),
                 c.as_mut_ptr(),
                 1,
             );
 
-            m.element_mut(i.vd(), sew * 2, j).copy_from_slice(&c);
+            m.inner.v_mut(i.vd(), sew * 2, j, 1).copy_from_slice(&c);
         }
     }
     Ok(())
@@ -755,10 +1007,10 @@ fn handle_vmul_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
         if i.vm() == 0 && !m.get_bit(0, j as usize) {
             continue;
         }
-        let b = E256::get(m.element_ref(i.vs2(), sew, j));
-        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let b = E256::get(m.inner.v_ref(i.vs2(), sew, j, 1));
+        let a = E256::get(m.inner.v_ref(i.vs1(), sew, j, 1));
         let r = Eint::wrapping_mul(b, a);
-        r.put(m.element_mut(i.vd(), sew, j));
+        r.put(m.inner.v_mut(i.vd(), sew, j, 1));
     }
     Ok(())
 }
@@ -770,10 +1022,10 @@ fn handle_vxor_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
         if i.vm() == 0 && !m.get_bit(0, j as usize) {
             continue;
         }
-        let b = E256::get(m.element_ref(i.vs2(), sew, j));
-        let a = E256::get(m.element_ref(i.vs1(), sew, j));
+        let b = E256::get(m.inner.v_ref(i.vs2(), sew, j, 1));
+        let a = E256::get(m.inner.v_ref(i.vs1(), sew, j, 1));
         let r = alu::xor(b, a);
-        r.put(m.element_mut(i.vd(), sew, j));
+        r.put(m.inner.v_mut(i.vd(), sew, j, 1));
     }
     Ok(())
 }
@@ -782,11 +1034,12 @@ fn handle_vnsrl_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
     let sew = 256;
     let i = VXtype(inst);
     if i.vm() != 0 {
+        let vl = m.vl() as usize;
         utils::narrowing_right_shift_512(
-            m.element_ref(i.vs2(), sew * 2, 0).as_ptr(),
-            m.element_mut(i.vd(), sew, 0).as_mut_ptr(),
+            m.inner.v_ref(i.vs2(), sew * 2, 0, vl).as_ptr(),
+            m.inner.v_mut(i.vd(), sew, 0, vl).as_mut_ptr(),
             m.registers()[i.rs1()].to_u32(),
-            m.vl() as usize,
+            vl,
         );
     } else {
         for j in 0..m.vl() as usize {
@@ -794,8 +1047,8 @@ fn handle_vnsrl_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
                 continue;
             }
             utils::narrowing_right_shift_512(
-                m.element_ref(i.vs2(), sew * 2, j).as_ptr(),
-                m.element_mut(i.vd(), sew, j).as_mut_ptr(),
+                m.inner.v_ref(i.vs2(), sew * 2, j, 1).as_ptr(),
+                m.inner.v_mut(i.vd(), sew, j, 1).as_mut_ptr(),
                 m.registers()[i.rs1()].to_u32(),
                 1,
             );
@@ -839,7 +1092,7 @@ fn handle_vmerge_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error>
         let mbit = m.get_bit(0, j);
         let src = if mbit { i.vs1() } else { i.vs2() };
 
-        m.v_to_v(src, sew, j, 1, i.vd())?;
+        m.inner.v_to_v(src, sew, j, 1, i.vd())?;
     }
     Ok(())
 }

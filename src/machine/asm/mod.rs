@@ -172,74 +172,6 @@ impl CoreMachine for Box<AsmCoreMachine> {
     fn vlenb(&self) -> u64 {
         self.vlenb
     }
-
-    fn v_to_mem(
-        &mut self,
-        reg: usize,
-        sew: u64,
-        skip: usize,
-        count: usize,
-        addr: u64,
-    ) -> Result<(), Error> {
-        let lb = (sew as usize) >> 3;
-        let i0 = reg * (VLEN >> 3) + lb * skip;
-        let len = lb * count;
-        let i1 = i0 + len;
-
-        let page_indices = get_page_indices(addr, len as u64)?;
-        for page in page_indices.0..=page_indices.1 {
-            check_permission(self, page, FLAG_WRITABLE)?;
-            check_memory(self, page);
-            self.set_flag(page, FLAG_DIRTY)?;
-        }
-
-        self.memory[addr as usize..addr as usize + len]
-            .copy_from_slice(&self.register_file[i0..i1]);
-
-        Ok(())
-    }
-
-    fn mem_to_v(
-        &mut self,
-        reg: usize,
-        sew: u64,
-        skip: usize,
-        count: usize,
-        addr: u64,
-    ) -> Result<(), Error> {
-        let lb = (sew as usize) >> 3;
-        let i0 = reg * (VLEN >> 3) + lb * skip;
-        let len = lb * count;
-        let i1 = i0 + len;
-
-        check_memory_inited(self, addr, len as usize)?;
-
-        self.register_file[i0..i1]
-            .copy_from_slice(&self.memory[addr as usize..addr as usize + len]);
-
-        Ok(())
-    }
-
-    fn v_to_v(
-        &mut self,
-        reg: usize,
-        sew: u64,
-        skip: usize,
-        count: usize,
-        target_reg: usize,
-    ) -> Result<(), Error> {
-        let lb = (sew as usize) >> 3;
-        let len = lb * count;
-
-        let i0 = reg * (VLEN >> 3) + lb * skip;
-        let i1 = i0 + len;
-
-        let j0 = target_reg * (VLEN >> 3) + lb * skip;
-
-        self.register_file.copy_within(i0..i1, j0);
-
-        Ok(())
-    }
 }
 
 // This function is exported for asm and aot machine.
@@ -261,7 +193,7 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
     }
 }
 
-fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
+pub(crate) fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
     let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
     if machine.frames[frame as usize] == 0 {
         inited_memory(frame, machine);
@@ -269,7 +201,11 @@ fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
     }
 }
 
-fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<(), Error> {
+pub(crate) fn check_permission<M: Memory>(
+    memory: &mut M,
+    page: u64,
+    flag: u8,
+) -> Result<(), Error> {
     let page_flag = memory.fetch_flag(page)?;
     if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
         return Err(Error::MemWriteOnExecutablePage);
@@ -337,7 +273,7 @@ fn check_memory_executable(
 }
 
 // check whether a memory address is initialized, `size` should be le RISCV_PAGESIZE
-fn check_memory_inited(
+pub(crate) fn check_memory_inited(
     machine: &mut Box<AsmCoreMachine>,
     addr: u64,
     size: usize,
