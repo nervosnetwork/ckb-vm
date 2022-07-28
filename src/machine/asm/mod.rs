@@ -1,3 +1,4 @@
+use probe::probe;
 use std::mem::transmute;
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -636,6 +637,7 @@ impl<'a> AsmMachine<'a> {
                     };
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
+                    probe!(default, trace_instruction_count, i as isize);
                     self.machine.inner_mut().traces[slot] = trace;
                 }
                 RET_ECALL => self.machine.ecall()?,
@@ -656,6 +658,7 @@ impl<'a> AsmMachine<'a> {
                         .unwrap_or(0);
                     self.machine.add_cycles(cycles)?;
                     execute_instruction(instruction, &mut self.machine)?;
+                    probe!(default, slow_path, cycles as isize);
                 }
                 RET_SLOWPATH_TRACE => {
                     let pc = *self.machine.pc();
@@ -679,6 +682,7 @@ impl<'a> AsmMachine<'a> {
                         }
                         execute(instruction, &mut self.machine)?;
                     }
+                    probe!(default, slow_path_trace, 1);
                 }
                 _ => return Err(Error::Asm(result)),
             }

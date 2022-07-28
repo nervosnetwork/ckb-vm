@@ -8,6 +8,7 @@ pub mod trace;
 use std::fmt::{self, Display};
 
 use bytes::Bytes;
+use probe::probe;
 use scroll::Pread;
 
 use super::debugger::Debugger;
@@ -687,6 +688,7 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
 impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers()[A7].to_u64();
+        probe!(default, default_machine_syscalls, code);
         match code {
             93 => {
                 // exit
