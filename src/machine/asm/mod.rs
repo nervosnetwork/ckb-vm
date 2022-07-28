@@ -595,6 +595,7 @@ impl<'a> AsmMachine<'a> {
             };
             match result {
                 RET_DECODE_TRACE => {
+                    probe!(default, decode_trace_begin);
                     let pc = *self.machine.pc();
                     let slot = calculate_slot(pc);
                     let mut trace = Trace::default();
@@ -637,8 +638,8 @@ impl<'a> AsmMachine<'a> {
                     };
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
-                    probe!(default, trace_instruction_count, i as isize);
                     self.machine.inner_mut().traces[slot] = trace;
+                    probe!(default, trace_instruction_count, i as isize);
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
