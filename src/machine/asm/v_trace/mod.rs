@@ -28,7 +28,7 @@ use ckb_vm_definitions::{
     instructions::{self as insts, OP_CUSTOM_TRACE_END},
     ISA_MOP, VLEN,
 };
-use eint::{Eint, E256, E512, E8};
+use eint::{Eint, E256, E8};
 use lru::LruCache;
 use std::mem::{transmute, MaybeUninit};
 
@@ -725,18 +725,35 @@ fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let addr = m.registers()[i.rs1()].to_u64();
     let stride = m.registers()[i.vs2()].to_u64();
 
-    for j in 0..m.vl() {
-        if i.vm() == 0 && !m.get_bit(0, j as usize) {
-            continue;
-        }
+    let vl = m.vl();
+    if stride == 0 && vl > 0 && i.vm() != 0 {
+        // When stride is zero, we will be repeatedly loading from the same memory
+        // address again and again, we could save a few memory checking here.
+        // TODO: build a fan out function here, or better, combine with vluxei8
+        // to eliminate unnecessary memory checking
+        check_memory_inited(&mut m.inner.inner, addr, 32)?;
 
-        m.inner.mem_to_v(
-            i.vd(),
-            32 << 3,
-            j as usize,
-            1,
-            stride.wrapping_mul(j).wrapping_add(addr),
-        )?;
+        for j in 0..vl {
+            let i0 = i.vd() * (VLEN >> 3) + 32 * (j as usize);
+            let i1 = i0 + 32;
+
+            m.inner.inner.register_file[i0..i1]
+                .copy_from_slice(&m.inner.inner.memory[addr as usize..addr as usize + 32]);
+        }
+    } else {
+        for j in 0..vl {
+            if i.vm() == 0 && !m.get_bit(0, j as usize) {
+                continue;
+            }
+
+            m.inner.mem_to_v(
+                i.vd(),
+                32 << 3,
+                j as usize,
+                1,
+                stride.wrapping_mul(j).wrapping_add(addr),
+            )?;
+        }
     }
     Ok(())
 }
@@ -891,9 +908,11 @@ fn handle_vmadc_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
         if i.vm() == 0 && !m.get_bit(0, j) {
             continue;
         }
-        let b = E256::get(m.inner.v_ref(i.vs2(), sew, j, 1));
-        let a = E256::get(m.inner.v_ref(i.vs1(), sew, j, 1));
-        if alu::madc(b, a) {
+        let c = utils::madc_256(
+            m.inner.v_ref(i.vs2(), sew, j, 1).as_ptr(),
+            m.inner.v_ref(i.vs1(), sew, j, 1).as_ptr(),
+        );
+        if c {
             m.set_bit(i.vd(), j);
         } else {
             m.clr_bit(i.vd(), j);
@@ -909,9 +928,11 @@ fn handle_vmadc_512<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> 
         if i.vm() == 0 && !m.get_bit(0, j) {
             continue;
         }
-        let b = E512::get(m.inner.v_ref(i.vs2(), sew, j, 1));
-        let a = E512::get(m.inner.v_ref(i.vs1(), sew, j, 1));
-        if alu::madc(b, a) {
+        let c = utils::madc_512(
+            m.inner.v_ref(i.vs2(), sew, j, 1).as_ptr(),
+            m.inner.v_ref(i.vs1(), sew, j, 1).as_ptr(),
+        );
+        if c {
             m.set_bit(i.vd(), j);
         } else {
             m.clr_bit(i.vd(), j);

@@ -2,6 +2,58 @@ use std::arch::asm;
 use std::ptr;
 
 #[inline(never)]
+pub fn madc_256(a: *const u8, b: *const u8) -> bool {
+    let mut result: u64;
+    unsafe {
+        asm!(
+            "mov r8, [{1} + 0]",
+            "mov r9, [{1} + 8]",
+            "mov r10, [{1} + 16]",
+            "mov r11, [{1} + 24]",
+            "add r8, [{2} + 0]",
+            "adc r9, [{2} + 8]",
+            "adc r10, [{2} + 16]",
+            "adc r11, [{2} + 24]",
+            "sbb {0}, {0}",
+            out(reg) result,
+            in(reg) a as usize,
+            in(reg) b as usize,
+        );
+    }
+    result != 0
+}
+
+#[inline(never)]
+pub fn madc_512(a: *const u8, b: *const u8) -> bool {
+    let mut result: u64;
+    unsafe {
+        asm!(
+            "mov r8, [{1} + 0]",
+            "mov r9, [{1} + 8]",
+            "mov r10, [{1} + 16]",
+            "mov r11, [{1} + 24]",
+            "add r8, [{2} + 0]",
+            "adc r9, [{2} + 8]",
+            "adc r10, [{2} + 16]",
+            "adc r11, [{2} + 24]",
+            "mov r8, [{1} + 32]",
+            "mov r9, [{1} + 40]",
+            "mov r10, [{1} + 48]",
+            "mov r11, [{1} + 56]",
+            "adc r8, [{2} + 32]",
+            "adc r9, [{2} + 40]",
+            "adc r10, [{2} + 48]",
+            "adc r11, [{2} + 56]",
+            "sbb {0}, {0}",
+            out(reg) result,
+            in(reg) a as usize,
+            in(reg) b as usize,
+        );
+    }
+    result != 0
+}
+
+#[inline(never)]
 pub fn msbc_256(a: *const u8, b: *const u8) -> bool {
     let mut result: u64;
     unsafe {
