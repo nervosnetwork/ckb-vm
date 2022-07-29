@@ -1024,14 +1024,26 @@ fn handle_vmmulu_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error>
 fn handle_vmul_256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
     let sew = 256;
     let i = VVtype(inst);
-    for j in 0..m.vl() as usize {
-        if i.vm() == 0 && !m.get_bit(0, j as usize) {
-            continue;
+    if i.vm() != 0 {
+        let vl = m.vl() as usize;
+        utils::wrapping_mul_256(
+            m.inner.v_ref(i.vs2(), sew, 0, vl).as_ptr(),
+            m.inner.v_ref(i.vs1(), sew, 0, vl).as_ptr(),
+            m.inner.v_mut(i.vd(), sew, 0, vl).as_mut_ptr(),
+            vl,
+        )
+    } else {
+        for j in 0..m.vl() as usize {
+            if !m.get_bit(0, j as usize) {
+                continue;
+            }
+            utils::wrapping_mul_256(
+                m.inner.v_ref(i.vs2(), sew, j, 1).as_ptr(),
+                m.inner.v_ref(i.vs1(), sew, j, 1).as_ptr(),
+                m.inner.v_mut(i.vd(), sew, j, 1).as_mut_ptr(),
+                1,
+            );
         }
-        let b = E256::get(m.inner.v_ref(i.vs2(), sew, j, 1));
-        let a = E256::get(m.inner.v_ref(i.vs1(), sew, j, 1));
-        let r = Eint::wrapping_mul(b, a);
-        r.put(m.inner.v_mut(i.vd(), sew, j, 1));
     }
     Ok(())
 }
