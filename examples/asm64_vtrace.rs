@@ -93,12 +93,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
     let mut machine = ckb_vm::machine::asm::v_trace::VTraceAsmMachine::new(core, None);
 
-    cpuprofiler::PROFILER
-        .lock()
-        .unwrap()
-        .start("./asm64-vtrace.profile")
-        .unwrap();
-
     machine.load_program(&code, &riscv_args).unwrap();
 
     let exit = machine.run();
