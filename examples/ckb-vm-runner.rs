@@ -1,7 +1,8 @@
 use ckb_vm::instructions::cost_model::instruction_cycles;
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{Bytes, CoreMachine, Memory, Register, SupportMachine, Syscalls};
-use probe::probe;
+use std::io::Write;
+
 pub struct DebugSyscall {}
 
 impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
@@ -30,8 +31,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
             addr += 1;
         }
 
-        let s = String::from_utf8(buffer).unwrap();
-        println!("{:?}", s);
+        std::io::stdout().write(&buffer)?;
 
         Ok(true)
     }
@@ -71,6 +71,8 @@ fn main_aot(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
 
 #[cfg(all(has_asm, not(has_aot)))]
 fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
+    use probe::probe;
+
     let asm_core = ckb_vm::machine::asm::AsmCoreMachine::new(
         ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP | ckb_vm::ISA_V,
         ckb_vm::machine::VERSION1,
