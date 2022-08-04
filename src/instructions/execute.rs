@@ -2211,3 +2211,69 @@ pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(),
     machine.commit_pc();
     r
 }
+
+pub fn handle_vle512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    ld!(inst, machine, machine.vl(), 0, 64, 1);
+    Ok(())
+}
+
+pub fn handle_vwmulu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    w_vv_loop_u!(inst, machine, Eint::widening_mul_u);
+    Ok(())
+}
+
+pub fn handle_vnsrl_wx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wx_loop_u!(inst, machine, alu::srl);
+    Ok(())
+}
+
+pub fn handle_jalr<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let size = instruction_length(inst);
+    let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
+    if machine.version() >= 1 {
+        let mut next_pc =
+            machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+        next_pc = next_pc & (!Mac::REG::one());
+        update_register(machine, i.rd(), link);
+        machine.update_pc(next_pc);
+    } else {
+        update_register(machine, i.rd(), link);
+        let mut next_pc =
+            machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+        next_pc = next_pc & (!Mac::REG::one());
+        machine.update_pc(next_pc);
+    }
+    Ok(())
+}
+
+pub fn handle_vsll_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_vx_loop_u!(inst, machine, alu::sll);
+    Ok(())
+}
+
+pub fn handle_vsrl_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_vx_loop_u!(inst, machine, alu::srl);
+    Ok(())
+}
+
+pub fn handle_vwmaccu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    w_vv_loop_destructive_s!(inst, machine, alu::wmaccu);
+    Ok(())
+}
+
+pub fn handle_vmsleu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    m_vv_loop_s!(inst, machine, alu::sleu);
+    Ok(())
+}
+
+pub fn handle_vsub_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_vv_loop_s!(inst, machine, Eint::wrapping_sub);
+    Ok(())
+}
+
+
+pub fn handle_vse512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    sd!(inst, machine, machine.vl(), 0, 64, 1);
+    Ok(())
+}

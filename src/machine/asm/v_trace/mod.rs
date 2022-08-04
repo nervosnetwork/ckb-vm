@@ -187,12 +187,12 @@ impl CoreMachine for VTraceCoreMachine {
         self.inner.version()
     }
 
-    fn element_ref(&self, _reg: usize, _sew: u64, _n: usize) -> &[u8] {
-        unreachable!()
+    fn element_ref(&self, reg: usize, sew: u64, n: usize) -> &[u8] {
+        self.inner.element_ref(reg, sew, n)
     }
 
-    fn element_mut(&mut self, _reg: usize, _sew: u64, _n: usize) -> &mut [u8] {
-        unreachable!()
+    fn element_mut(&mut self, reg: usize, sew: u64, n: usize) -> &mut [u8] {
+        self.inner.element_mut(reg, sew, n)
     }
 
     fn get_bit(&self, reg: usize, n: usize) -> bool {
@@ -457,6 +457,7 @@ impl<'a> VTraceAsmMachine<'a> {
     }
 
     pub fn try_build_v_trace(trace: &Trace) -> Option<VTrace<'a>> {
+        println!("try_build_v_trace");
         let mut v_trace = VTrace {
             address: trace.address,
             code_length: trace.length,
@@ -472,6 +473,10 @@ impl<'a> VTraceAsmMachine<'a> {
             v_trace.last_inst_length = instruction_length(inst);
 
             let opcode = extract_opcode(inst);
+            println!(
+                "{:?}",
+                ckb_vm_definitions::instructions::instruction_opcode_name(opcode)
+            );
             if !is_slowpath_instruction(inst) {
                 match opcode {
                     insts::OP_ADD => {
@@ -493,6 +498,11 @@ impl<'a> VTraceAsmMachine<'a> {
                     insts::OP_BLT => {
                         v_trace.actions.push(Box::new(move |m| handle_blt(m, inst)));
                     }
+                    insts::OP_JALR => {
+                        v_trace.actions.push(Box::new(move |m| {
+                            crate::instructions::execute::handle_jalr(m, inst)
+                        }));
+                    }
                     _ => panic!(
                         "Unexpected IMC instruction: {}",
                         insts::instruction_opcode_name(opcode)
@@ -504,12 +514,18 @@ impl<'a> VTraceAsmMachine<'a> {
             if !first_v_processed {
                 // The first V instruction must be vsetvli
                 // so as to guard against vl/vtype values.
-                if ![insts::OP_VSETVLI].contains(&opcode) {
+                if ![insts::OP_VSETVLI, insts::OP_VSETIVLI].contains(&opcode) {
                     return None;
                 }
                 first_v_processed = true;
             }
             match opcode {
+                insts::OP_VSETIVLI => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace
+                        .actions
+                        .push(Box::new(move |m: &mut CM<'a>| handle_vsetivli(m, inst)));
+                }
                 insts::OP_VSETVLI => {
                     execute(inst, &mut infer_machine).ok()?;
                     v_trace
@@ -534,11 +550,23 @@ impl<'a> VTraceAsmMachine<'a> {
                         .actions
                         .push(Box::new(move |m: &mut CM<'a>| handle_vle256(m, inst)));
                 }
+                insts::OP_VLE512_V => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                        crate::instructions::execute::handle_vle512_v(m, inst)
+                    }));
+                }
                 insts::OP_VSE256_V => {
                     execute(inst, &mut infer_machine).ok()?;
                     v_trace
                         .actions
                         .push(Box::new(move |m: &mut CM<'a>| handle_vse256(m, inst)));
+                }
+                insts::OP_VSE512_V => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                        crate::instructions::execute::handle_vse512_v(m, inst)
+                    }));
                 }
                 insts::OP_VLUXEI8_V => {
                     let sew = infer_machine.vsew();
@@ -598,6 +626,11 @@ impl<'a> VTraceAsmMachine<'a> {
                                 .actions
                                 .push(Box::new(move |m: &mut CM<'a>| handle_vsub_256(m, inst)));
                         }
+                        512 => {
+                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                                crate::instructions::execute::handle_vsub_vv(m, inst)
+                            }));
+                        }
                         _ => panic!("Unsupported vsub.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
                     }
@@ -623,6 +656,11 @@ impl<'a> VTraceAsmMachine<'a> {
                             v_trace
                                 .actions
                                 .push(Box::new(move |m: &mut CM<'a>| handle_vmmulu_256(m, inst)));
+                        }
+                        512 => {
+                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                                crate::instructions::execute::handle_vwmulu_vv(m, inst)
+                            }));
                         }
                         _ => panic!("Unsupported vwmulu.vv with sew: {}", infer_machine.vsew()),
                         // _ => return None,
@@ -663,6 +701,11 @@ impl<'a> VTraceAsmMachine<'a> {
                                 .actions
                                 .push(Box::new(move |m: &mut CM<'a>| handle_vnsrl_256(m, inst)));
                         }
+                        512 => {
+                            v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                                crate::instructions::execute::handle_vnsrl_wx(m, inst)
+                            }));
+                        }
                         _ => panic!("Unsupported vnsrl.wx with sew: {}", infer_machine.vsew()),
                         // _ => return None,
                     }
@@ -692,6 +735,30 @@ impl<'a> VTraceAsmMachine<'a> {
                         // _ => return None,
                     }
                 }
+                insts::OP_VSLL_VX => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                        crate::instructions::execute::handle_vsll_vx(m, inst)
+                    }));
+                }
+                insts::OP_VSRL_VX => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                        crate::instructions::execute::handle_vsrl_vx(m, inst)
+                    }));
+                }
+                insts::OP_VWMACCU_VV => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                        crate::instructions::execute::handle_vwmaccu_vv(m, inst)
+                    }));
+                }
+                insts::OP_VMSLEU_VV => {
+                    execute(inst, &mut infer_machine).ok()?;
+                    v_trace.actions.push(Box::new(move |m: &mut CM<'a>| {
+                        crate::instructions::execute::handle_vmsleu_vv(m, inst)
+                    }));
+                }
                 _ => panic!(
                     "Unsupported v op: {}, sew now: {}",
                     insts::instruction_opcode_name(opcode),
@@ -718,6 +785,11 @@ fn handle_vsetvli<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
         m.registers()[i.rs1()].to_u64(),
         i.immediate_u() as u64,
     )
+}
+
+fn handle_vsetivli<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    common::set_vl(m, i.rd(), 33, i.rs1() as u64, i.immediate_u() as u64)
 }
 
 fn handle_vlse256<'a>(m: &mut CM<'a>, inst: Instruction) -> Result<(), Error> {
