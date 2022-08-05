@@ -81,7 +81,11 @@ pub fn addiw<Mac: Machine>(
 // =======================
 // #  LOAD instructions  #
 // =======================
-fn check_load_boundary<R: Register>(version0: bool, address: &R, bytes: u64) -> Result<(), Error> {
+pub fn check_load_boundary<R: Register>(
+    version0: bool,
+    address: &R,
+    bytes: u64,
+) -> Result<(), Error> {
     if version0 {
         let address = address.to_u64();
         let end = address.checked_add(bytes).ok_or(Error::MemOutOfBound)?;

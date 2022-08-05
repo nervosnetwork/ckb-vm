@@ -11,12 +11,14 @@ use bytes::Bytes;
 use probe::probe;
 use scroll::Pread;
 
-use super::debugger::Debugger;
-use super::decoder::{build_decoder, Decoder};
-use super::instructions::{execute, Instruction, Register, RegisterFile};
-use super::memory::{round_page_down, round_page_up, Memory};
-use super::syscalls::Syscalls;
-use super::{
+use crate::debugger::Debugger;
+use crate::decoder::{build_decoder, Decoder};
+use crate::instructions::{
+    execute, generate_handle_function_list, HandleFunction, Instruction, Register, RegisterFile,
+};
+use crate::memory::{round_page_down, round_page_up, Memory};
+use crate::syscalls::Syscalls;
+use crate::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, DEFAULT_STACK_SIZE, ELEN, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
     VLEN,
@@ -788,17 +790,22 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             return Err(Error::InvalidVersion);
         }
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        let handle_function_list = generate_handle_function_list::<Self>();
         self.set_running(true);
         while self.running() {
             if self.reset_signal() {
                 decoder.reset_instructions_cache();
             }
-            self.step(&mut decoder)?;
+            self.step(&mut decoder, &handle_function_list)?;
         }
         Ok(self.exit_code())
     }
 
-    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+    pub fn step(
+        &mut self,
+        decoder: &mut Decoder,
+        handle_function_list: &[Option<HandleFunction<Self>>],
+    ) -> Result<(), Error> {
         let instruction = {
             let pc = self.pc().to_u64();
             let memory = self.memory_mut();
@@ -812,7 +819,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
             .map(|f| f(instruction, vl, sew, false))
             .unwrap_or(0);
         self.add_cycles(cycles)?;
-        execute(instruction, self)
+        execute(self, &handle_function_list, instruction)
     }
 }
 

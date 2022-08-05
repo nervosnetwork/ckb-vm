@@ -1,13 +1,10 @@
-use super::{
-    super::{
-        decoder::build_decoder,
-        instructions::{
-            execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
-        },
-        Error,
-    },
-    CoreMachine, DefaultMachine, Machine, SupportMachine,
+use crate::decoder::build_decoder;
+use crate::instructions::{
+    execute, generate_handle_function_list, instruction_length, is_basic_block_end_instruction,
+    Instruction, Register,
 };
+use crate::machine::{CoreMachine, DefaultMachine, Machine, SupportMachine};
+use crate::Error;
 use bytes::Bytes;
 
 // The number of trace items to keep
@@ -159,6 +156,7 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
 
     pub fn run(&mut self) -> Result<i8, Error> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        let handle_func_list = generate_handle_function_list::<Self>();
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
         // to tweak the code here if we choose to use a larger trace size or
@@ -202,7 +200,7 @@ impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
                     .map(|f| f(i, vl, sew, false))
                     .unwrap_or(0);
                 self.machine.add_cycles(cycles)?;
-                execute(i, self)?;
+                execute(self, &handle_func_list, i)?;
             }
         }
         Ok(self.machine.exit_code())

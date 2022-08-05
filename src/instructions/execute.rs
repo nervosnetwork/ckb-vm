@@ -10,923 +10,1357 @@ use crate::memory::Memory;
 use ckb_vm_definitions::{instructions as insts, registers::RA, VLEN};
 pub use eint::{Eint, E1024, E128, E16, E2048, E256, E32, E512, E64, E8};
 
-pub fn execute_instruction<Mac: Machine>(
-    inst: Instruction,
+pub fn handle_unloaded<Mac: Machine>(_: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    Err(Error::InvalidOp(extract_opcode(inst)))
+}
+
+pub fn handle_add<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1() as usize];
+    let rs2_value = &machine.registers()[i.rs2() as usize];
+    let value = rs1_value.overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_addi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_addiw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_addw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1() as usize];
+    let rs2_value = &machine.registers()[i.rs2() as usize];
+    let value = rs1_value.overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_and<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = machine.registers()[i.rs1() as usize].clone();
+    let rs2_value = machine.registers()[i.rs2() as usize].clone();
+    let value = rs1_value & rs2_value;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_andi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value = machine.registers()[i.rs1() as usize].clone() & Mac::REG::from_i32(i.immediate_s());
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_div<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_div_signed(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_divu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_div(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_divuw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_value = rs1_value.zero_extend(&Mac::REG::from_u8(32));
+    let rs2_value = rs2_value.zero_extend(&Mac::REG::from_u8(32));
+    let value = rs1_value.overflowing_div(&rs2_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_divw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_value = rs1_value.sign_extend(&Mac::REG::from_u8(32));
+    let rs2_value = rs2_value.sign_extend(&Mac::REG::from_u8(32));
+    let value = rs1_value.overflowing_div_signed(&rs2_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_fence<Mac: Machine>(_: &mut Mac, _: Instruction) -> Result<(), Error> {
+    Ok(())
+}
+
+pub fn handle_fencei<Mac: Machine>(_: &mut Mac, _: Instruction) -> Result<(), Error> {
+    Ok(())
+}
+
+pub fn handle_lb<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 1)?;
+    let value = machine.memory_mut().load8(&address)?;
+    // sign-extened
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(8)));
+    Ok(())
+}
+
+pub fn handle_lbu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 1)?;
+    let value = machine.memory_mut().load8(&address)?;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_ld<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 8)?;
+    let value = machine.memory_mut().load64(&address)?;
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(64)));
+    Ok(())
+}
+
+pub fn handle_lh<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 2)?;
+    let value = machine.memory_mut().load16(&address)?;
+    // sign-extened
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(16)));
+    Ok(())
+}
+
+pub fn handle_lhu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 2)?;
+    let value = machine.memory_mut().load16(&address)?;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_lui<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Utype(inst);
+    update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+    Ok(())
+}
+
+pub fn handle_lw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 4)?;
+    let value = machine.memory_mut().load32(&address)?;
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_lwu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    common::check_load_boundary(machine.version() == 0, &address, 4)?;
+    let value = machine.memory_mut().load32(&address)?;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_mul<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_mul(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_mulh<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_mul_high_signed(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_mulhsu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_mulhu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_mulw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value
+        .zero_extend(&Mac::REG::from_u8(32))
+        .overflowing_mul(&rs2_value.zero_extend(&Mac::REG::from_u8(32)));
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_or<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = machine.registers()[i.rs1() as usize].clone();
+    let rs2_value = machine.registers()[i.rs2() as usize].clone();
+    let value = rs1_value | rs2_value;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_ori<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value = machine.registers()[i.rs1() as usize].clone() | Mac::REG::from_i32(i.immediate_s());
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_rem<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_rem_signed(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_remu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.overflowing_rem(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_remuw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_value = rs1_value.zero_extend(&Mac::REG::from_u8(32));
+    let rs2_value = rs2_value.zero_extend(&Mac::REG::from_u8(32));
+    let value = rs1_value.overflowing_rem(&rs2_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_remw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_value = rs1_value.sign_extend(&Mac::REG::from_u8(32));
+    let rs2_value = rs2_value.sign_extend(&Mac::REG::from_u8(32));
+    let value = rs1_value.overflowing_rem_signed(&rs2_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_sb<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    let value = machine.registers()[i.rs2() as usize].clone();
+    machine.memory_mut().store8(&address, &value)?;
+    Ok(())
+}
+
+pub fn handle_sd<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    let value = machine.registers()[i.rs2() as usize].clone();
+    machine.memory_mut().store64(&address, &value)?;
+    Ok(())
+}
+
+pub fn handle_sh<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    let value = machine.registers()[i.rs2() as usize].clone();
+    machine.memory_mut().store16(&address, &value)?;
+    Ok(())
+}
+
+pub fn handle_sll<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let shift_value =
+        machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = machine.registers()[i.rs1()].clone() << shift_value;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_slli<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value =
+        machine.registers()[i.rs1() as usize].clone() << Mac::REG::from_u32(i.immediate_u());
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_slliw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value =
+        machine.registers()[i.rs1() as usize].clone() << Mac::REG::from_u32(i.immediate_u());
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_sllw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
+    let value = machine.registers()[i.rs1()].clone() << shift_value;
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_slt<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.lt_s(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_slti<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let imm_value = Mac::REG::from_i32(i.immediate_s());
+    let value = rs1_value.lt_s(&imm_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sltiu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let imm_value = Mac::REG::from_i32(i.immediate_s());
+    let value = rs1_value.lt(&imm_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sltu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.lt(&rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sra<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let shift_value =
+        machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = machine.registers()[i.rs1()].signed_shr(&shift_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_srai<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value =
+        machine.registers()[i.rs1() as usize].signed_shr(&Mac::REG::from_u32(i.immediate_u()));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sraiw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value = machine.registers()[i.rs1() as usize]
+        .sign_extend(&Mac::REG::from_u8(32))
+        .signed_shr(&Mac::REG::from_u32(i.immediate_u()));
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_sraw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
+    let value = machine.registers()[i.rs1()]
+        .sign_extend(&Mac::REG::from_u8(32))
+        .signed_shr(&shift_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_srl<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let shift_value =
+        machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = machine.registers()[i.rs1()].clone() >> shift_value;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_srli<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value =
+        machine.registers()[i.rs1() as usize].clone() >> Mac::REG::from_u32(i.immediate_u());
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_srliw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value = machine.registers()[i.rs1() as usize].zero_extend(&Mac::REG::from_u8(32))
+        >> Mac::REG::from_u32(i.immediate_u());
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_srlw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
+    let value = machine.registers()[i.rs1()].zero_extend(&Mac::REG::from_u8(32)) >> shift_value;
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_sub<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1() as usize];
+    let rs2_value = &machine.registers()[i.rs2() as usize];
+    let value = rs1_value.overflowing_sub(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_subw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1() as usize];
+    let rs2_value = &machine.registers()[i.rs2() as usize];
+    let value = rs1_value.overflowing_sub(rs2_value);
+    update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
+    Ok(())
+}
+
+pub fn handle_sw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let address =
+        machine.registers()[i.rs1() as usize].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    let value = machine.registers()[i.rs2() as usize].clone();
+    machine.memory_mut().store32(&address, &value)?;
+    Ok(())
+}
+
+pub fn handle_xor<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = machine.registers()[i.rs1() as usize].clone();
+    let rs2_value = machine.registers()[i.rs2() as usize].clone();
+    let value = rs1_value ^ rs2_value;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_xori<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let value = machine.registers()[i.rs1() as usize].clone() ^ Mac::REG::from_i32(i.immediate_s());
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_adduw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_u = rs1_value.zero_extend(&Mac::REG::from_u8(32));
+    let value = rs2_value.overflowing_add(&rs1_u);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_andn<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.clone() & !rs2_value.clone();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_bclr<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.clone() & !(Mac::REG::one() << shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_bclri<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &Mac::REG::from_u32(i.immediate_u());
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.clone() & !(Mac::REG::one() << shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_bext<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = Mac::REG::one() & (rs1_value.clone() >> shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_bexti<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &Mac::REG::from_u32(i.immediate_u());
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = Mac::REG::one() & (rs1_value.clone() >> shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_binv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.clone() ^ (Mac::REG::one() << shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_binvi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &Mac::REG::from_u32(i.immediate_u());
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.clone() ^ (Mac::REG::one() << shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_bset<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.clone() | (Mac::REG::one() << shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_bseti<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &Mac::REG::from_u32(i.immediate_u());
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.clone() | (Mac::REG::one() << shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_clmul<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.clmul(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_clmulh<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.clmulh(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_clmulr<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.clmulr(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_clz<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.clz();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_clzw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value
+        .zero_extend(&Mac::REG::from_u8(32))
+        .clz()
+        .overflowing_sub(&Mac::REG::from_u8(32));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_cpop<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.cpop();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_cpopw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.zero_extend(&Mac::REG::from_u8(32)).cpop();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_ctz<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.ctz();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_ctzw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = (rs1_value.clone() | Mac::REG::from_u64(0xffff_ffff_0000_0000)).ctz();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_max<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.ge_s(&rs2_value).cond(&rs1_value, &rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_maxu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.ge(&rs2_value).cond(&rs1_value, &rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_min<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.lt_s(&rs2_value).cond(&rs1_value, &rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_minu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.lt(&rs2_value).cond(&rs1_value, &rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_orcb<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.orcb();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_orn<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.clone() | !rs2_value.clone();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_rev8<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.rev8();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_rol<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.rol(&shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_rolw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
+    let twins = rs1_value
+        .zero_extend(&Mac::REG::from_u8(32))
+        .overflowing_mul(&Mac::REG::from_u64(0x_0000_0001_0000_0001));
+    let value = twins.rol(&shamt).sign_extend(&Mac::REG::from_u8(32));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_ror<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.ror(&shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_rori<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &Mac::REG::from_u32(i.immediate_u());
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_value.ror(&shamt);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_roriw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &Mac::REG::from_u32(i.immediate_u());
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
+    let twins = rs1_value
+        .zero_extend(&Mac::REG::from_u8(32))
+        .overflowing_mul(&Mac::REG::from_u64(0x_0000_0001_0000_0001));
+    let value = twins.ror(&shamt).sign_extend(&Mac::REG::from_u8(32));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_rorw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
+    let twins = rs1_value
+        .zero_extend(&Mac::REG::from_u8(32))
+        .overflowing_mul(&Mac::REG::from_u64(0x_0000_0001_0000_0001));
+    let value = twins.ror(&shamt).sign_extend(&Mac::REG::from_u8(32));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sextb<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let shift = &Mac::REG::from_u8(Mac::REG::BITS - 8);
+    let value = rs1_value.signed_shl(shift).signed_shr(shift);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sexth<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let shift = &Mac::REG::from_u8(Mac::REG::BITS - 16);
+    let value = rs1_value.signed_shl(shift).signed_shr(shift);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sh1add<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = (rs1_value.clone() << Mac::REG::from_u32(1)).overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sh1adduw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_z = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
+    let value = (rs1_z << Mac::REG::from_u32(1)).overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sh2add<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = (rs1_value.clone() << Mac::REG::from_u32(2)).overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sh2adduw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_z = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
+    let value = (rs1_z << Mac::REG::from_u32(2)).overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sh3add<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = (rs1_value.clone() << Mac::REG::from_u32(3)).overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_sh3adduw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let rs1_z = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
+    let value = (rs1_z << Mac::REG::from_u32(3)).overflowing_add(rs2_value);
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_slliuw<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = Mac::REG::from_u32(i.immediate_u());
+    let rs1_u = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
+    let shamt = rs2_value & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
+    let value = rs1_u << shamt;
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_xnor<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value = rs1_value.clone() ^ !rs2_value.clone();
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_zexth<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let value = rs1_value.zero_extend(&Mac::REG::from_u8(16));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_wide_mul<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = R4type(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value_h = rs1_value.overflowing_mul_high_signed(&rs2_value);
+    let value_l = rs1_value.overflowing_mul(&rs2_value);
+    update_register(machine, i.rd(), value_h);
+    update_register(machine, i.rs3(), value_l);
+    Ok(())
+}
+
+pub fn handle_wide_mulu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = R4type(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value_h = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
+    let value_l = rs1_value.overflowing_mul(&rs2_value);
+    update_register(machine, i.rd(), value_h);
+    update_register(machine, i.rs3(), value_l);
+    Ok(())
+}
+
+pub fn handle_wide_mulsu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = R4type(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value_h = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
+    let value_l = rs1_value.overflowing_mul(&rs2_value);
+    update_register(machine, i.rd(), value_h);
+    update_register(machine, i.rs3(), value_l);
+    Ok(())
+}
+
+pub fn handle_wide_div<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = R4type(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value_h = rs1_value.overflowing_div_signed(&rs2_value);
+    let value_l = rs1_value.overflowing_rem_signed(&rs2_value);
+    update_register(machine, i.rd(), value_h);
+    update_register(machine, i.rs3(), value_l);
+    Ok(())
+}
+
+pub fn handle_wide_divu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = R4type(inst);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let value_h = rs1_value.overflowing_div(&rs2_value);
+    let value_l = rs1_value.overflowing_rem(&rs2_value);
+    update_register(machine, i.rd(), value_h);
+    update_register(machine, i.rs3(), value_l);
+    Ok(())
+}
+
+pub fn handle_ld_sign_extended_32_constant<Mac: Machine>(
     machine: &mut Mac,
+    inst: Instruction,
 ) -> Result<(), Error> {
-    let mut r = execute_imc_instruction(inst, machine);
-    if r == Ok(false) {
-        r = execute_v_instruction(inst, machine);
+    let i = Utype(inst);
+    update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+    Ok(())
+}
+
+pub fn handle_adc<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs1_value = &machine.registers()[i.rs1()];
+    let r = rd_value.overflowing_add(&rs1_value);
+    update_register(machine, i.rd(), r);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs1_value = &machine.registers()[i.rs1()];
+    let r = rd_value.lt(&rs1_value);
+    update_register(machine, i.rs1(), r);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let r = rd_value.overflowing_add(&rs2_value);
+    update_register(machine, i.rd(), r);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let r = rd_value.lt(&rs2_value);
+    update_register(machine, i.rs2(), r);
+    let rs1_value = machine.registers()[i.rs1()].clone();
+    let rs2_value = machine.registers()[i.rs2()].clone();
+    let r = rs1_value | rs2_value;
+    update_register(machine, i.rs1(), r);
+    Ok(())
+}
+
+pub fn handle_sbb<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = R4type(inst);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs1_value = &machine.registers()[i.rs1()];
+    let r = rd_value.overflowing_sub(&rs1_value);
+    update_register(machine, i.rs1(), r);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs1_value = &machine.registers()[i.rs1()];
+    let r = rd_value.lt(&rs1_value);
+    update_register(machine, i.rs3(), r);
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let r = rs1_value.overflowing_sub(&rs2_value);
+    update_register(machine, i.rd(), r);
+    let rd_value = &machine.registers()[i.rd()];
+    let rs1_value = &machine.registers()[i.rs1()];
+    let r = rs1_value.lt(&rd_value);
+    update_register(machine, i.rs2(), r);
+    let rs2_value = machine.registers()[i.rs2()].clone();
+    let rs3_value = machine.registers()[i.rs3()].clone();
+    let r = rs2_value | rs3_value;
+    update_register(machine, i.rs1(), r);
+    Ok(())
+}
+
+pub fn handle_custom_load_imm<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    let i = Utype(inst);
+    let value = Mac::REG::from_i32(i.immediate_s());
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_auipc<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Utype(inst);
+    let value = machine
+        .pc()
+        .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+    update_register(machine, i.rd(), value);
+    Ok(())
+}
+
+pub fn handle_beq<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = machine.pc();
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let condition = rs1_value.eq(&rs2_value);
+    let new_pc = condition.cond(
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+    );
+    machine.update_pc(new_pc);
+    Ok(())
+}
+
+pub fn handle_bge<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = machine.pc();
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let condition = rs1_value.ge_s(&rs2_value);
+    let new_pc = condition.cond(
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+    );
+    machine.update_pc(new_pc);
+    Ok(())
+}
+
+pub fn handle_bgeu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = machine.pc();
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let condition = rs1_value.ge(&rs2_value);
+    let new_pc = condition.cond(
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+    );
+    machine.update_pc(new_pc);
+    Ok(())
+}
+
+pub fn handle_blt<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = machine.pc();
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let condition = rs1_value.lt_s(&rs2_value);
+    let new_pc = condition.cond(
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+    );
+    machine.update_pc(new_pc);
+    Ok(())
+}
+
+pub fn handle_bltu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = machine.pc();
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let condition = rs1_value.lt(&rs2_value);
+    let new_pc = condition.cond(
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+    );
+    machine.update_pc(new_pc);
+    Ok(())
+}
+
+pub fn handle_bne<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Stype(inst);
+    let pc = machine.pc();
+    let rs1_value = &machine.registers()[i.rs1()];
+    let rs2_value = &machine.registers()[i.rs2()];
+    let condition = rs1_value.ne(&rs2_value);
+    let new_pc = condition.cond(
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+    );
+    machine.update_pc(new_pc);
+    Ok(())
+}
+
+pub fn handle_ebreak<Mac: Machine>(machine: &mut Mac, _: Instruction) -> Result<(), Error> {
+    machine.ebreak()?;
+    Ok(())
+}
+
+pub fn handle_ecall<Mac: Machine>(machine: &mut Mac, _: Instruction) -> Result<(), Error> {
+    // The semantic of ECALL is determined by the hardware, which
+    // is not part of the spec, hence here the implementation is
+    // deferred to the machine. This way custom ECALLs might be
+    // provided for different environments.
+    machine.ecall()?;
+    Ok(())
+}
+
+pub fn handle_jal<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Utype(inst);
+    let link = machine
+        .pc()
+        .overflowing_add(&Mac::REG::from_u8(instruction_length(inst)));
+    update_register(machine, i.rd(), link);
+    machine.update_pc(
+        machine
+            .pc()
+            .overflowing_add(&Mac::REG::from_i32(i.immediate_s())),
+    );
+    Ok(())
+}
+
+pub fn handle_jalr<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let size = instruction_length(inst);
+    let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
+    if machine.version() >= 1 {
+        let mut next_pc =
+            machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+        next_pc = next_pc & (!Mac::REG::one());
+        update_register(machine, i.rd(), link);
+        machine.update_pc(next_pc);
+    } else {
+        update_register(machine, i.rd(), link);
+        let mut next_pc =
+            machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+        next_pc = next_pc & (!Mac::REG::one());
+        machine.update_pc(next_pc);
     }
-    if r == Ok(false) {
+    Ok(())
+}
+
+pub fn handle_far_jump_rel<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    let i = Utype(inst);
+    let size = instruction_length(inst);
+    let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
+    let next_pc = machine
+        .pc()
+        .overflowing_add(&Mac::REG::from_i32(i.immediate_s()))
+        & (!Mac::REG::one());
+    update_register(machine, RA, link);
+    machine.update_pc(next_pc);
+    Ok(())
+}
+
+pub fn handle_far_jump_abs<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    let i = Utype(inst);
+    let size = instruction_length(inst);
+    let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
+    let next_pc = Mac::REG::from_i32(i.immediate_s()) & (!Mac::REG::one());
+    update_register(machine, RA, link);
+    machine.update_pc(next_pc);
+    Ok(())
+}
+
+pub fn handle_custom_trace_end<Mac: Machine>(_: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    Err(Error::InvalidOp(extract_opcode(inst)))
+}
+
+// ------------------------------------------------------------------------------------------------
+
+pub type HandleFunction<Mac> = fn(&mut Mac, Instruction) -> Result<(), Error>;
+
+#[rustfmt::skip]
+pub fn generate_handle_function_list<Mac: Machine>() -> [Option<HandleFunction<Mac>>; 65536] {
+    let mut handle_function_list = [None; 65536];
+    handle_function_list[insts::OP_UNLOADED as usize] = Some(handle_unloaded::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ADD as usize] = Some(handle_add::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ADDI as usize] = Some(handle_addi::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ADDIW as usize] = Some(handle_addiw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ADDW as usize] = Some(handle_addw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_AND as usize] = Some(handle_and::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ANDI as usize] = Some(handle_andi::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_DIV as usize] = Some(handle_div::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_DIVU as usize] = Some(handle_divu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_DIVUW as usize] = Some(handle_divuw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_DIVW as usize] = Some(handle_divw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_FENCE as usize] = Some(handle_fence::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_FENCEI as usize] = Some(handle_fencei::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LB as usize] = Some(handle_lb::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LBU as usize] = Some(handle_lbu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LD as usize] = Some(handle_ld::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LH as usize] = Some(handle_lh::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LHU as usize] = Some(handle_lhu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LUI as usize] = Some(handle_lui::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LW as usize] = Some(handle_lw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LWU as usize] = Some(handle_lwu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MUL as usize] = Some(handle_mul::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MULH as usize] = Some(handle_mulh::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MULHSU as usize] = Some(handle_mulhsu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MULHU as usize] = Some(handle_mulhu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MULW as usize] = Some(handle_mulw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_OR as usize] = Some(handle_or::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ORI as usize] = Some(handle_ori::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_REM as usize] = Some(handle_rem::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_REMU as usize] = Some(handle_remu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_REMUW as usize] = Some(handle_remuw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_REMW as usize] = Some(handle_remw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SB as usize] = Some(handle_sb::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SD as usize] = Some(handle_sd::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH as usize] = Some(handle_sh::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLL as usize] = Some(handle_sll::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLLI as usize] = Some(handle_slli::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLLIW as usize] = Some(handle_slliw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLLW as usize] = Some(handle_sllw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLT as usize] = Some(handle_slt::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLTI as usize] = Some(handle_slti::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLTIU as usize] = Some(handle_sltiu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLTU as usize] = Some(handle_sltu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRA as usize] = Some(handle_sra::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRAI as usize] = Some(handle_srai::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRAIW as usize] = Some(handle_sraiw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRAW as usize] = Some(handle_sraw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRL as usize] = Some(handle_srl::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRLI as usize] = Some(handle_srli::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRLIW as usize] = Some(handle_srliw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SRLW as usize] = Some(handle_srlw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SUB as usize] = Some(handle_sub::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SUBW as usize] = Some(handle_subw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SW as usize] = Some(handle_sw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_XOR as usize] = Some(handle_xor::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_XORI as usize] = Some(handle_xori::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ADDUW as usize] = Some(handle_adduw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ANDN as usize] = Some(handle_andn::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BCLR as usize] = Some(handle_bclr::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BCLRI as usize] = Some(handle_bclri::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BEXT as usize] = Some(handle_bext::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BEXTI as usize] = Some(handle_bexti::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BINV as usize] = Some(handle_binv::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BINVI as usize] = Some(handle_binvi::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BSET as usize] = Some(handle_bset::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BSETI as usize] = Some(handle_bseti::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CLMUL as usize] = Some(handle_clmul::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CLMULH as usize] = Some(handle_clmulh::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CLMULR as usize] = Some(handle_clmulr::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CLZ as usize] = Some(handle_clz::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CLZW as usize] = Some(handle_clzw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CPOP as usize] = Some(handle_cpop::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CPOPW as usize] = Some(handle_cpopw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CTZ as usize] = Some(handle_ctz::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CTZW as usize] = Some(handle_ctzw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MAX as usize] = Some(handle_max::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MAXU as usize] = Some(handle_maxu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MIN as usize] = Some(handle_min::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_MINU as usize] = Some(handle_minu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ORCB as usize] = Some(handle_orcb::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ORN as usize] = Some(handle_orn::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_REV8 as usize] = Some(handle_rev8::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ROL as usize] = Some(handle_rol::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ROLW as usize] = Some(handle_rolw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ROR as usize] = Some(handle_ror::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_RORI as usize] = Some(handle_rori::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_RORIW as usize] = Some(handle_roriw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_RORW as usize] = Some(handle_rorw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SEXTB as usize] = Some(handle_sextb::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SEXTH as usize] = Some(handle_sexth::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH1ADD as usize] = Some(handle_sh1add::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH1ADDUW as usize] = Some(handle_sh1adduw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH2ADD as usize] = Some(handle_sh2add::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH2ADDUW as usize] = Some(handle_sh2adduw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH3ADD as usize] = Some(handle_sh3add::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SH3ADDUW as usize] = Some(handle_sh3adduw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SLLIUW as usize] = Some(handle_slliuw::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_XNOR as usize] = Some(handle_xnor::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ZEXTH as usize] = Some(handle_zexth::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_WIDE_MUL as usize] = Some(handle_wide_mul::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_WIDE_MULU as usize] = Some(handle_wide_mulu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_WIDE_MULSU as usize] = Some(handle_wide_mulsu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_WIDE_DIV as usize] = Some(handle_wide_div::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_WIDE_DIVU as usize] = Some(handle_wide_divu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_LD_SIGN_EXTENDED_32_CONSTANT as usize] = Some(handle_ld_sign_extended_32_constant::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ADC as usize] = Some(handle_adc::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_SBB as usize] = Some(handle_sbb::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CUSTOM_LOAD_IMM as usize] = Some(handle_custom_load_imm::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_AUIPC as usize] = Some(handle_auipc::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BEQ as usize] = Some(handle_beq::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BGE as usize] = Some(handle_bge::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BGEU as usize] = Some(handle_bgeu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BLT as usize] = Some(handle_blt::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BLTU as usize] = Some(handle_bltu::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_BNE as usize] = Some(handle_bne::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_EBREAK as usize] = Some(handle_ebreak::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_ECALL as usize] = Some(handle_ecall::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_JAL as usize] = Some(handle_jal::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_JALR as usize] = Some(handle_jalr::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_FAR_JUMP_REL as usize] = Some(handle_far_jump_rel::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_FAR_JUMP_ABS as usize] = Some(handle_far_jump_abs::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_CUSTOM_TRACE_END as usize] = Some(handle_custom_trace_end::<Mac> as HandleFunction::<Mac>);
+    return handle_function_list;
+}
+
+pub fn execute_instruction<Mac: Machine>(
+    machine: &mut Mac,
+    handle_function_list: &[Option<HandleFunction<Mac>>],
+    inst: Instruction,
+) -> Result<(), Error> {
+    let op = extract_opcode(inst);
+    if let Some(f) = handle_function_list[op as usize] {
+        f(machine, inst)?;
+        return Ok(());
+    }
+    let r = execute_v_instruction(machine, inst)?;
+    if r == false {
         return Err(Error::InvalidOp(extract_opcode(inst)));
     }
     Ok(())
 }
 
-pub fn execute_imc_instruction<Mac: Machine>(
-    inst: Instruction,
-    machine: &mut Mac,
-) -> Result<bool, Error> {
-    let op = extract_opcode(inst);
-    match op {
-        insts::OP_SUB => {
-            let i = Rtype(inst);
-            common::sub(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_SUBW => {
-            let i = Rtype(inst);
-            common::subw(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_ADD => {
-            let i = Rtype(inst);
-            common::add(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_ADDW => {
-            let i = Rtype(inst);
-            common::addw(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_XOR => {
-            let i = Rtype(inst);
-            common::xor(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_OR => {
-            let i = Rtype(inst);
-            common::or(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_AND => {
-            let i = Rtype(inst);
-            common::and(machine, i.rd(), i.rs1(), i.rs2());
-        }
-        insts::OP_SLL => {
-            let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1()].clone() << shift_value;
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SLLW => {
-            let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
-            let value = machine.registers()[i.rs1()].clone() << shift_value;
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_SRL => {
-            let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1()].clone() >> shift_value;
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SRLW => {
-            let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
-            let value =
-                machine.registers()[i.rs1()].zero_extend(&Mac::REG::from_u8(32)) >> shift_value;
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_SRA => {
-            let i = Rtype(inst);
-            let shift_value =
-                machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = machine.registers()[i.rs1()].signed_shr(&shift_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SRAW => {
-            let i = Rtype(inst);
-            let shift_value = machine.registers()[i.rs2()].clone() & Mac::REG::from_u8(0x1F);
-            let value = machine.registers()[i.rs1()]
-                .sign_extend(&Mac::REG::from_u8(32))
-                .signed_shr(&shift_value);
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_SLT => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt_s(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SLTU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_LB => {
-            let i = Itype(inst);
-            common::lb(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_LH => {
-            let i = Itype(inst);
-            common::lh(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_LW => {
-            let i = Itype(inst);
-            common::lw(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_LD => {
-            let i = Itype(inst);
-            common::ld(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_LBU => {
-            let i = Itype(inst);
-            common::lbu(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_LHU => {
-            let i = Itype(inst);
-            common::lhu(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_LWU => {
-            let i = Itype(inst);
-            common::lwu(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
-        }
-        insts::OP_ADDI => {
-            let i = Itype(inst);
-            common::addi(machine, i.rd(), i.rs1(), i.immediate_s());
-        }
-        insts::OP_ADDIW => {
-            let i = Itype(inst);
-            common::addiw(machine, i.rd(), i.rs1(), i.immediate_s());
-        }
-        insts::OP_XORI => {
-            let i = Itype(inst);
-            common::xori(machine, i.rd(), i.rs1(), i.immediate_s());
-        }
-        insts::OP_ORI => {
-            let i = Itype(inst);
-            common::ori(machine, i.rd(), i.rs1(), i.immediate_s());
-        }
-        insts::OP_ANDI => {
-            let i = Itype(inst);
-            common::andi(machine, i.rd(), i.rs1(), i.immediate_s());
-        }
-        insts::OP_SLTI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let imm_value = Mac::REG::from_i32(i.immediate_s());
-            let value = rs1_value.lt_s(&imm_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SLTIU => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let imm_value = Mac::REG::from_i32(i.immediate_s());
-            let value = rs1_value.lt(&imm_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_JALR => {
-            let i = Itype(inst);
-            let size = instruction_length(inst);
-            let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
-            if machine.version() >= 1 {
-                let mut next_pc = machine.registers()[i.rs1()]
-                    .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-                next_pc = next_pc & (!Mac::REG::one());
-                update_register(machine, i.rd(), link);
-                machine.update_pc(next_pc);
-            } else {
-                update_register(machine, i.rd(), link);
-                let mut next_pc = machine.registers()[i.rs1()]
-                    .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-                next_pc = next_pc & (!Mac::REG::one());
-                machine.update_pc(next_pc);
-            }
-        }
-        insts::OP_SLLI => {
-            let i = Itype(inst);
-            common::slli(machine, i.rd(), i.rs1(), i.immediate_u());
-        }
-        insts::OP_SRLI => {
-            let i = Itype(inst);
-            common::srli(machine, i.rd(), i.rs1(), i.immediate_u());
-        }
-        insts::OP_SRAI => {
-            let i = Itype(inst);
-            common::srai(machine, i.rd(), i.rs1(), i.immediate_u());
-        }
-        insts::OP_SLLIW => {
-            let i = Itype(inst);
-            common::slliw(machine, i.rd(), i.rs1(), i.immediate_u());
-        }
-        insts::OP_SRLIW => {
-            let i = Itype(inst);
-            common::srliw(machine, i.rd(), i.rs1(), i.immediate_u());
-        }
-        insts::OP_SRAIW => {
-            let i = Itype(inst);
-            common::sraiw(machine, i.rd(), i.rs1(), i.immediate_u());
-        }
-        insts::OP_SB => {
-            let i = Stype(inst);
-            common::sb(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-        }
-        insts::OP_SH => {
-            let i = Stype(inst);
-            common::sh(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-        }
-        insts::OP_SW => {
-            let i = Stype(inst);
-            common::sw(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-        }
-        insts::OP_SD => {
-            let i = Stype(inst);
-            common::sd(machine, i.rs1(), i.rs2(), i.immediate_s())?;
-        }
-        insts::OP_BEQ => {
-            let i = Stype(inst);
-            let pc = machine.pc();
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.eq(&rs2_value);
-            let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
-            );
-            machine.update_pc(new_pc);
-        }
-        insts::OP_BNE => {
-            let i = Stype(inst);
-            let pc = machine.pc();
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ne(&rs2_value);
-            let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
-            );
-            machine.update_pc(new_pc);
-        }
-        insts::OP_BLT => {
-            let i = Stype(inst);
-            let pc = machine.pc();
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.lt_s(&rs2_value);
-            let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
-            );
-            machine.update_pc(new_pc);
-        }
-        insts::OP_BGE => {
-            let i = Stype(inst);
-            let pc = machine.pc();
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ge_s(&rs2_value);
-            let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
-            );
-            machine.update_pc(new_pc);
-        }
-        insts::OP_BLTU => {
-            let i = Stype(inst);
-            let pc = machine.pc();
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.lt(&rs2_value);
-            let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
-            );
-            machine.update_pc(new_pc);
-        }
-        insts::OP_BGEU => {
-            let i = Stype(inst);
-            let pc = machine.pc();
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let condition = rs1_value.ge(&rs2_value);
-            let new_pc = condition.cond(
-                &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-                &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
-            );
-            machine.update_pc(new_pc);
-        }
-        insts::OP_LUI => {
-            let i = Utype(inst);
-            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
-        }
-        insts::OP_AUIPC => {
-            let i = Utype(inst);
-            let value = machine
-                .pc()
-                .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ECALL => {
-            // The semantic of ECALL is determined by the hardware, which
-            // is not part of the spec, hence here the implementation is
-            // deferred to the machine. This way custom ECALLs might be
-            // provided for different environments.
-            machine.ecall()?;
-        }
-        insts::OP_EBREAK => {
-            machine.ebreak()?;
-        }
-        insts::OP_FENCEI => {}
-        insts::OP_FENCE => {}
-        insts::OP_JAL => {
-            let i = Utype(inst);
-            common::jal(machine, i.rd(), i.immediate_s(), instruction_length(inst));
-        }
-        insts::OP_MUL => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MULW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value
-                .zero_extend(&Mac::REG::from_u8(32))
-                .overflowing_mul(&rs2_value.zero_extend(&Mac::REG::from_u8(32)));
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_MULH => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul_high_signed(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MULHSU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MULHU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_DIV => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_div_signed(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_DIVW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_u8(32));
-            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_u8(32));
-            let value = rs1_value.overflowing_div_signed(&rs2_value);
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_DIVU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_div(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_DIVUW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_u8(32));
-            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_u8(32));
-            let value = rs1_value.overflowing_div(&rs2_value);
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_REM => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_rem_signed(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_REMW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.sign_extend(&Mac::REG::from_u8(32));
-            let rs2_value = rs2_value.sign_extend(&Mac::REG::from_u8(32));
-            let value = rs1_value.overflowing_rem_signed(&rs2_value);
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_REMU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.overflowing_rem(&rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_REMUW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_value = rs1_value.zero_extend(&Mac::REG::from_u8(32));
-            let rs2_value = rs2_value.zero_extend(&Mac::REG::from_u8(32));
-            let value = rs1_value.overflowing_rem(&rs2_value);
-            update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-        }
-        insts::OP_ADDUW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_u = rs1_value.zero_extend(&Mac::REG::from_u8(32));
-            let value = rs2_value.overflowing_add(&rs1_u);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ANDN => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.clone() & !rs2_value.clone();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BCLR => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.clone() & !(Mac::REG::one() << shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BCLRI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.clone() & !(Mac::REG::one() << shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BEXT => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = Mac::REG::one() & (rs1_value.clone() >> shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BEXTI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = Mac::REG::one() & (rs1_value.clone() >> shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BINV => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.clone() ^ (Mac::REG::one() << shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BINVI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.clone() ^ (Mac::REG::one() << shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BSET => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.clone() | (Mac::REG::one() << shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_BSETI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.clone() | (Mac::REG::one() << shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CLMUL => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.clmul(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CLMULH => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.clmulh(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CLMULR => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.clmulr(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CLZ => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.clz();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CLZW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value
-                .zero_extend(&Mac::REG::from_u8(32))
-                .clz()
-                .overflowing_sub(&Mac::REG::from_u8(32));
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CPOP => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.cpop();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CPOPW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.zero_extend(&Mac::REG::from_u8(32)).cpop();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CTZ => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.ctz();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_CTZW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = (rs1_value.clone() | Mac::REG::from_u64(0xffff_ffff_0000_0000)).ctz();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MAX => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.ge_s(&rs2_value).cond(&rs1_value, &rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MAXU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.ge(&rs2_value).cond(&rs1_value, &rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MIN => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt_s(&rs2_value).cond(&rs1_value, &rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_MINU => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.lt(&rs2_value).cond(&rs1_value, &rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ORCB => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.orcb();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ORN => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.clone() | !rs2_value.clone();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_REV8 => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.rev8();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ROL => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.rol(&shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ROLW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
-            let twins = rs1_value
-                .zero_extend(&Mac::REG::from_u8(32))
-                .overflowing_mul(&Mac::REG::from_u64(0x_0000_0001_0000_0001));
-            let value = twins.rol(&shamt).sign_extend(&Mac::REG::from_u8(32));
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ROR => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.ror(&shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_RORI => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_value.ror(&shamt);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_RORIW => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &Mac::REG::from_u32(i.immediate_u());
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
-            let twins = rs1_value
-                .zero_extend(&Mac::REG::from_u8(32))
-                .overflowing_mul(&Mac::REG::from_u64(0x_0000_0001_0000_0001));
-            let value = twins.ror(&shamt).sign_extend(&Mac::REG::from_u8(32));
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_RORW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let shamt = rs2_value.clone() & Mac::REG::from_u8(31);
-            let twins = rs1_value
-                .zero_extend(&Mac::REG::from_u8(32))
-                .overflowing_mul(&Mac::REG::from_u64(0x_0000_0001_0000_0001));
-            let value = twins.ror(&shamt).sign_extend(&Mac::REG::from_u8(32));
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SEXTB => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let shift = &Mac::REG::from_u8(Mac::REG::BITS - 8);
-            let value = rs1_value.signed_shl(shift).signed_shr(shift);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SEXTH => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let shift = &Mac::REG::from_u8(Mac::REG::BITS - 16);
-            let value = rs1_value.signed_shl(shift).signed_shr(shift);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SH1ADD => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = (rs1_value.clone() << Mac::REG::from_u32(1)).overflowing_add(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SH1ADDUW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_z = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
-            let value = (rs1_z << Mac::REG::from_u32(1)).overflowing_add(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SH2ADD => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = (rs1_value.clone() << Mac::REG::from_u32(2)).overflowing_add(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SH2ADDUW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_z = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
-            let value = (rs1_z << Mac::REG::from_u32(2)).overflowing_add(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SH3ADD => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = (rs1_value.clone() << Mac::REG::from_u32(3)).overflowing_add(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SH3ADDUW => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let rs1_z = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
-            let value = (rs1_z << Mac::REG::from_u32(3)).overflowing_add(rs2_value);
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_SLLIUW => {
-            let i = Itype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = Mac::REG::from_u32(i.immediate_u());
-            let rs1_u = rs1_value.clone().zero_extend(&Mac::REG::from_u8(32));
-            let shamt = rs2_value & Mac::REG::from_u8(Mac::REG::SHIFT_MASK);
-            let value = rs1_u << shamt;
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_XNOR => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value = rs1_value.clone() ^ !rs2_value.clone();
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_ZEXTH => {
-            let i = Rtype(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let value = rs1_value.zero_extend(&Mac::REG::from_u8(16));
-            update_register(machine, i.rd(), value);
-        }
-        insts::OP_WIDE_MUL => {
-            let i = R4type(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_mul_high_signed(&rs2_value);
-            let value_l = rs1_value.overflowing_mul(&rs2_value);
-            update_register(machine, i.rd(), value_h);
-            update_register(machine, i.rs3(), value_l);
-        }
-        insts::OP_WIDE_MULU => {
-            let i = R4type(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
-            let value_l = rs1_value.overflowing_mul(&rs2_value);
-            update_register(machine, i.rd(), value_h);
-            update_register(machine, i.rs3(), value_l);
-        }
-        insts::OP_WIDE_MULSU => {
-            let i = R4type(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
-            let value_l = rs1_value.overflowing_mul(&rs2_value);
-            update_register(machine, i.rd(), value_h);
-            update_register(machine, i.rs3(), value_l);
-        }
-        insts::OP_WIDE_DIV => {
-            let i = R4type(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_div_signed(&rs2_value);
-            let value_l = rs1_value.overflowing_rem_signed(&rs2_value);
-            update_register(machine, i.rd(), value_h);
-            update_register(machine, i.rs3(), value_l);
-        }
-        insts::OP_WIDE_DIVU => {
-            let i = R4type(inst);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let value_h = rs1_value.overflowing_div(&rs2_value);
-            let value_l = rs1_value.overflowing_rem(&rs2_value);
-            update_register(machine, i.rd(), value_h);
-            update_register(machine, i.rs3(), value_l);
-        }
-        insts::OP_FAR_JUMP_REL => {
-            let i = Utype(inst);
-            let size = instruction_length(inst);
-            let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
-            let next_pc = machine
-                .pc()
-                .overflowing_add(&Mac::REG::from_i32(i.immediate_s()))
-                & (!Mac::REG::one());
-            update_register(machine, RA, link);
-            machine.update_pc(next_pc);
-        }
-        insts::OP_FAR_JUMP_ABS => {
-            let i = Utype(inst);
-            let size = instruction_length(inst);
-            let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
-            let next_pc = Mac::REG::from_i32(i.immediate_s()) & (!Mac::REG::one());
-            update_register(machine, RA, link);
-            machine.update_pc(next_pc);
-        }
-        insts::OP_ADC => {
-            let i = Rtype(inst);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.overflowing_add(&rs1_value);
-            update_register(machine, i.rd(), r);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.lt(&rs1_value);
-            update_register(machine, i.rs1(), r);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let r = rd_value.overflowing_add(&rs2_value);
-            update_register(machine, i.rd(), r);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let r = rd_value.lt(&rs2_value);
-            update_register(machine, i.rs2(), r);
-            let rs1_value = machine.registers()[i.rs1()].clone();
-            let rs2_value = machine.registers()[i.rs2()].clone();
-            let r = rs1_value | rs2_value;
-            update_register(machine, i.rs1(), r);
-        }
-        insts::OP_SBB => {
-            let i = R4type(inst);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.overflowing_sub(&rs1_value);
-            update_register(machine, i.rs1(), r);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs1_value = &machine.registers()[i.rs1()];
-            let r = rd_value.lt(&rs1_value);
-            update_register(machine, i.rs3(), r);
-            let rs1_value = &machine.registers()[i.rs1()];
-            let rs2_value = &machine.registers()[i.rs2()];
-            let r = rs1_value.overflowing_sub(&rs2_value);
-            update_register(machine, i.rd(), r);
-            let rd_value = &machine.registers()[i.rd()];
-            let rs1_value = &machine.registers()[i.rs1()];
-            let r = rs1_value.lt(&rd_value);
-            update_register(machine, i.rs2(), r);
-            let rs2_value = machine.registers()[i.rs2()].clone();
-            let rs3_value = machine.registers()[i.rs3()].clone();
-            let r = rs2_value | rs3_value;
-            update_register(machine, i.rs1(), r);
-        }
-        insts::OP_LD_SIGN_EXTENDED_32_CONSTANT => {
-            let i = Utype(inst);
-            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
-        }
-        insts::OP_CUSTOM_LOAD_IMM => {
-            let i = Utype(inst);
-            let value = Mac::REG::from_i32(i.immediate_s());
-            update_register(machine, i.rd(), value);
-        }
-        _ => return Ok(false),
-    };
-    Ok(true)
-}
-
 pub fn execute_v_instruction<Mac: Machine>(
-    inst: Instruction,
     machine: &mut Mac,
+    inst: Instruction,
 ) -> Result<bool, Error> {
     let op = extract_opcode(inst);
     match op {
@@ -2201,13 +2635,17 @@ pub fn execute_v_instruction<Mac: Machine>(
     Ok(true)
 }
 
-pub fn execute<Mac: Machine>(inst: Instruction, machine: &mut Mac) -> Result<(), Error> {
+pub fn execute<Mac: Machine>(
+    machine: &mut Mac,
+    handle_function_list: &[Option<HandleFunction<Mac>>],
+    inst: Instruction,
+) -> Result<(), Error> {
     let instruction_size = instruction_length(inst);
     let next_pc = machine
         .pc()
         .overflowing_add(&Mac::REG::from_u8(instruction_size));
     machine.update_pc(next_pc);
-    let r = execute_instruction(inst, machine);
+    let r = execute_instruction(machine, handle_function_list, inst);
     machine.commit_pc();
     r
 }
@@ -2224,26 +2662,6 @@ pub fn handle_vwmulu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> R
 
 pub fn handle_vnsrl_wx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     v_wx_loop_u!(inst, machine, alu::srl);
-    Ok(())
-}
-
-pub fn handle_jalr<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    let i = Itype(inst);
-    let size = instruction_length(inst);
-    let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
-    if machine.version() >= 1 {
-        let mut next_pc =
-            machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-        next_pc = next_pc & (!Mac::REG::one());
-        update_register(machine, i.rd(), link);
-        machine.update_pc(next_pc);
-    } else {
-        update_register(machine, i.rd(), link);
-        let mut next_pc =
-            machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-        next_pc = next_pc & (!Mac::REG::one());
-        machine.update_pc(next_pc);
-    }
     Ok(())
 }
 
@@ -2271,7 +2689,6 @@ pub fn handle_vsub_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
     v_vv_loop_s!(inst, machine, Eint::wrapping_sub);
     Ok(())
 }
-
 
 pub fn handle_vse512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     sd!(inst, machine, machine.vl(), 0, 64, 1);
