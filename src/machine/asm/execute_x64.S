@@ -366,6 +366,13 @@ ckb_vm_x64_execute:
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   addq %rdx, PC_ADDRESS
+  /* Prefetch trace info for the consecutive block */
+  movq PC_ADDRESS, %rax
+  mov %eax, %ecx
+  shr $2, %eax
+  andq $8191, %rax
+  imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
+  prefetcht2 CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax)
   lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
   NEXT_INST
