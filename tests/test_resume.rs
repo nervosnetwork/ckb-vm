@@ -384,7 +384,11 @@ struct AotMachine(AsmMachine);
 
 #[cfg(has_aot)]
 impl AotMachine {
-    fn build(version: u32, max_cycles: u64, program: Option<std::sync::Arc<AotCode>>) -> AotMachine {
+    fn build(
+        version: u32,
+        max_cycles: u64,
+        program: Option<std::sync::Arc<AotCode>>,
+    ) -> AotMachine {
         let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
         let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
             .instruction_cycle_func(Box::new(dummy_cycle_func))
