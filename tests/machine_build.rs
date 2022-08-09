@@ -7,7 +7,6 @@ use bytes::Bytes;
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1};
 use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP};
 use ckb_vm::{Instruction, SparseMemory, WXorXMemory};
-use std::rc::Rc;
 
 pub fn instruction_cycle_func(_: Instruction) -> u64 {
     1
@@ -43,7 +42,7 @@ pub fn aot_v1_imcb(path: &str, code: AotCode) -> AsmMachine {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(instruction_cycle_func))
         .build();
-    let mut machine = AsmMachine::new(core, Some(Rc::new(code)));
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     machine
         .load_program(&buffer, &vec![Bytes::from("main")])
         .unwrap();
@@ -102,7 +101,7 @@ pub fn aot_v1_mop(path: &str, args: Vec<Bytes>, code: AotCode) -> AsmMachine {
         .build();
     let mut argv = vec![Bytes::from("main")];
     argv.extend_from_slice(&args);
-    let mut machine = AsmMachine::new(core, Some(Rc::new(code)));
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     machine.load_program(&buffer, &argv).unwrap();
     machine
 }

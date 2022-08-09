@@ -13,7 +13,6 @@ use ckb_vm::{
     SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
 use std::fs;
-use std::rc::Rc;
 
 type Mem = WXorXMemory<SparseMemory<u64>>;
 
@@ -58,7 +57,7 @@ fn create_aot_machine(program: String, code: AotCode, version: u32) -> AsmMachin
     let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, Some(Rc::new(code)));
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     machine
         .load_program(&buffer, &vec![program.into()])
         .unwrap();
@@ -431,7 +430,7 @@ pub fn test_aot_version0_unaligned64() {
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, Some(Rc::new(code)));
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));

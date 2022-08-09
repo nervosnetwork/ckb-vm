@@ -30,7 +30,7 @@ use memmap::Mmap;
 use rand::{prelude::RngCore, SeedableRng};
 use std::collections::HashMap;
 use std::mem::transmute;
-use std::rc::Rc;
+use std::sync::Arc;
 
 impl CoreMachine for Box<AsmCoreMachine> {
     type REG = u64;
@@ -434,7 +434,7 @@ impl AotCode {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
-    pub aot_code: Option<Rc<AotCode>>,
+    pub aot_code: Option<Arc<AotCode>>,
 }
 
 extern "C" {
@@ -447,7 +447,7 @@ extern "C" {
 impl AsmMachine {
     pub fn new(
         machine: DefaultMachine<Box<AsmCoreMachine>>,
-        aot_code: Option<Rc<AotCode>>,
+        aot_code: Option<Arc<AotCode>>,
     ) -> Self {
         Self { machine, aot_code }
     }

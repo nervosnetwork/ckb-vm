@@ -8,7 +8,6 @@ use ckb_vm::{
     registers::A7, Error, Register, SparseMemory, SupportMachine, Syscalls, TraceMachine,
     WXorXMemory, DEFAULT_STACK_SIZE, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY,
 };
-use std::rc::Rc;
 
 #[allow(dead_code)]
 mod machine_build;
@@ -129,7 +128,7 @@ pub fn test_reset_aot() {
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    let mut machine = AsmMachine::new(core, Some(Rc::new(code)));
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     machine.load_program(&buffer, &vec![]).unwrap();
 
     let result = machine.run();
