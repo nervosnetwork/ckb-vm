@@ -128,7 +128,7 @@ pub fn test_reset_aot() {
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    let mut machine = AsmMachine::new(core, Some(&code));
+    let mut machine = AsmMachine::new(core, Some(std::sync::Arc::new(code)));
     machine.load_program(&buffer, &vec![]).unwrap();
 
     let result = machine.run();

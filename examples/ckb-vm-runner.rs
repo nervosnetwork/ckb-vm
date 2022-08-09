@@ -105,7 +105,8 @@ fn main_aot(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
             .instruction_cycle_func(Box::new(instruction_cycles))
             .syscall(Box::new(DebugSyscall {}))
             .build();
-    let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, Some(&aot_code));
+    let mut machine =
+        ckb_vm::machine::asm::AsmMachine::new(core, Some(std::sync::Arc::new(aot_code)));
     machine.load_program(&code, &args)?;
     let exit = machine.run();
     let cycles = machine.machine.cycles();
