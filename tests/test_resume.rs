@@ -16,6 +16,7 @@ use ckb_vm::{
 };
 use std::fs::File;
 use std::io::Read;
+use std::rc::Rc;
 
 #[test]
 fn test_resume_interpreter_with_trace_2_asm() {
@@ -199,7 +200,7 @@ pub fn resume_aot_2_asm(version: u32, except_cycles: u64) {
         AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func)), ISA_IMC, VERSION1)
             .unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine1 = AotMachine::build(version, except_cycles - 30, Some(&code));
+    let mut machine1 = AotMachine::build(version, except_cycles - 30, Some(Rc::new(code)));
     machine1
         .load_program(&buffer, &vec!["alloc_many".into()])
         .unwrap();
@@ -236,7 +237,7 @@ pub fn resume_asm_2_aot(version: u32, except_cycles: u64) {
         AotCompilingMachine::load(&buffer, Some(Box::new(dummy_cycle_func)), ISA_IMC, VERSION1)
             .unwrap();
     let code = aot_machine.compile().unwrap();
-    let mut machine2 = AotMachine::build(version, 40, Some(&code));
+    let mut machine2 = AotMachine::build(version, 40, Some(Rc::new(code)));
     machine2.resume(&snapshot).unwrap();
     let result2 = machine2.run();
     let cycles2 = machine2.cycles();
@@ -281,7 +282,7 @@ enum MachineTy {
 }
 
 impl MachineTy {
-    fn build<'a>(self, version: u32, max_cycles: u64) -> Machine {
+    fn build(self, version: u32, max_cycles: u64) -> Machine {
         match self {
             MachineTy::Asm => {
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
@@ -321,11 +322,9 @@ impl MachineTy {
 }
 
 enum Machine {
-    Asm(AsmMachine<'static>),
-    Interpreter(DefaultMachine<'static, DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
-    InterpreterWithTrace(
-        TraceMachine<'static, DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
-    ),
+    Asm(AsmMachine),
+    Interpreter(DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
+    InterpreterWithTrace(TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
 }
 
 impl Machine {
@@ -381,11 +380,11 @@ impl Machine {
 }
 
 #[cfg(has_aot)]
-struct AotMachine<'a>(AsmMachine<'a>);
+struct AotMachine(AsmMachine);
 
 #[cfg(has_aot)]
-impl<'a> AotMachine<'a> {
-    fn build(version: u32, max_cycles: u64, program: Option<&'a AotCode>) -> AotMachine<'a> {
+impl AotMachine {
+    fn build(version: u32, max_cycles: u64, program: Option<Rc<AotCode>>) -> AotMachine {
         let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
         let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
             .instruction_cycle_func(Box::new(dummy_cycle_func))

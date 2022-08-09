@@ -1,5 +1,17 @@
-use std::mem::transmute;
-
+use crate::{
+    decoder::{build_decoder, Decoder},
+    instructions::{
+        blank_instruction, execute_instruction, extract_opcode, instruction_length,
+        is_basic_block_end_instruction,
+    },
+    machine::VERSION0,
+    memory::{
+        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
+        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+    },
+    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
+    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+};
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -17,21 +29,8 @@ use libc::c_uchar;
 use memmap::Mmap;
 use rand::{prelude::RngCore, SeedableRng};
 use std::collections::HashMap;
-
-use crate::{
-    decoder::{build_decoder, Decoder},
-    instructions::{
-        blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction,
-    },
-    machine::VERSION0,
-    memory::{
-        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
-        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
-    },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
-};
+use std::mem::transmute;
+use std::rc::Rc;
 
 impl CoreMachine for Box<AsmCoreMachine> {
     type REG = u64;
@@ -433,9 +432,9 @@ impl AotCode {
     }
 }
 
-pub struct AsmMachine<'a> {
-    pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
-    pub aot_code: Option<&'a AotCode>,
+pub struct AsmMachine {
+    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+    pub aot_code: Option<Rc<AotCode>>,
 }
 
 extern "C" {
@@ -445,10 +444,10 @@ extern "C" {
     fn ckb_vm_asm_labels();
 }
 
-impl<'a> AsmMachine<'a> {
+impl AsmMachine {
     pub fn new(
-        machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
-        aot_code: Option<&'a AotCode>,
+        machine: DefaultMachine<Box<AsmCoreMachine>>,
+        aot_code: Option<Rc<AotCode>>,
     ) -> Self {
         Self { machine, aot_code }
     }
