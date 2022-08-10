@@ -3197,8 +3197,6 @@ pub fn generate_handle_function_list<Mac: Machine>() -> [Option<HandleFunction<M
     handle_function_list[insts::OP_FAR_JUMP_REL as usize] = Some(handle_far_jump_rel::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_FAR_JUMP_ABS as usize] = Some(handle_far_jump_abs::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_CUSTOM_TRACE_END as usize] = Some(handle_custom_trace_end::<Mac> as HandleFunction::<Mac>);
-
-    // rvv
     handle_function_list[insts::OP_VSETVLI as usize] = Some(handle_vsetvli::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VSETIVLI as usize] = Some(handle_vsetivli::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VSETVL as usize] = Some(handle_vsetvl::<Mac> as HandleFunction::<Mac>);
@@ -3272,7 +3270,6 @@ pub fn generate_handle_function_list<Mac: Machine>() -> [Option<HandleFunction<M
     handle_function_list[insts::OP_VS2R_V as usize] = Some(handle_vs2r_v::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VS4R_V as usize] = Some(handle_vs4r_v::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VS8R_V as usize] = Some(handle_vs8r_v::<Mac> as HandleFunction::<Mac>);
-
     handle_function_list[insts::OP_VADD_VV as usize] = Some(handle_vadd_vv::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VADD_VX as usize] = Some(handle_vadd_vx::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VADD_VI as usize] = Some(handle_vadd_vi::<Mac> as HandleFunction::<Mac>);
@@ -3497,10 +3494,10 @@ pub fn execute_instruction<Mac: Machine>(
 ) -> Result<(), Error> {
     let op = extract_opcode(inst);
     if let Some(f) = handle_function_list[op as usize] {
-        f(machine, inst)?;
-        return Ok(());
+        f(machine, inst)
+    } else {
+        Err(Error::InvalidOp(extract_opcode(inst)))
     }
-    Ok(())
 }
 
 pub fn execute<Mac: Machine>(
