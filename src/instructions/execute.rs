@@ -2994,7 +2994,7 @@ pub fn handle_vrgather_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) ->
     Ok(())
 }
 
-pub fn handle_vrghtherei16_vv<Mac: Machine>(
+pub fn handle_vrgatherei16_vv<Mac: Machine>(
     machine: &mut Mac,
     inst: Instruction,
 ) -> Result<(), Error> {
@@ -3477,7 +3477,7 @@ pub fn generate_handle_function_list<Mac: Machine>() -> [Option<HandleFunction<M
     handle_function_list[insts::OP_VRGATHER_VV as usize] = Some(handle_vrgather_vv::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VRGATHER_VX as usize] = Some(handle_vrgather_vx::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VRGATHER_VI as usize] = Some(handle_vrgather_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRGATHEREI16_VV as usize] = Some(handle_vrghtherei16_vv::<Mac> as HandleFunction::<Mac>);
+    handle_function_list[insts::OP_VRGATHEREI16_VV as usize] = Some(handle_vrgatherei16_vv::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VCOMPRESS_VM as usize] = Some(handle_vcompress_vm::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VMV1R_V as usize] = Some(handle_vmv1r_v::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VMV2R_V as usize] = Some(handle_vmv2r_v::<Mac> as HandleFunction::<Mac>);
