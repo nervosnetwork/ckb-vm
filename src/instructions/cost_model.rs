@@ -1,397 +1,352 @@
-use super::{extract_opcode, is_slowpath_opcode};
-use ckb_vm_definitions::instructions::{self as insts, Instruction, InstructionOpcode};
+use crate::instructions::extract_opcode;
+use ckb_vm_definitions::instructions::{self as insts, Instruction};
 
-fn v_instruction_cycles(
-    opcode: InstructionOpcode,
-    vl: u64,
-    sew: u64,
-    skip_counting: bool,
-) -> Option<u64> {
-    // Not V Instruction
-    if !is_slowpath_opcode(opcode) {
-        return None;
-    }
-    if skip_counting {
-        return Some(0);
-    }
-
-    let e = |x| std::cmp::max(vl * sew / 64, 1) * x;
-    let m = |x| std::cmp::max(vl / 64, 1) * x;
-
-    let cycles = match opcode {
-        insts::OP_VSETVLI => 1,
-        insts::OP_VSETIVLI => 1,
-        insts::OP_VSETVL => 1,
-
-        insts::OP_VLM_V => e(3),
-        insts::OP_VLE8_V => e(3),
-        insts::OP_VLE16_V => e(3),
-        insts::OP_VLE32_V => e(3),
-        insts::OP_VLE64_V => e(3),
-        insts::OP_VLE128_V => e(3),
-        insts::OP_VLE256_V => e(3),
-        insts::OP_VLE512_V => e(3),
-        insts::OP_VLE1024_V => e(3),
-        insts::OP_VSM_V => e(3),
-        insts::OP_VSE8_V => e(3),
-        insts::OP_VSE16_V => e(3),
-        insts::OP_VSE32_V => e(3),
-        insts::OP_VSE64_V => e(3),
-        insts::OP_VSE128_V => e(3),
-        insts::OP_VSE256_V => e(3),
-        insts::OP_VSE512_V => e(3),
-        insts::OP_VSE1024_V => e(3),
-
-        insts::OP_VADD_VV => e(1),
-        insts::OP_VADD_VX => e(1),
-        insts::OP_VADD_VI => e(1),
-        insts::OP_VSUB_VV => e(1),
-        insts::OP_VSUB_VX => e(1),
-        insts::OP_VRSUB_VX => e(1),
-        insts::OP_VRSUB_VI => e(1),
-        insts::OP_VMUL_VV => e(5),
-        insts::OP_VMUL_VX => e(5),
-        insts::OP_VDIV_VV => e(32),
-        insts::OP_VDIV_VX => e(32),
-        insts::OP_VDIVU_VV => e(32),
-        insts::OP_VDIVU_VX => e(32),
-        insts::OP_VREM_VV => e(32),
-        insts::OP_VREM_VX => e(32),
-        insts::OP_VREMU_VV => e(32),
-        insts::OP_VREMU_VX => e(32),
-        insts::OP_VSLL_VV => e(1),
-        insts::OP_VSLL_VX => e(1),
-        insts::OP_VSLL_VI => e(1),
-        insts::OP_VSRL_VV => e(1),
-        insts::OP_VSRL_VX => e(1),
-        insts::OP_VSRL_VI => e(1),
-        insts::OP_VSRA_VV => e(1),
-        insts::OP_VSRA_VX => e(1),
-        insts::OP_VSRA_VI => e(1),
-
-        insts::OP_VMSEQ_VV => e(1),
-        insts::OP_VMSEQ_VX => e(1),
-        insts::OP_VMSEQ_VI => e(1),
-        insts::OP_VMSNE_VV => e(1),
-        insts::OP_VMSNE_VX => e(1),
-        insts::OP_VMSNE_VI => e(1),
-        insts::OP_VMSLTU_VV => e(1),
-        insts::OP_VMSLTU_VX => e(1),
-        insts::OP_VMSLT_VV => e(1),
-        insts::OP_VMSLT_VX => e(1),
-        insts::OP_VMSLEU_VV => e(1),
-        insts::OP_VMSLEU_VX => e(1),
-        insts::OP_VMSLEU_VI => e(1),
-        insts::OP_VMSLE_VV => e(1),
-        insts::OP_VMSLE_VX => e(1),
-        insts::OP_VMSLE_VI => e(1),
-        insts::OP_VMSGTU_VX => e(1),
-        insts::OP_VMSGTU_VI => e(1),
-        insts::OP_VMSGT_VX => e(1),
-        insts::OP_VMSGT_VI => e(1),
-
-        insts::OP_VMINU_VV => e(1),
-        insts::OP_VMINU_VX => e(1),
-        insts::OP_VMIN_VV => e(1),
-        insts::OP_VMIN_VX => e(1),
-        insts::OP_VMAXU_VV => e(1),
-        insts::OP_VMAXU_VX => e(1),
-        insts::OP_VMAX_VV => e(1),
-        insts::OP_VMAX_VX => e(1),
-
-        insts::OP_VWADDU_VV => e(1),
-        insts::OP_VWADDU_VX => e(1),
-        insts::OP_VWSUBU_VV => e(1),
-        insts::OP_VWSUBU_VX => e(1),
-        insts::OP_VWADD_VV => e(1),
-        insts::OP_VWADD_VX => e(1),
-        insts::OP_VWSUB_VV => e(1),
-        insts::OP_VWSUB_VX => e(1),
-        insts::OP_VWADDU_WV => e(1),
-        insts::OP_VWADDU_WX => e(1),
-        insts::OP_VWSUBU_WV => e(1),
-        insts::OP_VWSUBU_WX => e(1),
-        insts::OP_VWADD_WV => e(1),
-        insts::OP_VWADD_WX => e(1),
-        insts::OP_VWSUB_WV => e(1),
-        insts::OP_VWSUB_WX => e(1),
-
-        insts::OP_VZEXT_VF8 => e(1),
-        insts::OP_VSEXT_VF8 => e(1),
-        insts::OP_VZEXT_VF4 => e(1),
-        insts::OP_VSEXT_VF4 => e(1),
-        insts::OP_VZEXT_VF2 => e(1),
-        insts::OP_VSEXT_VF2 => e(1),
-
-        insts::OP_VADC_VVM => e(1),
-        insts::OP_VADC_VXM => e(1),
-        insts::OP_VADC_VIM => e(1),
-        insts::OP_VMADC_VVM => e(1),
-        insts::OP_VMADC_VXM => e(1),
-        insts::OP_VMADC_VIM => e(1),
-        insts::OP_VMADC_VV => e(1),
-        insts::OP_VMADC_VX => e(1),
-        insts::OP_VMADC_VI => e(1),
-        insts::OP_VSBC_VVM => e(1),
-        insts::OP_VSBC_VXM => e(1),
-        insts::OP_VMSBC_VVM => e(1),
-        insts::OP_VMSBC_VXM => e(1),
-        insts::OP_VMSBC_VV => e(1),
-        insts::OP_VMSBC_VX => e(1),
-
-        insts::OP_VAND_VV => e(1),
-        insts::OP_VAND_VI => e(1),
-        insts::OP_VAND_VX => e(1),
-        insts::OP_VOR_VV => e(1),
-        insts::OP_VOR_VX => e(1),
-        insts::OP_VOR_VI => e(1),
-        insts::OP_VXOR_VV => e(1),
-        insts::OP_VXOR_VX => e(1),
-        insts::OP_VXOR_VI => e(1),
-
-        insts::OP_VNSRL_WV => e(1),
-        insts::OP_VNSRL_WX => e(1),
-        insts::OP_VNSRL_WI => e(1),
-        insts::OP_VNSRA_WV => e(1),
-        insts::OP_VNSRA_WX => e(1),
-        insts::OP_VNSRA_WI => e(1),
-
-        insts::OP_VMULH_VV => e(5),
-        insts::OP_VMULH_VX => e(5),
-        insts::OP_VMULHU_VV => e(5),
-        insts::OP_VMULHU_VX => e(5),
-        insts::OP_VMULHSU_VV => e(5),
-        insts::OP_VMULHSU_VX => e(5),
-        insts::OP_VWMULU_VV => e(5),
-        insts::OP_VWMULU_VX => e(5),
-        insts::OP_VWMULSU_VV => e(5),
-        insts::OP_VWMULSU_VX => e(5),
-        insts::OP_VWMUL_VV => e(5),
-        insts::OP_VWMUL_VX => e(5),
-
-        insts::OP_VMV_V_V => e(1),
-        insts::OP_VMV_V_X => e(1),
-        insts::OP_VMV_V_I => e(1),
-
-        insts::OP_VSADDU_VV => e(1),
-        insts::OP_VSADDU_VX => e(1),
-        insts::OP_VSADDU_VI => e(1),
-        insts::OP_VSADD_VV => e(1),
-        insts::OP_VSADD_VX => e(1),
-        insts::OP_VSADD_VI => e(1),
-        insts::OP_VSSUBU_VV => e(1),
-        insts::OP_VSSUBU_VX => e(1),
-        insts::OP_VSSUB_VV => e(1),
-        insts::OP_VSSUB_VX => e(1),
-        insts::OP_VAADDU_VV => e(1),
-        insts::OP_VAADDU_VX => e(1),
-        insts::OP_VAADD_VV => e(1),
-        insts::OP_VAADD_VX => e(1),
-        insts::OP_VASUBU_VV => e(1),
-        insts::OP_VASUBU_VX => e(1),
-        insts::OP_VASUB_VV => e(1),
-        insts::OP_VASUB_VX => e(1),
-
-        insts::OP_VMV1R_V => 32,
-        insts::OP_VMV2R_V => 64,
-        insts::OP_VMV4R_V => 128,
-        insts::OP_VMV8R_V => 256,
-
-        insts::OP_VMAND_MM => m(1),
-        insts::OP_VMNAND_MM => m(1),
-        insts::OP_VMANDNOT_MM => m(1),
-        insts::OP_VMXOR_MM => m(1),
-        insts::OP_VMOR_MM => m(1),
-        insts::OP_VMNOR_MM => m(1),
-        insts::OP_VMORNOT_MM => m(1),
-        insts::OP_VMXNOR_MM => m(1),
-
-        insts::OP_VLSE8_V => e(3),
-        insts::OP_VLSE16_V => e(3),
-        insts::OP_VLSE32_V => e(3),
-        insts::OP_VLSE64_V => e(3),
-        insts::OP_VLSE128_V => e(3),
-        insts::OP_VLSE256_V => e(3),
-        insts::OP_VLSE512_V => e(3),
-        insts::OP_VLSE1024_V => e(3),
-        insts::OP_VSSE8_V => e(3),
-        insts::OP_VSSE16_V => e(3),
-        insts::OP_VSSE32_V => e(3),
-        insts::OP_VSSE64_V => e(3),
-        insts::OP_VSSE128_V => e(3),
-        insts::OP_VSSE256_V => e(3),
-        insts::OP_VSSE512_V => e(3),
-        insts::OP_VSSE1024_V => e(3),
-        insts::OP_VLUXEI8_V => e(3),
-        insts::OP_VLUXEI16_V => e(3),
-        insts::OP_VLUXEI32_V => e(3),
-        insts::OP_VLUXEI64_V => e(3),
-        insts::OP_VLOXEI8_V => e(3),
-        insts::OP_VLOXEI16_V => e(3),
-        insts::OP_VLOXEI32_V => e(3),
-        insts::OP_VLOXEI64_V => e(3),
-        insts::OP_VSUXEI8_V => e(3),
-        insts::OP_VSUXEI16_V => e(3),
-        insts::OP_VSUXEI32_V => e(3),
-        insts::OP_VSUXEI64_V => e(3),
-        insts::OP_VSOXEI8_V => e(3),
-        insts::OP_VSOXEI16_V => e(3),
-        insts::OP_VSOXEI32_V => e(3),
-        insts::OP_VSOXEI64_V => e(3),
-
-        insts::OP_VL1RE8_V => 96,
-        insts::OP_VL1RE16_V => 48,
-        insts::OP_VL1RE32_V => 24,
-        insts::OP_VL1RE64_V => 12,
-        insts::OP_VL2RE8_V => 192,
-        insts::OP_VL2RE16_V => 96,
-        insts::OP_VL2RE32_V => 48,
-        insts::OP_VL2RE64_V => 24,
-        insts::OP_VL4RE8_V => 384,
-        insts::OP_VL4RE16_V => 192,
-        insts::OP_VL4RE32_V => 96,
-        insts::OP_VL4RE64_V => 48,
-        insts::OP_VL8RE8_V => 768,
-        insts::OP_VL8RE16_V => 384,
-        insts::OP_VL8RE32_V => 192,
-        insts::OP_VL8RE64_V => 96,
-        insts::OP_VS1R_V => 96,
-        insts::OP_VS2R_V => 192,
-        insts::OP_VS4R_V => 384,
-        insts::OP_VS8R_V => 768,
-
-        insts::OP_VMACC_VV => e(5),
-        insts::OP_VMACC_VX => e(5),
-        insts::OP_VNMSAC_VV => e(5),
-        insts::OP_VNMSAC_VX => e(5),
-        insts::OP_VMADD_VV => e(5),
-        insts::OP_VMADD_VX => e(5),
-        insts::OP_VNMSUB_VV => e(5),
-        insts::OP_VNMSUB_VX => e(5),
-
-        insts::OP_VSSRL_VV => e(1),
-        insts::OP_VSSRL_VX => e(1),
-        insts::OP_VSSRL_VI => e(1),
-        insts::OP_VSSRA_VV => e(1),
-        insts::OP_VSSRA_VX => e(1),
-        insts::OP_VSSRA_VI => e(1),
-
-        insts::OP_VSMUL_VV => e(5),
-        insts::OP_VSMUL_VX => e(5),
-
-        insts::OP_VWMACCU_VV => e(5),
-        insts::OP_VWMACCU_VX => e(5),
-        insts::OP_VWMACC_VV => e(5),
-        insts::OP_VWMACC_VX => e(5),
-        insts::OP_VWMACCSU_VV => e(5),
-        insts::OP_VWMACCSU_VX => e(5),
-        insts::OP_VWMACCUS_VX => e(5),
-
-        insts::OP_VMERGE_VVM => e(1),
-        insts::OP_VMERGE_VXM => e(1),
-        insts::OP_VMERGE_VIM => e(1),
-
-        insts::OP_VNCLIPU_WV => e(1),
-        insts::OP_VNCLIPU_WX => e(1),
-        insts::OP_VNCLIPU_WI => e(1),
-        insts::OP_VNCLIP_WV => e(1),
-        insts::OP_VNCLIP_WX => e(1),
-        insts::OP_VNCLIP_WI => e(1),
-
-        insts::OP_VREDSUM_VS => e(1),
-        insts::OP_VREDAND_VS => e(1),
-        insts::OP_VREDOR_VS => e(1),
-        insts::OP_VREDXOR_VS => e(1),
-        insts::OP_VREDMINU_VS => e(1),
-        insts::OP_VREDMIN_VS => e(1),
-        insts::OP_VREDMAXU_VS => e(1),
-        insts::OP_VREDMAX_VS => e(1),
-        insts::OP_VWREDSUMU_VS => e(1),
-        insts::OP_VWREDSUM_VS => e(1),
-
-        insts::OP_VCPOP_M => m(1),
-        insts::OP_VFIRST_M => m(1),
-        insts::OP_VMSBF_M => m(1),
-        insts::OP_VMSOF_M => m(1),
-        insts::OP_VMSIF_M => m(1),
-        insts::OP_VIOTA_M => m(1),
-        insts::OP_VID_V => m(1),
-        insts::OP_VMV_X_S => 1,
-        insts::OP_VMV_S_X => 1,
-        insts::OP_VCOMPRESS_VM => e(1),
-        insts::OP_VSLIDE1UP_VX => e(1),
-        insts::OP_VSLIDEUP_VX => e(1),
-        insts::OP_VSLIDEUP_VI => e(1),
-        insts::OP_VSLIDE1DOWN_VX => e(1),
-        insts::OP_VSLIDEDOWN_VX => e(1),
-        insts::OP_VSLIDEDOWN_VI => e(1),
-        insts::OP_VRGATHER_VX => e(1),
-        insts::OP_VRGATHER_VV => e(1),
-        insts::OP_VRGATHEREI16_VV => e(1),
-        insts::OP_VRGATHER_VI => e(1),
-
-        _ => e(1),
-    };
-    if cycles != 0 {
-        Some(cycles)
-    } else {
-        None
-    }
+#[derive(Clone, Copy)]
+enum CyclesFunction {
+    F(u64), // Fixed
+    E(u64), // Elements based
+    M(u64), // Mbit
 }
 
+const CYCLES_FUNCTION_LIST: [CyclesFunction; 65536] = {
+    let mut l = [CyclesFunction::F(1); 65536];
+    l[insts::OP_JALR as usize] = CyclesFunction::F(3);
+    l[insts::OP_LD as usize] = CyclesFunction::F(2);
+    l[insts::OP_LW as usize] = CyclesFunction::F(3);
+    l[insts::OP_LH as usize] = CyclesFunction::F(3);
+    l[insts::OP_LB as usize] = CyclesFunction::F(3);
+    l[insts::OP_LWU as usize] = CyclesFunction::F(3);
+    l[insts::OP_LHU as usize] = CyclesFunction::F(3);
+    l[insts::OP_LBU as usize] = CyclesFunction::F(3);
+    l[insts::OP_SB as usize] = CyclesFunction::F(3);
+    l[insts::OP_SH as usize] = CyclesFunction::F(3);
+    l[insts::OP_SW as usize] = CyclesFunction::F(3);
+    l[insts::OP_SD as usize] = CyclesFunction::F(2);
+    l[insts::OP_BEQ as usize] = CyclesFunction::F(3);
+    l[insts::OP_BGE as usize] = CyclesFunction::F(3);
+    l[insts::OP_BGEU as usize] = CyclesFunction::F(3);
+    l[insts::OP_BLT as usize] = CyclesFunction::F(3);
+    l[insts::OP_BLTU as usize] = CyclesFunction::F(3);
+    l[insts::OP_BNE as usize] = CyclesFunction::F(3);
+    l[insts::OP_EBREAK as usize] = CyclesFunction::F(500);
+    l[insts::OP_ECALL as usize] = CyclesFunction::F(500);
+    l[insts::OP_JAL as usize] = CyclesFunction::F(3);
+    l[insts::OP_MUL as usize] = CyclesFunction::F(5);
+    l[insts::OP_MULW as usize] = CyclesFunction::F(5);
+    l[insts::OP_MULH as usize] = CyclesFunction::F(5);
+    l[insts::OP_MULHU as usize] = CyclesFunction::F(5);
+    l[insts::OP_MULHSU as usize] = CyclesFunction::F(5);
+    l[insts::OP_DIV as usize] = CyclesFunction::F(32);
+    l[insts::OP_DIVW as usize] = CyclesFunction::F(32);
+    l[insts::OP_DIVU as usize] = CyclesFunction::F(32);
+    l[insts::OP_DIVUW as usize] = CyclesFunction::F(32);
+    l[insts::OP_REM as usize] = CyclesFunction::F(32);
+    l[insts::OP_REMW as usize] = CyclesFunction::F(32);
+    l[insts::OP_REMU as usize] = CyclesFunction::F(32);
+    l[insts::OP_REMUW as usize] = CyclesFunction::F(32);
+    // MOP
+    l[insts::OP_WIDE_MUL as usize] = CyclesFunction::F(5);
+    l[insts::OP_WIDE_MULU as usize] = CyclesFunction::F(5);
+    l[insts::OP_WIDE_MULSU as usize] = CyclesFunction::F(5);
+    l[insts::OP_WIDE_DIV as usize] = CyclesFunction::F(32);
+    l[insts::OP_WIDE_DIVU as usize] = CyclesFunction::F(32);
+    l[insts::OP_FAR_JUMP_REL as usize] = CyclesFunction::F(3);
+    l[insts::OP_FAR_JUMP_ABS as usize] = CyclesFunction::F(3);
+    // RVV
+    l[insts::OP_VSETVLI as usize] = CyclesFunction::F(1);
+    l[insts::OP_VSETIVLI as usize] = CyclesFunction::F(1);
+    l[insts::OP_VSETVL as usize] = CyclesFunction::F(1);
+    l[insts::OP_VLM_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE128_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE256_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE512_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLE1024_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSM_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE128_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE256_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE512_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSE1024_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VADD_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VADD_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VADD_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSUB_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSUB_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VRSUB_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VRSUB_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMUL_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMUL_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VDIV_VV as usize] = CyclesFunction::E(32);
+    l[insts::OP_VDIV_VX as usize] = CyclesFunction::E(32);
+    l[insts::OP_VDIVU_VV as usize] = CyclesFunction::E(32);
+    l[insts::OP_VDIVU_VX as usize] = CyclesFunction::E(32);
+    l[insts::OP_VREM_VV as usize] = CyclesFunction::E(32);
+    l[insts::OP_VREM_VX as usize] = CyclesFunction::E(32);
+    l[insts::OP_VREMU_VV as usize] = CyclesFunction::E(32);
+    l[insts::OP_VREMU_VX as usize] = CyclesFunction::E(32);
+    l[insts::OP_VSLL_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLL_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLL_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSRL_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSRL_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSRL_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSRA_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSRA_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSRA_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSEQ_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSEQ_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSEQ_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSNE_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSNE_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSNE_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLTU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLTU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLT_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLT_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLEU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLEU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLEU_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLE_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLE_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSLE_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSGTU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSGTU_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSGT_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSGT_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMINU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMINU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMIN_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMIN_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMAXU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMAXU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMAX_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMAX_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADDU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADDU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUBU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUBU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADD_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADD_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUB_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUB_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADDU_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADDU_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUBU_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUBU_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADD_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWADD_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUB_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWSUB_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VZEXT_VF8 as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSEXT_VF8 as usize] = CyclesFunction::E(1);
+    l[insts::OP_VZEXT_VF4 as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSEXT_VF4 as usize] = CyclesFunction::E(1);
+    l[insts::OP_VZEXT_VF2 as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSEXT_VF2 as usize] = CyclesFunction::E(1);
+    l[insts::OP_VADC_VVM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VADC_VXM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VADC_VIM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMADC_VVM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMADC_VXM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMADC_VIM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMADC_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMADC_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMADC_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSBC_VVM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSBC_VXM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSBC_VVM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSBC_VXM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSBC_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMSBC_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAND_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAND_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAND_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VOR_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VOR_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VOR_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VXOR_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VXOR_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VXOR_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNSRL_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNSRL_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNSRL_WI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNSRA_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNSRA_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNSRA_WI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMULH_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMULH_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMULHU_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMULHU_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMULHSU_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMULHSU_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMULU_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMULU_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMULSU_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMULSU_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMUL_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMUL_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMV_V_V as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMV_V_X as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMV_V_I as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSADDU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSADDU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSADDU_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSADD_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSADD_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSADD_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSUBU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSUBU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSUB_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSUB_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAADDU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAADDU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAADD_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VAADD_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VASUBU_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VASUBU_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VASUB_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VASUB_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMV1R_V as usize] = CyclesFunction::F(32);
+    l[insts::OP_VMV2R_V as usize] = CyclesFunction::F(64);
+    l[insts::OP_VMV4R_V as usize] = CyclesFunction::F(128);
+    l[insts::OP_VMV8R_V as usize] = CyclesFunction::F(256);
+    l[insts::OP_VMAND_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMNAND_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMANDNOT_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMXOR_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMOR_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMNOR_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMORNOT_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMXNOR_MM as usize] = CyclesFunction::M(1);
+    l[insts::OP_VLSE8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE128_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE256_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE512_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLSE1024_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE128_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE256_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE512_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSSE1024_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLUXEI8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLUXEI16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLUXEI32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLUXEI64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLOXEI8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLOXEI16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLOXEI32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VLOXEI64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSUXEI8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSUXEI16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSUXEI32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSUXEI64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSOXEI8_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSOXEI16_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSOXEI32_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VSOXEI64_V as usize] = CyclesFunction::E(3);
+    l[insts::OP_VL1RE8_V as usize] = CyclesFunction::F(96);
+    l[insts::OP_VL1RE16_V as usize] = CyclesFunction::F(48);
+    l[insts::OP_VL1RE32_V as usize] = CyclesFunction::F(24);
+    l[insts::OP_VL1RE64_V as usize] = CyclesFunction::F(12);
+    l[insts::OP_VL2RE8_V as usize] = CyclesFunction::F(192);
+    l[insts::OP_VL2RE16_V as usize] = CyclesFunction::F(96);
+    l[insts::OP_VL2RE32_V as usize] = CyclesFunction::F(48);
+    l[insts::OP_VL2RE64_V as usize] = CyclesFunction::F(24);
+    l[insts::OP_VL4RE8_V as usize] = CyclesFunction::F(384);
+    l[insts::OP_VL4RE16_V as usize] = CyclesFunction::F(192);
+    l[insts::OP_VL4RE32_V as usize] = CyclesFunction::F(96);
+    l[insts::OP_VL4RE64_V as usize] = CyclesFunction::F(48);
+    l[insts::OP_VL8RE8_V as usize] = CyclesFunction::F(768);
+    l[insts::OP_VL8RE16_V as usize] = CyclesFunction::F(384);
+    l[insts::OP_VL8RE32_V as usize] = CyclesFunction::F(192);
+    l[insts::OP_VL8RE64_V as usize] = CyclesFunction::F(96);
+    l[insts::OP_VS1R_V as usize] = CyclesFunction::F(96);
+    l[insts::OP_VS2R_V as usize] = CyclesFunction::F(192);
+    l[insts::OP_VS4R_V as usize] = CyclesFunction::F(384);
+    l[insts::OP_VS8R_V as usize] = CyclesFunction::F(768);
+    l[insts::OP_VMACC_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMACC_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VNMSAC_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VNMSAC_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMADD_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMADD_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VNMSUB_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VNMSUB_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VSSRL_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSRL_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSRL_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSRA_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSRA_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSSRA_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSMUL_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VSMUL_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACCU_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACCU_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACC_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACC_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACCSU_VV as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACCSU_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VWMACCUS_VX as usize] = CyclesFunction::E(5);
+    l[insts::OP_VMERGE_VVM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMERGE_VXM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VMERGE_VIM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNCLIPU_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNCLIPU_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNCLIPU_WI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNCLIP_WV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNCLIP_WX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VNCLIP_WI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDSUM_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDAND_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDOR_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDXOR_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDMINU_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDMIN_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDMAXU_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VREDMAX_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWREDSUMU_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VWREDSUM_VS as usize] = CyclesFunction::E(1);
+    l[insts::OP_VCPOP_M as usize] = CyclesFunction::M(1);
+    l[insts::OP_VFIRST_M as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMSBF_M as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMSOF_M as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMSIF_M as usize] = CyclesFunction::M(1);
+    l[insts::OP_VIOTA_M as usize] = CyclesFunction::M(1);
+    l[insts::OP_VID_V as usize] = CyclesFunction::M(1);
+    l[insts::OP_VMV_X_S as usize] = CyclesFunction::F(1);
+    l[insts::OP_VMV_S_X as usize] = CyclesFunction::F(1);
+    l[insts::OP_VCOMPRESS_VM as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLIDE1UP_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLIDEUP_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLIDEUP_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLIDE1DOWN_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLIDEDOWN_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VSLIDEDOWN_VI as usize] = CyclesFunction::E(1);
+    l[insts::OP_VRGATHER_VX as usize] = CyclesFunction::E(1);
+    l[insts::OP_VRGATHER_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VRGATHEREI16_VV as usize] = CyclesFunction::E(1);
+    l[insts::OP_VRGATHER_VI as usize] = CyclesFunction::E(1);
+    l
+};
+
 /// Returns the spent cycles to execute the specific instruction.
-pub fn instruction_cycles(i: Instruction, vl: u64, sew: u64, skip_counting: bool) -> u64 {
-    match extract_opcode(i) {
-        // IMC
-        insts::OP_JALR => 3,
-        insts::OP_LD => 2,
-        insts::OP_LW => 3,
-        insts::OP_LH => 3,
-        insts::OP_LB => 3,
-        insts::OP_LWU => 3,
-        insts::OP_LHU => 3,
-        insts::OP_LBU => 3,
-        insts::OP_SB => 3,
-        insts::OP_SH => 3,
-        insts::OP_SW => 3,
-        insts::OP_SD => 2,
-        insts::OP_BEQ => 3,
-        insts::OP_BGE => 3,
-        insts::OP_BGEU => 3,
-        insts::OP_BLT => 3,
-        insts::OP_BLTU => 3,
-        insts::OP_BNE => 3,
-        insts::OP_EBREAK => 500,
-        insts::OP_ECALL => 500,
-        insts::OP_JAL => 3,
-        insts::OP_MUL => 5,
-        insts::OP_MULW => 5,
-        insts::OP_MULH => 5,
-        insts::OP_MULHU => 5,
-        insts::OP_MULHSU => 5,
-        insts::OP_DIV => 32,
-        insts::OP_DIVW => 32,
-        insts::OP_DIVU => 32,
-        insts::OP_DIVUW => 32,
-        insts::OP_REM => 32,
-        insts::OP_REMW => 32,
-        insts::OP_REMU => 32,
-        insts::OP_REMUW => 32,
-        // MOP
-        insts::OP_WIDE_MUL => 5,
-        insts::OP_WIDE_MULU => 5,
-        insts::OP_WIDE_MULSU => 5,
-        insts::OP_WIDE_DIV => 32,
-        insts::OP_WIDE_DIVU => 32,
-        insts::OP_FAR_JUMP_REL => 3,
-        insts::OP_FAR_JUMP_ABS => 3,
-        opcode => {
-            // RVV
-            if let Some(cycles) = v_instruction_cycles(opcode, vl, sew, skip_counting) {
-                cycles
-            } else {
-                1
-            }
-        }
+pub fn instruction_cycles(i: Instruction, vl: u64, sew: u64) -> u64 {
+    match CYCLES_FUNCTION_LIST[extract_opcode(i) as usize] {
+        CyclesFunction::F(x) => x,
+        CyclesFunction::E(x) => std::cmp::max(vl * sew / 64, 1) * x,
+        CyclesFunction::M(x) => std::cmp::max(vl / 64, 1) * x,
     }
 }

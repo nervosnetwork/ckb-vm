@@ -566,13 +566,14 @@ impl AotCompilingMachine {
         // together to emit correct native code.
         let mut initial_writes = vec![];
 
-        // TODO: support RVV
         for instruction in instructions.iter() {
-            cycles += self
-                .instruction_cycle_func
-                .as_ref()
-                .map(|f| f(*instruction, 0, 0, true))
-                .unwrap_or(0);
+            if !is_slowpath_instruction(*instruction) {
+                cycles += self
+                    .instruction_cycle_func
+                    .as_ref()
+                    .map(|f| f(*instruction, 0, 0))
+                    .unwrap_or(0);
+            }
         }
         self.emitter.emit_add_cycles(cycles)?;
 

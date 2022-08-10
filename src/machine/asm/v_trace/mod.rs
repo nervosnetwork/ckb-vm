@@ -365,20 +365,23 @@ impl VTraceAsmMachine {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         let length = instruction_length(instruction);
+                        let is_slowpath = is_slowpath_instruction(instruction);
                         trace.last_inst_length = length;
                         current_pc += u64::from(length);
-                        if trace.slowpath == 0 && is_slowpath_instruction(instruction) {
+                        if trace.slowpath == 0 && is_slowpath {
                             trace.slowpath = 1;
                         }
                         trace.instructions[i] = instruction;
                         // don't count cycles in trace for RVV instructions. They
                         // will be counted in slow path.
-                        trace.cycles += self
-                            .machine
-                            .instruction_cycle_func()
-                            .as_ref()
-                            .map(|f| f(instruction, 0, 0, true))
-                            .unwrap_or(0);
+                        if !is_slowpath {
+                            trace.cycles += self
+                                .machine
+                                .instruction_cycle_func()
+                                .as_ref()
+                                .map(|f| f(instruction, 0, 0))
+                                .unwrap_or(0);
+                        }
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.

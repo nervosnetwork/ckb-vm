@@ -8,7 +8,7 @@ use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1};
 use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP, ISA_V};
 use ckb_vm::{Instruction, SparseMemory, WXorXMemory};
 
-pub fn instruction_cycle_func(_: Instruction, _: u64, _: u64, _: bool) -> u64 {
+pub fn instruction_cycle_func(_: Instruction, _: u64, _: u64) -> u64 {
     1
 }
 

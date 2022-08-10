@@ -610,6 +610,7 @@ impl AsmMachine {
                     while i < TRACE_ITEM_LENGTH {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
+                        let is_slowpath = is_slowpath_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
                         if trace.slowpath == 0 && is_slowpath_instruction(instruction) {
                             trace.slowpath = 1;
@@ -617,12 +618,14 @@ impl AsmMachine {
                         trace.instructions[i] = instruction;
                         // don't count cycles in trace for RVV instructions. They
                         // will be counted in slow path.
-                        trace.cycles += self
-                            .machine
-                            .instruction_cycle_func()
-                            .as_ref()
-                            .map(|f| f(instruction, 0, 0, true))
-                            .unwrap_or(0);
+                        if !is_slowpath {
+                            trace.cycles += self
+                                .machine
+                                .instruction_cycle_func()
+                                .as_ref()
+                                .map(|f| f(instruction, 0, 0))
+                                .unwrap_or(0);
+                        }
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.
@@ -661,7 +664,7 @@ impl AsmMachine {
                         .machine
                         .instruction_cycle_func()
                         .as_ref()
-                        .map(|f| f(instruction, self.machine.vl(), self.machine.vsew(), false))
+                        .map(|f| f(instruction, self.machine.vl(), self.machine.vsew()))
                         .unwrap_or(0);
                     self.machine.add_cycles(cycles)?;
                     execute_instruction(&mut self.machine, &handle_function_list, instruction)?;
@@ -681,9 +684,7 @@ impl AsmMachine {
                                 .machine
                                 .instruction_cycle_func()
                                 .as_ref()
-                                .map(|f| {
-                                    f(instruction, self.machine.vl(), self.machine.vsew(), false)
-                                })
+                                .map(|f| f(instruction, self.machine.vl(), self.machine.vsew()))
                                 .unwrap_or(0);
                             self.machine.add_cycles(cycles)?;
                         }
@@ -713,7 +714,7 @@ impl AsmMachine {
             .machine
             .instruction_cycle_func()
             .as_ref()
-            .map(|f| f(instruction, vl, sew, false))
+            .map(|f| f(instruction, vl, sew))
             .unwrap_or(0);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {
