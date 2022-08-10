@@ -36,7 +36,7 @@ fn main() {
         use std::path::Path;
         use std::process::Command;
 
-        let enable_aot = cfg!(feature = "aot");
+        let enable_aot = cfg!(any(feature = "aot", feature = "detect-aot")) && can_enable_aot;
 
         fn run_command(mut c: Command) {
             println!("Running Command[{:?}]", c);
