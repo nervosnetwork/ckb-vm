@@ -375,12 +375,8 @@ impl VTraceAsmMachine {
                         // don't count cycles in trace for RVV instructions. They
                         // will be counted in slow path.
                         if !is_slowpath {
-                            trace.cycles += self
-                                .machine
-                                .instruction_cycle_func()
-                                .as_ref()
-                                .map(|f| f(instruction, 0, 0))
-                                .unwrap_or(0);
+                            trace.cycles +=
+                                self.machine.instruction_cycle_func()(instruction, 0, 0);
                         }
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading

@@ -193,12 +193,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
                 let i = self.traces[slot].instructions[i as usize];
                 let vl = self.machine.vl();
                 let sew = self.vsew();
-                let cycles = self
-                    .machine
-                    .instruction_cycle_func()
-                    .as_ref()
-                    .map(|f| f(i, vl, sew))
-                    .unwrap_or(0);
+                let cycles = self.machine.instruction_cycle_func()(i, vl, sew);
                 self.machine.add_cycles(cycles)?;
                 execute(self, &handle_func_list, i)?;
             }

@@ -541,7 +541,6 @@ impl<R: Register, M: Memory<REG = R> + Default> DefaultCoreMachine<R, M> {
 
 pub type InstructionCycleFunc = dyn Fn(Instruction, u64, u64) -> u64;
 
-#[derive(Default)]
 pub struct DefaultMachine<Inner> {
     inner: Inner,
 
@@ -549,7 +548,7 @@ pub struct DefaultMachine<Inner> {
     // cost of the Box wrapper here is neglectable, hence we are sticking
     // with Box solution for simplicity now. Later if this becomes an issue,
     // we can change to static dispatch.
-    instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+    instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     exit_code: i8,
@@ -773,7 +772,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         self.exit_code
     }
 
-    pub fn instruction_cycle_func(&self) -> &Option<Box<InstructionCycleFunc>> {
+    pub fn instruction_cycle_func(&self) -> &InstructionCycleFunc {
         &self.instruction_cycle_func
     }
 
@@ -813,20 +812,15 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         };
         let vl = self.inner.vl();
         let sew = self.inner.vsew();
-        let cycles = self
-            .instruction_cycle_func()
-            .as_ref()
-            .map(|f| f(instruction, vl, sew))
-            .unwrap_or(0);
+        let cycles = self.instruction_cycle_func()(instruction, vl, sew);
         self.add_cycles(cycles)?;
         execute(self, &handle_function_list, instruction)
     }
 }
 
-#[derive(Default)]
 pub struct DefaultMachineBuilder<Inner> {
     inner: Inner,
-    instruction_cycle_func: Option<Box<InstructionCycleFunc>>,
+    instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
 }
@@ -835,7 +829,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
-            instruction_cycle_func: None,
+            instruction_cycle_func: Box::new(|_, _, _| 0),
             debugger: None,
             syscalls: vec![],
         }
@@ -845,7 +839,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         mut self,
         instruction_cycle_func: Box<InstructionCycleFunc>,
     ) -> Self {
-        self.instruction_cycle_func = Some(instruction_cycle_func);
+        self.instruction_cycle_func = instruction_cycle_func;
         self
     }
 
