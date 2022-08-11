@@ -497,12 +497,7 @@ impl AsmMachine {
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
                         trace.instructions[i] = instruction;
-                        trace.cycles += self
-                            .machine
-                            .instruction_cycle_func()
-                            .as_ref()
-                            .map(|f| f(instruction))
-                            .unwrap_or(0);
+                        trace.cycles += self.machine.instruction_cycle_func()(instruction);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.
@@ -552,12 +547,7 @@ impl AsmMachine {
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
         trace.instructions[0] = instruction;
-        trace.cycles += self
-            .machine
-            .instruction_cycle_func()
-            .as_ref()
-            .map(|f| f(instruction))
-            .unwrap_or(0);
+        trace.cycles += self.machine.instruction_cycle_func()(instruction);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {
             u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))
