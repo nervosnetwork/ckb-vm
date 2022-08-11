@@ -3068,8 +3068,6 @@ pub fn handle_vmv8r_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
     Ok(())
 }
 
-// ------------------------------------------------------------------------------------------------
-
 pub type HandleFunction<Mac> = fn(&mut Mac, Instruction) -> Result<(), Error>;
 
 #[rustfmt::skip]
@@ -3483,7 +3481,6 @@ pub fn generate_handle_function_list<Mac: Machine>() -> [Option<HandleFunction<M
     handle_function_list[insts::OP_VMV2R_V as usize] = Some(handle_vmv2r_v::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VMV4R_V as usize] = Some(handle_vmv4r_v::<Mac> as HandleFunction::<Mac>);
     handle_function_list[insts::OP_VMV8R_V as usize] = Some(handle_vmv8r_v::<Mac> as HandleFunction::<Mac>);
-
     return handle_function_list;
 }
 
@@ -3496,7 +3493,7 @@ pub fn execute_instruction<Mac: Machine>(
     if let Some(f) = handle_function_list[op as usize] {
         f(machine, inst)
     } else {
-        Err(Error::InvalidOp(extract_opcode(inst)))
+        Err(Error::InvalidOp(op))
     }
 }
 

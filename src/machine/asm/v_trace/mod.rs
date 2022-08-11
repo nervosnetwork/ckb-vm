@@ -553,21 +553,23 @@ impl VTraceAsmMachine {
                     }));
                 }
                 insts::OP_VLUXEI8_V => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vluxei8_256(m, inst)));
                         }
-                        _ => panic!("Unsupported vluxei8.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VADD_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
@@ -579,13 +581,15 @@ impl VTraceAsmMachine {
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vadd_512(m, inst)));
                         }
-                        _ => panic!("Unsupported vwadc.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VMADC_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
@@ -597,13 +601,15 @@ impl VTraceAsmMachine {
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vmadc_512(m, inst)));
                         }
-                        _ => panic!("Unsupported vmadc.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VSUB_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
@@ -615,26 +621,30 @@ impl VTraceAsmMachine {
                                 crate::instructions::execute::handle_vsub_vv(m, inst)
                             }));
                         }
-                        _ => panic!("Unsupported vsub.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VMSBC_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vmsbc_256(m, inst)));
                         }
-                        _ => panic!("Unsupported vmsbc.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VWMULU_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
@@ -646,39 +656,45 @@ impl VTraceAsmMachine {
                                 crate::instructions::execute::handle_vwmulu_vv(m, inst)
                             }));
                         }
-                        _ => panic!("Unsupported vwmulu.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VMUL_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vmul_256(m, inst)));
                         }
-                        _ => panic!("Unsupported vmulu.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VXOR_VV => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vxor_256(m, inst)));
                         }
-                        _ => panic!("Unsupported vxor.vv with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VNSRL_WX => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
@@ -690,8 +706,10 @@ impl VTraceAsmMachine {
                                 crate::instructions::execute::handle_vnsrl_wx(m, inst)
                             }));
                         }
-                        _ => panic!("Unsupported vnsrl.wx with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VMANDNOT_MM => {
@@ -707,16 +725,18 @@ impl VTraceAsmMachine {
                         .push(Box::new(move |m: &mut CM| handle_vmxor(m, inst)));
                 }
                 insts::OP_VMERGE_VVM => {
-                    let sew = infer_machine.vsew();
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
+                    let sew = infer_machine.vsew();
                     match sew {
                         256 => {
                             v_trace
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vmerge_256(m, inst)));
                         }
-                        _ => panic!("Unsupported vmerge.vvm with sew: {}", infer_machine.vsew()),
-                        // _ => return None,
+                        _ => {
+                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                        }
                     }
                 }
                 insts::OP_VSLL_VX => {
@@ -743,12 +763,10 @@ impl VTraceAsmMachine {
                         crate::instructions::execute::handle_vmsleu_vv(m, inst)
                     }));
                 }
-                _ => panic!(
-                    "Unsupported v op: {}, sew now: {}",
-                    insts::instruction_opcode_name(opcode),
-                    infer_machine.vsew(),
-                ),
-                // _ => return None,
+                _ => {
+                    let f = handle_function_list_cm[opcode as usize].unwrap();
+                    v_trace.actions.push(Box::new(move |m| f(m, inst)))
+                }
             };
         }
         println!(
