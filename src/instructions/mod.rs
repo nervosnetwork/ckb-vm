@@ -208,14 +208,32 @@ impl Stype {
 
 impl fmt::Display for Stype {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {},{},{}",
-            instruction_opcode_name(self.op()).to_lowercase(),
-            REGISTER_ABI_NAMES[self.rs1()],
-            REGISTER_ABI_NAMES[self.rs2()],
-            self.immediate_s()
-        )
+        match self.op() {
+            // Branches are in fact of B-type, we reuse S-type in CKB-VM
+            // since they share the same constructs after decoding, but
+            // they have different encoding rules in texts.
+            insts::OP_BEQ
+            | insts::OP_BNE
+            | insts::OP_BLT
+            | insts::OP_BGE
+            | insts::OP_BLTU
+            | insts::OP_BGEU => write!(
+                f,
+                "{} {},{},{}",
+                instruction_opcode_name(self.op()).to_lowercase(),
+                REGISTER_ABI_NAMES[self.rs1()],
+                REGISTER_ABI_NAMES[self.rs2()],
+                self.immediate_s()
+            ),
+            _ => write!(
+                f,
+                "{} {},{}({})",
+                instruction_opcode_name(self.op()).to_lowercase(),
+                REGISTER_ABI_NAMES[self.rs2()],
+                self.immediate_s(),
+                REGISTER_ABI_NAMES[self.rs1()]
+            ),
+        }
     }
 }
 
@@ -368,11 +386,29 @@ pub fn instruction_length(i: Instruction) -> u8 {
 
 #[cfg(test)]
 mod tests {
+    use super::i::factory;
     use super::*;
     use std::mem::size_of;
 
     #[test]
     fn test_instruction_op_should_fit_in_byte() {
         assert_eq!(2, size_of::<InstructionOpcode>());
+    }
+
+    #[test]
+    fn test_stype_display() {
+        // This is "sd	a5,568(sp)"
+        let sd_inst = 0x22f13c23;
+        let decoded = factory::<u64>(sd_inst, u32::max_value()).expect("decoding");
+        let stype = Stype(decoded);
+
+        assert_eq!("sd a5,568(sp)", format!("{}", stype));
+
+        // This is "beq	a0,a5,1012e"
+        let sd_inst = 0xf4f500e3;
+        let decoded = factory::<u64>(sd_inst, u32::max_value()).expect("decoding");
+        let stype = Stype(decoded);
+
+        assert_eq!("beq a0,a5,-192", format!("{}", stype));
     }
 }
