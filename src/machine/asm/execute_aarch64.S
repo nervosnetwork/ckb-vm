@@ -86,10 +86,10 @@
 #define NEXT_INST \
   ldr TEMP1, [INST_ARGS] SEP \
   add INST_ARGS, INST_ARGS, 8 SEP \
-  ubfx RD, TEMP1, 8, 8 SEP \
-  asr TEMP1, TEMP1, 24 SEP \
-  ubfx FLAG, TEMP1, 0, 8 SEP \
-  asr TEMP1, TEMP1, 8 SEP \
+  asr TEMP1, TEMP1, 16 SEP \
+  ubfx RD, TEMP1, 0, 8 SEP \
+  ubfx FLAG, TEMP1, 8, 8 SEP \
+  asr TEMP1, TEMP1, 16 SEP \
   ldr x9, [INST_PC] SEP \
   add INST_PC, INST_PC, 8 SEP \
   br x9

@@ -469,8 +469,8 @@ impl VTraceAsmMachine {
 
     pub fn try_build_v_trace(
         trace: &Trace,
-        handle_function_list_vi: &[Option<HandleFunction<VInferMachine>>],
-        handle_function_list_cm: &[Option<HandleFunction<CM>>],
+        handle_function_list_vi: &[HandleFunction<VInferMachine>],
+        handle_function_list_cm: &[HandleFunction<CM>],
     ) -> Option<VTrace> {
         let mut v_trace = VTrace {
             address: trace.address,
@@ -488,11 +488,8 @@ impl VTraceAsmMachine {
 
             let opcode = extract_opcode(inst);
             if !is_slowpath_instruction(inst) {
-                if let Some(f) = handle_function_list_cm[opcode as usize] {
-                    v_trace.actions.push(Box::new(move |m| f(m, inst)))
-                } else {
-                    unreachable!()
-                }
+                let f = handle_function_list_cm[opcode as usize];
+                v_trace.actions.push(Box::new(move |m| f(m, inst)));
                 continue;
             }
             if !first_v_processed {
@@ -562,7 +559,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vluxei8_256(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -582,7 +579,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vadd_512(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -602,7 +599,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmadc_512(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -622,7 +619,7 @@ impl VTraceAsmMachine {
                             }));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -637,7 +634,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmsbc_256(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -657,7 +654,7 @@ impl VTraceAsmMachine {
                             }));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -672,7 +669,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmul_256(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -687,7 +684,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vxor_256(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -707,7 +704,7 @@ impl VTraceAsmMachine {
                             }));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -734,7 +731,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmerge_256(m, inst)));
                         }
                         _ => {
-                            let f = handle_function_list_cm[opcode as usize].unwrap();
+                            let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
@@ -764,7 +761,7 @@ impl VTraceAsmMachine {
                     }));
                 }
                 _ => {
-                    let f = handle_function_list_cm[opcode as usize].unwrap();
+                    let f = handle_function_list_cm[opcode as usize];
                     v_trace.actions.push(Box::new(move |m| f(m, inst)))
                 }
             };

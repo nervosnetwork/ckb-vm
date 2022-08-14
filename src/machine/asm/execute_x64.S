@@ -301,8 +301,9 @@
 #define NEXT_INST \
   movq (INST_ARGS), %rcx; \
   addq $8, INST_ARGS; \
-  movzbl %ch, RDd_RS2sd; \
-  sar $24, %rcx; \
+  sar $16, %rcx; \
+  movzbl %cl, RDd_RS2sd; \
+  sar $8, %rcx; \
   movzx %cl, FLAG; \
   sar $8, %rcx; \
   movq (INST_PC), TEMP1; \

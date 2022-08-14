@@ -19,7 +19,10 @@ pub use self::register::Register;
 pub use self::v_register::RegisterFile;
 use super::Error;
 pub use ckb_vm_definitions::{
-    instructions::{self as insts, instruction_opcode_name, Instruction, InstructionOpcode},
+    instructions::{
+        self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
+        MINIMAL_LEVEL2_OPCODE,
+    },
     registers::REGISTER_ABI_NAMES,
 };
 use core::fmt;
@@ -31,7 +34,7 @@ pub type UImmediate = u32;
 
 #[inline(always)]
 pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
-    (((i >> 8) & 0xff00) | (i & 0x00ff)) as u16
+    i as u16
 }
 
 pub type InstructionFactory = fn(instruction_bits: u32, version: u32) -> Option<Instruction>;
@@ -39,7 +42,7 @@ pub type InstructionFactory = fn(instruction_bits: u32, version: u32) -> Option<
 // Blank instructions need no register indices nor immediates, they only have opcode
 // and module bit set.
 pub fn blank_instruction(op: InstructionOpcode) -> Instruction {
-    (op as u64 >> 8 << 16) | (op as u64 & 0xff)
+    op as Instruction
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -53,20 +56,19 @@ impl Rtype {
         rs2: RegisterIndex,
     ) -> Self {
         Rtype(
-            (u64::from(op) >> 8 << 16)
-                | u64::from(op as u8)
-                | (u64::from(rd as u8) << 8)
+            u64::from(op)
+                | (u64::from(rd as u8) << 16)
                 | (u64::from(rs1 as u8) << 32)
                 | (u64::from(rs2 as u8) << 40),
         )
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn rs1(self) -> RegisterIndex {
@@ -102,9 +104,8 @@ impl Itype {
         immediate_u: UImmediate,
     ) -> Self {
         Itype(
-            (u64::from(op) >> 8 << 16) |
-            u64::from(op as u8) |
-              (u64::from(rd as u8) << 8) |
+            u64::from(op) |
+              (u64::from(rd as u8) << 16) |
               (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, I-type uses 12 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
@@ -122,11 +123,11 @@ impl Itype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn rs1(self) -> RegisterIndex {
@@ -172,9 +173,8 @@ impl Stype {
         rs2: RegisterIndex,
     ) -> Self {
         Stype(
-            (u64::from(op) >> 8 << 16) |
-            u64::from(op as u8) |
-              (u64::from(rs2 as u8) << 8) |
+            u64::from(op)
+              | (u64::from(rs2 as u8) << 16) |
               (u64::from(rs1 as u8) << 32) |
               // Per RISC-V spec, S/B type uses 13 bits at most, so it's perfectly
               // fine we store them in 3-byte location.
@@ -192,7 +192,7 @@ impl Stype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn rs1(self) -> RegisterIndex {
@@ -200,7 +200,7 @@ impl Stype {
     }
 
     pub fn rs2(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn immediate_u(self) -> UImmediate {
@@ -230,12 +230,7 @@ pub struct Utype(pub Instruction);
 
 impl Utype {
     pub fn new(op: InstructionOpcode, rd: RegisterIndex, immediate_u: UImmediate) -> Self {
-        Utype(
-            (u64::from(op) >> 8 << 16)
-                | u64::from(op as u8)
-                | (u64::from(rd as u8) << 8)
-                | (u64::from(immediate_u) << 32),
-        )
+        Utype(u64::from(op) | (u64::from(rd as u8) << 16) | (u64::from(immediate_u) << 32))
     }
 
     pub fn new_s(op: InstructionOpcode, rd: RegisterIndex, immediate_s: SImmediate) -> Self {
@@ -243,11 +238,11 @@ impl Utype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn immediate_u(self) -> UImmediate {
@@ -283,9 +278,8 @@ impl R4type {
         rs3: RegisterIndex,
     ) -> Self {
         R4type(
-            (u64::from(op) >> 8 << 16)
-                | u64::from(op as u8)
-                | (u64::from(rd as u8) << 8)
+            u64::from(op)
+                | (u64::from(rd as u8) << 16)
                 | (u64::from(rs1 as u8) << 32)
                 | (u64::from(rs2 as u8) << 40)
                 | (u64::from(rs3 as u8) << 48),
@@ -293,11 +287,11 @@ impl R4type {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn rd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn rs1(self) -> RegisterIndex {
@@ -338,8 +332,8 @@ impl VVtype {
         vs2: RegisterIndex,
         vm: bool,
     ) -> Self {
-        let opcode = u64::from(op as u8) | u64::from(op) >> 8 << 16;
-        let vd = u64::from(vd as u8) << 8;
+        let opcode = u64::from(op);
+        let vd = u64::from(vd as u8) << 16;
         let vs1 = u64::from(vs1 as u8) << 32;
         let vs2 = u64::from(vs2 as u8) << 40;
         let vm = if vm { 1u64 << 28 } else { 0 };
@@ -347,11 +341,11 @@ impl VVtype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn vd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn vs1(self) -> RegisterIndex {
@@ -391,8 +385,8 @@ impl VXtype {
         vs2: RegisterIndex,
         vm: bool,
     ) -> Self {
-        let opcode = u64::from(op as u8) | u64::from(op) >> 8 << 16;
-        let vd = u64::from(vd as u8) << 8;
+        let opcode = u64::from(op);
+        let vd = u64::from(vd as u8) << 16;
         let rs1 = u64::from(rs1 as u8) << 32;
         let vs2 = u64::from(vs2 as u8) << 40;
         let vm = if vm { 1u64 << 28 } else { 0 };
@@ -400,11 +394,11 @@ impl VXtype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn vd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn rs1(self) -> RegisterIndex {
@@ -444,8 +438,8 @@ impl VItype {
         imm: UImmediate,
         vm: bool,
     ) -> Self {
-        let opcode = u64::from(op as u8) | u64::from(op) >> 8 << 16;
-        let vd = u64::from(vd as u8) << 8;
+        let opcode = u64::from(op);
+        let vd = u64::from(vd as u8) << 16;
         let vs2 = u64::from(vs2 as u8) << 32;
         let imm = u64::from(imm) << 40;
         let vm = if vm { 1u64 << 28 } else { 0 };
@@ -453,11 +447,11 @@ impl VItype {
     }
 
     pub fn op(self) -> InstructionOpcode {
-        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+        self.0 as InstructionOpcode
     }
 
     pub fn vd(self) -> RegisterIndex {
-        (self.0 >> 8) as u8 as RegisterIndex
+        (self.0 >> 16) as u8 as RegisterIndex
     }
 
     pub fn vs2(self) -> RegisterIndex {
@@ -496,11 +490,11 @@ impl fmt::Display for VItype {
 }
 
 pub fn is_slowpath_instruction(i: Instruction) -> bool {
-    i as u8 >= 0xF0
+    i as u16 >= MINIMAL_LEVEL2_OPCODE
 }
 
 pub fn is_slowpath_opcode(i: InstructionOpcode) -> bool {
-    i >= 0xF0
+    i >= MINIMAL_LEVEL2_OPCODE
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {

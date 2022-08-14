@@ -803,7 +803,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
     pub fn step(
         &mut self,
         decoder: &mut Decoder,
-        handle_function_list: &[Option<HandleFunction<Self>>],
+        handle_function_list: &[HandleFunction<Self>],
     ) -> Result<(), Error> {
         let instruction = {
             let pc = self.pc().to_u64();

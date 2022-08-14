@@ -551,7 +551,7 @@ impl AotCompilingMachine {
     fn emit_block(
         &mut self,
         instructions: &[Instruction],
-        handle_function_list: &[Option<HandleFunction<Self>>],
+        handle_function_list: &[HandleFunction<Self>],
     ) -> Result<(), Error> {
         let mut cycles = 0;
         // A block is split into 2 parts:

@@ -1624,22 +1624,22 @@ pub fn handle_vrsub_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     Ok(())
 }
 
-pub fn handle_vw_addu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vwaddu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     w_vv_loop_u!(inst, machine, Eint::widening_add_u);
     Ok(())
 }
 
-pub fn handle_vw_addu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vwaddu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     w_vx_loop_u!(inst, machine, Eint::widening_add_u);
     Ok(())
 }
 
-pub fn handle_vw_subu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vwsubu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     w_vv_loop_u!(inst, machine, Eint::widening_sub_u);
     Ok(())
 }
 
-pub fn handle_vw_subu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vwsubu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     w_vx_loop_u!(inst, machine, Eint::widening_sub_u);
     Ok(())
 }
@@ -2269,6 +2269,36 @@ pub fn handle_vmerge_vim<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
     Ok(())
 }
 
+pub fn handle_vnclipu_wv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wv_loop_u!(inst, machine, alu::vnclipu);
+    Ok(())
+}
+
+pub fn handle_vnclipu_wx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wx_loop_u!(inst, machine, alu::vnclipu);
+    Ok(())
+}
+
+pub fn handle_vnclipu_wi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wi_loop_u!(inst, machine, alu::vnclipu);
+    Ok(())
+}
+
+pub fn handle_vnclip_wv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wv_loop_u!(inst, machine, alu::vnclip);
+    Ok(())
+}
+
+pub fn handle_vnclip_wx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wx_loop_u!(inst, machine, alu::vnclip);
+    Ok(())
+}
+
+pub fn handle_vnclip_wi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    v_wi_loop_u!(inst, machine, alu::vnclip);
+    Ok(())
+}
+
 pub fn handle_vmv_v_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     v_vv_loop_s!(inst, machine, alu::mv);
     Ok(())
@@ -2414,36 +2444,6 @@ pub fn handle_vssra_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     Ok(())
 }
 
-pub fn handle_vnclipu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_wv_loop_u!(inst, machine, alu::vnclipu);
-    Ok(())
-}
-
-pub fn handle_vnclipu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_wx_loop_u!(inst, machine, alu::vnclipu);
-    Ok(())
-}
-
-pub fn handle_vnclipu_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_wi_loop_u!(inst, machine, alu::vnclipu);
-    Ok(())
-}
-
-pub fn handle_vnclip_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_wv_loop_u!(inst, machine, alu::vnclip);
-    Ok(())
-}
-
-pub fn handle_vnclip_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_wx_loop_u!(inst, machine, alu::vnclip);
-    Ok(())
-}
-
-pub fn handle_vnclip_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_wi_loop_u!(inst, machine, alu::vnclip);
-    Ok(())
-}
-
 pub fn handle_vredsum_vs<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     v_vs_loop_s!(inst, machine, Eint::wrapping_add);
     Ok(())
@@ -2547,17 +2547,17 @@ pub fn handle_vfirst_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     Ok(())
 }
 
-pub fn handle_vsbf_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vmsbf_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     m_m_loop!(inst, machine, alu::sbf);
     Ok(())
 }
 
-pub fn handle_vsif_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vmsif_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     m_m_loop!(inst, machine, alu::sif);
     Ok(())
 }
 
-pub fn handle_vsof_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+pub fn handle_vmsof_m<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     m_m_loop!(inst, machine, alu::sof);
     Ok(())
 }
@@ -3070,436 +3070,432 @@ pub fn handle_vmv8r_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
 
 pub type HandleFunction<Mac> = fn(&mut Mac, Instruction) -> Result<(), Error>;
 
-#[rustfmt::skip]
-pub fn generate_handle_function_list<Mac: Machine>() -> [Option<HandleFunction<Mac>>; 65536] {
-    let mut handle_function_list = [None; 65536];
-    handle_function_list[insts::OP_UNLOADED as usize] = Some(handle_unloaded::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ADD as usize] = Some(handle_add::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ADDI as usize] = Some(handle_addi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ADDIW as usize] = Some(handle_addiw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ADDW as usize] = Some(handle_addw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_AND as usize] = Some(handle_and::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ANDI as usize] = Some(handle_andi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_DIV as usize] = Some(handle_div::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_DIVU as usize] = Some(handle_divu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_DIVUW as usize] = Some(handle_divuw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_DIVW as usize] = Some(handle_divw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_FENCE as usize] = Some(handle_fence::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_FENCEI as usize] = Some(handle_fencei::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LB as usize] = Some(handle_lb::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LBU as usize] = Some(handle_lbu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LD as usize] = Some(handle_ld::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LH as usize] = Some(handle_lh::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LHU as usize] = Some(handle_lhu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LUI as usize] = Some(handle_lui::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LW as usize] = Some(handle_lw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LWU as usize] = Some(handle_lwu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MUL as usize] = Some(handle_mul::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MULH as usize] = Some(handle_mulh::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MULHSU as usize] = Some(handle_mulhsu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MULHU as usize] = Some(handle_mulhu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MULW as usize] = Some(handle_mulw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_OR as usize] = Some(handle_or::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ORI as usize] = Some(handle_ori::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_REM as usize] = Some(handle_rem::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_REMU as usize] = Some(handle_remu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_REMUW as usize] = Some(handle_remuw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_REMW as usize] = Some(handle_remw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SB as usize] = Some(handle_sb::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SD as usize] = Some(handle_sd::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH as usize] = Some(handle_sh::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLL as usize] = Some(handle_sll::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLLI as usize] = Some(handle_slli::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLLIW as usize] = Some(handle_slliw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLLW as usize] = Some(handle_sllw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLT as usize] = Some(handle_slt::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLTI as usize] = Some(handle_slti::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLTIU as usize] = Some(handle_sltiu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLTU as usize] = Some(handle_sltu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRA as usize] = Some(handle_sra::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRAI as usize] = Some(handle_srai::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRAIW as usize] = Some(handle_sraiw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRAW as usize] = Some(handle_sraw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRL as usize] = Some(handle_srl::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRLI as usize] = Some(handle_srli::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRLIW as usize] = Some(handle_srliw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SRLW as usize] = Some(handle_srlw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SUB as usize] = Some(handle_sub::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SUBW as usize] = Some(handle_subw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SW as usize] = Some(handle_sw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_XOR as usize] = Some(handle_xor::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_XORI as usize] = Some(handle_xori::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ADDUW as usize] = Some(handle_adduw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ANDN as usize] = Some(handle_andn::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BCLR as usize] = Some(handle_bclr::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BCLRI as usize] = Some(handle_bclri::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BEXT as usize] = Some(handle_bext::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BEXTI as usize] = Some(handle_bexti::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BINV as usize] = Some(handle_binv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BINVI as usize] = Some(handle_binvi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BSET as usize] = Some(handle_bset::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BSETI as usize] = Some(handle_bseti::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CLMUL as usize] = Some(handle_clmul::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CLMULH as usize] = Some(handle_clmulh::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CLMULR as usize] = Some(handle_clmulr::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CLZ as usize] = Some(handle_clz::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CLZW as usize] = Some(handle_clzw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CPOP as usize] = Some(handle_cpop::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CPOPW as usize] = Some(handle_cpopw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CTZ as usize] = Some(handle_ctz::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CTZW as usize] = Some(handle_ctzw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MAX as usize] = Some(handle_max::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MAXU as usize] = Some(handle_maxu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MIN as usize] = Some(handle_min::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_MINU as usize] = Some(handle_minu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ORCB as usize] = Some(handle_orcb::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ORN as usize] = Some(handle_orn::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_REV8 as usize] = Some(handle_rev8::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ROL as usize] = Some(handle_rol::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ROLW as usize] = Some(handle_rolw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ROR as usize] = Some(handle_ror::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_RORI as usize] = Some(handle_rori::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_RORIW as usize] = Some(handle_roriw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_RORW as usize] = Some(handle_rorw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SEXTB as usize] = Some(handle_sextb::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SEXTH as usize] = Some(handle_sexth::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH1ADD as usize] = Some(handle_sh1add::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH1ADDUW as usize] = Some(handle_sh1adduw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH2ADD as usize] = Some(handle_sh2add::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH2ADDUW as usize] = Some(handle_sh2adduw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH3ADD as usize] = Some(handle_sh3add::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SH3ADDUW as usize] = Some(handle_sh3adduw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SLLIUW as usize] = Some(handle_slliuw::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_XNOR as usize] = Some(handle_xnor::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ZEXTH as usize] = Some(handle_zexth::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_WIDE_MUL as usize] = Some(handle_wide_mul::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_WIDE_MULU as usize] = Some(handle_wide_mulu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_WIDE_MULSU as usize] = Some(handle_wide_mulsu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_WIDE_DIV as usize] = Some(handle_wide_div::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_WIDE_DIVU as usize] = Some(handle_wide_divu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_LD_SIGN_EXTENDED_32_CONSTANT as usize] = Some(handle_ld_sign_extended_32_constant::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ADC as usize] = Some(handle_adc::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_SBB as usize] = Some(handle_sbb::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CUSTOM_LOAD_IMM as usize] = Some(handle_custom_load_imm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_AUIPC as usize] = Some(handle_auipc::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BEQ as usize] = Some(handle_beq::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BGE as usize] = Some(handle_bge::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BGEU as usize] = Some(handle_bgeu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BLT as usize] = Some(handle_blt::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BLTU as usize] = Some(handle_bltu::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_BNE as usize] = Some(handle_bne::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_EBREAK as usize] = Some(handle_ebreak::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_ECALL as usize] = Some(handle_ecall::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_JAL as usize] = Some(handle_jal::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_JALR as usize] = Some(handle_jalr::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_FAR_JUMP_REL as usize] = Some(handle_far_jump_rel::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_FAR_JUMP_ABS as usize] = Some(handle_far_jump_abs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_CUSTOM_TRACE_END as usize] = Some(handle_custom_trace_end::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSETVLI as usize] = Some(handle_vsetvli::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSETIVLI as usize] = Some(handle_vsetivli::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSETVL as usize] = Some(handle_vsetvl::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLM_V as usize] = Some(handle_vlm_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE8_V as usize] = Some(handle_vle8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE16_V as usize] = Some(handle_vle16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE32_V as usize] = Some(handle_vle32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE64_V as usize] = Some(handle_vle64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE128_V as usize] = Some(handle_vle128_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE256_V as usize] = Some(handle_vle256_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE512_V as usize] = Some(handle_vle512_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLE1024_V as usize] = Some(handle_vle1024_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSM_V as usize] = Some(handle_vsm_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE8_V as usize] = Some(handle_vse8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE16_V as usize] = Some(handle_vse16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE32_V as usize] = Some(handle_vse32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE64_V as usize] = Some(handle_vse64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE128_V as usize] = Some(handle_vse128_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE256_V as usize] = Some(handle_vse256_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE512_V as usize] = Some(handle_vse512_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSE1024_V as usize] = Some(handle_vse1024_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE8_V as usize] = Some(handle_vlse8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE16_V as usize] = Some(handle_vlse16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE32_V as usize] = Some(handle_vlse32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE64_V as usize] = Some(handle_vlse64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE128_V as usize] = Some(handle_vlse128_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE256_V as usize] = Some(handle_vlse256_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE512_V as usize] = Some(handle_vlse512_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLSE1024_V as usize] = Some(handle_vlse1024_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE8_V as usize] = Some(handle_vsse8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE16_V as usize] = Some(handle_vsse16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE32_V as usize] = Some(handle_vsse32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE64_V as usize] = Some(handle_vsse64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE128_V as usize] = Some(handle_vsse128_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE256_V as usize] = Some(handle_vsse256_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE512_V as usize] = Some(handle_vsse512_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSE1024_V as usize] = Some(handle_vsse1024_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLUXEI8_V as usize] = Some(handle_vluxei8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLUXEI16_V as usize] = Some(handle_vluxei16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLUXEI32_V as usize] = Some(handle_vluxei32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLUXEI64_V as usize] = Some(handle_vluxei64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLOXEI8_V as usize] = Some(handle_vloxei8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLOXEI16_V as usize] = Some(handle_vloxei16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLOXEI32_V as usize] = Some(handle_vloxei32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VLOXEI64_V as usize] = Some(handle_vloxei64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSUXEI8_V as usize] = Some(handle_vsuxei8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSUXEI16_V as usize] = Some(handle_vsuxei16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSUXEI32_V as usize] = Some(handle_vsuxei32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSUXEI64_V as usize] = Some(handle_vsuxei64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSOXEI8_V as usize] = Some(handle_vsoxei8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSOXEI16_V as usize] = Some(handle_vsoxei16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSOXEI32_V as usize] = Some(handle_vsoxei32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSOXEI64_V as usize] = Some(handle_vsoxei64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL1RE8_V as usize] = Some(handle_vl1re8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL1RE16_V as usize] = Some(handle_vl1re16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL1RE32_V as usize] = Some(handle_vl1re32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL1RE64_V as usize] = Some(handle_vl1re64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL2RE8_V as usize] = Some(handle_vl2re8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL2RE16_V as usize] = Some(handle_vl2re16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL2RE32_V as usize] = Some(handle_vl2re32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL2RE64_V as usize] = Some(handle_vl2re64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL4RE8_V as usize] = Some(handle_vl4re8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL4RE16_V as usize] = Some(handle_vl4re16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL4RE32_V as usize] = Some(handle_vl4re32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL4RE64_V as usize] = Some(handle_vl4re64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL8RE8_V as usize] = Some(handle_vl8re8_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL8RE16_V as usize] = Some(handle_vl8re16_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL8RE32_V as usize] = Some(handle_vl8re32_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VL8RE64_V as usize] = Some(handle_vl8re64_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VS1R_V as usize] = Some(handle_vs1r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VS2R_V as usize] = Some(handle_vs2r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VS4R_V as usize] = Some(handle_vs4r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VS8R_V as usize] = Some(handle_vs8r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VADD_VV as usize] = Some(handle_vadd_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VADD_VX as usize] = Some(handle_vadd_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VADD_VI as usize] = Some(handle_vadd_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSUB_VV as usize] = Some(handle_vsub_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSUB_VX as usize] = Some(handle_vsub_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRSUB_VX as usize] = Some(handle_vrsub_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRSUB_VI as usize] = Some(handle_vrsub_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADDU_VV as usize] = Some(handle_vw_addu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADDU_VX as usize] = Some(handle_vw_addu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUBU_VV as usize] = Some(handle_vw_subu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUBU_VX as usize] = Some(handle_vw_subu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADD_VV as usize] = Some(handle_vwadd_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADD_VX as usize] = Some(handle_vwadd_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUB_VV as usize] = Some(handle_vwsub_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUB_VX as usize] = Some(handle_vwsub_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADDU_WV as usize] = Some(handle_vwaddu_wv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADDU_WX as usize] = Some(handle_vwaddu_wx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUBU_WV as usize] = Some(handle_vwsubu_wv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUBU_WX as usize] = Some(handle_vwsubu_wx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADD_WV as usize] = Some(handle_vwadd_wv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWADD_WX as usize] = Some(handle_vwadd_wx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUB_WV as usize] = Some(handle_vwsub_wv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWSUB_WX as usize] = Some(handle_vwsub_wx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VZEXT_VF2 as usize] = Some(handle_vzext_vf2::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VZEXT_VF4 as usize] = Some(handle_vzext_vf4::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VZEXT_VF8 as usize] = Some(handle_vzext_vf8::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSEXT_VF2 as usize] = Some(handle_vsext_vf2::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSEXT_VF4 as usize] = Some(handle_vsext_vf4::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSEXT_VF8 as usize] = Some(handle_vsext_vf8::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VADC_VVM as usize] = Some(handle_vadc_vvm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VADC_VXM as usize] = Some(handle_vadc_vxm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VADC_VIM as usize] = Some(handle_vadc_vim::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADC_VVM as usize] = Some(handle_vmadc_vvm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADC_VXM as usize] = Some(handle_vmadc_vxm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADC_VIM as usize] = Some(handle_vmadc_vim::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADC_VV as usize] = Some(handle_vmadc_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADC_VX as usize] = Some(handle_vmadc_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADC_VI as usize] = Some(handle_vmadc_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSBC_VVM as usize] = Some(handle_vsbc_vvm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSBC_VXM as usize] = Some(handle_vsbc_vxm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSBC_VVM as usize] = Some(handle_vmsbc_vvm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSBC_VXM as usize] = Some(handle_vmsbc_vxm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSBC_VV as usize] = Some(handle_vmsbc_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSBC_VX as usize] = Some(handle_vmsbc_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAND_VV as usize] = Some(handle_vand_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAND_VX as usize] = Some(handle_vand_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAND_VI as usize] = Some(handle_vand_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VOR_VV as usize] = Some(handle_vor_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VOR_VX as usize] = Some(handle_vor_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VOR_VI as usize] = Some(handle_vor_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VXOR_VV as usize] = Some(handle_vxor_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VXOR_VX as usize] = Some(handle_vxor_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VXOR_VI as usize] = Some(handle_vxor_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLL_VV as usize] = Some(handle_vsll_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLL_VX as usize] = Some(handle_vsll_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLL_VI as usize] = Some(handle_vsll_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSRL_VV as usize] = Some(handle_vsrl_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSRL_VX as usize] = Some(handle_vsrl_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSRL_VI as usize] = Some(handle_vsrl_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSRA_VV as usize] = Some(handle_vsra_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSRA_VX as usize] = Some(handle_vsra_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSRA_VI as usize] = Some(handle_vsra_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNSRL_WV as usize] = Some(handle_vnsrl_wv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNSRL_WX as usize] = Some(handle_vnsrl_wx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNSRL_WI as usize] = Some(handle_vnsrl_wi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNSRA_WV as usize] = Some(handle_vnsra_wv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNSRA_WX as usize] = Some(handle_vnsra_wx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNSRA_WI as usize] = Some(handle_vnsra_wi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSEQ_VV as usize] = Some(handle_vmseq_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSEQ_VX as usize] = Some(handle_vmseq_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSEQ_VI as usize] = Some(handle_vmseq_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSNE_VV as usize] = Some(handle_vmsne_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSNE_VX as usize] = Some(handle_vmsne_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSNE_VI as usize] = Some(handle_vmsne_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLTU_VV as usize] = Some(handle_vmsltu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLTU_VX as usize] = Some(handle_vmsltu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLT_VV as usize] = Some(handle_vmslt_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLT_VX as usize] = Some(handle_vmslt_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLEU_VV as usize] = Some(handle_vmsleu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLEU_VX as usize] = Some(handle_vmsleu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLEU_VI as usize] = Some(handle_vmsleu_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLE_VV as usize] = Some(handle_vmsle_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLE_VX as usize] = Some(handle_vmsle_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSLE_VI as usize] = Some(handle_vmsle_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSGTU_VX as usize] = Some(handle_vmsgtu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSGTU_VI as usize] = Some(handle_vmsgtu_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSGT_VX as usize] = Some(handle_vmsgt_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSGT_VI as usize] = Some(handle_vmsgt_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMAXU_VV as usize] = Some(handle_vmaxu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMAXU_VX as usize] = Some(handle_vmaxu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMAX_VV as usize] = Some(handle_vmax_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMAX_VX as usize] = Some(handle_vmax_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMINU_VV as usize] = Some(handle_vminu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMINU_VX as usize] = Some(handle_vminu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMIN_VV as usize] = Some(handle_vmin_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMIN_VX as usize] = Some(handle_vmin_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMUL_VV as usize] = Some(handle_vmul_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMUL_VX as usize] = Some(handle_vmul_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMULH_VV as usize] = Some(handle_vmulh_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMULH_VX as usize] = Some(handle_vmulh_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMULHU_VV as usize] = Some(handle_vmulhu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMULHU_VX as usize] = Some(handle_vmulhu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMULHSU_VV as usize] = Some(handle_vmulhsu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMULHSU_VX as usize] = Some(handle_vmulhsu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VDIVU_VV as usize] = Some(handle_vdivu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VDIVU_VX as usize] = Some(handle_vdivu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VDIV_VV as usize] = Some(handle_vdiv_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VDIV_VX as usize] = Some(handle_vdiv_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREMU_VV as usize] = Some(handle_vremu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREMU_VX as usize] = Some(handle_vremu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREM_VV as usize] = Some(handle_vrem_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREM_VX as usize] = Some(handle_vrem_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMULU_VV as usize] = Some(handle_vwmulu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMULU_VX as usize] = Some(handle_vwmulu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMULSU_VV as usize] = Some(handle_vwmulsu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMULSU_VX as usize] = Some(handle_vwmulsu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMUL_VV as usize] = Some(handle_vwmul_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMUL_VX as usize] = Some(handle_vwmul_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMACC_VV as usize] = Some(handle_vmacc_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMACC_VX as usize] = Some(handle_vmacc_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNMSAC_VV as usize] = Some(handle_vnmsac_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNMSAC_VX as usize] = Some(handle_vnmsac_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADD_VV as usize] = Some(handle_vmadd_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMADD_VX as usize] = Some(handle_vmadd_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNMSUB_VV as usize] = Some(handle_vnmsub_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNMSUB_VX as usize] = Some(handle_vnmsub_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACCU_VV as usize] = Some(handle_vwmaccu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACCU_VX as usize] = Some(handle_vwmaccu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACC_VV as usize] = Some(handle_vwmacc_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACC_VX as usize] = Some(handle_vwmacc_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACCSU_VV as usize] = Some(handle_vwmaccsu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACCSU_VX as usize] = Some(handle_vwmaccsu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWMACCUS_VX as usize] = Some(handle_vwmaccus_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMERGE_VVM as usize] = Some(handle_vmerge_vvm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMERGE_VXM as usize] = Some(handle_vmerge_vxm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMERGE_VIM as usize] = Some(handle_vmerge_vim::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV_V_V as usize] = Some(handle_vmv_v_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV_V_X as usize] = Some(handle_vmv_v_x::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV_V_I as usize] = Some(handle_vmv_v_i::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSADDU_VV as usize] = Some(handle_vsaddu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSADDU_VX as usize] = Some(handle_vsaddu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSADDU_VI as usize] = Some(handle_vsaddu_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSADD_VV as usize] = Some(handle_vsadd_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSADD_VX as usize] = Some(handle_vsadd_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSADD_VI as usize] = Some(handle_vsadd_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSUBU_VV as usize] = Some(handle_vssubu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSUBU_VX as usize] = Some(handle_vssubu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSUB_VV as usize] = Some(handle_vssub_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSUB_VX as usize] = Some(handle_vssub_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAADD_VV as usize] = Some(handle_vaadd_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAADD_VX as usize] = Some(handle_vaadd_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAADDU_VV as usize] = Some(handle_vaaddu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VAADDU_VX as usize] = Some(handle_vaaddu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VASUB_VV as usize] = Some(handle_vasub_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VASUB_VX as usize] = Some(handle_vasub_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VASUBU_VV as usize] = Some(handle_vasubu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VASUBU_VX as usize] = Some(handle_vasubu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSMUL_VV as usize] = Some(handle_vsmul_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSMUL_VX as usize] = Some(handle_vsmul_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSRL_VV as usize] = Some(handle_vssrl_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSRL_VX as usize] = Some(handle_vssrl_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSRL_VI as usize] = Some(handle_vssrl_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSRA_VV as usize] = Some(handle_vssra_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSRA_VX as usize] = Some(handle_vssra_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSSRA_VI as usize] = Some(handle_vssra_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNCLIPU_WV as usize] = Some(handle_vnclipu_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNCLIPU_WX as usize] = Some(handle_vnclipu_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNCLIPU_WI as usize] = Some(handle_vnclipu_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNCLIP_WV as usize] = Some(handle_vnclip_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNCLIP_WX as usize] = Some(handle_vnclip_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VNCLIP_WI as usize] = Some(handle_vnclip_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDSUM_VS as usize] = Some(handle_vredsum_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDAND_VS as usize] = Some(handle_vredand_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDOR_VS as usize] = Some(handle_vredor_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDXOR_VS as usize] = Some(handle_vredxor_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDMINU_VS as usize] = Some(handle_vredminu_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDMIN_VS as usize] = Some(handle_vredmin_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDMAXU_VS as usize] = Some(handle_vredmaxu_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VREDMAX_VS as usize] = Some(handle_vredmax_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWREDSUMU_VS as usize] = Some(handle_vwredsumu_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VWREDSUM_VS as usize] = Some(handle_vwredsum_vs::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMAND_MM as usize] = Some(handle_vmand_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMNAND_MM as usize] = Some(handle_vmnand_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMANDNOT_MM as usize] = Some(handle_vmandnot_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMXOR_MM as usize] = Some(handle_vmxor_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMOR_MM as usize] = Some(handle_vmor_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMNOR_MM as usize] = Some(handle_vmnor_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMORNOT_MM as usize] = Some(handle_vmornot_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMXNOR_MM as usize] = Some(handle_vmxnor_mm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VCPOP_M as usize] = Some(handle_vcpop_m::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VFIRST_M as usize] = Some(handle_vfirst_m::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSBF_M as usize] = Some(handle_vsbf_m::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSIF_M as usize] = Some(handle_vsif_m::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMSOF_M as usize] = Some(handle_vsof_m::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VIOTA_M as usize] = Some(handle_viota_m::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VID_V as usize] = Some(handle_vid_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV_X_S as usize] = Some(handle_vmv_x_s::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV_S_X as usize] = Some(handle_vmv_s_x::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLIDEUP_VX as usize] = Some(handle_vslideup_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLIDEUP_VI as usize] = Some(handle_vslideup_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLIDEDOWN_VX as usize] = Some(handle_vslidedown_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLIDEDOWN_VI as usize] = Some(handle_vslidedown_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLIDE1UP_VX as usize] = Some(handle_vslide1up_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VSLIDE1DOWN_VX as usize] = Some(handle_vslide1down_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRGATHER_VV as usize] = Some(handle_vrgather_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRGATHER_VX as usize] = Some(handle_vrgather_vx::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRGATHER_VI as usize] = Some(handle_vrgather_vi::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VRGATHEREI16_VV as usize] = Some(handle_vrgatherei16_vv::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VCOMPRESS_VM as usize] = Some(handle_vcompress_vm::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV1R_V as usize] = Some(handle_vmv1r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV2R_V as usize] = Some(handle_vmv2r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV4R_V as usize] = Some(handle_vmv4r_v::<Mac> as HandleFunction::<Mac>);
-    handle_function_list[insts::OP_VMV8R_V as usize] = Some(handle_vmv8r_v::<Mac> as HandleFunction::<Mac>);
-    return handle_function_list;
+pub fn generate_handle_function_list<Mac: Machine>(
+) -> [HandleFunction<Mac>; insts::MAXIMUM_LEVEL2_OPCODE as usize + 1] {
+    [
+        handle_unloaded::<Mac> as HandleFunction<Mac>,
+        handle_add::<Mac> as HandleFunction<Mac>,
+        handle_addi::<Mac> as HandleFunction<Mac>,
+        handle_addiw::<Mac> as HandleFunction<Mac>,
+        handle_addw::<Mac> as HandleFunction<Mac>,
+        handle_and::<Mac> as HandleFunction<Mac>,
+        handle_andi::<Mac> as HandleFunction<Mac>,
+        handle_div::<Mac> as HandleFunction<Mac>,
+        handle_divu::<Mac> as HandleFunction<Mac>,
+        handle_divuw::<Mac> as HandleFunction<Mac>,
+        handle_divw::<Mac> as HandleFunction<Mac>,
+        handle_fence::<Mac> as HandleFunction<Mac>,
+        handle_fencei::<Mac> as HandleFunction<Mac>,
+        handle_lb::<Mac> as HandleFunction<Mac>,
+        handle_lbu::<Mac> as HandleFunction<Mac>,
+        handle_ld::<Mac> as HandleFunction<Mac>,
+        handle_lh::<Mac> as HandleFunction<Mac>,
+        handle_lhu::<Mac> as HandleFunction<Mac>,
+        handle_lui::<Mac> as HandleFunction<Mac>,
+        handle_lw::<Mac> as HandleFunction<Mac>,
+        handle_lwu::<Mac> as HandleFunction<Mac>,
+        handle_mul::<Mac> as HandleFunction<Mac>,
+        handle_mulh::<Mac> as HandleFunction<Mac>,
+        handle_mulhsu::<Mac> as HandleFunction<Mac>,
+        handle_mulhu::<Mac> as HandleFunction<Mac>,
+        handle_mulw::<Mac> as HandleFunction<Mac>,
+        handle_or::<Mac> as HandleFunction<Mac>,
+        handle_ori::<Mac> as HandleFunction<Mac>,
+        handle_rem::<Mac> as HandleFunction<Mac>,
+        handle_remu::<Mac> as HandleFunction<Mac>,
+        handle_remuw::<Mac> as HandleFunction<Mac>,
+        handle_remw::<Mac> as HandleFunction<Mac>,
+        handle_sb::<Mac> as HandleFunction<Mac>,
+        handle_sd::<Mac> as HandleFunction<Mac>,
+        handle_sh::<Mac> as HandleFunction<Mac>,
+        handle_sll::<Mac> as HandleFunction<Mac>,
+        handle_slli::<Mac> as HandleFunction<Mac>,
+        handle_slliw::<Mac> as HandleFunction<Mac>,
+        handle_sllw::<Mac> as HandleFunction<Mac>,
+        handle_slt::<Mac> as HandleFunction<Mac>,
+        handle_slti::<Mac> as HandleFunction<Mac>,
+        handle_sltiu::<Mac> as HandleFunction<Mac>,
+        handle_sltu::<Mac> as HandleFunction<Mac>,
+        handle_sra::<Mac> as HandleFunction<Mac>,
+        handle_srai::<Mac> as HandleFunction<Mac>,
+        handle_sraiw::<Mac> as HandleFunction<Mac>,
+        handle_sraw::<Mac> as HandleFunction<Mac>,
+        handle_srl::<Mac> as HandleFunction<Mac>,
+        handle_srli::<Mac> as HandleFunction<Mac>,
+        handle_srliw::<Mac> as HandleFunction<Mac>,
+        handle_srlw::<Mac> as HandleFunction<Mac>,
+        handle_sub::<Mac> as HandleFunction<Mac>,
+        handle_subw::<Mac> as HandleFunction<Mac>,
+        handle_sw::<Mac> as HandleFunction<Mac>,
+        handle_xor::<Mac> as HandleFunction<Mac>,
+        handle_xori::<Mac> as HandleFunction<Mac>,
+        handle_adduw::<Mac> as HandleFunction<Mac>,
+        handle_andn::<Mac> as HandleFunction<Mac>,
+        handle_bclr::<Mac> as HandleFunction<Mac>,
+        handle_bclri::<Mac> as HandleFunction<Mac>,
+        handle_bext::<Mac> as HandleFunction<Mac>,
+        handle_bexti::<Mac> as HandleFunction<Mac>,
+        handle_binv::<Mac> as HandleFunction<Mac>,
+        handle_binvi::<Mac> as HandleFunction<Mac>,
+        handle_bset::<Mac> as HandleFunction<Mac>,
+        handle_bseti::<Mac> as HandleFunction<Mac>,
+        handle_clmul::<Mac> as HandleFunction<Mac>,
+        handle_clmulh::<Mac> as HandleFunction<Mac>,
+        handle_clmulr::<Mac> as HandleFunction<Mac>,
+        handle_clz::<Mac> as HandleFunction<Mac>,
+        handle_clzw::<Mac> as HandleFunction<Mac>,
+        handle_cpop::<Mac> as HandleFunction<Mac>,
+        handle_cpopw::<Mac> as HandleFunction<Mac>,
+        handle_ctz::<Mac> as HandleFunction<Mac>,
+        handle_ctzw::<Mac> as HandleFunction<Mac>,
+        handle_max::<Mac> as HandleFunction<Mac>,
+        handle_maxu::<Mac> as HandleFunction<Mac>,
+        handle_min::<Mac> as HandleFunction<Mac>,
+        handle_minu::<Mac> as HandleFunction<Mac>,
+        handle_orcb::<Mac> as HandleFunction<Mac>,
+        handle_orn::<Mac> as HandleFunction<Mac>,
+        handle_rev8::<Mac> as HandleFunction<Mac>,
+        handle_rol::<Mac> as HandleFunction<Mac>,
+        handle_rolw::<Mac> as HandleFunction<Mac>,
+        handle_ror::<Mac> as HandleFunction<Mac>,
+        handle_rori::<Mac> as HandleFunction<Mac>,
+        handle_roriw::<Mac> as HandleFunction<Mac>,
+        handle_rorw::<Mac> as HandleFunction<Mac>,
+        handle_sextb::<Mac> as HandleFunction<Mac>,
+        handle_sexth::<Mac> as HandleFunction<Mac>,
+        handle_sh1add::<Mac> as HandleFunction<Mac>,
+        handle_sh1adduw::<Mac> as HandleFunction<Mac>,
+        handle_sh2add::<Mac> as HandleFunction<Mac>,
+        handle_sh2adduw::<Mac> as HandleFunction<Mac>,
+        handle_sh3add::<Mac> as HandleFunction<Mac>,
+        handle_sh3adduw::<Mac> as HandleFunction<Mac>,
+        handle_slliuw::<Mac> as HandleFunction<Mac>,
+        handle_xnor::<Mac> as HandleFunction<Mac>,
+        handle_zexth::<Mac> as HandleFunction<Mac>,
+        handle_wide_mul::<Mac> as HandleFunction<Mac>,
+        handle_wide_mulu::<Mac> as HandleFunction<Mac>,
+        handle_wide_mulsu::<Mac> as HandleFunction<Mac>,
+        handle_wide_div::<Mac> as HandleFunction<Mac>,
+        handle_wide_divu::<Mac> as HandleFunction<Mac>,
+        handle_ld_sign_extended_32_constant::<Mac> as HandleFunction<Mac>,
+        handle_adc::<Mac> as HandleFunction<Mac>,
+        handle_sbb::<Mac> as HandleFunction<Mac>,
+        handle_custom_load_imm::<Mac> as HandleFunction<Mac>,
+        handle_auipc::<Mac> as HandleFunction<Mac>,
+        handle_beq::<Mac> as HandleFunction<Mac>,
+        handle_bge::<Mac> as HandleFunction<Mac>,
+        handle_bgeu::<Mac> as HandleFunction<Mac>,
+        handle_blt::<Mac> as HandleFunction<Mac>,
+        handle_bltu::<Mac> as HandleFunction<Mac>,
+        handle_bne::<Mac> as HandleFunction<Mac>,
+        handle_ebreak::<Mac> as HandleFunction<Mac>,
+        handle_ecall::<Mac> as HandleFunction<Mac>,
+        handle_jal::<Mac> as HandleFunction<Mac>,
+        handle_jalr::<Mac> as HandleFunction<Mac>,
+        handle_far_jump_rel::<Mac> as HandleFunction<Mac>,
+        handle_far_jump_abs::<Mac> as HandleFunction<Mac>,
+        handle_custom_trace_end::<Mac> as HandleFunction<Mac>,
+        handle_vsetvli::<Mac> as HandleFunction<Mac>,
+        handle_vsetivli::<Mac> as HandleFunction<Mac>,
+        handle_vsetvl::<Mac> as HandleFunction<Mac>,
+        handle_vlm_v::<Mac> as HandleFunction<Mac>,
+        handle_vle8_v::<Mac> as HandleFunction<Mac>,
+        handle_vle16_v::<Mac> as HandleFunction<Mac>,
+        handle_vle32_v::<Mac> as HandleFunction<Mac>,
+        handle_vle64_v::<Mac> as HandleFunction<Mac>,
+        handle_vle128_v::<Mac> as HandleFunction<Mac>,
+        handle_vle256_v::<Mac> as HandleFunction<Mac>,
+        handle_vle512_v::<Mac> as HandleFunction<Mac>,
+        handle_vle1024_v::<Mac> as HandleFunction<Mac>,
+        handle_vsm_v::<Mac> as HandleFunction<Mac>,
+        handle_vse8_v::<Mac> as HandleFunction<Mac>,
+        handle_vse16_v::<Mac> as HandleFunction<Mac>,
+        handle_vse32_v::<Mac> as HandleFunction<Mac>,
+        handle_vse64_v::<Mac> as HandleFunction<Mac>,
+        handle_vse128_v::<Mac> as HandleFunction<Mac>,
+        handle_vse256_v::<Mac> as HandleFunction<Mac>,
+        handle_vse512_v::<Mac> as HandleFunction<Mac>,
+        handle_vse1024_v::<Mac> as HandleFunction<Mac>,
+        handle_vadd_vv::<Mac> as HandleFunction<Mac>,
+        handle_vadd_vx::<Mac> as HandleFunction<Mac>,
+        handle_vadd_vi::<Mac> as HandleFunction<Mac>,
+        handle_vsub_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsub_vx::<Mac> as HandleFunction<Mac>,
+        handle_vrsub_vx::<Mac> as HandleFunction<Mac>,
+        handle_vrsub_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmul_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmul_vx::<Mac> as HandleFunction<Mac>,
+        handle_vdiv_vv::<Mac> as HandleFunction<Mac>,
+        handle_vdiv_vx::<Mac> as HandleFunction<Mac>,
+        handle_vdivu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vdivu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vrem_vv::<Mac> as HandleFunction<Mac>,
+        handle_vrem_vx::<Mac> as HandleFunction<Mac>,
+        handle_vremu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vremu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vsll_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsll_vx::<Mac> as HandleFunction<Mac>,
+        handle_vsll_vi::<Mac> as HandleFunction<Mac>,
+        handle_vsrl_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsrl_vx::<Mac> as HandleFunction<Mac>,
+        handle_vsrl_vi::<Mac> as HandleFunction<Mac>,
+        handle_vsra_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsra_vx::<Mac> as HandleFunction<Mac>,
+        handle_vsra_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmseq_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmseq_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmseq_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmsne_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmsne_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmsne_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmsltu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmsltu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmslt_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmslt_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmsleu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmsleu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmsleu_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmsle_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmsle_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmsle_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmsgtu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmsgtu_vi::<Mac> as HandleFunction<Mac>,
+        handle_vmsgt_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmsgt_vi::<Mac> as HandleFunction<Mac>,
+        handle_vminu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vminu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmin_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmin_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmaxu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmaxu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmax_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmax_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwaddu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwaddu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwsubu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwsubu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwadd_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwadd_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwsub_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwsub_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwaddu_wv::<Mac> as HandleFunction<Mac>,
+        handle_vwaddu_wx::<Mac> as HandleFunction<Mac>,
+        handle_vwsubu_wv::<Mac> as HandleFunction<Mac>,
+        handle_vwsubu_wx::<Mac> as HandleFunction<Mac>,
+        handle_vwadd_wv::<Mac> as HandleFunction<Mac>,
+        handle_vwadd_wx::<Mac> as HandleFunction<Mac>,
+        handle_vwsub_wv::<Mac> as HandleFunction<Mac>,
+        handle_vwsub_wx::<Mac> as HandleFunction<Mac>,
+        handle_vzext_vf8::<Mac> as HandleFunction<Mac>,
+        handle_vsext_vf8::<Mac> as HandleFunction<Mac>,
+        handle_vzext_vf4::<Mac> as HandleFunction<Mac>,
+        handle_vsext_vf4::<Mac> as HandleFunction<Mac>,
+        handle_vzext_vf2::<Mac> as HandleFunction<Mac>,
+        handle_vsext_vf2::<Mac> as HandleFunction<Mac>,
+        handle_vadc_vvm::<Mac> as HandleFunction<Mac>,
+        handle_vadc_vxm::<Mac> as HandleFunction<Mac>,
+        handle_vadc_vim::<Mac> as HandleFunction<Mac>,
+        handle_vmadc_vvm::<Mac> as HandleFunction<Mac>,
+        handle_vmadc_vxm::<Mac> as HandleFunction<Mac>,
+        handle_vmadc_vim::<Mac> as HandleFunction<Mac>,
+        handle_vmadc_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmadc_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmadc_vi::<Mac> as HandleFunction<Mac>,
+        handle_vsbc_vvm::<Mac> as HandleFunction<Mac>,
+        handle_vsbc_vxm::<Mac> as HandleFunction<Mac>,
+        handle_vmsbc_vvm::<Mac> as HandleFunction<Mac>,
+        handle_vmsbc_vxm::<Mac> as HandleFunction<Mac>,
+        handle_vmsbc_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmsbc_vx::<Mac> as HandleFunction<Mac>,
+        handle_vand_vv::<Mac> as HandleFunction<Mac>,
+        handle_vand_vi::<Mac> as HandleFunction<Mac>,
+        handle_vand_vx::<Mac> as HandleFunction<Mac>,
+        handle_vor_vv::<Mac> as HandleFunction<Mac>,
+        handle_vor_vx::<Mac> as HandleFunction<Mac>,
+        handle_vor_vi::<Mac> as HandleFunction<Mac>,
+        handle_vxor_vv::<Mac> as HandleFunction<Mac>,
+        handle_vxor_vx::<Mac> as HandleFunction<Mac>,
+        handle_vxor_vi::<Mac> as HandleFunction<Mac>,
+        handle_vnsrl_wv::<Mac> as HandleFunction<Mac>,
+        handle_vnsrl_wx::<Mac> as HandleFunction<Mac>,
+        handle_vnsrl_wi::<Mac> as HandleFunction<Mac>,
+        handle_vnsra_wv::<Mac> as HandleFunction<Mac>,
+        handle_vnsra_wx::<Mac> as HandleFunction<Mac>,
+        handle_vnsra_wi::<Mac> as HandleFunction<Mac>,
+        handle_vmulh_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmulh_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmulhu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmulhu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmulhsu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmulhsu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmulu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwmulu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmulsu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwmulsu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmul_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwmul_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmv_v_v::<Mac> as HandleFunction<Mac>,
+        handle_vmv_v_x::<Mac> as HandleFunction<Mac>,
+        handle_vmv_v_i::<Mac> as HandleFunction<Mac>,
+        handle_vsaddu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsaddu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vsaddu_vi::<Mac> as HandleFunction<Mac>,
+        handle_vsadd_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsadd_vx::<Mac> as HandleFunction<Mac>,
+        handle_vsadd_vi::<Mac> as HandleFunction<Mac>,
+        handle_vssubu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vssubu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vssub_vv::<Mac> as HandleFunction<Mac>,
+        handle_vssub_vx::<Mac> as HandleFunction<Mac>,
+        handle_vaaddu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vaaddu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vaadd_vv::<Mac> as HandleFunction<Mac>,
+        handle_vaadd_vx::<Mac> as HandleFunction<Mac>,
+        handle_vasubu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vasubu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vasub_vv::<Mac> as HandleFunction<Mac>,
+        handle_vasub_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmv1r_v::<Mac> as HandleFunction<Mac>,
+        handle_vmv2r_v::<Mac> as HandleFunction<Mac>,
+        handle_vmv4r_v::<Mac> as HandleFunction<Mac>,
+        handle_vmv8r_v::<Mac> as HandleFunction<Mac>,
+        handle_vfirst_m::<Mac> as HandleFunction<Mac>,
+        handle_vmand_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmnand_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmandnot_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmxor_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmor_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmnor_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmornot_mm::<Mac> as HandleFunction<Mac>,
+        handle_vmxnor_mm::<Mac> as HandleFunction<Mac>,
+        handle_vlse8_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse16_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse32_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse64_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse128_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse256_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse512_v::<Mac> as HandleFunction<Mac>,
+        handle_vlse1024_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse8_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse16_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse32_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse64_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse128_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse256_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse512_v::<Mac> as HandleFunction<Mac>,
+        handle_vsse1024_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei8_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei16_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei32_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei8_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei16_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei32_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei8_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei16_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei32_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei8_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei16_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei32_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vl1re8_v::<Mac> as HandleFunction<Mac>,
+        handle_vl1re16_v::<Mac> as HandleFunction<Mac>,
+        handle_vl1re32_v::<Mac> as HandleFunction<Mac>,
+        handle_vl1re64_v::<Mac> as HandleFunction<Mac>,
+        handle_vl2re8_v::<Mac> as HandleFunction<Mac>,
+        handle_vl2re16_v::<Mac> as HandleFunction<Mac>,
+        handle_vl2re32_v::<Mac> as HandleFunction<Mac>,
+        handle_vl2re64_v::<Mac> as HandleFunction<Mac>,
+        handle_vl4re8_v::<Mac> as HandleFunction<Mac>,
+        handle_vl4re16_v::<Mac> as HandleFunction<Mac>,
+        handle_vl4re32_v::<Mac> as HandleFunction<Mac>,
+        handle_vl4re64_v::<Mac> as HandleFunction<Mac>,
+        handle_vl8re8_v::<Mac> as HandleFunction<Mac>,
+        handle_vl8re16_v::<Mac> as HandleFunction<Mac>,
+        handle_vl8re32_v::<Mac> as HandleFunction<Mac>,
+        handle_vl8re64_v::<Mac> as HandleFunction<Mac>,
+        handle_vs1r_v::<Mac> as HandleFunction<Mac>,
+        handle_vs2r_v::<Mac> as HandleFunction<Mac>,
+        handle_vs4r_v::<Mac> as HandleFunction<Mac>,
+        handle_vs8r_v::<Mac> as HandleFunction<Mac>,
+        handle_vmacc_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmacc_vx::<Mac> as HandleFunction<Mac>,
+        handle_vnmsac_vv::<Mac> as HandleFunction<Mac>,
+        handle_vnmsac_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmadd_vv::<Mac> as HandleFunction<Mac>,
+        handle_vmadd_vx::<Mac> as HandleFunction<Mac>,
+        handle_vnmsub_vv::<Mac> as HandleFunction<Mac>,
+        handle_vnmsub_vx::<Mac> as HandleFunction<Mac>,
+        handle_vssrl_vv::<Mac> as HandleFunction<Mac>,
+        handle_vssrl_vx::<Mac> as HandleFunction<Mac>,
+        handle_vssrl_vi::<Mac> as HandleFunction<Mac>,
+        handle_vssra_vv::<Mac> as HandleFunction<Mac>,
+        handle_vssra_vx::<Mac> as HandleFunction<Mac>,
+        handle_vssra_vi::<Mac> as HandleFunction<Mac>,
+        handle_vsmul_vv::<Mac> as HandleFunction<Mac>,
+        handle_vsmul_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmaccu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwmaccu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmacc_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwmacc_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmaccsu_vv::<Mac> as HandleFunction<Mac>,
+        handle_vwmaccsu_vx::<Mac> as HandleFunction<Mac>,
+        handle_vwmaccus_vx::<Mac> as HandleFunction<Mac>,
+        handle_vmerge_vvm::<Mac> as HandleFunction<Mac>,
+        handle_vmerge_vxm::<Mac> as HandleFunction<Mac>,
+        handle_vmerge_vim::<Mac> as HandleFunction<Mac>,
+        handle_vnclipu_wv::<Mac> as HandleFunction<Mac>,
+        handle_vnclipu_wx::<Mac> as HandleFunction<Mac>,
+        handle_vnclipu_wi::<Mac> as HandleFunction<Mac>,
+        handle_vnclip_wv::<Mac> as HandleFunction<Mac>,
+        handle_vnclip_wx::<Mac> as HandleFunction<Mac>,
+        handle_vnclip_wi::<Mac> as HandleFunction<Mac>,
+        handle_vredsum_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredand_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredor_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredxor_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredminu_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredmin_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredmaxu_vs::<Mac> as HandleFunction<Mac>,
+        handle_vredmax_vs::<Mac> as HandleFunction<Mac>,
+        handle_vwredsumu_vs::<Mac> as HandleFunction<Mac>,
+        handle_vwredsum_vs::<Mac> as HandleFunction<Mac>,
+        handle_vcpop_m::<Mac> as HandleFunction<Mac>,
+        handle_vmsbf_m::<Mac> as HandleFunction<Mac>,
+        handle_vmsof_m::<Mac> as HandleFunction<Mac>,
+        handle_vmsif_m::<Mac> as HandleFunction<Mac>,
+        handle_viota_m::<Mac> as HandleFunction<Mac>,
+        handle_vid_v::<Mac> as HandleFunction<Mac>,
+        handle_vmv_x_s::<Mac> as HandleFunction<Mac>,
+        handle_vmv_s_x::<Mac> as HandleFunction<Mac>,
+        handle_vcompress_vm::<Mac> as HandleFunction<Mac>,
+        handle_vslide1up_vx::<Mac> as HandleFunction<Mac>,
+        handle_vslideup_vx::<Mac> as HandleFunction<Mac>,
+        handle_vslideup_vi::<Mac> as HandleFunction<Mac>,
+        handle_vslide1down_vx::<Mac> as HandleFunction<Mac>,
+        handle_vslidedown_vx::<Mac> as HandleFunction<Mac>,
+        handle_vslidedown_vi::<Mac> as HandleFunction<Mac>,
+        handle_vrgather_vx::<Mac> as HandleFunction<Mac>,
+        handle_vrgather_vv::<Mac> as HandleFunction<Mac>,
+        handle_vrgatherei16_vv::<Mac> as HandleFunction<Mac>,
+        handle_vrgather_vi::<Mac> as HandleFunction<Mac>,
+    ]
 }
 
 pub fn execute_instruction<Mac: Machine>(
     machine: &mut Mac,
-    handle_function_list: &[Option<HandleFunction<Mac>>],
+    handle_function_list: &[HandleFunction<Mac>],
     inst: Instruction,
 ) -> Result<(), Error> {
     let op = extract_opcode(inst);
-    if let Some(f) = handle_function_list[op as usize] {
-        f(machine, inst)
-    } else {
-        Err(Error::InvalidOp(op))
-    }
+    handle_function_list[op as usize](machine, inst)
 }
 
 pub fn execute<Mac: Machine>(
     machine: &mut Mac,
-    handle_function_list: &[Option<HandleFunction<Mac>>],
+    handle_function_list: &[HandleFunction<Mac>],
     inst: Instruction,
 ) -> Result<(), Error> {
     let instruction_size = instruction_length(inst);
