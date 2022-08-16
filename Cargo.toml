@@ -33,7 +33,7 @@ serde = { version = "1.0", features = ["derive"] }
 ckb-vm-definitions = { path = "definitions", version = "=0.21.4" }
 derive_more = "0.99.2"
 rand = "0.7.3"
-eint = "0.1.9"
+eint = "0.1.10"
 probe = "0.3"
 lru = "0.7.8"
 
