@@ -26,7 +26,10 @@ pub use ckb_vm_definitions::{
     registers::REGISTER_ABI_NAMES,
 };
 use core::fmt;
-pub use execute::{execute, execute_instruction, generate_handle_function_list, HandleFunction};
+pub use execute::{
+    execute, execute_instruction, generate_comply_function_list, generate_handle_function_list,
+    generate_vcheck_function_list, HandleFunction,
+};
 
 pub type RegisterIndex = usize;
 pub type SImmediate = i32;

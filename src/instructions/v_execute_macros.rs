@@ -112,6 +112,53 @@ macro_rules! require_vsew {
     };
 }
 
+macro_rules! vcheck_ld {
+    ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
+        require_vill!($machine);
+        let lmul = $machine.vlmul();
+        let sew = $machine.vsew();
+        let emul = if $mask == 0 {
+            1.0
+        } else {
+            ($size << 3) as f64 / sew as f64 * lmul
+        };
+        let emul = if emul < 1.0 { 1.0 } else { emul };
+        require_emul!(emul);
+        let i = VXtype($inst);
+        let vd = i.vd();
+        require_align!(vd as u64, emul as u64);
+        require!(
+            vd + emul as usize <= 32,
+            String::from("require: vd + emul <= 32")
+        );
+        require_vm!(i);
+    };
+}
+
+macro_rules! comply_ld {
+    ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
+        let i = VXtype($inst);
+        let vd = i.vd();
+        let addr = $machine.registers()[i.rs1()].to_u64();
+        let stride = if $stride != 0 {
+            $machine.registers()[i.vs2()].to_u64()
+        } else {
+            $size
+        };
+        for j in 0..$vl {
+            if $mask != 0 && i.vm() == 0 && !$machine.get_bit(0, j as usize) {
+                continue;
+            }
+            let data = $machine
+                .memory_mut()
+                .load_bytes(stride.wrapping_mul(j).wrapping_add(addr), $size)?;
+            $machine
+                .element_mut(vd, $size << 3, j as usize)
+                .copy_from_slice(&data);
+        }
+    };
+}
+
 macro_rules! ld {
     ($inst:expr, $machine:expr, $vl:expr, $stride:expr, $size:expr, $mask:expr) => {
         require_vill!($machine);
@@ -3449,6 +3496,7 @@ pub(crate) use require_vill;
 pub(crate) use require_vm;
 pub(crate) use require_vsew;
 
+pub(crate) use comply_ld;
 pub(crate) use ld;
 pub(crate) use ld_index;
 pub(crate) use ld_whole;
@@ -3498,6 +3546,7 @@ pub(crate) use v_wv_loop;
 pub(crate) use v_wv_loop_u;
 pub(crate) use v_wx_loop;
 pub(crate) use v_wx_loop_u;
+pub(crate) use vcheck_ld;
 pub(crate) use vmv_r;
 pub(crate) use w_vs_loop;
 pub(crate) use w_vs_loop_s;

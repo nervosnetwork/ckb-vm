@@ -5,9 +5,9 @@ use crate::{
     decoder::build_decoder,
     instructions::{
         blank_instruction, common, execute, execute_instruction, extract_opcode,
-        generate_handle_function_list, instruction_length, is_basic_block_end_instruction,
-        is_slowpath_instruction, v_alu as alu, HandleFunction, Instruction, Itype, Register,
-        VVtype, VXtype,
+        generate_comply_function_list, generate_vcheck_function_list, instruction_length,
+        is_basic_block_end_instruction, is_slowpath_instruction, v_alu as alu, HandleFunction,
+        Instruction, Itype, Register, VVtype, VXtype,
     },
     machine::{
         asm::{
@@ -332,8 +332,8 @@ impl VTraceAsmMachine {
             return Err(Error::InvalidVersion);
         }
         let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
-        let handle_function_list_vi = generate_handle_function_list::<VInferMachine>();
-        let handle_function_list_cm = generate_handle_function_list::<CM>();
+        let handle_function_list_vi = generate_vcheck_function_list::<VInferMachine>();
+        let handle_function_list_cm = generate_comply_function_list::<CM>();
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {
@@ -531,23 +531,11 @@ impl VTraceAsmMachine {
                         .actions
                         .push(Box::new(move |m: &mut CM| handle_vle256(m, inst)));
                 }
-                insts::OP_VLE512_V => {
-                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM| {
-                        crate::instructions::execute::handle_vle512_v(m, inst)
-                    }));
-                }
                 insts::OP_VSE256_V => {
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                     v_trace
                         .actions
                         .push(Box::new(move |m: &mut CM| handle_vse256(m, inst)));
-                }
-                insts::OP_VSE512_V => {
-                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM| {
-                        crate::instructions::execute::handle_vse512_v(m, inst)
-                    }));
                 }
                 insts::OP_VLUXEI8_V => {
                     execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
@@ -559,6 +547,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vluxei8_256(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -579,6 +568,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vadd_512(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -599,6 +589,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmadc_512(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -613,12 +604,8 @@ impl VTraceAsmMachine {
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vsub_256(m, inst)));
                         }
-                        512 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM| {
-                                crate::instructions::execute::handle_vsub_vv(m, inst)
-                            }));
-                        }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -634,6 +621,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmsbc_256(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -648,12 +636,8 @@ impl VTraceAsmMachine {
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vmmulu_256(m, inst)));
                         }
-                        512 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM| {
-                                crate::instructions::execute::handle_vwmulu_vv(m, inst)
-                            }));
-                        }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -669,6 +653,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmul_256(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -684,6 +669,7 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vxor_256(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -698,12 +684,8 @@ impl VTraceAsmMachine {
                                 .actions
                                 .push(Box::new(move |m: &mut CM| handle_vnsrl_256(m, inst)));
                         }
-                        512 => {
-                            v_trace.actions.push(Box::new(move |m: &mut CM| {
-                                crate::instructions::execute::handle_vnsrl_wx(m, inst)
-                            }));
-                        }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
@@ -731,36 +713,14 @@ impl VTraceAsmMachine {
                                 .push(Box::new(move |m: &mut CM| handle_vmerge_256(m, inst)));
                         }
                         _ => {
+                            execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                             let f = handle_function_list_cm[opcode as usize];
                             v_trace.actions.push(Box::new(move |m| f(m, inst)))
                         }
                     }
                 }
-                insts::OP_VSLL_VX => {
-                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM| {
-                        crate::instructions::execute::handle_vsll_vx(m, inst)
-                    }));
-                }
-                insts::OP_VSRL_VX => {
-                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM| {
-                        crate::instructions::execute::handle_vsrl_vx(m, inst)
-                    }));
-                }
-                insts::OP_VWMACCU_VV => {
-                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM| {
-                        crate::instructions::execute::handle_vwmaccu_vv(m, inst)
-                    }));
-                }
-                insts::OP_VMSLEU_VV => {
-                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
-                    v_trace.actions.push(Box::new(move |m: &mut CM| {
-                        crate::instructions::execute::handle_vmsleu_vv(m, inst)
-                    }));
-                }
                 _ => {
+                    execute(&mut infer_machine, handle_function_list_vi, inst).ok()?;
                     let f = handle_function_list_cm[opcode as usize];
                     v_trace.actions.push(Box::new(move |m| f(m, inst)))
                 }
