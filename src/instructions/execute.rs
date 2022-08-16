@@ -2325,7 +2325,7 @@ pub fn handle_vsaddu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> R
 }
 
 pub fn handle_vsaddu_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    v_vi_loop_u!(inst, machine, alu::saddu);
+    v_vi_loop_s!(inst, machine, alu::saddu);
     Ok(())
 }
 
