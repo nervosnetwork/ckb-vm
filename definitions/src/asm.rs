@@ -29,7 +29,6 @@ pub fn calculate_slot(addr: u64) -> usize {
 pub struct Trace {
     pub address: u64,
     pub length: u8,
-    pub last_inst_length: u8,
     pub slowpath: u8,
     pub cycles: u64,
     pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],

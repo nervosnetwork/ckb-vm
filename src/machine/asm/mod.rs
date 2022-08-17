@@ -4,7 +4,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction, is_slowpath_instruction,
     },
-    machine::{execute, generate_handle_function_list, VERSION0},
+    machine::{execute, generate_comply_function_list, generate_handle_function_list, VERSION0},
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -12,8 +12,6 @@ use crate::{
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
-use probe::probe;
-pub mod v_trace;
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -23,12 +21,13 @@ use ckb_vm_definitions::{
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
         RET_SLOWPATH_TRACE, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
-    instructions::OP_CUSTOM_TRACE_END,
+    instructions::{OP_CUSTOM_TRACE_END, OP_VSETIVLI, OP_VSETVLI},
     ELEN, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS, VLEN,
 };
 use libc::c_uchar;
 use memmap::Mmap;
+use probe::probe;
 use rand::{prelude::RngCore, SeedableRng};
 use std::collections::HashMap;
 use std::mem::transmute;
@@ -577,6 +576,8 @@ impl AsmMachine {
             return Err(Error::InvalidVersion);
         }
         let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        let comply_function_list =
+            generate_comply_function_list::<DefaultMachine<Box<AsmCoreMachine>>>();
         let handle_function_list =
             generate_handle_function_list::<DefaultMachine<Box<AsmCoreMachine>>>();
         self.machine.set_running(true);
@@ -612,7 +613,7 @@ impl AsmMachine {
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         let is_slowpath = is_slowpath_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
-                        if trace.slowpath == 0 && is_slowpath_instruction(instruction) {
+                        if trace.slowpath == 0 && is_slowpath {
                             trace.slowpath = 1;
                         }
                         trace.instructions[i] = instruction;
@@ -668,21 +669,58 @@ impl AsmMachine {
                 RET_SLOWPATH_TRACE => {
                     let pc = *self.machine.pc();
                     let slot = calculate_slot(pc);
-                    let cycles = self.machine.inner_mut().traces[slot].cycles;
-                    self.machine.add_cycles(cycles)?;
-                    for instruction in self.machine.inner_mut().traces[slot].instructions {
-                        if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
-                            break;
+                    let slowpath = self.machine.inner_mut().traces[slot].slowpath;
+                    let slowpath_stable = slowpath & 0b10 != 0;
+                    if slowpath_stable {
+                        let cycles = self.machine.inner_mut().traces[slot].cycles;
+                        self.machine.add_cycles(cycles)?;
+                        for instruction in self.machine.inner_mut().traces[slot].instructions {
+                            if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                                break;
+                            }
+                            execute(&mut self.machine, &comply_function_list, instruction)?;
                         }
-                        if is_slowpath_instruction(instruction) {
-                            let cycles = self.machine.instruction_cycle_func()(
-                                instruction,
-                                self.machine.vl(),
-                                self.machine.vsew(),
-                            );
+                    } else {
+                        let start_instruction =
+                            self.machine.inner_mut().traces[slot].instructions[0];
+                        let start_opcode = extract_opcode(start_instruction);
+                        if start_opcode == OP_VSETVLI || start_opcode == OP_VSETIVLI {
+                            let mut cycles = self.machine.inner_mut().traces[slot].cycles;
+                            for instruction in self.machine.inner_mut().traces[slot].instructions {
+                                if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                                    break;
+                                }
+                                if is_slowpath_instruction(instruction) {
+                                    let comming_cycles = self.machine.instruction_cycle_func()(
+                                        instruction,
+                                        self.machine.vl(),
+                                        self.machine.vsew(),
+                                    );
+                                    self.machine.add_cycles(comming_cycles)?;
+                                    cycles += comming_cycles;
+                                }
+                                execute(&mut self.machine, &handle_function_list, instruction)?;
+                            }
+                            self.machine.inner_mut().traces[slot].slowpath = 0b11;
+                            self.machine.inner_mut().traces[slot].cycles = cycles;
+                        } else {
+                            let cycles = self.machine.inner_mut().traces[slot].cycles;
                             self.machine.add_cycles(cycles)?;
+                            for instruction in self.machine.inner_mut().traces[slot].instructions {
+                                if instruction == blank_instruction(OP_CUSTOM_TRACE_END) {
+                                    break;
+                                }
+                                if is_slowpath_instruction(instruction) {
+                                    let cycles = self.machine.instruction_cycle_func()(
+                                        instruction,
+                                        self.machine.vl(),
+                                        self.machine.vsew(),
+                                    );
+                                    self.machine.add_cycles(cycles)?;
+                                }
+                                execute(&mut self.machine, &handle_function_list, instruction)?;
+                            }
                         }
-                        execute(&mut self.machine, &handle_function_list, instruction)?;
                     }
                     probe!(default, slow_path_trace, 1);
                 }
