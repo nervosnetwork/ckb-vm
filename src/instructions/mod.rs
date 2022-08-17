@@ -44,6 +44,7 @@ pub type InstructionFactory = fn(instruction_bits: u32, version: u32) -> Option<
 
 // Blank instructions need no register indices nor immediates, they only have opcode
 // and module bit set.
+#[inline(always)]
 pub fn blank_instruction(op: InstructionOpcode) -> Instruction {
     op as Instruction
 }

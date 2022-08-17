@@ -14,7 +14,8 @@ use scroll::Pread;
 use crate::debugger::Debugger;
 use crate::decoder::{build_decoder, Decoder};
 use crate::instructions::{
-    execute, generate_handle_function_list, HandleFunction, Instruction, Register, RegisterFile,
+    execute, generate_comply_function_list, generate_handle_function_list, HandleFunction,
+    Instruction, Register, RegisterFile,
 };
 use crate::memory::{round_page_down, round_page_up, Memory};
 use crate::syscalls::Syscalls;
