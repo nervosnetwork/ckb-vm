@@ -3228,12 +3228,12 @@ pub fn handle_vsll_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
 }
 
 pub fn vcheck_vsll_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vi_loop_s!(inst, machine, alu::sll);
+    vcheck_v_vi_loop_u!(inst, machine, alu::sll);
     Ok(())
 }
 
 pub fn comply_vsll_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vi_loop_s!(inst, machine, alu::sll);
+    comply_v_vi_loop_u!(inst, machine, alu::sll);
     Ok(())
 }
 
@@ -3276,12 +3276,12 @@ pub fn handle_vsrl_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
 }
 
 pub fn vcheck_vsrl_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vi_loop_s!(inst, machine, alu::srl);
+    vcheck_v_vi_loop_u!(inst, machine, alu::srl);
     Ok(())
 }
 
 pub fn comply_vsrl_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vi_loop_s!(inst, machine, alu::srl);
+    comply_v_vi_loop_u!(inst, machine, alu::srl);
     Ok(())
 }
 
@@ -3324,12 +3324,12 @@ pub fn handle_vsra_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
 }
 
 pub fn vcheck_vsra_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vi_loop_s!(inst, machine, alu::sra);
+    vcheck_v_vi_loop_u!(inst, machine, alu::sra);
     Ok(())
 }
 
 pub fn comply_vsra_vi<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vi_loop_s!(inst, machine, alu::sra);
+    comply_v_vi_loop_u!(inst, machine, alu::sra);
     Ok(())
 }
 
@@ -3804,12 +3804,12 @@ pub fn handle_vmax_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
 }
 
 pub fn vcheck_vmax_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vx_loop_u!(inst, machine, alu::max);
+    vcheck_v_vx_loop_s!(inst, machine, alu::max);
     Ok(())
 }
 
 pub fn comply_vmax_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vx_loop_u!(inst, machine, alu::max);
+    comply_v_vx_loop_s!(inst, machine, alu::max);
     Ok(())
 }
 
@@ -3868,12 +3868,12 @@ pub fn handle_vmin_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Res
 }
 
 pub fn vcheck_vmin_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vx_loop_u!(inst, machine, alu::min);
+    vcheck_v_vx_loop_s!(inst, machine, alu::min);
     Ok(())
 }
 
 pub fn comply_vmin_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vx_loop_u!(inst, machine, alu::min);
+    comply_v_vx_loop_s!(inst, machine, alu::min);
     Ok(())
 }
 
@@ -3964,12 +3964,12 @@ pub fn handle_vmulhu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> R
 }
 
 pub fn vcheck_vmulhu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vx_loop_s!(inst, machine, alu::mulhu);
+    vcheck_v_vx_loop_u!(inst, machine, alu::mulhu);
     Ok(())
 }
 
 pub fn comply_vmulhu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vx_loop_s!(inst, machine, alu::mulhu);
+    comply_v_vx_loop_u!(inst, machine, alu::mulhu);
     Ok(())
 }
 
@@ -3996,12 +3996,12 @@ pub fn handle_vmulhsu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
 }
 
 pub fn vcheck_vmulhsu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_v_vx_loop_s!(inst, machine, alu::mulhsu);
+    vcheck_v_vx_loop_u!(inst, machine, alu::mulhsu);
     Ok(())
 }
 
 pub fn comply_vmulhsu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_v_vx_loop_s!(inst, machine, alu::mulhsu);
+    comply_v_vx_loop_u!(inst, machine, alu::mulhsu);
     Ok(())
 }
 
@@ -4380,12 +4380,12 @@ pub fn handle_vwmaccu_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
 }
 
 pub fn vcheck_vwmaccu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    vcheck_w_vx_loop_destructive_s!(inst, machine, alu::wmaccu);
+    vcheck_w_vx_loop_destructive_u!(inst, machine, alu::wmaccu);
     Ok(())
 }
 
 pub fn comply_vwmaccu_vx<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
-    comply_w_vx_loop_destructive_s!(inst, machine, alu::wmaccu);
+    comply_w_vx_loop_destructive_u!(inst, machine, alu::wmaccu);
     Ok(())
 }
 
