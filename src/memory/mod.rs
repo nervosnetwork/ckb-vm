@@ -63,7 +63,7 @@ pub trait Memory {
 }
 
 #[inline(always)]
-pub(crate) fn fill_page_data<M: Memory>(
+pub fn fill_page_data<M: Memory>(
     memory: &mut M,
     addr: u64,
     size: u64,
