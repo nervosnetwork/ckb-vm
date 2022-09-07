@@ -892,9 +892,9 @@ pub fn execute_instruction<Mac: Machine>(
             let r = rs2_value | rs3_value;
             update_register(machine, i.rs1(), r);
         }
-        insts::OP_LD_SIGN_EXTENDED_32_CONSTANT => {
+        insts::OP_CUSTOM_LOAD_UIMM => {
             let i = Utype(inst);
-            update_register(machine, i.rd(), Mac::REG::from_i32(i.immediate_s()));
+            update_register(machine, i.rd(), Mac::REG::from_u32(i.immediate_u()));
         }
         insts::OP_CUSTOM_LOAD_IMM => {
             let i = Utype(inst);

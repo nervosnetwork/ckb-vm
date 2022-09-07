@@ -154,9 +154,9 @@ pub const OP_WIDE_DIV: InstructionOpcode = 0x71;
 pub const OP_WIDE_DIVU: InstructionOpcode = 0x72;
 pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x73;
 pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x74;
-pub const OP_LD_SIGN_EXTENDED_32_CONSTANT: InstructionOpcode = 0x75;
-pub const OP_ADC: InstructionOpcode = 0x76;
-pub const OP_SBB: InstructionOpcode = 0x77;
+pub const OP_ADC: InstructionOpcode = 0x75;
+pub const OP_SBB: InstructionOpcode = 0x76;
+pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x77;
 pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x78;
 pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x79;
 
@@ -284,9 +284,9 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize
     "WIDE_DIVU",
     "FAR_JUMP_REL",
     "FAR_JUMP_ABS",
-    "LD_SIGN_EXTENDED_32_CONSTANT",
     "ADC",
     "SBB",
+    "CUSTOM_LOAD_UIMM",
     "CUSTOM_LOAD_IMM",
     "CUSTOM_TRACE_END",
 ];
