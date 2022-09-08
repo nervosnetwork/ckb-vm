@@ -33,7 +33,7 @@ jobs:
 
   - job: OSXCI
     pool:
-      vmImage: 'macOS-10.15'
+      vmImage: 'macOS-11'
     steps:
       - template: devtools/azure/osx-dependencies.yml
         parameters:
@@ -43,7 +43,7 @@ jobs:
 
   - job: OSXCIChaos
     pool:
-      vmImage: 'macOS-10.15'
+      vmImage: 'macOS-11'
     steps:
       - template: devtools/azure/osx-dependencies.yml
         parameters:

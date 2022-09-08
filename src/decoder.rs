@@ -332,11 +332,8 @@ impl Decoder {
                             let fuze_imm = head_inst
                                 .immediate_s()
                                 .wrapping_add(next_inst.immediate_s());
-                            let fuze_inst = Utype::new_s(
-                                insts::OP_LD_SIGN_EXTENDED_32_CONSTANT,
-                                head_inst.rd(),
-                                fuze_imm,
-                            );
+                            let fuze_inst =
+                                Utype::new_s(insts::OP_CUSTOM_LOAD_IMM, head_inst.rd(), fuze_imm);
                             let next_size = instruction_length(next_instruction);
                             let fuze_size = head_size + next_size;
                             Ok(set_instruction_length_n(fuze_inst.0, fuze_size))
