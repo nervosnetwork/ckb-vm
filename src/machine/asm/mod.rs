@@ -564,7 +564,7 @@ pub fn vtrace_type(instructions: &[Instruction]) -> VTraceType {
     if vfirst == OP_VSETVLI {
         return VTraceType::StableCheck;
     }
-    return VTraceType::Unstable;
+    VTraceType::Unstable
 }
 
 pub struct AotCode {

@@ -785,8 +785,8 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         self.add_cycles(cycles)?;
         execute(
             self,
-            &vcheck_function_list,
-            &handle_function_list,
+            vcheck_function_list,
+            handle_function_list,
             instruction,
         )
     }

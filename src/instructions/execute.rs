@@ -68,7 +68,7 @@ pub fn handle_div<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_div_signed(&rs2_value);
+    let value = rs1_value.overflowing_div_signed(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -77,7 +77,7 @@ pub fn handle_divu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_div(&rs2_value);
+    let value = rs1_value.overflowing_div(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -194,7 +194,7 @@ pub fn handle_mul<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_mul(&rs2_value);
+    let value = rs1_value.overflowing_mul(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -203,7 +203,7 @@ pub fn handle_mulh<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_mul_high_signed(&rs2_value);
+    let value = rs1_value.overflowing_mul_high_signed(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -212,7 +212,7 @@ pub fn handle_mulhsu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Resu
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
+    let value = rs1_value.overflowing_mul_high_signed_unsigned(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -221,7 +221,7 @@ pub fn handle_mulhu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Resul
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
+    let value = rs1_value.overflowing_mul_high_unsigned(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -257,7 +257,7 @@ pub fn handle_rem<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_rem_signed(&rs2_value);
+    let value = rs1_value.overflowing_rem_signed(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -266,7 +266,7 @@ pub fn handle_remu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.overflowing_rem(&rs2_value);
+    let value = rs1_value.overflowing_rem(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -357,7 +357,7 @@ pub fn handle_slt<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.lt_s(&rs2_value);
+    let value = rs1_value.lt_s(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -384,7 +384,7 @@ pub fn handle_sltu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.lt(&rs2_value);
+    let value = rs1_value.lt(rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -682,7 +682,7 @@ pub fn handle_max<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.ge_s(&rs2_value).cond(&rs1_value, &rs2_value);
+    let value = rs1_value.ge_s(rs2_value).cond(rs1_value, rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -691,7 +691,7 @@ pub fn handle_maxu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.ge(&rs2_value).cond(&rs1_value, &rs2_value);
+    let value = rs1_value.ge(rs2_value).cond(rs1_value, rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -700,7 +700,7 @@ pub fn handle_min<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.lt_s(&rs2_value).cond(&rs1_value, &rs2_value);
+    let value = rs1_value.lt_s(rs2_value).cond(rs1_value, rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -709,7 +709,7 @@ pub fn handle_minu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let i = Rtype(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value = rs1_value.lt(&rs2_value).cond(&rs1_value, &rs2_value);
+    let value = rs1_value.lt(rs2_value).cond(rs1_value, rs2_value);
     update_register(machine, i.rd(), value);
     Ok(())
 }
@@ -915,8 +915,8 @@ pub fn handle_wide_mul<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     let i = R4type(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value_h = rs1_value.overflowing_mul_high_signed(&rs2_value);
-    let value_l = rs1_value.overflowing_mul(&rs2_value);
+    let value_h = rs1_value.overflowing_mul_high_signed(rs2_value);
+    let value_l = rs1_value.overflowing_mul(rs2_value);
     update_register(machine, i.rd(), value_h);
     update_register(machine, i.rs3(), value_l);
     Ok(())
@@ -926,8 +926,8 @@ pub fn handle_wide_mulu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> R
     let i = R4type(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value_h = rs1_value.overflowing_mul_high_unsigned(&rs2_value);
-    let value_l = rs1_value.overflowing_mul(&rs2_value);
+    let value_h = rs1_value.overflowing_mul_high_unsigned(rs2_value);
+    let value_l = rs1_value.overflowing_mul(rs2_value);
     update_register(machine, i.rd(), value_h);
     update_register(machine, i.rs3(), value_l);
     Ok(())
@@ -937,8 +937,8 @@ pub fn handle_wide_mulsu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
     let i = R4type(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value_h = rs1_value.overflowing_mul_high_signed_unsigned(&rs2_value);
-    let value_l = rs1_value.overflowing_mul(&rs2_value);
+    let value_h = rs1_value.overflowing_mul_high_signed_unsigned(rs2_value);
+    let value_l = rs1_value.overflowing_mul(rs2_value);
     update_register(machine, i.rd(), value_h);
     update_register(machine, i.rs3(), value_l);
     Ok(())
@@ -948,8 +948,8 @@ pub fn handle_wide_div<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     let i = R4type(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value_h = rs1_value.overflowing_div_signed(&rs2_value);
-    let value_l = rs1_value.overflowing_rem_signed(&rs2_value);
+    let value_h = rs1_value.overflowing_div_signed(rs2_value);
+    let value_l = rs1_value.overflowing_rem_signed(rs2_value);
     update_register(machine, i.rd(), value_h);
     update_register(machine, i.rs3(), value_l);
     Ok(())
@@ -959,8 +959,8 @@ pub fn handle_wide_divu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> R
     let i = R4type(inst);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let value_h = rs1_value.overflowing_div(&rs2_value);
-    let value_l = rs1_value.overflowing_rem(&rs2_value);
+    let value_h = rs1_value.overflowing_div(rs2_value);
+    let value_l = rs1_value.overflowing_rem(rs2_value);
     update_register(machine, i.rd(), value_h);
     update_register(machine, i.rs3(), value_l);
     Ok(())
@@ -970,19 +970,19 @@ pub fn handle_adc<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = Rtype(inst);
     let rd_value = &machine.registers()[i.rd()];
     let rs1_value = &machine.registers()[i.rs1()];
-    let r = rd_value.overflowing_add(&rs1_value);
+    let r = rd_value.overflowing_add(rs1_value);
     update_register(machine, i.rd(), r);
     let rd_value = &machine.registers()[i.rd()];
     let rs1_value = &machine.registers()[i.rs1()];
-    let r = rd_value.lt(&rs1_value);
+    let r = rd_value.lt(rs1_value);
     update_register(machine, i.rs1(), r);
     let rd_value = &machine.registers()[i.rd()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let r = rd_value.overflowing_add(&rs2_value);
+    let r = rd_value.overflowing_add(rs2_value);
     update_register(machine, i.rd(), r);
     let rd_value = &machine.registers()[i.rd()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let r = rd_value.lt(&rs2_value);
+    let r = rd_value.lt(rs2_value);
     update_register(machine, i.rs2(), r);
     let rs1_value = machine.registers()[i.rs1()].clone();
     let rs2_value = machine.registers()[i.rs2()].clone();
@@ -995,19 +995,19 @@ pub fn handle_sbb<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let i = R4type(inst);
     let rd_value = &machine.registers()[i.rd()];
     let rs1_value = &machine.registers()[i.rs1()];
-    let r = rd_value.overflowing_sub(&rs1_value);
+    let r = rd_value.overflowing_sub(rs1_value);
     update_register(machine, i.rs1(), r);
     let rd_value = &machine.registers()[i.rd()];
     let rs1_value = &machine.registers()[i.rs1()];
-    let r = rd_value.lt(&rs1_value);
+    let r = rd_value.lt(rs1_value);
     update_register(machine, i.rs3(), r);
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let r = rs1_value.overflowing_sub(&rs2_value);
+    let r = rs1_value.overflowing_sub(rs2_value);
     update_register(machine, i.rd(), r);
     let rd_value = &machine.registers()[i.rd()];
     let rs1_value = &machine.registers()[i.rs1()];
-    let r = rs1_value.lt(&rd_value);
+    let r = rs1_value.lt(rd_value);
     update_register(machine, i.rs2(), r);
     let rs2_value = machine.registers()[i.rs2()].clone();
     let rs3_value = machine.registers()[i.rs3()].clone();
@@ -1049,10 +1049,10 @@ pub fn handle_beq<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let pc = machine.pc();
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let condition = rs1_value.eq(&rs2_value);
+    let condition = rs1_value.eq(rs2_value);
     let new_pc = condition.cond(
-        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
     );
     machine.update_pc(new_pc);
     Ok(())
@@ -1063,10 +1063,10 @@ pub fn handle_bge<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let pc = machine.pc();
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let condition = rs1_value.ge_s(&rs2_value);
+    let condition = rs1_value.ge_s(rs2_value);
     let new_pc = condition.cond(
-        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
     );
     machine.update_pc(new_pc);
     Ok(())
@@ -1077,10 +1077,10 @@ pub fn handle_bgeu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let pc = machine.pc();
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let condition = rs1_value.ge(&rs2_value);
+    let condition = rs1_value.ge(rs2_value);
     let new_pc = condition.cond(
-        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
     );
     machine.update_pc(new_pc);
     Ok(())
@@ -1091,10 +1091,10 @@ pub fn handle_blt<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let pc = machine.pc();
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let condition = rs1_value.lt_s(&rs2_value);
+    let condition = rs1_value.lt_s(rs2_value);
     let new_pc = condition.cond(
-        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
     );
     machine.update_pc(new_pc);
     Ok(())
@@ -1105,10 +1105,10 @@ pub fn handle_bltu<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     let pc = machine.pc();
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let condition = rs1_value.lt(&rs2_value);
+    let condition = rs1_value.lt(rs2_value);
     let new_pc = condition.cond(
-        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
     );
     machine.update_pc(new_pc);
     Ok(())
@@ -1119,10 +1119,10 @@ pub fn handle_bne<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<
     let pc = machine.pc();
     let rs1_value = &machine.registers()[i.rs1()];
     let rs2_value = &machine.registers()[i.rs2()];
-    let condition = rs1_value.ne(&rs2_value);
+    let condition = rs1_value.ne(rs2_value);
     let new_pc = condition.cond(
-        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(&pc),
-        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(&pc),
+        &Mac::REG::from_i32(i.immediate_s()).overflowing_add(pc),
+        &Mac::REG::from_u8(instruction_length(inst)).overflowing_add(pc),
     );
     machine.update_pc(new_pc);
     Ok(())
@@ -4544,7 +4544,7 @@ pub fn handle_vrgatherei16_vv<Mac: Machine>(
         if i.vm() == 0 && !machine.coprocessor_v().get_bit(0, j) {
             continue;
         }
-        let index = E16::get(&machine.coprocessor_v().element_ref(i.vs1(), 16, j)).u64();
+        let index = E16::get(machine.coprocessor_v().element_ref(i.vs1(), 16, j)).u64();
         let data = if index < machine.coprocessor_v().vlmax() {
             machine
                 .coprocessor_v()

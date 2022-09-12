@@ -252,12 +252,11 @@ pub fn sra<T: Eint>(lhs: T, rhs: T) -> T {
 
 pub fn smul<T: Eint>(lhs: T, rhs: T) -> T {
     if lhs == rhs && lhs == T::MIN_S {
-        return T::MAX_S;
+        T::MAX_S
     } else {
         let result = lhs.widening_mul_s(rhs);
         let shamt = T::BITS - 1;
-        let lo = result.0.wrapping_shr(shamt) | result.1.wrapping_shl(1);
-        return lo;
+        result.0.wrapping_shr(shamt) | result.1.wrapping_shl(1)
     }
 }
 
@@ -270,10 +269,8 @@ pub fn vnclipu<T: Eint>(lhs: T, rhs: T) -> T {
 // Narrowing signed clip
 pub fn vnclip<T: Eint>(lhs: T, rhs: T) -> T {
     let r = lhs.wrapping_sra(rhs.u32());
-    if r.is_negative() {
-        if r.cmp_s(&T::MIN_S.hi().lo_sext()) == std::cmp::Ordering::Less {
-            return T::MIN_S.hi().lo_sext();
-        }
+    if r.is_negative() && r.cmp_s(&T::MIN_S.hi().lo_sext()) == std::cmp::Ordering::Less {
+        return T::MIN_S.hi().lo_sext();
     }
     if r.cmp_s(&T::MAX_S.hi()) == std::cmp::Ordering::Greater {
         return T::MAX_S.hi();
@@ -320,7 +317,7 @@ pub fn sbf(vs2: E2048, vd: E2048, m: E2048, vl: u64) -> E2048 {
             r.bit_set(j);
         }
     }
-    return r;
+    r
 }
 
 // Set including first mask bit.
@@ -342,7 +339,7 @@ pub fn sif(vs2: E2048, vd: E2048, m: E2048, vl: u64) -> E2048 {
             r.bit_set(j);
         }
     }
-    return r;
+    r
 }
 
 // Set only first mask bit.
@@ -361,5 +358,5 @@ pub fn sof(vs2: E2048, vd: E2048, m: E2048, vl: u64) -> E2048 {
             r.bit_clr(j);
         }
     }
-    return r;
+    r
 }

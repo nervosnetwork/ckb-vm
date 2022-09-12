@@ -36,7 +36,7 @@ pub fn is_overlapped_widen(astart: u64, asize: u64, bstart: u64, bsize: u64) -> 
 
 macro_rules! require {
     ($val:expr, $msg:expr) => {
-        if !$val {
+        if ($val) != true {
             return Err(Error::RVVTrap($msg));
         }
     };
