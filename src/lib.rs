@@ -11,6 +11,9 @@ pub mod memory;
 pub mod snapshot;
 pub mod syscalls;
 
+pub use bytes;
+pub use ckb_vm_definitions;
+
 pub use crate::{
     debugger::Debugger,
     instructions::{Instruction, Register},
