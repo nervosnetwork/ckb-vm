@@ -1647,6 +1647,52 @@ pub fn handle_vluxei64_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
     Ok(())
 }
 
+pub fn vcheck_vluxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn handle_vluxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn vcheck_vluxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn handle_vluxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn vcheck_vluxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn handle_vluxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn vcheck_vluxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 1024);
+    Ok(())
+}
+
+pub fn handle_vluxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 1024);
+    Ok(())
+}
+
 pub fn vcheck_vloxei8_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     vcheck_ld_index!(inst, machine, 8);
     Ok(())
@@ -1684,6 +1730,52 @@ pub fn vcheck_vloxei64_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
 
 pub fn handle_vloxei64_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     handle_ld_index!(inst, machine, 64);
+    Ok(())
+}
+
+pub fn vcheck_vloxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn handle_vloxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn vcheck_vloxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn handle_vloxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn vcheck_vloxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn handle_vloxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn vcheck_vloxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    vcheck_ld_index!(inst, machine, 1024);
+    Ok(())
+}
+
+pub fn handle_vloxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    handle_ld_index!(inst, machine, 1024);
     Ok(())
 }
 
@@ -1727,6 +1819,52 @@ pub fn handle_vsuxei64_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
     Ok(())
 }
 
+pub fn vcheck_vsuxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn handle_vsuxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn vcheck_vsuxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn handle_vsuxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn vcheck_vsuxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn handle_vsuxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn vcheck_vsuxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 1024);
+    Ok(())
+}
+
+pub fn handle_vsuxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 1024);
+    Ok(())
+}
+
 pub fn vcheck_vsoxei8_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     vcheck_sd_index!(inst, machine, 8);
     Ok(())
@@ -1764,6 +1902,52 @@ pub fn vcheck_vsoxei64_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> 
 
 pub fn handle_vsoxei64_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     handle_sd_index!(inst, machine, 64);
+    Ok(())
+}
+
+pub fn vcheck_vsoxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn handle_vsoxei128_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 128);
+    Ok(())
+}
+
+pub fn vcheck_vsoxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn handle_vsoxei256_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 256);
+    Ok(())
+}
+
+pub fn vcheck_vsoxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn handle_vsoxei512_v<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 512);
+    Ok(())
+}
+
+pub fn vcheck_vsoxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    vcheck_sd_index!(inst, machine, 1024);
+    Ok(())
+}
+
+pub fn handle_vsoxei1024_v<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    handle_sd_index!(inst, machine, 1024);
     Ok(())
 }
 
@@ -4962,18 +5146,34 @@ pub fn generate_vcheck_function_list<Mac: Machine>(
         vcheck_vluxei16_v::<Mac> as HandleFunction<Mac>,
         vcheck_vluxei32_v::<Mac> as HandleFunction<Mac>,
         vcheck_vluxei64_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vluxei128_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vluxei256_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vluxei512_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vluxei1024_v::<Mac> as HandleFunction<Mac>,
         vcheck_vloxei8_v::<Mac> as HandleFunction<Mac>,
         vcheck_vloxei16_v::<Mac> as HandleFunction<Mac>,
         vcheck_vloxei32_v::<Mac> as HandleFunction<Mac>,
         vcheck_vloxei64_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vloxei128_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vloxei256_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vloxei512_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vloxei1024_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsuxei8_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsuxei16_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsuxei32_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsuxei64_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsuxei128_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsuxei256_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsuxei512_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsuxei1024_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsoxei8_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsoxei16_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsoxei32_v::<Mac> as HandleFunction<Mac>,
         vcheck_vsoxei64_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsoxei128_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsoxei256_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsoxei512_v::<Mac> as HandleFunction<Mac>,
+        vcheck_vsoxei1024_v::<Mac> as HandleFunction<Mac>,
         vcheck_vl1re8_v::<Mac> as HandleFunction<Mac>,
         vcheck_vl1re16_v::<Mac> as HandleFunction<Mac>,
         vcheck_vl1re32_v::<Mac> as HandleFunction<Mac>,
@@ -5376,18 +5576,34 @@ pub fn generate_handle_function_list<Mac: Machine>(
         handle_vluxei16_v::<Mac> as HandleFunction<Mac>,
         handle_vluxei32_v::<Mac> as HandleFunction<Mac>,
         handle_vluxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei128_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei256_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei512_v::<Mac> as HandleFunction<Mac>,
+        handle_vluxei1024_v::<Mac> as HandleFunction<Mac>,
         handle_vloxei8_v::<Mac> as HandleFunction<Mac>,
         handle_vloxei16_v::<Mac> as HandleFunction<Mac>,
         handle_vloxei32_v::<Mac> as HandleFunction<Mac>,
         handle_vloxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei128_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei256_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei512_v::<Mac> as HandleFunction<Mac>,
+        handle_vloxei1024_v::<Mac> as HandleFunction<Mac>,
         handle_vsuxei8_v::<Mac> as HandleFunction<Mac>,
         handle_vsuxei16_v::<Mac> as HandleFunction<Mac>,
         handle_vsuxei32_v::<Mac> as HandleFunction<Mac>,
         handle_vsuxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei128_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei256_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei512_v::<Mac> as HandleFunction<Mac>,
+        handle_vsuxei1024_v::<Mac> as HandleFunction<Mac>,
         handle_vsoxei8_v::<Mac> as HandleFunction<Mac>,
         handle_vsoxei16_v::<Mac> as HandleFunction<Mac>,
         handle_vsoxei32_v::<Mac> as HandleFunction<Mac>,
         handle_vsoxei64_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei128_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei256_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei512_v::<Mac> as HandleFunction<Mac>,
+        handle_vsoxei1024_v::<Mac> as HandleFunction<Mac>,
         handle_vl1re8_v::<Mac> as HandleFunction<Mac>,
         handle_vl1re16_v::<Mac> as HandleFunction<Mac>,
         handle_vl1re32_v::<Mac> as HandleFunction<Mac>,

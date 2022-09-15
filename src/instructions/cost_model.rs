@@ -323,18 +323,34 @@ const CYCLES_FUNCTION_LIST: [CyclesFunction; insts::MAXIMUM_LEVEL2_OPCODE as usi
     CyclesFunction::E(3),   // VLUXEI16_V
     CyclesFunction::E(3),   // VLUXEI32_V
     CyclesFunction::E(3),   // VLUXEI64_V
+    CyclesFunction::E(3),   // VLUXEI128_V
+    CyclesFunction::E(3),   // VLUXEI256_V
+    CyclesFunction::E(3),   // VLUXEI512_V
+    CyclesFunction::E(3),   // VLUXEI1024_V
     CyclesFunction::E(3),   // VLOXEI8_V
     CyclesFunction::E(3),   // VLOXEI16_V
     CyclesFunction::E(3),   // VLOXEI32_V
     CyclesFunction::E(3),   // VLOXEI64_V
+    CyclesFunction::E(3),   // VLOXEI128_V
+    CyclesFunction::E(3),   // VLOXEI256_V
+    CyclesFunction::E(3),   // VLOXEI512_V
+    CyclesFunction::E(3),   // VLOXEI1024_V
     CyclesFunction::E(3),   // VSUXEI8_V
     CyclesFunction::E(3),   // VSUXEI16_V
     CyclesFunction::E(3),   // VSUXEI32_V
     CyclesFunction::E(3),   // VSUXEI64_V
+    CyclesFunction::E(3),   // VSUXEI128_V
+    CyclesFunction::E(3),   // VSUXEI256_V
+    CyclesFunction::E(3),   // VSUXEI512_V
+    CyclesFunction::E(3),   // VSUXEI1024_V
     CyclesFunction::E(3),   // VSOXEI8_V
     CyclesFunction::E(3),   // VSOXEI16_V
     CyclesFunction::E(3),   // VSOXEI32_V
     CyclesFunction::E(3),   // VSOXEI64_V
+    CyclesFunction::E(3),   // VSOXEI128_V
+    CyclesFunction::E(3),   // VSOXEI256_V
+    CyclesFunction::E(3),   // VSOXEI512_V
+    CyclesFunction::E(3),   // VSOXEI1024_V
     CyclesFunction::F(96),  // VL1RE8_V
     CyclesFunction::F(48),  // VL1RE16_V
     CyclesFunction::F(24),  // VL1RE32_V
