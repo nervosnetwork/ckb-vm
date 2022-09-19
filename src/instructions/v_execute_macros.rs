@@ -1041,6 +1041,9 @@ macro_rules! vcheck_m_vv_loop {
         if i.vd() != i.vs2() {
             require_noover!(i.vd() as u64, 1, i.vs2() as u64, lmul as u64);
         }
+        if i.vd() != i.vs1() {
+            require_noover!(i.vd() as u64, 1, i.vs1() as u64, lmul as u64);
+        }
     };
 }
 
