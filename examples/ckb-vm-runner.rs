@@ -1,4 +1,3 @@
-use byteorder::WriteBytesExt;
 use ckb_vm::instructions::cost_model::instruction_cycles;
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{Bytes, CoreMachine, Memory, Register, SupportMachine, Syscalls};
@@ -35,7 +34,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
 
         std::io::stdout().write(&buffer)?;
         if buffer.last().copied() != Some('\n' as u8) {
-            std::io::stdout().write_u8('\n' as u8)?;
+            std::io::stdout().write(&['\n' as u8])?;
         }
 
         Ok(true)

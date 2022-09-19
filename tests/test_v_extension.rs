@@ -40,7 +40,7 @@ pub fn test_v_blst() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 16065831);
+        assert_eq!(machine_asm.machine.cycles(), 16065831);
     }
 
     #[cfg(has_aot)]
@@ -50,6 +50,24 @@ pub fn test_v_blst() {
         let ret_aot = machine_aot.run();
         assert!(ret_aot.is_ok());
         assert_eq!(ret_aot.unwrap(), 0);
-        assert_eq!(machine.machine.cycles(), 16065831);
+        assert_eq!(machine_aot.machine.cycles(), 16065831);
+    }
+}
+
+#[test]
+pub fn test_v_rvv_testcases() {
+    let mut machine = machine_build::int_v1_imcv("tests/programs/rvv-testcases");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+    assert_eq!(machine.machine.cycles(), 448346359);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v1_imcv("tests/programs/rvv-testcases");
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+        assert_eq!(machine_asm.machine.cycles(), 448346359);
     }
 }
