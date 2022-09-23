@@ -8,16 +8,16 @@
 //   $ git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
 //   $ cd riscv-gnu-toolchain
 //   $ mkdir build && cd build
-//   $ ../configure --prefix=/opt/riscv --with-arch=rv32imac --with-abi=ilp32
+//   $ ../configure --prefix=/opt/riscv --with-arch=rv64imac
 //   $ make
 //
 // On my ubuntu machine, it takes 1 hours. Sad.
 //
-// Then, you can build "is13.c" by "riscv32-unknown-elf-gcc"
+// Then, you can build "is13.c" by "riscv64-unknown-elf-gcc"
 //
-//   $ riscv32-unknown-elf-gcc -o is13 is13.c
+//   $ riscv64-unknown-elf-gcc -o is13 is13.c
 //
-// Where can you find the "riscv32-unknown-elf-gcc", depending on the previous "../configure --prefix=xxxx"
+// Where can you find the "riscv64-unknown-elf-gcc", depending on the previous "../configure --prefix=xxxx"
 //
 // Now, you have the "is13" binary! Copy the file to this directory, call it by ckb-vm, as shown in the Rust
 // code below. And feel free to run this example by command "cargo":
@@ -36,7 +36,7 @@ fn main() {
     file.read_to_end(&mut buffer).unwrap();
     let buffer = Bytes::from(buffer);
 
-    let r = ckb_vm::run::<u32, ckb_vm::SparseMemory<u32>>(&buffer, &args[..]).unwrap();
+    let r = ckb_vm::run::<u64, ckb_vm::SparseMemory<u64>>(&buffer, &args[..]).unwrap();
     match r {
         1 => println!("{:?} is not thirteen", args[1]),
         0 => println!("{:?} is thirteen", args[1]),
