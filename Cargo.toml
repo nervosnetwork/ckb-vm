@@ -35,8 +35,6 @@ derive_more = "0.99.2"
 rand = "0.7.3"
 eint = "1.0.0"
 probe = "0.3"
-lru = "0.7.8"
-lazy_static = "1.4"
 
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]
