@@ -408,7 +408,7 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
 
 pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64;
 
-pub struct DefaultMachine<Inner> {
+pub struct DefaultMachine<'a, Inner> {
     inner: Inner,
 
     // We have run benchmarks on secp256k1 verification, the performance
@@ -416,12 +416,12 @@ pub struct DefaultMachine<Inner> {
     // with Box solution for simplicity now. Later if this becomes an issue,
     // we can change to static dispatch.
     instruction_cycle_func: Box<InstructionCycleFunc>,
-    debugger: Option<Box<dyn Debugger<Inner>>>,
-    syscalls: Vec<Box<dyn Syscalls<Inner>>>,
+    debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
+    syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
     exit_code: i8,
 }
 
-impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
+impl<Inner: CoreMachine> CoreMachine for DefaultMachine<'_, Inner> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -462,7 +462,7 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
+impl<Inner: SupportMachine> SupportMachine for DefaultMachine<'_, Inner> {
     fn cycles(&self) -> u64 {
         self.inner.cycles()
     }
@@ -497,7 +497,7 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Machine for DefaultMachine<Inner> {
+impl<Inner: SupportMachine> Machine for DefaultMachine<'_, Inner> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers()[A7].to_u64();
         match code {
@@ -533,7 +533,7 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
+impl<Inner: CoreMachine> Display for DefaultMachine<'_, Inner> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pc  : 0x{:16X}", self.pc().to_u64())?;
         for (i, name) in REGISTER_ABI_NAMES.iter().enumerate() {
@@ -548,7 +548,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> DefaultMachine<Inner> {
+impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         let elf_bytes = self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
@@ -621,14 +621,14 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
     }
 }
 
-pub struct DefaultMachineBuilder<Inner> {
+pub struct DefaultMachineBuilder<'a, Inner> {
     inner: Inner,
     instruction_cycle_func: Box<InstructionCycleFunc>,
-    debugger: Option<Box<dyn Debugger<Inner>>>,
-    syscalls: Vec<Box<dyn Syscalls<Inner>>>,
+    debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
+    syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
 }
 
-impl<Inner> DefaultMachineBuilder<Inner> {
+impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
@@ -646,17 +646,17 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         self
     }
 
-    pub fn syscall(mut self, syscall: Box<dyn Syscalls<Inner>>) -> Self {
+    pub fn syscall(mut self, syscall: Box<dyn Syscalls<Inner> + 'a>) -> Self {
         self.syscalls.push(syscall);
         self
     }
 
-    pub fn debugger(mut self, debugger: Box<dyn Debugger<Inner>>) -> Self {
+    pub fn debugger(mut self, debugger: Box<dyn Debugger<Inner> + 'a>) -> Self {
         self.debugger = Some(debugger);
         self
     }
 
-    pub fn build(self) -> DefaultMachine<Inner> {
+    pub fn build(self) -> DefaultMachine<'a, Inner> {
         DefaultMachine {
             inner: self.inner,
             instruction_cycle_func: self.instruction_cycle_func,

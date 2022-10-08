@@ -58,12 +58,12 @@ fn aot_benchmark(c: &mut Criterion) {
                                       "foo",
                                       "bar"].into_iter().map(|a| a.into()).collect();
         let mut aot_machine = AotCompilingMachine::load(&buffer.clone(), None, ISA_IMC, VERSION0).unwrap();
-        let result = std::sync::Arc::new(aot_machine.compile().unwrap());
+        let result = aot_machine.compile().unwrap();
 
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
             let core = DefaultMachineBuilder::new(asm_core).build();
-            let mut machine = AsmMachine::new(core, Some(result.clone()));
+            let mut machine = AsmMachine::new(core, Some(&result));
             machine.load_program(&buffer, &args[..]).unwrap();
             machine.run().unwrap()
         });
