@@ -18,7 +18,7 @@ pub fn asm_v1_imcb<'a>(path: &str) -> AsmMachine<'a> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(instruction_cycle_func))
+        .instruction_cycle_func(&instruction_cycle_func)
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine
@@ -41,7 +41,7 @@ pub fn aot_v1_imcb<'a>(path: &str, code: &'a AotCode) -> AsmMachine<'a> {
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(instruction_cycle_func))
+        .instruction_cycle_func(&instruction_cycle_func)
         .build();
     let mut machine = AsmMachine::new(core, Some(code));
     machine
@@ -61,7 +61,7 @@ pub fn int_v1_imcb(
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
-            .instruction_cycle_func(Box::new(instruction_cycle_func))
+            .instruction_cycle_func(&instruction_cycle_func)
             .build(),
     );
     machine
@@ -75,7 +75,7 @@ pub fn asm_v1_mop<'a>(path: &str, args: Vec<Bytes>) -> AsmMachine<'a> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(instruction_cycle_func))
+        .instruction_cycle_func(&instruction_cycle_func)
         .build();
     let mut machine = AsmMachine::new(core, None);
     let mut argv = vec![Bytes::from("main")];
@@ -98,7 +98,7 @@ pub fn aot_v1_mop<'a>(path: &str, args: Vec<Bytes>, code: &'a AotCode) -> AsmMac
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(instruction_cycle_func))
+        .instruction_cycle_func(&instruction_cycle_func)
         .build();
     let mut argv = vec![Bytes::from("main")];
     argv.extend_from_slice(&args);
@@ -119,7 +119,7 @@ pub fn int_v1_mop(
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
-            .instruction_cycle_func(Box::new(instruction_cycle_func))
+            .instruction_cycle_func(&instruction_cycle_func)
             .build(),
     );
     let mut argv = vec![Bytes::from("main")];

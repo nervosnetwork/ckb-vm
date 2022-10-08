@@ -50,7 +50,7 @@ fn test_reset_int() {
         u64::max_value(),
     );
     let mut machine = DefaultMachineBuilder::new(core_machine)
-        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
+        .instruction_cycle_func(&machine_build::instruction_cycle_func)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     machine.load_program(&code, &vec![]).unwrap();
@@ -73,7 +73,7 @@ fn test_reset_int_with_trace() {
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
-            .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
+            .instruction_cycle_func(&machine_build::instruction_cycle_func)
             .syscall(Box::new(CustomSyscall {}))
             .build(),
     );
@@ -93,7 +93,7 @@ fn test_reset_asm() {
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
+        .instruction_cycle_func(&machine_build::instruction_cycle_func)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, None);
@@ -125,7 +125,7 @@ pub fn test_reset_aot() {
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
+        .instruction_cycle_func(&machine_build::instruction_cycle_func)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core, Some(&code));
