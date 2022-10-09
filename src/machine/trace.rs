@@ -32,13 +32,13 @@ fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
-pub struct TraceMachine<Inner> {
-    pub machine: DefaultMachine<Inner>,
+pub struct TraceMachine<'a, Inner> {
+    pub machine: DefaultMachine<'a, Inner>,
 
     traces: Vec<Trace>,
 }
 
-impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
+impl<Inner: SupportMachine> CoreMachine for TraceMachine<'_, Inner> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -79,7 +79,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
+impl<Inner: SupportMachine> Machine for TraceMachine<'_, Inner> {
     fn ecall(&mut self) -> Result<(), Error> {
         self.machine.ecall()
     }
@@ -89,8 +89,8 @@ impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> TraceMachine<Inner> {
-    pub fn new(machine: DefaultMachine<Inner>) -> Self {
+impl<'a, Inner: SupportMachine> TraceMachine<'a, Inner> {
+    pub fn new(machine: DefaultMachine<'a, Inner>) -> Self {
         Self {
             machine,
             traces: vec![],
