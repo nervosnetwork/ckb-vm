@@ -126,7 +126,7 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         u64::MAX,
     );
     let core = ckb_vm::DefaultMachineBuilder::new(asm_core)
-        .instruction_cycle_func(Box::new(instruction_cycles))
+        .instruction_cycle_func(&instruction_cycles)
         .syscall(Box::new(DebugSyscall {}))
         .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, None);
