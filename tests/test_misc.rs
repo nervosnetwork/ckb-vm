@@ -56,8 +56,9 @@ pub fn test_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine =
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut syscall = CustomSyscall {};
     let mut machine = DefaultMachineBuilder::new(core_machine)
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(&mut syscall)
         .build();
     machine
         .load_program(&buffer, &vec!["syscall".into()])
@@ -295,9 +296,10 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
 pub fn test_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 20);
+    let mut syscall = OutOfCyclesSyscall {};
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(&|_| 1)
-        .syscall(Box::new(OutOfCyclesSyscall {}))
+        .syscall(&mut syscall)
         .build();
     machine
         .load_program(&buffer, &vec!["syscall".into()])

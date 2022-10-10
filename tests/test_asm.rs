@@ -56,8 +56,9 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 pub fn test_asm_with_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut syscall = CustomSyscall {};
     let core = DefaultMachineBuilder::new(asm_core)
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine
@@ -341,9 +342,10 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
 pub fn test_asm_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
+    let mut syscall = OutOfCyclesSyscall {};
     let core = DefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(&|_| 1)
-        .syscall(Box::new(OutOfCyclesSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine

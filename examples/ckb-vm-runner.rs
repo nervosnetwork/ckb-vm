@@ -100,10 +100,11 @@ fn main_aot(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
+    let mut syscall = DebugSyscall {};
     let core =
         ckb_vm::DefaultMachineBuilder::<Box<ckb_vm::machine::asm::AsmCoreMachine>>::new(asm_core)
             .instruction_cycle_func(&instruction_cycles)
-            .syscall(Box::new(DebugSyscall {}))
+            .syscall(&mut syscall)
             .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, Some(&aot_code));
     machine.load_program(&code, &args)?;
@@ -125,9 +126,10 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
+    let mut syscall = DebugSyscall {};
     let core = ckb_vm::DefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(&instruction_cycles)
-        .syscall(Box::new(DebugSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, None);
     machine.load_program(&code, &args)?;
@@ -149,9 +151,10 @@ fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         ckb_vm::machine::VERSION1,
         u64::MAX,
     );
+    let mut syscall = DebugSyscall {};
     let machine_builder = ckb_vm::DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(&instruction_cycles);
-    let mut machine = machine_builder.syscall(Box::new(DebugSyscall {})).build();
+    let mut machine = machine_builder.syscall(&mut syscall).build();
     machine.load_program(&code, &args)?;
     let exit = machine.run();
     let cycles = machine.cycles();

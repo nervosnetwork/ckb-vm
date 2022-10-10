@@ -417,7 +417,7 @@ pub struct DefaultMachine<'a, Inner> {
     // we can change to static dispatch.
     instruction_cycle_func: &'a InstructionCycleFunc,
     debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
-    syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
+    syscalls: Vec<&'a mut dyn Syscalls<Inner>>,
     exit_code: i8,
 }
 
@@ -625,7 +625,7 @@ pub struct DefaultMachineBuilder<'a, Inner> {
     inner: Inner,
     instruction_cycle_func: &'a InstructionCycleFunc,
     debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
-    syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
+    syscalls: Vec<&'a mut dyn Syscalls<Inner>>,
 }
 
 impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
@@ -646,7 +646,7 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
         self
     }
 
-    pub fn syscall(mut self, syscall: Box<dyn Syscalls<Inner> + 'a>) -> Self {
+    pub fn syscall(mut self, syscall: &'a mut dyn Syscalls<Inner>) -> Self {
         self.syscalls.push(syscall);
         self
     }

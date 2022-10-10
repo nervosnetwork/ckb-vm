@@ -60,8 +60,9 @@ pub fn test_aot_with_custom_syscall() {
     let mut aot_machine = AotCompilingMachine::load(&buffer, None, ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let mut syscall = CustomSyscall {};
     let core = DefaultMachineBuilder::new(asm_core)
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine
@@ -407,9 +408,10 @@ pub fn test_aot_outofcycles_in_syscall() {
         AotCompilingMachine::load(&buffer, Some(Box::new(|_| 1)), ISA_IMC, VERSION0).unwrap();
     let code = aot_machine.compile().unwrap();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
+    let mut syscall = OutOfCyclesSyscall {};
     let core = DefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(&|_| 1)
-        .syscall(Box::new(OutOfCyclesSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine

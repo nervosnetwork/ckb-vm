@@ -49,9 +49,10 @@ fn test_reset_int() {
         VERSION1,
         u64::max_value(),
     );
+    let mut syscall = CustomSyscall {};
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(&machine_build::instruction_cycle_func)
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(&mut syscall)
         .build();
     machine.load_program(&code, &vec![]).unwrap();
     let result = machine.run();
@@ -71,10 +72,11 @@ fn test_reset_int_with_trace() {
         VERSION1,
         u64::max_value(),
     );
+    let mut syscall = CustomSyscall {};
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
             .instruction_cycle_func(&machine_build::instruction_cycle_func)
-            .syscall(Box::new(CustomSyscall {}))
+            .syscall(&mut syscall)
             .build(),
     );
     machine.load_program(&code, &vec![]).unwrap();
@@ -92,9 +94,10 @@ fn test_reset_asm() {
     let code = Bytes::from(code_data);
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
+    let mut syscall = CustomSyscall {};
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(&machine_build::instruction_cycle_func)
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine.load_program(&code, &vec![]).unwrap();
@@ -124,9 +127,10 @@ pub fn test_reset_aot() {
     let buffer: Bytes = std::fs::read("tests/programs/reset_caller").unwrap().into();
 
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
+    let mut syscall = CustomSyscall {};
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(&machine_build::instruction_cycle_func)
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(&mut syscall)
         .build();
     let mut machine = AsmMachine::new(core, Some(&code));
     machine.load_program(&buffer, &vec![]).unwrap();
