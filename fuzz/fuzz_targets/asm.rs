@@ -8,7 +8,7 @@ use libfuzzer_sys::fuzz_target;
 fn run(data: &[u8]) {
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(&|_| 1)
         .build();
     let mut machine = AsmMachine::new(core, None);
     let program = Bytes::copy_from_slice(data);

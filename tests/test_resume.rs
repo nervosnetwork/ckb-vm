@@ -286,7 +286,7 @@ impl MachineTy {
             MachineTy::Asm => {
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
+                    .instruction_cycle_func(&dummy_cycle_func)
                     .build();
                 Machine::Asm(AsmMachine::new(core1, None))
             }
@@ -298,7 +298,7 @@ impl MachineTy {
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
                         core_machine1,
                     )
-                    .instruction_cycle_func(Box::new(dummy_cycle_func))
+                    .instruction_cycle_func(&dummy_cycle_func)
                     .build(),
                 )
             }
@@ -311,7 +311,7 @@ impl MachineTy {
                         DefaultMachineBuilder::<
                             DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
                         >::new(core_machine1)
-                        .instruction_cycle_func(Box::new(dummy_cycle_func))
+                        .instruction_cycle_func(&dummy_cycle_func)
                         .build(),
                     ),
                 )
@@ -388,7 +388,7 @@ impl<'a> AotMachine<'a> {
     fn build(version: u32, max_cycles: u64, program: Option<&'a AotCode>) -> AotMachine<'a> {
         let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
         let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-            .instruction_cycle_func(Box::new(dummy_cycle_func))
+            .instruction_cycle_func(&dummy_cycle_func)
             .build();
         AotMachine(AsmMachine::new(core1, program))
     }

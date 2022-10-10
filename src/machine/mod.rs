@@ -415,7 +415,7 @@ pub struct DefaultMachine<'a, Inner> {
     // cost of the Box wrapper here is neglectable, hence we are sticking
     // with Box solution for simplicity now. Later if this becomes an issue,
     // we can change to static dispatch.
-    instruction_cycle_func: Box<InstructionCycleFunc>,
+    instruction_cycle_func: &'a InstructionCycleFunc,
     debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
     syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
     exit_code: i8,
@@ -582,8 +582,8 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
         self.exit_code
     }
 
-    pub fn instruction_cycle_func(&self) -> &InstructionCycleFunc {
-        &self.instruction_cycle_func
+    pub fn instruction_cycle_func(&self) -> &'a InstructionCycleFunc {
+        self.instruction_cycle_func
     }
 
     pub fn inner_mut(&mut self) -> &mut Inner {
@@ -623,7 +623,7 @@ impl<'a, Inner: SupportMachine> DefaultMachine<'a, Inner> {
 
 pub struct DefaultMachineBuilder<'a, Inner> {
     inner: Inner,
-    instruction_cycle_func: Box<InstructionCycleFunc>,
+    instruction_cycle_func: &'a InstructionCycleFunc,
     debugger: Option<Box<dyn Debugger<Inner> + 'a>>,
     syscalls: Vec<Box<dyn Syscalls<Inner> + 'a>>,
 }
@@ -632,7 +632,7 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
-            instruction_cycle_func: Box::new(|_| 0),
+            instruction_cycle_func: &|_| 0,
             debugger: None,
             syscalls: vec![],
         }
@@ -640,7 +640,7 @@ impl<'a, Inner> DefaultMachineBuilder<'a, Inner> {
 
     pub fn instruction_cycle_func(
         mut self,
-        instruction_cycle_func: Box<InstructionCycleFunc>,
+        instruction_cycle_func: &'a InstructionCycleFunc,
     ) -> Self {
         self.instruction_cycle_func = instruction_cycle_func;
         self
