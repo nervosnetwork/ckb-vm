@@ -86,39 +86,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
     }
 }
 
-#[cfg(has_aot)]
-fn main_aot(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut aot_machine = ckb_vm::machine::aot::AotCompilingMachine::load(
-        &code,
-        Some(Box::new(instruction_cycles)),
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
-        ckb_vm::machine::VERSION1,
-    )?;
-    let aot_code = aot_machine.compile()?;
-    let asm_core = ckb_vm::machine::asm::AsmCoreMachine::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
-        ckb_vm::machine::VERSION1,
-        u64::MAX,
-    );
-    let core =
-        ckb_vm::DefaultMachineBuilder::<Box<ckb_vm::machine::asm::AsmCoreMachine>>::new(asm_core)
-            .instruction_cycle_func(&instruction_cycles)
-            .syscall(Box::new(DebugSyscall {}))
-            .build();
-    let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, Some(&aot_code));
-    machine.load_program(&code, &args)?;
-    let exit = machine.run();
-    let cycles = machine.machine.cycles();
-    println!(
-        "aot exit={:?} cycles={:?} r[a1]={:?}",
-        exit,
-        cycles,
-        machine.machine.registers()[ckb_vm::registers::A1]
-    );
-    std::process::exit(exit? as i32);
-}
-
-#[cfg(all(has_asm, not(has_aot)))]
+#[cfg(has_asm)]
 fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
     let asm_core = ckb_vm::machine::asm::AsmCoreMachine::new(
         ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
@@ -142,7 +110,7 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
     std::process::exit(exit? as i32);
 }
 
-#[cfg(all(not(has_asm), not(has_aot)))]
+#[cfg(not(has_asm))]
 fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
     let core_machine = ckb_vm::DefaultCoreMachine::<u64, ckb_vm::SparseMemory<u64>>::new(
         ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
@@ -172,11 +140,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Vec::new()
     };
-    #[cfg(has_aot)]
-    main_aot(code, riscv_args)?;
-    #[cfg(all(has_asm, not(has_aot)))]
+    #[cfg(has_asm)]
     main_asm(code, riscv_args)?;
-    #[cfg(all(not(has_asm), not(has_aot)))]
+    #[cfg(not(has_asm))]
     main_int(code, riscv_args)?;
     Ok(())
 }

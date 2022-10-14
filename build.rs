@@ -15,7 +15,6 @@ fn main() {
     let x64_asm = is_x86_64 && (is_windows || is_unix);
     let aarch64_asm = is_aarch64 && is_unix;
     let can_enable_asm = x64_asm || aarch64_asm;
-    let can_enable_aot = x64_asm;
 
     if cfg!(feature = "asm") && (!can_enable_asm) {
         panic!(
@@ -24,19 +23,10 @@ fn main() {
         );
     }
 
-    if cfg!(feature = "aot") && (!can_enable_aot) {
-        panic!(
-            "Aot feature is not available for target {} on {}!",
-            target_arch, target_family
-        );
-    }
-
     if cfg!(any(feature = "asm", feature = "detect-asm")) && can_enable_asm {
         use cc::Build;
         use std::path::Path;
         use std::process::Command;
-
-        let enable_aot = cfg!(any(feature = "aot", feature = "detect-aot")) && can_enable_aot;
 
         fn run_command(mut c: Command) {
             println!("Running Command[{:?}]", c);
@@ -89,24 +79,10 @@ fn main() {
             run_command(compile_command);
 
             build.object(&compile_path);
-
-            if enable_aot {
-                build.file("src/machine/aot/aot.x64.win.compiled.c");
-            }
         } else if x64_asm {
             build.file("src/machine/asm/execute_x64.S");
-
-            if enable_aot {
-                build.file("src/machine/aot/aot.x64.compiled.c");
-            }
         } else if aarch64_asm {
             build.file("src/machine/asm/execute_aarch64.S");
-            // TODO: AOT
-        }
-
-        if enable_aot {
-            build.include("dynasm");
-            println!("cargo:rustc-cfg=has_aot");
         }
 
         build.include("src/machine/asm").compile("asm");

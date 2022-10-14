@@ -1,9 +1,8 @@
-parameters:
-  rustup_toolchain: ''
 steps:
 - script: |
-    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain ${{ parameters.rustup_toolchain }}
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.61.0-x86_64-apple-darwin
     set PATH=$PATH:~/.cargo/bin
+    rustup install nightly
   displayName: Install rust
 - script: rustup component add rustfmt
   displayName: Install rustfmt

@@ -1,6 +1,4 @@
 use bytes::Bytes;
-#[cfg(has_aot)]
-use ckb_vm::machine::aot::AotCompilingMachine;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachineBuilder, VERSION1};
@@ -98,38 +96,6 @@ fn test_reset_asm() {
         .build();
     let mut machine = AsmMachine::new(core, None);
     machine.load_program(&code, &vec![]).unwrap();
-
-    let result = machine.run();
-    let cycles = machine.machine.cycles();
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 0);
-    assert_eq!(cycles, 775);
-}
-
-#[test]
-#[cfg(has_aot)]
-pub fn test_reset_aot() {
-    let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
-    let code = Bytes::from(code_data);
-
-    let mut aot_machine = AotCompilingMachine::load(
-        &code,
-        Some(Box::new(machine_build::instruction_cycle_func)),
-        ISA_IMC | ISA_MOP,
-        VERSION1,
-    )
-    .unwrap();
-    let code = aot_machine.compile().unwrap();
-
-    let buffer: Bytes = std::fs::read("tests/programs/reset_caller").unwrap().into();
-
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&machine_build::instruction_cycle_func)
-        .syscall(Box::new(CustomSyscall {}))
-        .build();
-    let mut machine = AsmMachine::new(core, Some(&code));
-    machine.load_program(&buffer, &vec![]).unwrap();
 
     let result = machine.run();
     let cycles = machine.machine.cycles();
