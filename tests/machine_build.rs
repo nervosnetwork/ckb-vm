@@ -18,7 +18,7 @@ pub fn asm_v1_imcb<'a>(path: &str) -> AsmMachine<'a> {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(&instruction_cycle_func)
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     machine
         .load_program(&buffer, &vec![Bytes::from("main")])
         .unwrap();
@@ -52,7 +52,7 @@ pub fn asm_v1_mop<'a>(path: &str, args: Vec<Bytes>) -> AsmMachine<'a> {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(&instruction_cycle_func)
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     let mut argv = vec![Bytes::from("main")];
     argv.extend_from_slice(&args);
     machine.load_program(&buffer, &argv).unwrap();

@@ -97,7 +97,7 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         .instruction_cycle_func(&instruction_cycles)
         .syscall(Box::new(DebugSyscall {}))
         .build();
-    let mut machine = ckb_vm::machine::asm::AsmMachine::new(core, None);
+    let mut machine = ckb_vm::machine::asm::AsmMachine::new(core);
     machine.load_program(&code, &args)?;
     let exit = machine.run();
     let cycles = machine.machine.cycles();

@@ -94,7 +94,7 @@ fn test_reset_asm() {
         .instruction_cycle_func(&machine_build::instruction_cycle_func)
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     machine.load_program(&code, &vec![]).unwrap();
 
     let result = machine.run();

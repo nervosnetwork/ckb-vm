@@ -33,7 +33,7 @@ fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
     let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     machine
         .load_program(&buffer, &vec![program.into()])
         .unwrap();
@@ -262,7 +262,7 @@ pub fn test_asm_version0_unaligned64() {
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));

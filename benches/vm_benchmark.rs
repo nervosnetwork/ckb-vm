@@ -40,7 +40,7 @@ fn asm_benchmark(c: &mut Criterion) {
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
             let core = DefaultMachineBuilder::new(asm_core).build();
-            let mut machine = AsmMachine::new(core, None);
+            let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, &args[..]).unwrap();
             machine.run().unwrap()
         });
@@ -60,7 +60,7 @@ fn mop_benchmark(c: &mut Criterion) {
             let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
-            let mut machine = AsmMachine::new(core, None);
+            let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, &args).unwrap();
             machine.run().unwrap()
         });

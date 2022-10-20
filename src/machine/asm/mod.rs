@@ -1,5 +1,3 @@
-use std::mem::transmute;
-
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -14,9 +12,7 @@ use ckb_vm_definitions::{
     RISCV_PAGE_SHIFTS,
 };
 use libc::c_uchar;
-use memmap::Mmap;
 use rand::{prelude::RngCore, SeedableRng};
-use std::collections::HashMap;
 
 use crate::{
     decoder::{build_decoder, Decoder},
@@ -419,38 +415,20 @@ impl SupportMachine for Box<AsmCoreMachine> {
     }
 }
 
-pub struct AotCode {
-    pub code: Mmap,
-    /// Labels that map RISC-V addresses to offsets into the compiled x86_64
-    /// assembly code. This can be used as entrypoints to start executing in
-    /// AOT code.
-    pub labels: HashMap<u64, u32>,
-}
-
-impl AotCode {
-    pub fn base_address(&self) -> u64 {
-        self.code.as_ptr() as u64
-    }
+extern "C" {
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
+    // We are keeping this as a function here, but at the bottom level this really
+    // just points to an array of assembly label offsets for each opcode.
+    pub fn ckb_vm_asm_labels();
 }
 
 pub struct AsmMachine<'a> {
     pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
-    pub aot_code: Option<&'a AotCode>,
-}
-
-extern "C" {
-    fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
-    // We are keeping this as a function here, but at the bottom level this really
-    // just points to an array of assembly label offsets for each opcode.
-    fn ckb_vm_asm_labels();
 }
 
 impl<'a> AsmMachine<'a> {
-    pub fn new(
-        machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
-        aot_code: Option<&'a AotCode>,
-    ) -> Self {
-        Self { machine, aot_code }
+    pub fn new(machine: DefaultMachine<'a, Box<AsmCoreMachine>>) -> Self {
+        Self { machine }
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -470,22 +448,8 @@ impl<'a> AsmMachine<'a> {
         while self.machine.running() {
             if self.machine.reset_signal() {
                 decoder.reset_instructions_cache();
-                self.aot_code = None;
             }
-            let result = if let Some(aot_code) = &self.aot_code {
-                if let Some(offset) = aot_code.labels.get(self.machine.pc()) {
-                    let base_address = aot_code.base_address();
-                    let offset_address = base_address + u64::from(*offset);
-                    let f = unsafe {
-                        transmute::<u64, fn(*mut AsmCoreMachine, u64) -> u8>(base_address)
-                    };
-                    f(&mut (**self.machine.inner_mut()), offset_address)
-                } else {
-                    unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
-                }
-            } else {
-                unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
-            };
+            let result = unsafe { ckb_vm_x64_execute(&mut **self.machine.inner_mut()) };
             match result {
                 RET_DECODE_TRACE => {
                     let pc = *self.machine.pc();

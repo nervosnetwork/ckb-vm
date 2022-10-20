@@ -217,7 +217,7 @@ impl MachineTy {
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
                     .instruction_cycle_func(&dummy_cycle_func)
                     .build();
-                Machine::Asm(AsmMachine::new(core1, None))
+                Machine::Asm(AsmMachine::new(core1))
             }
             MachineTy::Interpreter => {
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
