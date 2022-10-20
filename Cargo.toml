@@ -34,7 +34,6 @@ rand = "0.7.3"
 # Feature detection won't work here
 [target.'cfg(any(windows, unix))'.dependencies]
 libc = "0.2.47"
-memmap = { package ="memmap2", version = "0.5" }
 
 [build-dependencies]
 cc = "1.0"
