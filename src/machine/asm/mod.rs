@@ -11,8 +11,8 @@ use ckb_vm_definitions::{
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS,
 };
-use libc::c_uchar;
 use rand::{prelude::RngCore, SeedableRng};
+use std::os::raw::c_uchar;
 
 use crate::{
     decoder::{build_decoder, Decoder},
