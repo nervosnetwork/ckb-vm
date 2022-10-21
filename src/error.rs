@@ -1,21 +1,5 @@
 #[derive(Debug, PartialEq, Clone, Eq, Display)]
 pub enum Error {
-    #[display(fmt = "aot error: dynasm ret {}", "_0")]
-    AotDynasm(i32),
-    #[display(fmt = "aot error: section is empty")]
-    AotSectionIsEmpty,
-    #[display(fmt = "aot error: section overlaps with another")]
-    AotSectionOverlaps,
-    #[display(fmt = "aot error: limit reached maximum dummy sections")]
-    AotLimitReachedMaximumDummySections,
-    #[display(fmt = "aot error: limit reached maximum labels")]
-    AotLimitReachedMaximumLabels,
-    #[display(fmt = "aot error: limit reached maximum sections")]
-    AotLimitReachedMaximumSections,
-    #[display(fmt = "aot error: limit reached maximum temp register")]
-    AotLimitReachedMaximumTempRegisters,
-    #[display(fmt = "aot error: out of bound due to not start of basic block")]
-    AotOutOfBoundDueToNotStartOfBasicBlock,
     #[display(fmt = "asm error: {}", "_0")]
     Asm(u8),
     #[display(fmt = "cycles error: max cycles exceeded")]

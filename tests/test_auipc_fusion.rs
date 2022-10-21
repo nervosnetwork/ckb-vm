@@ -89,7 +89,7 @@ pub fn test_asm_auipc_fusion() {
 
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     machine
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
         .unwrap();

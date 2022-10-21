@@ -10,7 +10,7 @@ fn run(data: &[u8]) {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(&|_| 1)
         .build();
-    let mut machine = AsmMachine::new(core, None);
+    let mut machine = AsmMachine::new(core);
     let program = Bytes::copy_from_slice(data);
     if let Ok(_) = machine.load_program(&program, &[]) {
         let _ = machine.run();
