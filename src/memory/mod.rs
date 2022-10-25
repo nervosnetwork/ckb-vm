@@ -42,6 +42,8 @@ pub trait Memory {
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
 
+    fn init_memory(&mut self, _memory_size: usize) {}
+
     // This is in fact just memset
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error>;

@@ -14,26 +14,33 @@ pub struct SparseMemory<R> {
     // been initialized, the corresponding position will be filled with
     // INVALID_PAGE_INDEX. Considering u16 takes 2 bytes, this add an additional
     // of 64KB extra storage cost assuming we have 128MB memory.
-    indices: [u16; RISCV_PAGES],
+    indices: Vec<u16>, // [u16; RISCV_PAGES],
     pages: Vec<Page>,
     flags: Vec<u8>,
     _inner: PhantomData<R>,
+
+    riscv_page: usize,
 }
 
 impl<R> SparseMemory<R> {
     pub fn new() -> Self {
         debug_assert!(RISCV_PAGES < INVALID_PAGE_INDEX as usize);
-        Self {
-            indices: [INVALID_PAGE_INDEX; RISCV_PAGES],
+        let mut ret = Self {
+            indices: Vec::new(),
             pages: Vec::new(),
             flags: vec![0; RISCV_PAGES],
             _inner: PhantomData,
-        }
+            riscv_page: RISCV_PAGES,
+        };
+
+        ret.indices.resize(ret.riscv_page, INVALID_PAGE_INDEX);
+
+        ret
     }
 
     fn fetch_page(&mut self, aligned_addr: u64) -> Result<&mut Page, Error> {
         let page = aligned_addr / RISCV_PAGESIZE as u64;
-        if page >= RISCV_PAGES as u64 {
+        if page >= self.riscv_page as u64 {
             return Err(Error::MemOutOfBound);
         }
         let mut index = self.indices[page as usize];
@@ -89,7 +96,7 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.riscv_page as u64 {
             Ok(self.flags[page as usize])
         } else {
             Err(Error::MemOutOfBound)
@@ -97,7 +104,7 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.riscv_page as u64 {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
@@ -106,12 +113,19 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.riscv_page as u64 {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
             Err(Error::MemOutOfBound)
         }
+    }
+
+    fn init_memory(&mut self, memory: usize) {
+        self.riscv_page = memory / RISCV_PAGESIZE;
+
+        self.indices.resize(self.riscv_page, INVALID_PAGE_INDEX);
+        self.flags.resize(self.riscv_page, 0);
     }
 
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
