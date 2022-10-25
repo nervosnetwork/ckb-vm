@@ -12,11 +12,11 @@ pub fn instruction_cycle_func(_: Instruction) -> u64 {
 }
 
 #[cfg(has_asm)]
-pub fn asm_v1_imcb<'a>(path: &str) -> AsmMachine<'a> {
+pub fn asm_v1_imcb(path: &str) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&instruction_cycle_func)
+        .instruction_cycle_func(Box::new(instruction_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -36,7 +36,7 @@ pub fn int_v1_imcb(
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
-            .instruction_cycle_func(&instruction_cycle_func)
+            .instruction_cycle_func(Box::new(instruction_cycle_func))
             .build(),
     );
     machine
@@ -46,11 +46,11 @@ pub fn int_v1_imcb(
 }
 
 #[cfg(has_asm)]
-pub fn asm_v1_mop<'a>(path: &str, args: Vec<Bytes>) -> AsmMachine<'a> {
+pub fn asm_v1_mop(path: &str, args: Vec<Bytes>) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&instruction_cycle_func)
+        .instruction_cycle_func(Box::new(instruction_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core);
     let mut argv = vec![Bytes::from("main")];
@@ -71,7 +71,7 @@ pub fn int_v1_mop(
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
-            .instruction_cycle_func(&instruction_cycle_func)
+            .instruction_cycle_func(Box::new(instruction_cycle_func))
             .build(),
     );
     let mut argv = vec![Bytes::from("main")];

@@ -13,10 +13,10 @@ use std::fs;
 
 type Mem = WXorXMemory<SparseMemory<u64>>;
 
-fn create_rust_machine<'a>(
+fn create_rust_machine(
     program: String,
     version: u32,
-) -> DefaultMachine<'a, DefaultCoreMachine<u64, Mem>> {
+) -> DefaultMachine<DefaultCoreMachine<u64, Mem>> {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value());
@@ -28,7 +28,7 @@ fn create_rust_machine<'a>(
     machine
 }
 
-fn create_asm_machine<'a>(program: String, version: u32) -> AsmMachine<'a> {
+fn create_asm_machine(program: String, version: u32) -> AsmMachine {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
