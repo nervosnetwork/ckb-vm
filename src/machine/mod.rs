@@ -417,6 +417,7 @@ pub struct DefaultMachine<Inner> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     exit_code: i8,
+    peak_memory_usage: usize,
 }
 
 impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
@@ -548,6 +549,10 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
 
 impl<Inner: SupportMachine> DefaultMachine<Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+        let peak_memory_usage = self.peak_memory_usage;
+        
+        self.memory_mut().init_memory(peak_memory_usage);
+
         let elf_bytes = self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
@@ -557,7 +562,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         }
         let stack_bytes = self.initialize_stack(
             args,
-            (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
+            (self.peak_memory_usage - DEFAULT_STACK_SIZE) as u64,
             DEFAULT_STACK_SIZE as u64,
         )?;
         // Make sure SP is 16 byte aligned
@@ -624,6 +629,7 @@ pub struct DefaultMachineBuilder<Inner> {
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
+    peak_memory_usage: usize,
 }
 
 impl<Inner> DefaultMachineBuilder<Inner> {
@@ -633,6 +639,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             instruction_cycle_func: Box::new(|_| 0),
             debugger: None,
             syscalls: vec![],
+            peak_memory_usage: RISCV_MAX_MEMORY,
         }
     }
 
@@ -654,6 +661,12 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         self
     }
 
+    pub fn set_peak_memory_usage(mut self, memory: usize) -> Self {
+        assert_ne!(memory, 0);
+        self.peak_memory_usage = memory;
+        self
+    }
+
     pub fn build(self) -> DefaultMachine<Inner> {
         DefaultMachine {
             inner: self.inner,
@@ -661,6 +674,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             debugger: self.debugger,
             syscalls: self.syscalls,
             exit_code: 0,
+            peak_memory_usage: self.peak_memory_usage,
         }
     }
 }
