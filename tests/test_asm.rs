@@ -13,6 +13,7 @@ use ckb_vm::{
 use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::thread;
 pub mod machine_build;
 
 #[test]
@@ -408,4 +409,21 @@ pub fn test_asm_step() {
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+fn test_asm_thread_safe() {
+    let buffer = fs::read("tests/programs/mulw64").unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, &vec!["mulw64".into()])
+        .unwrap();
+    let thread_join_handle = thread::spawn(move || {
+        let result = machine.run();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    });
+    thread_join_handle.join().unwrap();
 }

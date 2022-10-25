@@ -404,7 +404,7 @@ impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
     }
 }
 
-pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64;
+pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64 + Send + Sync;
 
 pub struct DefaultMachine<Inner> {
     inner: Inner,
