@@ -580,7 +580,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         self.exit_code
     }
 
-    pub fn instruction_cycle_func(&self) -> &Box<InstructionCycleFunc> {
+    pub fn instruction_cycle_func(&self) -> &InstructionCycleFunc {
         &self.instruction_cycle_func
     }
 
