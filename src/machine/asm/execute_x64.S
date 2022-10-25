@@ -346,7 +346,6 @@ ckb_vm_x64_execute:
   mov ARG1, MACHINE
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
-.prepare_trace:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
@@ -373,6 +372,30 @@ ckb_vm_x64_execute:
   andq $8191, %rax
   imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
   prefetcht2 CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax)
+  lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
+  lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
+  NEXT_INST
+.p2align 3
+.prepare_trace:
+  movq PC_ADDRESS, %rax
+  mov %eax, %ecx
+  shr $2, %eax
+  andq $8191, %rax
+  imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
+  lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
+  movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
+  cmp %rcx, %rdx
+  jne .exit_trace
+  movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
+  cmp $0, %rdx
+  je .exit_trace
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
+  addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
+  jc .exit_cycles_overflow
+  cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
+  ja .exit_max_cycles_exceeded
+  movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
+  addq %rdx, PC_ADDRESS
   lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
   NEXT_INST
