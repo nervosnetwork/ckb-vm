@@ -16,6 +16,7 @@ use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    RISCV_PAGESIZE,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -663,6 +664,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
 
     pub fn set_peak_memory_usage(mut self, memory: usize) -> Self {
         assert_ne!(memory, 0);
+        assert_eq!(memory % RISCV_PAGESIZE, 0);
         self.peak_memory_usage = memory;
         self
     }
