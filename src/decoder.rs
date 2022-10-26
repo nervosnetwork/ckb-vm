@@ -117,9 +117,18 @@ impl Decoder {
     // - https://en.wikichip.org/wiki/macro-operation_fusion#Proposed_fusion_operations
     // - https://carrv.github.io/2017/papers/clark-rv8-carrv2017.pdf
     pub fn decode_mop<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+        if pc as usize >= RISCV_MAX_MEMORY {
+            return Err(Error::MemOutOfBound);
+        }
+        let instruction_cache_key = (pc >> 1) as usize % INSTRUCTION_CACHE_SIZE;
+        let cached_instruction = self.instructions_cache[instruction_cache_key];
+        if cached_instruction.0 == pc {
+            return Ok(cached_instruction.1);
+        }
+
         let head_instruction = self.decode_raw(memory, pc)?;
         let head_opcode = extract_opcode(head_instruction);
-        match head_opcode {
+        let result = match head_opcode {
             insts::OP_ADD => {
                 let mut rule_adc = || -> Result<Option<Instruction>, Error> {
                     let head_inst = Rtype(head_instruction);
@@ -541,7 +550,11 @@ impl Decoder {
                 }
             }
             _ => Ok(head_instruction),
+        };
+        if let Ok(instruction) = result {
+            self.instructions_cache[instruction_cache_key] = (pc, instruction);
         }
+        result
     }
 
     pub fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
