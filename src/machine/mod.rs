@@ -418,7 +418,7 @@ pub struct DefaultMachine<Inner> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     exit_code: i8,
-    peak_memory_usage: usize,
+    memory_size: usize,
 }
 
 impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
@@ -550,9 +550,9 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
 
 impl<Inner: SupportMachine> DefaultMachine<Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        let peak_memory_usage = self.peak_memory_usage;
+        let memory_size = self.memory_size;
 
-        self.memory_mut().init_memory(peak_memory_usage);
+        self.memory_mut().init_memory(memory_size);
 
         let elf_bytes = self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
@@ -563,7 +563,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         }
         let stack_bytes = self.initialize_stack(
             args,
-            (self.peak_memory_usage - DEFAULT_STACK_SIZE) as u64,
+            (self.memory_size - DEFAULT_STACK_SIZE) as u64,
             DEFAULT_STACK_SIZE as u64,
         )?;
         // Make sure SP is 16 byte aligned
@@ -630,7 +630,7 @@ pub struct DefaultMachineBuilder<Inner> {
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
-    peak_memory_usage: usize,
+    memory_size: usize,
 }
 
 impl<Inner> DefaultMachineBuilder<Inner> {
@@ -640,7 +640,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             instruction_cycle_func: Box::new(|_| 0),
             debugger: None,
             syscalls: vec![],
-            peak_memory_usage: RISCV_MAX_MEMORY,
+            memory_size: RISCV_MAX_MEMORY,
         }
     }
 
@@ -665,7 +665,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     pub fn set_peak_memory_usage(mut self, memory: usize) -> Self {
         assert_ne!(memory, 0);
         assert_eq!(memory % RISCV_PAGESIZE, 0);
-        self.peak_memory_usage = memory;
+        self.memory_size = memory;
         self
     }
 
@@ -676,7 +676,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             debugger: self.debugger,
             syscalls: self.syscalls,
             exit_code: 0,
-            peak_memory_usage: self.peak_memory_usage,
+            memory_size: self.memory_size,
         }
     }
 }
