@@ -550,7 +550,7 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
 impl<Inner: SupportMachine> DefaultMachine<Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         let peak_memory_usage = self.peak_memory_usage;
-        
+
         self.memory_mut().init_memory(peak_memory_usage);
 
         let elf_bytes = self.load_elf(program, true)?;
