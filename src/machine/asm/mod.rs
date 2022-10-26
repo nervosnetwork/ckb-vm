@@ -422,12 +422,12 @@ extern "C" {
     pub fn ckb_vm_asm_labels();
 }
 
-pub struct AsmMachine<'a> {
-    pub machine: DefaultMachine<'a, Box<AsmCoreMachine>>,
+pub struct AsmMachine {
+    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
 }
 
-impl<'a> AsmMachine<'a> {
-    pub fn new(machine: DefaultMachine<'a, Box<AsmCoreMachine>>) -> Self {
+impl AsmMachine {
+    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
         Self { machine }
     }
 

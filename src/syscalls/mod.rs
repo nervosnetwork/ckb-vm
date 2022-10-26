@@ -1,7 +1,7 @@
 use super::Error;
 use crate::machine::SupportMachine;
 
-pub trait Syscalls<Mac: SupportMachine> {
+pub trait Syscalls<Mac: SupportMachine>: Send + Sync {
     fn initialize(&mut self, machine: &mut Mac) -> Result<(), Error>;
     // Returned bool means if the syscall has been processed, if
     // a module returns false, Machine would continue to leverage

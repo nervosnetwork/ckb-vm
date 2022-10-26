@@ -1,5 +1,6 @@
 #![cfg(has_asm)]
 
+pub mod machine_build;
 use bytes::Bytes;
 use ckb_vm::{
     machine::{
@@ -9,7 +10,7 @@ use ckb_vm::{
     },
     memory::{sparse::SparseMemory, wxorx::WXorXMemory},
     snapshot::{make_snapshot, resume, Snapshot},
-    DefaultMachineBuilder, Error, Instruction, ISA_IMC,
+    DefaultMachineBuilder, Error, ISA_IMC,
 };
 use std::fs::File;
 use std::io::Read;
@@ -48,10 +49,6 @@ fn test_resume_asm_2_asm_2_asm() {
 fn test_resume_asm_2_asm() {
     resume_asm_2_asm(VERSION1, 8126917);
     resume_asm_2_asm(VERSION0, 8126917);
-}
-
-fn dummy_cycle_func(_i: Instruction) -> u64 {
-    1
 }
 
 pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
@@ -210,12 +207,12 @@ enum MachineTy {
 }
 
 impl MachineTy {
-    fn build<'a>(self, version: u32, max_cycles: u64) -> Machine {
+    fn build(self, version: u32, max_cycles: u64) -> Machine {
         match self {
             MachineTy::Asm => {
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-                    .instruction_cycle_func(&dummy_cycle_func)
+                    .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
                     .build();
                 Machine::Asm(AsmMachine::new(core1))
             }
@@ -227,7 +224,7 @@ impl MachineTy {
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
                         core_machine1,
                     )
-                    .instruction_cycle_func(&dummy_cycle_func)
+                    .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
                     .build(),
                 )
             }
@@ -240,7 +237,7 @@ impl MachineTy {
                         DefaultMachineBuilder::<
                             DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
                         >::new(core_machine1)
-                        .instruction_cycle_func(&dummy_cycle_func)
+                        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
                         .build(),
                     ),
                 )
@@ -250,11 +247,9 @@ impl MachineTy {
 }
 
 enum Machine {
-    Asm(AsmMachine<'static>),
-    Interpreter(DefaultMachine<'static, DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
-    InterpreterWithTrace(
-        TraceMachine<'static, DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
-    ),
+    Asm(AsmMachine),
+    Interpreter(DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
+    InterpreterWithTrace(TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
 }
 
 impl Machine {

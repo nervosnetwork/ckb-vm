@@ -39,7 +39,7 @@ pub fn test_simple_cycles() {
     let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 708);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
-            .instruction_cycle_func(&dummy_cycle_func)
+            .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine
         .load_program(&buffer, &vec!["simple".into()])
@@ -58,7 +58,7 @@ pub fn test_simple_max_cycles_reached() {
     let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 700);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
-            .instruction_cycle_func(&dummy_cycle_func)
+            .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine
         .load_program(&buffer, &vec!["simple".into()])
@@ -95,7 +95,7 @@ pub fn test_simple_cycles_overflow() {
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, SparseMemory<u64>>>::new(core_machine)
-            .instruction_cycle_func(&dummy_cycle_func)
+            .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine.set_cycles(u64::MAX - 10);
     machine

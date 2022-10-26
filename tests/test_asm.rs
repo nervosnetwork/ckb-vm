@@ -8,12 +8,13 @@ use ckb_vm::{
     },
     memory::Memory,
     registers::{A0, A1, A2, A3, A4, A5, A7},
-    Debugger, DefaultMachineBuilder, Error, Instruction, Register, SupportMachine, Syscalls,
-    ISA_IMC,
+    Debugger, DefaultMachineBuilder, Error, Register, SupportMachine, Syscalls, ISA_IMC,
 };
 use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::thread;
+pub mod machine_build;
 
 #[test]
 pub fn test_asm_simple64() {
@@ -105,16 +106,12 @@ pub fn test_asm_ebreak() {
     assert_eq!(value.load(Ordering::Relaxed), 2);
 }
 
-fn dummy_cycle_func(_i: Instruction) -> u64 {
-    1
-}
-
 #[test]
 pub fn test_asm_simple_cycles() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 708);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&dummy_cycle_func)
+    let core = DefaultMachineBuilder::new(asm_core)
+        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -133,7 +130,7 @@ pub fn test_asm_simple_max_cycles_reached() {
     // Running simple64 should consume 708 cycles using dummy cycle func
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 700);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&dummy_cycle_func)
+        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -342,7 +339,7 @@ pub fn test_asm_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, 20);
     let core = DefaultMachineBuilder::new(asm_core)
-        .instruction_cycle_func(&|_| 1)
+        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core);
@@ -361,7 +358,7 @@ pub fn test_asm_cycles_overflow() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&|_| 1)
+        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core);
     machine.machine.set_cycles(u64::MAX - 10);
@@ -380,7 +377,7 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
         .into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
-        .instruction_cycle_func(&|_| 1)
+        .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .build();
     let mut machine = AsmMachine::new(core);
     machine.machine.set_cycles(u64::MAX - 10);
@@ -412,4 +409,21 @@ pub fn test_asm_step() {
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+fn test_asm_thread_safe() {
+    let buffer = fs::read("tests/programs/mulw64").unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, &vec!["mulw64".into()])
+        .unwrap();
+    let thread_join_handle = thread::spawn(move || {
+        let result = machine.run();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    });
+    thread_join_handle.join().unwrap();
 }
