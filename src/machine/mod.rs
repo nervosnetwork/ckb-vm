@@ -662,7 +662,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         self
     }
 
-    pub fn set_peak_memory_usage(mut self, memory: usize) -> Self {
+    pub fn set_memory_size(mut self, memory: usize) -> Self {
         assert_ne!(memory, 0);
         assert_eq!(memory % RISCV_PAGESIZE, 0);
         self.memory_size = memory;
