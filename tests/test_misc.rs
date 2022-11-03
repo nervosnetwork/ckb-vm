@@ -3,14 +3,13 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 #[cfg(has_asm)]
-use ckb_vm::machine::asm::AsmCoreMachine;
+use ckb_vm::{machine::asm::AsmCoreMachine, RISCV_MAX_MEMORY};
 use ckb_vm::{
     machine::VERSION0,
     registers::{A0, A1, A2, A3, A4, A5, A7},
     run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
+    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
-use ckb_vm_definitions::RISCV_PAGESIZE;
 
 #[test]
 pub fn test_andi() {
@@ -202,7 +201,12 @@ pub fn test_memory_store_empty_bytes() {
     assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::default());
     assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::default());
     #[cfg(has_asm)]
-    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000));
+    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new(
+        ISA_IMC,
+        VERSION0,
+        200_000,
+        RISCV_MAX_MEMORY,
+    ));
 }
 
 fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
