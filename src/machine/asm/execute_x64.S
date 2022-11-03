@@ -192,8 +192,6 @@
 #define CHECK_READ(address_reg, length) \
   movq address_reg, TEMP1; \
   shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
-  cmp $CKB_VM_ASM_MEMORY_FRAMES, TEMP1; \
-  jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1), TEMP2d; \
   cmp $0, TEMP2d; \
   jne 1f; \
@@ -208,8 +206,6 @@
   addq $length, TEMP1; \
   subq $1, TEMP1; \
   shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
-  cmp $CKB_VM_ASM_MEMORY_FRAMES, TEMP1; \
-  jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES(MACHINE, TEMP1), TEMP2d; \
   cmp $0, TEMP2d; \
   jne 2f; \

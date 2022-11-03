@@ -135,8 +135,6 @@
 #define CHECK_READ(address_reg, length) \
   mov TEMP1, address_reg SEP \
   lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
-  cmp TEMP1, CKB_VM_ASM_MEMORY_FRAMES SEP \
-  bhs .exit_out_of_bound SEP \
   ldr TEMP4, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES SEP \
   add TEMP5, TEMP1, TEMP4 SEP \
   ldrb TEMP2w, [MACHINE, TEMP5] SEP \
@@ -154,8 +152,6 @@
   add TEMP1, TEMP1, length SEP \
   sub TEMP1, TEMP1, 1 SEP \
   lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
-  cmp TEMP1, CKB_VM_ASM_MEMORY_FRAMES SEP \
-  bhs .exit_out_of_bound SEP \
   add TEMP5, TEMP1, TEMP4 SEP \
   ldrb TEMP2w, [MACHINE, TEMP5] SEP \
   cmp TEMP2, 0 SEP \
