@@ -8,7 +8,7 @@ use ckb_vm::{
         asm::{AsmCoreMachine, AsmMachine},
         DefaultMachineBuilder, VERSION0, VERSION1,
     },
-    ISA_B, ISA_IMC, ISA_MOP,
+    ISA_B, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY,
 };
 use ckb_vm::{run, SparseMemory};
 use criterion::Criterion;
@@ -38,7 +38,7 @@ fn asm_benchmark(c: &mut Criterion) {
                                       "bar"].into_iter().map(|a| a.into()).collect();
 
         b.iter(|| {
-            let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+            let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value(), RISCV_MAX_MEMORY);
             let core = DefaultMachineBuilder::new(asm_core).build();
             let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, &args[..]).unwrap();
@@ -57,7 +57,7 @@ fn mop_benchmark(c: &mut Criterion) {
                                       "foo",
                                       "bar"].into_iter().map(|a| a.into()).collect();
         b.iter(|| {
-            let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
+            let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value(), RISCV_MAX_MEMORY);
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);
