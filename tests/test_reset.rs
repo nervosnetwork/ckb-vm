@@ -46,6 +46,7 @@ fn test_reset_int() {
         ISA_IMC | ISA_MOP,
         VERSION1,
         u64::max_value(),
+        RISCV_MAX_MEMORY,
     );
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
@@ -68,6 +69,7 @@ fn test_reset_int_with_trace() {
         ISA_IMC | ISA_MOP,
         VERSION1,
         u64::max_value(),
+        RISCV_MAX_MEMORY,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)

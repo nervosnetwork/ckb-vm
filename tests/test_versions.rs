@@ -19,7 +19,8 @@ fn create_rust_machine(
 ) -> DefaultMachine<DefaultCoreMachine<u64, Mem>> {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
-    let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value());
+    let core_machine =
+        DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value(), RISCV_MAX_MEMORY);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     machine
@@ -238,7 +239,8 @@ pub fn test_rust_version0_unaligned64() {
     let buffer = fs::read(format!("tests/programs/{}", program))
         .unwrap()
         .into();
-    let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::max_value());
+    let core_machine =
+        DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::max_value(), RISCV_MAX_MEMORY);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec![program.into()]);

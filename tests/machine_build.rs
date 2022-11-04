@@ -38,6 +38,7 @@ pub fn int_v1_imcb(
         ISA_IMC | ISA_B,
         VERSION1,
         u64::max_value(),
+        RISCV_MAX_MEMORY,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
@@ -78,6 +79,7 @@ pub fn int_v1_mop(
         ISA_IMC | ISA_B | ISA_MOP,
         VERSION1,
         u64::max_value(),
+        RISCV_MAX_MEMORY,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)

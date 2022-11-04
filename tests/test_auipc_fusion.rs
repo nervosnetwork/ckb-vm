@@ -56,8 +56,12 @@ pub fn test_rust_auipc_fusion() {
         .unwrap()
         .into();
 
-    let core_machine =
-        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::max_value());
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(
+        ISA_IMC,
+        VERSION1,
+        u64::max_value(),
+        RISCV_MAX_MEMORY,
+    );
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])

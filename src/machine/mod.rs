@@ -387,13 +387,20 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
 }
 
 impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
-    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
-        Self {
+    pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+
+        let mut ret = Self {
             isa,
             version,
             max_cycles,
             ..Default::default()
-        }
+        };
+
+        ret.memory.init_memory(memory_size);
+
+        ret
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -550,10 +557,6 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
 
 impl<Inner: SupportMachine> DefaultMachine<Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
-        let memory_size = self.memory_size;
-
-        self.memory_mut().init_memory(memory_size);
-
         let elf_bytes = self.load_elf(program, true)?;
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
@@ -659,13 +662,6 @@ impl<Inner> DefaultMachineBuilder<Inner> {
 
     pub fn debugger(mut self, debugger: Box<dyn Debugger<Inner>>) -> Self {
         self.debugger = Some(debugger);
-        self
-    }
-
-    pub fn set_memory_size(mut self, memory: usize) -> Self {
-        assert_ne!(memory, 0);
-        assert_eq!(memory % RISCV_PAGESIZE, 0);
-        self.memory_size = memory;
         self
     }
 

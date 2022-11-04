@@ -62,6 +62,9 @@ pub struct AsmCoreMachine {
 
 impl AsmCoreMachine {
     pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Box<AsmCoreMachine> {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+
         let mut machine = unsafe {
             let machine_size =
                 std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;

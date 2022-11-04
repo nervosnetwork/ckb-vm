@@ -218,7 +218,10 @@ impl MachineTy {
             }
             MachineTy::Interpreter => {
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC, version, max_cycles,
+                    ISA_IMC,
+                    version,
+                    max_cycles,
+                    RISCV_MAX_MEMORY,
                 );
                 Machine::Interpreter(
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
@@ -230,7 +233,10 @@ impl MachineTy {
             }
             MachineTy::InterpreterWithTrace => {
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC, version, max_cycles,
+                    ISA_IMC,
+                    version,
+                    max_cycles,
+                    RISCV_MAX_MEMORY,
                 );
                 Machine::InterpreterWithTrace(
                     TraceMachine::new(

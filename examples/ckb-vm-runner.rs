@@ -1,9 +1,8 @@
 use ckb_vm::instructions::{extract_opcode, insts};
 use ckb_vm::registers::{A0, A7};
-use ckb_vm::{Bytes, CoreMachine, Instruction, Memory, Register, SupportMachine, Syscalls};
-
-#[cfg(has_asm)]
-use ckb_vm_definitions::RISCV_MAX_MEMORY;
+use ckb_vm::{
+    Bytes, CoreMachine, Instruction, Memory, Register, SupportMachine, Syscalls, RISCV_MAX_MEMORY,
+};
 
 pub fn instruction_cycles(i: Instruction) -> u64 {
     match extract_opcode(i) {
@@ -120,10 +119,11 @@ fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
         ckb_vm::machine::VERSION1,
         u64::MAX,
+        RISCV_MAX_MEMORY,
     );
     let machine_builder = ckb_vm::DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(Box::new(instruction_cycles));
-    let machine_builder = machine_builder.set_memory_size(1024 * 1024 * 8);
+    let machine_builder = machine_builder;
     let mut machine = machine_builder.syscall(Box::new(DebugSyscall {})).build();
     machine.load_program(&code, &args)?;
     let exit = machine.run();
