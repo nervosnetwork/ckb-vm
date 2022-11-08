@@ -9,6 +9,7 @@ use ckb_vm_definitions::{
     registers::{RA, SP},
     MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY,
     RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    RISCV_PAGES, MEMORY_FRAMES
 };
 use std::mem::{size_of, zeroed};
 
@@ -20,17 +21,17 @@ use std::mem::{size_of, zeroed};
 // of this as a workaround to the problem that build.rs cannot depend on any
 // of its crate contents.
 fn main() {
-    // println!("#define CKB_VM_ASM_RISCV_MAX_MEMORY {}", RISCV_MAX_MEMORY);
+    println!("#define CKB_VM_ASM_RISCV_MAX_MEMORY {}", RISCV_MAX_MEMORY);
     println!("#define CKB_VM_ASM_RISCV_PAGE_SHIFTS {}", RISCV_PAGE_SHIFTS);
     println!("#define CKB_VM_ASM_RISCV_PAGE_SIZE {}", RISCV_PAGESIZE);
     println!("#define CKB_VM_ASM_RISCV_PAGE_MASK {}", RISCV_PAGESIZE - 1);
-    // println!("#define CKB_VM_ASM_RISCV_PAGES {}", RISCV_PAGES);
+    println!("#define CKB_VM_ASM_RISCV_PAGES {}", RISCV_PAGES);
     println!(
         "#define CKB_VM_ASM_MEMORY_FRAME_SHIFTS {}",
         MEMORY_FRAME_SHIFTS
     );
     println!("#define CKB_VM_ASM_MEMORY_FRAMESIZE {}", MEMORY_FRAMESIZE);
-    // println!("#define CKB_VM_ASM_MEMORY_FRAMES {}", MEMORY_FRAMES);
+    println!("#define CKB_VM_ASM_MEMORY_FRAMES {}", MEMORY_FRAMES);
     println!(
         "#define CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS {}",
         MEMORY_FRAME_PAGE_SHIFTS
@@ -162,9 +163,10 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );
+    let memory_offset_address = (&m.memory as *const u8 as usize) - m_address;
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY {}",
-        (&m.memory as *const u8 as usize) - m_address
+        memory_offset_address
     );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES {}",
@@ -174,6 +176,17 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",
         (&m.frames as *const u8 as usize) - m_address
     );
+    println!();
+
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_H {}",
+        memory_offset_address.wrapping_shr(12).wrapping_shl(12)
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_L {}",
+        memory_offset_address & 0xFFF
+    );
+
     println!();
 
     for (op, name) in INSTRUCTION_OPCODE_NAMES_LEVEL1.iter().enumerate() {
