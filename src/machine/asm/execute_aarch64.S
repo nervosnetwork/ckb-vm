@@ -23,8 +23,8 @@
 #define RD x16
 #define RS1 x17
 #define RS1w w17
-#define RS2 x18
-#define RS2w w18
+#define RS2 x24
+#define RS2w w24
 #define RS3 x19
 #define RS3w w19
 #define IMMEDIATE x20
@@ -41,20 +41,22 @@
 #endif
 
 #define PREPCALL \
-  stp x0, x8, [sp, -96]! SEP \
+  stp x0, x8, [sp, -112]! SEP \
   stp x9, x10, [sp, 16] SEP \
   stp x11, x12, [sp, 32] SEP \
   stp x13, x14, [sp, 48] SEP \
   stp x15, x16, [sp, 64] SEP \
-  stp x17, x18, [sp, 80]
+  stp x17, x18, [sp, 80] SEP \
+  stp x24, x25, [sp, 96]
 
 #define POSTCALL \
+  ldp x24, x25, [sp, 96] SEP \
   ldp x17, x18, [sp, 80] SEP \
   ldp x15, x16, [sp, 64] SEP \
   ldp x13, x14, [sp, 48] SEP \
   ldp x11, x12, [sp, 32] SEP \
   ldp x9, x10, [sp, 16] SEP \
-  ldp x0, x8, [sp], 96
+  ldp x0, x8, [sp], 112
 
 #define REGISTER_ADDRESS(r) [REGISTER_BASE, r, lsl 3]
 #define ZERO_ADDRESS [REGISTER_BASE]
@@ -90,9 +92,9 @@
   asr TEMP1, TEMP1, 24 SEP \
   ubfx FLAG, TEMP1, 0, 8 SEP \
   asr TEMP1, TEMP1, 8 SEP \
-  ldr x9, [INST_PC] SEP \
+  ldr TEMP2, [INST_PC] SEP \
   add INST_PC, INST_PC, 8 SEP \
-  br x9
+  br TEMP2
 
 #define DECODE_R \
   ubfx RS1, TEMP1, 0, 8 SEP \
@@ -242,9 +244,10 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
-  stp x19, x20, [sp, -48]!
+  stp x19, x20, [sp, -64]!
   stp x21, x22, [sp, 16]
   stp x23, x30, [sp, 32]
+  stp x24, x25, [sp, 48]
   add REGISTER_BASE, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS
 
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
@@ -1612,7 +1615,8 @@ ckb_vm_x64_execute:
   mov x0, CKB_VM_ASM_RET_SLOWPATH
   b .exit
 .exit:
+  ldp x24, x25, [sp, 48]
   ldp x23, x30, [sp, 32]
   ldp x21, x22, [sp, 16]
-  ldp x19, x20, [sp], 48
+  ldp x19, x20, [sp], 64
   ret
