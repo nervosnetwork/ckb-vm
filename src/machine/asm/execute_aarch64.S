@@ -41,20 +41,14 @@
 #endif
 
 #define PREPCALL \
-  stp x0, x9, [sp, -96]! SEP \
+  stp x0, x9, [sp, -48]! SEP \
   stp x10, x11, [sp, 16] SEP \
-  stp x12, x13, [sp, 32] SEP \
-  stp x19, x20, [sp, 48] SEP \
-  stp x21, x22, [sp, 64] SEP \
-  stp x23, x24, [sp, 80]
+  stp x12, x13, [sp, 32]
 
 #define POSTCALL \
-  ldp x23, x24, [sp, 80] SEP \
-  ldp x21, x22, [sp, 64] SEP \
-  ldp x19, x20, [sp, 48] SEP \
   ldp x12, x13, [sp, 32] SEP \
   ldp x10, x11, [sp, 16] SEP \
-  ldp x0, x9, [sp], 96
+  ldp x0, x9, [sp], 48
 
 #define REGISTER_ADDRESS(r) [REGISTER_BASE, r, lsl 3]
 #define ZERO_ADDRESS [REGISTER_BASE]
