@@ -6,32 +6,32 @@
 
 #define MACHINE x0
 
-#define TEMP1 x8
-#define TEMP1w w8
-#define TEMP2 x9
-#define TEMP2w w9
-#define TEMP3 x10
-#define TEMP3w w10
-#define TEMP4 x11
-#define TEMP4w w11
-#define TEMP5 x12
-#define TEMP5w w12
-#define TRACE x13
-#define INST_PC x14
-#define INST_ARGS x15
+#define TEMP1 x9
+#define TEMP1w w9
+#define TEMP2 x10
+#define TEMP2w w10
+#define TEMP3 x11
+#define TEMP3w w11
+#define TEMP4 x12
+#define TEMP4w w12
+#define TEMP5 x13
+#define TEMP5w w13
+#define TRACE x19
+#define INST_PC x20
+#define INST_ARGS x21
 
-#define RD x16
-#define RS1 x17
-#define RS1w w17
-#define RS2 x19
-#define RS2w w19
-#define RS3 x20
-#define RS3w w20
-#define IMMEDIATE x21
-#define IMMEDIATEw w21
-#define FLAG x22
+#define RD x22
+#define RS1 x23
+#define RS1w w23
+#define RS2 x24
+#define RS2w w24
+#define RS3 x25
+#define RS3w w25
+#define IMMEDIATE x26
+#define IMMEDIATEw w26
+#define FLAG x27
 
-#define REGISTER_BASE x23
+#define REGISTER_BASE x28
 #define ZERO_VALUE xzr
 
 #ifdef __APPLE__
@@ -41,20 +41,20 @@
 #endif
 
 #define PREPCALL \
-  stp x0, x8, [sp, -96]! SEP \
-  stp x9, x10, [sp, 16] SEP \
-  stp x11, x12, [sp, 32] SEP \
-  stp x13, x14, [sp, 48] SEP \
-  stp x15, x16, [sp, 64] SEP \
-  stp x17, x19, [sp, 80]
+  stp x0, x9, [sp, -96]! SEP \
+  stp x10, x11, [sp, 16] SEP \
+  stp x12, x13, [sp, 32] SEP \
+  stp x19, x20, [sp, 48] SEP \
+  stp x21, x22, [sp, 64] SEP \
+  stp x23, x24, [sp, 80]
 
 #define POSTCALL \
-  ldp x17, x19, [sp, 80] SEP \
-  ldp x15, x16, [sp, 64] SEP \
-  ldp x13, x14, [sp, 48] SEP \
-  ldp x11, x12, [sp, 32] SEP \
-  ldp x9, x10, [sp, 16] SEP \
-  ldp x0, x8, [sp], 96
+  ldp x23, x24, [sp, 80] SEP \
+  ldp x21, x22, [sp, 64] SEP \
+  ldp x19, x20, [sp, 48] SEP \
+  ldp x12, x13, [sp, 32] SEP \
+  ldp x10, x11, [sp, 16] SEP \
+  ldp x0, x9, [sp], 96
 
 #define REGISTER_ADDRESS(r) [REGISTER_BASE, r, lsl 3]
 #define ZERO_ADDRESS [REGISTER_BASE]
@@ -242,9 +242,12 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
-  stp x19, x20, [sp, -48]!
+  stp x19, x20, [sp, -96]!
   stp x21, x22, [sp, 16]
-  stp x23, x30, [sp, 32]
+  stp x23, x24, [sp, 32]
+  stp x25, x26, [sp, 48]
+  stp x27, x28, [sp, 64]
+  stp x29, x30, [sp, 80]
   add REGISTER_BASE, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS
 
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
@@ -1612,7 +1615,10 @@ ckb_vm_x64_execute:
   mov x0, CKB_VM_ASM_RET_SLOWPATH
   b .exit
 .exit:
-  ldp x23, x30, [sp, 32]
+  ldp x29, x30, [sp, 80]
+  ldp x27, x28, [sp, 64]
+  ldp x25, x26, [sp, 48]
+  ldp x23, x24, [sp, 32]
   ldp x21, x22, [sp, 16]
-  ldp x19, x20, [sp], 48
+  ldp x19, x20, [sp], 96
   ret
