@@ -15,8 +15,7 @@ use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGESIZE,
+    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -425,7 +424,6 @@ pub struct DefaultMachine<Inner> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     exit_code: i8,
-    memory_size: usize,
 }
 
 impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
@@ -564,11 +562,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         if let Some(debugger) = &mut self.debugger {
             debugger.initialize(&mut self.inner)?;
         }
-        let stack_bytes = self.initialize_stack(
-            args,
-            (self.memory_size - DEFAULT_STACK_SIZE) as u64,
-            DEFAULT_STACK_SIZE as u64,
-        )?;
+        let memory_size = self.memory().memory_size();
+        let stack_size = memory_size / 4;
+        let stack_bytes =
+            self.initialize_stack(args, (memory_size - stack_size) as u64, stack_size as u64)?;
         // Make sure SP is 16 byte aligned
         if self.inner.version() >= VERSION1 {
             debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
@@ -633,7 +630,6 @@ pub struct DefaultMachineBuilder<Inner> {
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
-    memory_size: usize,
 }
 
 impl<Inner> DefaultMachineBuilder<Inner> {
@@ -643,7 +639,6 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             instruction_cycle_func: Box::new(|_| 0),
             debugger: None,
             syscalls: vec![],
-            memory_size: RISCV_MAX_MEMORY,
         }
     }
 
@@ -672,7 +667,6 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             debugger: self.debugger,
             syscalls: self.syscalls,
             exit_code: 0,
-            memory_size: self.memory_size,
         }
     }
 }

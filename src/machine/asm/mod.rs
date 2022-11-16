@@ -258,6 +258,12 @@ impl Memory for Box<AsmCoreMachine> {
         }
     }
 
+    fn init_memory(&mut self, _memory_size: usize) {}
+
+    fn memory_size(&self) -> usize {
+        self.memory_size as usize
+    }
+
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         if value.is_empty() {
             return Ok(());

@@ -1,4 +1,6 @@
-use super::super::{Error, Register, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
+use super::super::{
+    Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+};
 use super::{fill_page_data, memset, round_page_down, Memory, Page, FLAG_DIRTY};
 
 use bytes::Bytes;
@@ -19,7 +21,8 @@ pub struct SparseMemory<R> {
     flags: Vec<u8>,
     _inner: PhantomData<R>,
 
-    riscv_page: usize,
+    memory_size: usize,
+    riscv_pages: usize,
 }
 
 impl<R> SparseMemory<R> {
@@ -30,17 +33,19 @@ impl<R> SparseMemory<R> {
             pages: Vec::new(),
             flags: vec![0; RISCV_PAGES],
             _inner: PhantomData,
-            riscv_page: RISCV_PAGES,
+
+            memory_size: RISCV_MAX_MEMORY,
+            riscv_pages: RISCV_PAGES,
         };
 
-        ret.indices.resize(ret.riscv_page, INVALID_PAGE_INDEX);
+        ret.indices.resize(ret.riscv_pages, INVALID_PAGE_INDEX);
 
         ret
     }
 
     fn fetch_page(&mut self, aligned_addr: u64) -> Result<&mut Page, Error> {
         let page = aligned_addr / RISCV_PAGESIZE as u64;
-        if page >= self.riscv_page as u64 {
+        if page >= self.riscv_pages as u64 {
             return Err(Error::MemOutOfBound);
         }
         let mut index = self.indices[page as usize];
@@ -96,7 +101,7 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
-        if page < self.riscv_page as u64 {
+        if page < self.riscv_pages as u64 {
             Ok(self.flags[page as usize])
         } else {
             Err(Error::MemOutOfBound)
@@ -104,7 +109,7 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < self.riscv_page as u64 {
+        if page < self.riscv_pages as u64 {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
@@ -113,7 +118,7 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < self.riscv_page as u64 {
+        if page < self.riscv_pages as u64 {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
@@ -121,11 +126,16 @@ impl<R: Register> Memory for SparseMemory<R> {
         }
     }
 
-    fn init_memory(&mut self, memory: usize) {
-        self.riscv_page = memory / RISCV_PAGESIZE;
+    fn init_memory(&mut self, memory_size: usize) {
+        self.memory_size = memory_size;
+        self.riscv_pages = memory_size / RISCV_PAGESIZE;
 
-        self.indices.resize(self.riscv_page, INVALID_PAGE_INDEX);
-        self.flags.resize(self.riscv_page, 0);
+        self.indices.resize(self.riscv_pages, INVALID_PAGE_INDEX);
+        self.flags.resize(self.riscv_pages, 0);
+    }
+
+    fn memory_size(&self) -> usize {
+        self.memory_size
     }
 
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
