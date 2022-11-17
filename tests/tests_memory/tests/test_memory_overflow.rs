@@ -7,10 +7,34 @@ use ckb_vm::{
 };
 use jemalloc_ctl::{epoch, stats};
 use jemallocator::Jemalloc;
-use std::{fs, thread};
+use std::{
+    fs,
+    process::{self, Command},
+    thread,
+};
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
+
+fn get_current_memory() -> usize {
+    let pid = format!("{}", process::id());
+    let output = String::from_utf8(
+        Command::new("ps")
+            .arg("-p")
+            .arg(pid)
+            .arg("-o")
+            .arg("rss")
+            .output()
+            .expect("run ps failed")
+            .stdout,
+    )
+    .unwrap();
+
+    let output = output.split("\n").collect::<Vec<&str>>();
+
+    let memory_size = output[1].replace(" ", "");
+    memory_size.parse().unwrap()
+}
 
 #[test]
 fn test_memory() {
@@ -24,7 +48,7 @@ fn test_memory() {
     let base_allocated = stats::allocated::read().unwrap() as f64 * 1.02f64;
     let base_resident = stats::resident::read().unwrap() as f64 * 1.02f64;
 
-    for _ in 0..10 {
+    for _ in 0..100 {
         let result =
             run::<u64, SparseMemory<u64>>(&buffer, &vec![bin_name.clone().into()], memory_size);
         assert!(result.is_ok());
@@ -47,6 +71,7 @@ fn test_memory() {
 
         assert!((stats::allocated::read().unwrap() as f64) < base_allocated);
         assert!((stats::resident::read().unwrap() as f64) < base_resident);
+        println!("--{}", get_current_memory());
     }
 }
 
@@ -78,5 +103,7 @@ fn test_thread_safe() {
 
         assert!((stats::allocated::read().unwrap() as f64) < base_allocated);
         assert!((stats::resident::read().unwrap() as f64) < base_resident);
+
+        println!("--{}", get_current_memory());
     }
 }
