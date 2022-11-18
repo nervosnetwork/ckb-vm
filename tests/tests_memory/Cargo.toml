@@ -9,3 +9,4 @@ edition = "2021"
 ckb-vm = { path= "../../", features = ["asm"] }
 jemallocator = "0.5.0"
 jemalloc-ctl = "0.5.0"
+lazy_static = "1.4.0"
