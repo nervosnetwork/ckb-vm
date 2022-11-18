@@ -109,11 +109,6 @@ fn main() {
     );
     println!();
 
-    // println!(
-    //     "#define CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE {}",
-    //     size_of::<AsmCoreMachine>()
-    // );
-
     let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0, RISCV_MAX_MEMORY);
     let m_address = &*m as *const AsmCoreMachine as usize;
     println!(
