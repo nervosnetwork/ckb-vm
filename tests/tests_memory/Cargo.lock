@@ -28,7 +28,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "ckb-vm"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "byteorder",
  "bytes",
@@ -44,7 +44,7 @@ dependencies = [
 
 [[package]]
 name = "ckb-vm-definitions"
-version = "0.22.0"
+version = "0.23.0"
 
 [[package]]
 name = "convert_case"
