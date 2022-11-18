@@ -34,6 +34,8 @@
 #define REGISTER_BASE x28
 #define ZERO_VALUE xzr
 
+#define MEMORY_OFFSET_ADDRESS x29
+
 #ifdef __APPLE__
 #define SEP %%
 #else
