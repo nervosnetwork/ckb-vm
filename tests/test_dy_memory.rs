@@ -73,7 +73,7 @@ fn test_memory_out_of_bounds() {
 #[test]
 fn test_memory_min_size() {
     run_memory_suc(
-        1024 * 80,
+        1024 * 256,
         format!("tests/programs/mulw64"),
         format!("mulw64"),
     );

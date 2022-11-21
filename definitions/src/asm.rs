@@ -1,6 +1,6 @@
 use crate::{
-    instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 use std::alloc::{alloc, Layout};
 
@@ -65,6 +65,7 @@ impl AsmCoreMachine {
     pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Box<AsmCoreMachine> {
         assert_ne!(memory_size, 0);
         assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
 
         let mut machine = unsafe {
             let machine_size =
