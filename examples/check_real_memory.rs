@@ -2,7 +2,7 @@
 
 use ckb_vm::{run, Bytes, FlatMemory, SparseMemory};
 use lazy_static::lazy_static;
-use std::process::id;
+use std::process::{id, Command};
 
 #[cfg(has_asm)]
 use ckb_vm::{
@@ -29,28 +29,49 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 static G_CHECK_LOOP: usize = 2;
 
 fn get_current_memory() -> usize {
-    let process_info = psutil::process::Process::new(id()).expect("get process failed");
-    let mem_info = process_info.memory_info().expect("get memory info failed");
-    mem_info.rss() as usize
+    let pid = format!("{}", id());
+    let output = String::from_utf8(
+        Command::new("ps")
+            .arg("-p")
+            .arg(pid)
+            .arg("-o")
+            .arg("rss")
+            .output()
+            .expect("run ps failed")
+            .stdout,
+    )
+    .unwrap();
+
+    let output = output.split("\n").collect::<Vec<&str>>();
+
+    let memory_size = output[1].replace(" ", "");
+    memory_size.parse().unwrap()
 }
 
 struct MemoryOverflow {
+    #[cfg(not(target_os = "windows"))]
     base_allocated: usize,
+
+    #[cfg(not(target_os = "windows"))]
     base_resident: usize,
 }
 
 impl MemoryOverflow {
     pub fn new() -> Self {
-        jemalloc_ctl::epoch::advance().unwrap();
-
         Self {
+            #[cfg(not(target_os = "windows"))]
             base_allocated: jemalloc_ctl::stats::allocated::read().unwrap(),
+
+            #[cfg(not(target_os = "windows"))]
             base_resident: jemalloc_ctl::stats::resident::read().unwrap(),
         }
     }
 
     pub fn check(&self) {
+        #[cfg(not(target_os = "windows"))]
         assert!(jemalloc_ctl::stats::allocated::read().unwrap() <= self.base_allocated);
+
+        #[cfg(not(target_os = "windows"))]
         assert!(jemalloc_ctl::stats::resident::read().unwrap() <= self.base_resident);
     }
 }
@@ -167,6 +188,8 @@ fn test_memory(memory_size: usize) -> Result<(), ()> {
 
 fn main() {
     #[cfg(not(target_os = "windows"))]
+    jemalloc_ctl::epoch::advance().unwrap();
+
     let memory_overflow = MemoryOverflow::new();
 
     let memory_size = 1024 * 1024 * 4;
@@ -174,7 +197,6 @@ fn main() {
         panic!("run testcase failed");
     }
 
-    #[cfg(not(target_os = "windows"))]
     memory_overflow.check();
 
     let memory_size = 1024 * 1024 * 2;
@@ -182,6 +204,5 @@ fn main() {
         panic!("run testcase failed");
     }
 
-    #[cfg(not(target_os = "windows"))]
     memory_overflow.check();
 }
