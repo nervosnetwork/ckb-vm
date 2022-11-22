@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -10,23 +10,9 @@ use std::ops::{Deref, DerefMut};
 pub struct FlatMemory<R> {
     data: Vec<u8>,
     flags: Vec<u8>,
-    _inner: PhantomData<R>,
-
     memory_size: usize,
     riscv_pages: usize,
-}
-
-impl<R> Default for FlatMemory<R> {
-    fn default() -> Self {
-        Self {
-            data: Vec::new(),
-            flags: Vec::new(),
-            _inner: PhantomData,
-
-            memory_size: RISCV_MAX_MEMORY,
-            riscv_pages: RISCV_PAGES,
-        }
-    }
+    _inner: PhantomData<R>,
 }
 
 impl<R> Deref for FlatMemory<R> {
@@ -47,6 +33,18 @@ impl<R> DerefMut for FlatMemory<R> {
 /// checking logic.
 impl<R: Register> Memory for FlatMemory<R> {
     type REG = R;
+
+    fn new(memory_size: usize) -> Self {
+        assert!(memory_size <= RISCV_MAX_MEMORY);
+        assert!(memory_size % RISCV_PAGESIZE == 0);
+        Self {
+            data: vec![0; memory_size as usize],
+            flags: vec![0; memory_size / RISCV_PAGESIZE],
+            memory_size: memory_size,
+            riscv_pages: memory_size / RISCV_PAGESIZE,
+            _inner: PhantomData,
+        }
+    }
 
     fn init_pages(
         &mut self,
@@ -83,14 +81,6 @@ impl<R: Register> Memory for FlatMemory<R> {
         } else {
             Err(Error::MemOutOfBound)
         }
-    }
-
-    fn init_memory(&mut self, memory_size: usize) {
-        self.memory_size = memory_size;
-        self.riscv_pages = memory_size / RISCV_PAGESIZE;
-
-        self.data.resize(self.memory_size, 0);
-        self.flags.resize(self.riscv_pages, 0);
     }
 
     fn memory_size(&self) -> usize {

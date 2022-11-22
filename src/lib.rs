@@ -34,7 +34,7 @@ pub use ckb_vm_definitions::{
 
 pub use error::Error;
 
-pub fn run<R: Register, M: Memory<REG = R> + Default>(
+pub fn run<R: Register, M: Memory<REG = R>>(
     program: &Bytes,
     args: &[Bytes],
     memory_size: usize,
