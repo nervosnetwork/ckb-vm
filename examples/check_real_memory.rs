@@ -1,8 +1,8 @@
+// This example is mainly to test whether there is memory overflow.
+
 use ckb_vm::{run, Bytes, FlatMemory, SparseMemory};
-use jemalloc_ctl::{epoch, stats};
-use jemallocator::Jemalloc;
 use lazy_static::lazy_static;
-use std::process::{id, Command};
+use std::process::id;
 
 #[cfg(has_asm)]
 use ckb_vm::{
@@ -22,29 +22,37 @@ lazy_static! {
     pub static ref BIN_NAME: String = format!("alloc_many");
 }
 
+#[cfg(not(target_os = "windows"))]
 #[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 static G_CHECK_LOOP: usize = 2;
 
 fn get_current_memory() -> usize {
-    let pid = format!("{}", id());
-    let output = String::from_utf8(
-        Command::new("ps")
-            .arg("-p")
-            .arg(pid)
-            .arg("-o")
-            .arg("rss")
-            .output()
-            .expect("run ps failed")
-            .stdout,
-    )
-    .unwrap();
+    let process_info = psutil::process::Process::new(id()).expect("get process failed");
+    let mem_info = process_info.memory_info().expect("get memory info failed");
+    mem_info.rss() as usize
+}
 
-    let output = output.split("\n").collect::<Vec<&str>>();
+struct MemoryOverflow {
+    base_allocated: usize,
+    base_resident: usize,
+}
 
-    let memory_size = output[1].replace(" ", "");
-    memory_size.parse().unwrap()
+impl MemoryOverflow {
+    pub fn new() -> Self {
+        jemalloc_ctl::epoch::advance().unwrap();
+
+        Self {
+            base_allocated: jemalloc_ctl::stats::allocated::read().unwrap(),
+            base_resident: jemalloc_ctl::stats::resident::read().unwrap(),
+        }
+    }
+
+    pub fn check(&self) {
+        assert!(jemalloc_ctl::stats::allocated::read().unwrap() <= self.base_allocated);
+        assert!(jemalloc_ctl::stats::resident::read().unwrap() <= self.base_resident);
+    }
 }
 
 fn check_interpreter(memory_size: usize) -> Result<(), ()> {
@@ -118,7 +126,7 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
         memory_size
     );
     println!("Base memory: {}", get_current_memory());
-    for _ in 0..10 {
+    for _ in 0..G_CHECK_LOOP {
         let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value(), memory_size);
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
@@ -158,23 +166,22 @@ fn test_memory(memory_size: usize) -> Result<(), ()> {
 }
 
 fn main() {
-    epoch::advance().unwrap();
-    let base_allocated = stats::allocated::read().unwrap() as f64 * 1.02f64;
-    let base_resident = stats::resident::read().unwrap() as f64 * 1.02f64;
+    #[cfg(not(target_os = "windows"))]
+    let memory_overflow = MemoryOverflow::new();
 
     let memory_size = 1024 * 1024 * 4;
     if test_memory(memory_size).is_err() {
         panic!("run testcase failed");
     }
 
-    assert!((stats::allocated::read().unwrap() as f64) < base_allocated);
-    assert!((stats::resident::read().unwrap() as f64) < base_resident);
+    #[cfg(not(target_os = "windows"))]
+    memory_overflow.check();
 
     let memory_size = 1024 * 1024 * 2;
     if test_memory(memory_size).is_err() {
         panic!("run testcase failed");
     }
 
-    assert!((stats::allocated::read().unwrap() as f64) < base_allocated);
-    assert!((stats::resident::read().unwrap() as f64) < base_resident);
+    #[cfg(not(target_os = "windows"))]
+    memory_overflow.check();
 }
