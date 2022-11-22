@@ -30,6 +30,7 @@ pub type Page = [u8; RISCV_PAGESIZE];
 pub trait Memory {
     type REG: Register;
 
+    fn new(memory_size: usize) -> Self;
     fn init_pages(
         &mut self,
         addr: u64,
@@ -41,8 +42,6 @@ pub trait Memory {
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error>;
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
-
-    fn init_memory(&mut self, _memory_size: usize);
     fn memory_size(&self) -> usize;
 
     // This is in fact just memset

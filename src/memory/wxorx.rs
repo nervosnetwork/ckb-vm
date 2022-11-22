@@ -10,14 +10,6 @@ pub struct WXorXMemory<M: Memory> {
     inner: M,
 }
 
-impl<M: Memory + Default> Default for WXorXMemory<M> {
-    fn default() -> Self {
-        Self {
-            inner: M::default(),
-        }
-    }
-}
-
 impl<M: Memory> WXorXMemory<M> {
     pub fn inner_mut(&mut self) -> &mut M {
         &mut self.inner
@@ -26,6 +18,12 @@ impl<M: Memory> WXorXMemory<M> {
 
 impl<M: Memory> Memory for WXorXMemory<M> {
     type REG = M::REG;
+
+    fn new(memory_size: usize) -> Self {
+        Self {
+            inner: M::new(memory_size),
+        }
+    }
 
     fn init_pages(
         &mut self,
@@ -67,10 +65,6 @@ impl<M: Memory> Memory for WXorXMemory<M> {
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         self.inner.clear_flag(page, flag)
-    }
-
-    fn init_memory(&mut self, memory_size: usize) {
-        self.inner.init_memory(memory_size);
     }
 
     fn memory_size(&self) -> usize {

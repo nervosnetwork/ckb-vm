@@ -230,9 +230,9 @@ pub fn test_flat_crash_64() {
 
 #[test]
 pub fn test_memory_store_empty_bytes() {
-    assert_memory_store_empty_bytes(&mut FlatMemory::<u64>::default());
-    assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::default());
-    assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::default());
+    assert_memory_store_empty_bytes(&mut FlatMemory::<u64>::new(RISCV_MAX_MEMORY));
+    assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::new(RISCV_MAX_MEMORY));
+    assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::new(RISCV_MAX_MEMORY));
     #[cfg(has_asm)]
     assert_memory_store_empty_bytes(&mut AsmCoreMachine::new(
         ISA_IMC,
