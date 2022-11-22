@@ -1,4 +1,5 @@
 // This example is mainly to test whether there is memory overflow.
+// Under linux, we choose to use smem, which can monitor memory changes more accurately
 
 use ckb_vm::{run, Bytes, FlatMemory, SparseMemory};
 use lazy_static::lazy_static;
@@ -26,26 +27,67 @@ lazy_static! {
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-static G_CHECK_LOOP: usize = 2;
+static G_CHECK_LOOP: usize = 10;
 
-fn get_current_memory() -> usize {
-    let pid = format!("{}", id());
+fn get_current_memory_linux() -> usize {
     let output = String::from_utf8(
-        Command::new("ps")
-            .arg("-p")
-            .arg(pid)
-            .arg("-o")
-            .arg("rss")
+        Command::new("smem")
+            .arg("-c")
+            .arg("pid uss")
             .output()
             .expect("run ps failed")
             .stdout,
     )
     .unwrap();
 
-    let output = output.split("\n").collect::<Vec<&str>>();
+    let outputs = output.split("\n").collect::<Vec<&str>>();
+    for i in 1..outputs.len() {
+        let mut has_pid = false;
+        let mut memory_size: u32 = 0;
+        for d in outputs[i].split(" ").collect::<Vec<&str>>() {
+            if d == " " || d == "" {
+                continue;
+            }
+            let val: u32 = d.parse().unwrap();
+            if !has_pid {
+                if val != id() {
+                    continue;
+                }
+                has_pid = true;
+            } else {
+                memory_size = val;
+            }
+        }
+        if memory_size != 0 {
+            return memory_size as usize;
+        }
+    }
 
-    let memory_size = output[1].replace(" ", "");
-    memory_size.parse().unwrap()
+    0
+}
+
+fn get_current_memory() -> usize {
+    if !cfg!(linux) {
+        get_current_memory_linux()
+    } else {
+        let pid = format!("{}", id());
+        let output = String::from_utf8(
+            Command::new("ps")
+                .arg("-p")
+                .arg(pid)
+                .arg("-o")
+                .arg("rss")
+                .output()
+                .expect("run ps failed")
+                .stdout,
+        )
+        .unwrap();
+
+        let output = output.split("\n").collect::<Vec<&str>>();
+
+        let memory_size = output[1].replace(" ", "");
+        memory_size.parse().unwrap()
+    }
 }
 
 struct MemoryOverflow {
