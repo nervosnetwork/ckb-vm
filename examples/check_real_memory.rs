@@ -1,17 +1,20 @@
+use ckb_vm::{run, Bytes, FlatMemory, SparseMemory};
+use jemalloc_ctl::{epoch, stats};
+use jemallocator::Jemalloc;
+use lazy_static::lazy_static;
+use std::process::{id, Command};
+
+#[cfg(has_asm)]
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
         DefaultMachineBuilder, VERSION0,
     },
-    run, Bytes, FlatMemory, SparseMemory, ISA_IMC,
+    ISA_IMC,
 };
-use jemalloc_ctl::{epoch, stats};
-use jemallocator::Jemalloc;
-use lazy_static::lazy_static;
-use std::{
-    process::{id, Command},
-    thread,
-};
+
+#[cfg(has_asm)]
+use std::thread;
 
 lazy_static! {
     pub static ref BIN_PATH_BUFFER: Bytes =
@@ -84,6 +87,7 @@ fn check_falt(memory_size: usize) -> Result<(), ()> {
     Ok(())
 }
 
+#[cfg(has_asm)]
 fn check_asm(memory_size: usize) -> Result<(), ()> {
     println!(
         "Check asm memory overflow, ckb-vm memory size: {}",
@@ -107,6 +111,7 @@ fn check_asm(memory_size: usize) -> Result<(), ()> {
     Ok(())
 }
 
+#[cfg(has_asm)]
 fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
     println!(
         "Check asm in thread memory overflow, ckb-vm memory size: {}",
@@ -133,15 +138,19 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
 }
 
 fn test_memory(memory_size: usize) -> Result<(), ()> {
-    if check_int_real_memory(memory_size).is_err() {
+    if check_interpreter(memory_size).is_err() {
         return Err(());
     }
-    if check_falt_real_memory(memory_size).is_err() {
+    if check_falt(memory_size).is_err() {
         return Err(());
     }
-    if check_asm_real_memory(memory_size).is_err() {
+
+    #[cfg(has_asm)]
+    if check_asm(memory_size).is_err() {
         return Err(());
     }
+
+    #[cfg(has_asm)]
     if check_asm_in_thread(memory_size).is_err() {
         return Err(());
     }

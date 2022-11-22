@@ -76,7 +76,7 @@ impl<R: Register> Memory for SparseMemory<R> {
             indices: vec![INVALID_PAGE_INDEX; memory_size / RISCV_PAGESIZE],
             pages: Vec::new(),
             flags: vec![0; memory_size / RISCV_PAGESIZE],
-            memory_size: memory_size,
+            memory_size,
             riscv_pages: memory_size / RISCV_PAGESIZE,
             _inner: PhantomData,
         }

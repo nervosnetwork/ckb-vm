@@ -40,7 +40,7 @@ impl<R: Register> Memory for FlatMemory<R> {
         Self {
             data: vec![0; memory_size as usize],
             flags: vec![0; memory_size / RISCV_PAGESIZE],
-            memory_size: memory_size,
+            memory_size,
             riscv_pages: memory_size / RISCV_PAGESIZE,
             _inner: PhantomData,
         }
