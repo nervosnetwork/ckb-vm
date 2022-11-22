@@ -32,6 +32,8 @@ static G_CHECK_LOOP: usize = 10;
 fn get_current_memory_linux() -> usize {
     let output = String::from_utf8(
         Command::new("smem")
+            .arg("-P")
+            .arg("check_real_memory")   // current process name
             .arg("-c")
             .arg("pid uss")
             .output()
