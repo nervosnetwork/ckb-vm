@@ -193,6 +193,10 @@ fn check_memory_inited(
 impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
+    fn new(_: usize) -> Self {
+        unreachable!()
+    }
+
     fn init_pages(
         &mut self,
         addr: u64,
@@ -256,6 +260,10 @@ impl Memory for Box<AsmCoreMachine> {
         } else {
             Err(Error::MemOutOfBound)
         }
+    }
+
+    fn memory_size(&self) -> usize {
+        self.memory_size as usize
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {

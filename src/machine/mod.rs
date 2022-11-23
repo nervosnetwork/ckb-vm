@@ -15,7 +15,7 @@ use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_STACK_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -335,7 +335,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     }
 }
 
-impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -351,7 +351,7 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
     fn reset(&mut self, max_cycles: u64) {
         self.registers = Default::default();
         self.pc = Default::default();
-        self.memory = Default::default();
+        self.memory = M::new(self.memory().memory_size());
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = true;
@@ -385,13 +385,21 @@ impl<R: Register, M: Memory<REG = R> + Default> SupportMachine for DefaultCoreMa
     }
 }
 
-impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
-    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
+impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
+    pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
         Self {
+            registers: Default::default(),
+            pc: Default::default(),
+            next_pc: Default::default(),
+            reset_signal: Default::default(),
+            memory: M::new(memory_size),
+            cycles: Default::default(),
+            max_cycles,
+            running: Default::default(),
             isa,
             version,
-            max_cycles,
-            ..Default::default()
+            #[cfg(feature = "pprof")]
+            code: Default::default(),
         }
     }
 
@@ -555,11 +563,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         if let Some(debugger) = &mut self.debugger {
             debugger.initialize(&mut self.inner)?;
         }
-        let stack_bytes = self.initialize_stack(
-            args,
-            (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
-            DEFAULT_STACK_SIZE as u64,
-        )?;
+        let memory_size = self.memory().memory_size();
+        let stack_size = memory_size / 4;
+        let stack_bytes =
+            self.initialize_stack(args, (memory_size - stack_size) as u64, stack_size as u64)?;
         // Make sure SP is 16 byte aligned
         if self.inner.version() >= VERSION1 {
             debug_assert!(self.registers()[SP].to_u64() % 16 == 0);

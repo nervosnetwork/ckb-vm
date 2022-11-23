@@ -7,7 +7,7 @@ use ckb_vm::{
     },
     memory::{FLAG_DIRTY, FLAG_FREEZED},
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
-    SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
+    SparseMemory, WXorXMemory, ISA_IMC, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
 use std::fs;
 
@@ -19,7 +19,8 @@ fn create_rust_machine(
 ) -> DefaultMachine<DefaultCoreMachine<u64, Mem>> {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
-    let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value());
+    let core_machine =
+        DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, version, u64::max_value(), RISCV_MAX_MEMORY);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     machine
@@ -31,7 +32,7 @@ fn create_rust_machine(
 fn create_asm_machine(program: String, version: u32) -> AsmMachine {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::max_value(), RISCV_MAX_MEMORY);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -238,7 +239,8 @@ pub fn test_rust_version0_unaligned64() {
     let buffer = fs::read(format!("tests/programs/{}", program))
         .unwrap()
         .into();
-    let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::max_value());
+    let core_machine =
+        DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::max_value(), RISCV_MAX_MEMORY);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec![program.into()]);
@@ -260,7 +262,7 @@ pub fn test_asm_version0_unaligned64() {
     let buffer = fs::read(format!("tests/programs/{}", program))
         .unwrap()
         .into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value(), RISCV_MAX_MEMORY);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     let result = machine.load_program(&buffer, &vec![program.into()]);

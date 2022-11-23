@@ -7,7 +7,7 @@ use ckb_vm::{
     },
     machine::VERSION1,
     CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
-    SupportMachine, ISA_IMC,
+    SupportMachine, ISA_IMC, RISCV_MAX_MEMORY,
 };
 use ckb_vm_definitions::instructions as insts;
 
@@ -56,8 +56,12 @@ pub fn test_rust_auipc_fusion() {
         .unwrap()
         .into();
 
-    let core_machine =
-        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::max_value());
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(
+        ISA_IMC,
+        VERSION1,
+        u64::max_value(),
+        RISCV_MAX_MEMORY,
+    );
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
@@ -87,7 +91,7 @@ pub fn test_asm_auipc_fusion() {
         .unwrap()
         .into();
 
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value(), RISCV_MAX_MEMORY);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine

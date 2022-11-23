@@ -1,6 +1,6 @@
 use crate::{
-    instructions::Instruction, MEMORY_FRAMES, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
-    RISCV_PAGES,
+    instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 use std::alloc::{alloc, Layout};
 
@@ -35,6 +35,9 @@ pub struct Trace {
     pub thread: [u64; TRACE_ITEM_LENGTH + 1],
 }
 
+// Although the memory here is an array, but when it is created,
+//  its size is allocated through memory_size, and its maximum length RISCV_MAX_MEMORY
+//  is used in the structure declaration.
 #[repr(C)]
 pub struct AsmCoreMachine {
     pub registers: [u64; RISCV_GENERAL_REGISTER_NUMBER],
@@ -48,20 +51,29 @@ pub struct AsmCoreMachine {
     pub reset_signal: u8,
     pub isa: u8,
     pub version: u32,
+
+    pub memory_size: u64,
+    pub frames_size: u64,
+    pub flags_size: u64,
+
     pub flags: [u8; RISCV_PAGES],
-    pub memory: [u8; RISCV_MAX_MEMORY],
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
+
+    pub memory: [u8; RISCV_MAX_MEMORY],
 }
 
 impl AsmCoreMachine {
-    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
+    pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Box<AsmCoreMachine> {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
+
         let mut machine = unsafe {
-            let layout = Layout::new::<AsmCoreMachine>();
-            #[allow(clippy::cast_ptr_alignment)]
-            // Use alloc so we are using malloc instead of
-            // calloc, then do lazy zero filling when necessary. That might
-            // save us some time in case a script doesn't use all the memory.
+            let machine_size =
+                std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
+
+            let layout = Layout::array::<u8>(machine_size).unwrap();
             let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };
@@ -85,6 +97,11 @@ impl AsmCoreMachine {
             machine.traces[i] = Trace::default();
         }
         machine.frames = [0; MEMORY_FRAMES];
+
+        machine.memory_size = memory_size as u64;
+        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
+        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
+
         machine
     }
 }

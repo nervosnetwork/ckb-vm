@@ -109,12 +109,7 @@ fn main() {
     );
     println!();
 
-    println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_STRUCT_SIZE {}",
-        size_of::<AsmCoreMachine>()
-    );
-
-    let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0);
+    let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0, RISCV_MAX_MEMORY);
     let m_address = &*m as *const AsmCoreMachine as usize;
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS {}",
@@ -144,13 +139,28 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION {}",
         (&m.version as *const u32 as usize) - m_address
     );
+
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE {}",
+        (&m.memory_size as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_SIZE {}",
+        (&m.frames_size as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS_SIZE {}",
+        (&m.flags_size as *const u64 as usize) - m_address
+    );
+
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );
+    let memory_offset_address = (&m.memory as *const u8 as usize) - m_address;
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY {}",
-        (&m.memory as *const u8 as usize) - m_address
+        memory_offset_address
     );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES {}",
@@ -160,6 +170,17 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",
         (&m.frames as *const u8 as usize) - m_address
     );
+    println!();
+
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_H {}",
+        memory_offset_address.wrapping_shr(12).wrapping_shl(12)
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_L {}",
+        memory_offset_address & 0xFFF
+    );
+
     println!();
 
     for (op, name) in INSTRUCTION_OPCODE_NAMES_LEVEL1.iter().enumerate() {

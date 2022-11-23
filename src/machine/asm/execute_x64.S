@@ -73,6 +73,7 @@
 
 #define MACHINE %rsi
 #define TRACE %rbx
+#define MEMORY_SIZE %r13
 
 /*
  * INST_PC contains the current address of decoded Instruction in
@@ -183,20 +184,20 @@
   movq REGISTER_ADDRESS(RS1), RS1; \
   addq IMMEDIATE, RS1; \
   movq RS1, TEMP1; \
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1; \
+  cmp MEMORY_SIZE, TEMP1; \
   jae .exit_out_of_bound; \
   addq length, TEMP1; \
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1; \
+  cmp MEMORY_SIZE, TEMP1; \
   jae .exit_out_of_bound
 
 #define CHECK_READ_BOUND_VERSION1(length) \
   movq REGISTER_ADDRESS(RS1), RS1; \
   addq IMMEDIATE, RS1; \
   movq RS1, TEMP1; \
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1; \
+  cmp MEMORY_SIZE, TEMP1; \
   jae .exit_out_of_bound; \
   addq length, TEMP1; \
-  cmp $CKB_VM_ASM_RISCV_MAX_MEMORY, TEMP1; \
+  cmp MEMORY_SIZE, TEMP1; \
   ja .exit_out_of_bound
 
 #define CHECK_READ_PERMISSIONS(address_reg, length) \
@@ -230,7 +231,8 @@
 #define CHECK_WRITE(address_reg, temp_regd, length) \
   movq address_reg, TEMP1; \
   shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, TEMP1; \
-  cmp $CKB_VM_ASM_RISCV_PAGES, TEMP1; \
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS_SIZE(MACHINE), TEMP2; \
+  cmp TEMP2, TEMP1; \
   jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, TEMP1), temp_regd; \
   mov temp_regd, TEMP2d; \
@@ -259,7 +261,8 @@
   cmp TEMP1, TEMP2; \
   jbe 2f; \
   shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, TEMP1; \
-  cmp $CKB_VM_ASM_RISCV_PAGES, TEMP1; \
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS_SIZE(MACHINE), TEMP2; \
+  cmp TEMP2, TEMP1; \
   jae .exit_out_of_bound; \
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS(MACHINE, TEMP1), temp_regd; \
   mov temp_regd, TEMP2d; \
@@ -349,7 +352,9 @@ ckb_vm_x64_execute:
   push %rbp
   push %rbx
   push %r12
+  push %r13
   mov ARG1, MACHINE
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE(MACHINE), MEMORY_SIZE
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
   movq PC_ADDRESS, %rax
@@ -2015,6 +2020,7 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_DECODE_TRACE, ARG_RETd
   jmp .exit
 .exit:
+  pop %r13
   pop %r12
   pop %rbx
   pop %rbp

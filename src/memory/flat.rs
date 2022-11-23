@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGES};
+use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -10,17 +10,9 @@ use std::ops::{Deref, DerefMut};
 pub struct FlatMemory<R> {
     data: Vec<u8>,
     flags: Vec<u8>,
+    memory_size: usize,
+    riscv_pages: usize,
     _inner: PhantomData<R>,
-}
-
-impl<R> Default for FlatMemory<R> {
-    fn default() -> Self {
-        Self {
-            data: vec![0; RISCV_MAX_MEMORY],
-            flags: vec![0; RISCV_PAGES],
-            _inner: PhantomData,
-        }
-    }
 }
 
 impl<R> Deref for FlatMemory<R> {
@@ -42,6 +34,18 @@ impl<R> DerefMut for FlatMemory<R> {
 impl<R: Register> Memory for FlatMemory<R> {
     type REG = R;
 
+    fn new(memory_size: usize) -> Self {
+        assert!(memory_size <= RISCV_MAX_MEMORY);
+        assert!(memory_size % RISCV_PAGESIZE == 0);
+        Self {
+            data: vec![0; memory_size as usize],
+            flags: vec![0; memory_size / RISCV_PAGESIZE],
+            memory_size,
+            riscv_pages: memory_size / RISCV_PAGESIZE,
+            _inner: PhantomData,
+        }
+    }
+
     fn init_pages(
         &mut self,
         addr: u64,
@@ -54,7 +58,7 @@ impl<R: Register> Memory for FlatMemory<R> {
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.riscv_pages as u64 {
             Ok(self.flags[page as usize])
         } else {
             Err(Error::MemOutOfBound)
@@ -62,7 +66,7 @@ impl<R: Register> Memory for FlatMemory<R> {
     }
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.riscv_pages as u64 {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
@@ -71,12 +75,16 @@ impl<R: Register> Memory for FlatMemory<R> {
     }
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.riscv_pages as u64 {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
             Err(Error::MemOutOfBound)
         }
+    }
+
+    fn memory_size(&self) -> usize {
+        self.memory_size
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {

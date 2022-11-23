@@ -34,14 +34,16 @@ pub use ckb_vm_definitions::{
 
 pub use error::Error;
 
-pub fn run<R: Register, M: Memory<REG = R> + Default>(
+pub fn run<R: Register, M: Memory<REG = R>>(
     program: &Bytes,
     args: &[Bytes],
+    memory_size: usize,
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new(
         ISA_IMC | ISA_B | ISA_MOP,
         machine::VERSION1,
         u64::max_value(),
+        memory_size,
     );
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
     machine.load_program(program, args)?;

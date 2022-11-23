@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_PAGESIZE};
 use super::{
     check_permission, get_page_indices, round_page_down, round_page_up, Memory, FLAG_EXECUTABLE,
     FLAG_FREEZED, FLAG_WRITABLE,
@@ -10,14 +10,6 @@ pub struct WXorXMemory<M: Memory> {
     inner: M,
 }
 
-impl<M: Memory + Default> Default for WXorXMemory<M> {
-    fn default() -> Self {
-        Self {
-            inner: M::default(),
-        }
-    }
-}
-
 impl<M: Memory> WXorXMemory<M> {
     pub fn inner_mut(&mut self) -> &mut M {
         &mut self.inner
@@ -26,6 +18,12 @@ impl<M: Memory> WXorXMemory<M> {
 
 impl<M: Memory> Memory for WXorXMemory<M> {
     type REG = M::REG;
+
+    fn new(memory_size: usize) -> Self {
+        Self {
+            inner: M::new(memory_size),
+        }
+    }
 
     fn init_pages(
         &mut self,
@@ -38,9 +36,10 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         if round_page_down(addr) != addr || round_page_up(size) != size {
             return Err(Error::MemPageUnalignedAccess);
         }
-        if addr > RISCV_MAX_MEMORY as u64
-            || size > RISCV_MAX_MEMORY as u64
-            || addr + size > RISCV_MAX_MEMORY as u64
+
+        if addr > self.memory_size() as u64
+            || size > self.memory_size() as u64
+            || addr + size > self.memory_size() as u64
             || offset_from_addr > size
         {
             return Err(Error::MemOutOfBound);
@@ -66,6 +65,10 @@ impl<M: Memory> Memory for WXorXMemory<M> {
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         self.inner.clear_flag(page, flag)
+    }
+
+    fn memory_size(&self) -> usize {
+        self.inner.memory_size()
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {

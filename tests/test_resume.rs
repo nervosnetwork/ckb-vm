@@ -10,7 +10,7 @@ use ckb_vm::{
     },
     memory::{sparse::SparseMemory, wxorx::WXorXMemory},
     snapshot::{make_snapshot, resume, Snapshot},
-    DefaultMachineBuilder, Error, ISA_IMC,
+    DefaultMachineBuilder, Error, ISA_IMC, RISCV_MAX_MEMORY,
 };
 use std::fs::File;
 use std::io::Read;
@@ -210,7 +210,7 @@ impl MachineTy {
     fn build(self, version: u32, max_cycles: u64) -> Machine {
         match self {
             MachineTy::Asm => {
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
+                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles, RISCV_MAX_MEMORY);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
                     .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
                     .build();
@@ -218,7 +218,10 @@ impl MachineTy {
             }
             MachineTy::Interpreter => {
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC, version, max_cycles,
+                    ISA_IMC,
+                    version,
+                    max_cycles,
+                    RISCV_MAX_MEMORY,
                 );
                 Machine::Interpreter(
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
@@ -230,7 +233,10 @@ impl MachineTy {
             }
             MachineTy::InterpreterWithTrace => {
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC, version, max_cycles,
+                    ISA_IMC,
+                    version,
+                    max_cycles,
+                    RISCV_MAX_MEMORY,
                 );
                 Machine::InterpreterWithTrace(
                     TraceMachine::new(
