@@ -35,8 +35,8 @@ pub struct Trace {
     pub thread: [u64; TRACE_ITEM_LENGTH + 1],
 }
 
-// Although the memory here is an array, but when it is created, 
-//  its size is allocated through memory_size, and its maximum length RISCV_MAX_MEMORY 
+// Although the memory here is an array, but when it is created,
+//  its size is allocated through memory_size, and its maximum length RISCV_MAX_MEMORY
 //  is used in the structure declaration.
 #[repr(C)]
 pub struct AsmCoreMachine {
