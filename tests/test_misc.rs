@@ -1,3 +1,4 @@
+use rand::{thread_rng, Rng};
 use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
@@ -245,6 +246,68 @@ pub fn test_memory_store_empty_bytes() {
 fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
     assert!(memory.store_byte(0, 0, 42).is_ok());
     assert!(memory.store_bytes(0, &[]).is_ok());
+}
+
+#[test]
+pub fn test_memory_load_bytes() {
+    let mut rng = thread_rng();
+
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 3, 0);
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 3, 2);
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 3, 1024 * 3);
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 0, 0);
+}
+
+fn assert_memory_load_bytes_all<R: Rng>(
+    rng: &mut R,
+    max_memory: usize,
+    buf_size: usize,
+    addr: u64,
+) {
+    assert_memory_load_bytes(
+        rng,
+        &mut SparseMemory::<u64>::new(max_memory),
+        buf_size,
+        addr,
+    );
+    assert_memory_load_bytes(rng, &mut FlatMemory::<u64>::new(max_memory), buf_size, addr);
+    assert_memory_load_bytes(
+        rng,
+        &mut WXorXMemory::<FlatMemory<u64>>::new(max_memory),
+        buf_size,
+        addr,
+    );
+
+    #[cfg(has_asm)]
+    assert_memory_load_bytes(
+        rng,
+        &mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000, RISCV_MAX_MEMORY),
+        buf_size,
+        addr,
+    );
+}
+
+fn assert_memory_load_bytes<R: Rng, M: Memory>(
+    rng: &mut R,
+    memory: &mut M,
+    buffer_size: usize,
+    addr: u64,
+) {
+    let mut buffer_store = Vec::<u8>::new();
+    buffer_store.resize(buffer_size, 0);
+    rng.fill(buffer_store.as_mut_slice());
+
+    memory
+        .store_bytes(addr, &buffer_store.as_slice())
+        .expect("store bytes failed");
+
+    let mut buffer_load = Vec::<u8>::new();
+    buffer_load.resize(buffer_size, 0);
+    memory
+        .load_bytes(addr, buffer_load.as_mut_slice())
+        .expect("load bytes failed");
+
+    assert!(buffer_load.cmp(&buffer_store).is_eq());
 }
 
 pub fn test_contains_ckbforks_section() {

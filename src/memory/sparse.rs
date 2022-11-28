@@ -193,6 +193,30 @@ impl<R: Register> Memory for SparseMemory<R> {
         Ok(())
     }
 
+    fn load_bytes(&mut self, addr: u64, out_value: &mut [u8]) -> Result<(), Error> {
+        if out_value.is_empty() {
+            return Ok(());
+        }
+        let mut current_page_addr = round_page_down(addr);
+        let mut current_page_offset = addr - current_page_addr;
+        let mut need_read_len = out_value.len();
+        while need_read_len != 0 {
+            let page = self.fetch_page(current_page_addr)?;
+            let bytes = min(
+                RISCV_PAGESIZE as u64 - current_page_offset,
+                need_read_len as u64,
+            );
+            let readed_len = out_value.len() - need_read_len;
+            out_value[readed_len..(readed_len + bytes as usize)].copy_from_slice(
+                &page[current_page_offset as usize..(current_page_offset + bytes) as usize],
+            );
+            need_read_len -= bytes as usize;
+            current_page_addr += RISCV_PAGESIZE as u64;
+            current_page_offset = 0;
+        }
+        Ok(())
+    }
+
     fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         self.store_bytes(addr.to_u64(), &[value.to_u8()])
     }

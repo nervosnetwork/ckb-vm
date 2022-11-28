@@ -203,4 +203,15 @@ impl<R: Register> Memory for FlatMemory<R> {
         memset(&mut self[addr as usize..(addr + size) as usize], value);
         Ok(())
     }
+
+    fn load_bytes(&mut self, addr: u64, out_value: &mut [u8]) -> Result<(), Error> {
+        let size = out_value.len() as u64;
+        if size == 0 {
+            return Ok(());
+        }
+        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        set_dirty(self, &page_indices)?;
+        out_value.copy_from_slice(&self[addr as usize..(addr + size) as usize]);
+        Ok(())
+    }
 }
