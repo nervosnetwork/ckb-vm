@@ -306,7 +306,7 @@ impl Memory for Box<AsmCoreMachine> {
         for page in page_indices.0..=page_indices.1 {
             check_memory(self, page);
         }
-        out_value.copy_from_slice(&self.memory[addr as usize..addr as usize + &out_value.len()]);
+        out_value.copy_from_slice(&self.memory[(addr as usize)..(addr as usize + out_value.len())]);
         Ok(())
     }
 
