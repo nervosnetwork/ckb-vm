@@ -315,6 +315,9 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
+        if length == 0 {
+            return Ok(Bytes::new());
+        }
         check_memory_block_inited(self, addr, length)?;
         Ok(Bytes::from(
             self.memory[(addr as usize)..(addr as usize + length)].to_vec(),

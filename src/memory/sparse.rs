@@ -194,11 +194,11 @@ impl<R: Register> Memory for SparseMemory<R> {
     }
 
     fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
-        if length + addr as usize > self.memory_size() {
-            return Err(Error::MemOutOfBound);
-        }
         if length == 0 {
             return Ok(Bytes::new());
+        }
+        if length + addr as usize > self.memory_size() {
+            return Err(Error::MemOutOfBound);
         }
         let mut current_page_addr = round_page_down(addr);
         let mut current_page_offset = addr - current_page_addr;

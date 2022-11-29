@@ -205,11 +205,11 @@ impl<R: Register> Memory for FlatMemory<R> {
     }
 
     fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
-        if length + addr as usize > self.memory_size() {
-            return Err(Error::MemOutOfBound);
-        }
         if length == 0 {
             return Ok(Bytes::new());
+        }
+        if length + addr as usize > self.memory_size() {
+            return Err(Error::MemOutOfBound);
         }
         Ok(Bytes::from(
             self[addr as usize..addr as usize + length].to_vec(),

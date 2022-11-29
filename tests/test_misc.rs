@@ -320,8 +320,12 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
 
     // address out of bound
     let ret = memory.load_bytes(addr + memory.memory_size() as u64 + 1, buffer_store.len());
-    assert!(ret.is_err());
-    assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+    if buffer_store.is_empty() {
+        assert!(ret.is_ok())
+    } else {
+        assert!(ret.is_err());
+        assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+    }
 }
 
 pub fn test_contains_ckbforks_section() {
