@@ -211,7 +211,7 @@ impl<R: Register> Memory for FlatMemory<R> {
         let page_indices = get_page_indices(addr.to_u64(), length as u64)?;
         set_dirty(self, &page_indices)?;
         Ok(Bytes::from(
-            self[addr as usize..(addr + length as u64) as usize].to_vec(),
+            self[addr as usize..addr as usize + length].to_vec(),
         ))
     }
 }
