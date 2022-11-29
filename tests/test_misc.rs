@@ -252,9 +252,9 @@ fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
 pub fn test_memory_load_bytes() {
     let mut rng = thread_rng();
 
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 3, 0);
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 3, 2);
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 3, 1024 * 3);
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 5, 0);
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 5, 2);
+    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 5, 1024 * 6);
     assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 0, 0);
 }
 
@@ -307,6 +307,21 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
         .to_vec();
 
     assert!(buffer_load.cmp(&buffer_store).is_eq());
+
+    // length out of bound
+    let outofbound_size = if buffer_store.is_empty() {
+        memory.memory_size() + 1
+    } else {
+        buffer_store.len() + memory.memory_size()
+    };
+    let ret = memory.load_bytes(addr, outofbound_size);
+    assert!(ret.is_err());
+    assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+
+    // address out of bound
+    let ret = memory.load_bytes(addr + memory.memory_size() as u64 + 1, buffer_store.len());
+    assert!(ret.is_err());
+    assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
 }
 
 pub fn test_contains_ckbforks_section() {

@@ -142,11 +142,7 @@ impl<M: Memory> Memory for WXorXMemory<M> {
     }
 
     fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
-        if length == 0 {
-            return Ok(Bytes::new());
-        }
-        let page_indices = get_page_indices(addr, length as u64)?;
-        check_permission(self, &page_indices, FLAG_WRITABLE)?;
+        // inner.load_bytes will check
         self.inner.load_bytes(addr, length)
     }
 }
