@@ -193,13 +193,15 @@ impl<R: Register> Memory for SparseMemory<R> {
         Ok(())
     }
 
-    fn load_bytes(&mut self, addr: u64, out_value: &mut [u8]) -> Result<(), Error> {
-        if out_value.is_empty() {
-            return Ok(());
+    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
+        if length == 0 {
+            return Ok(Bytes::new());
         }
         let mut current_page_addr = round_page_down(addr);
         let mut current_page_offset = addr - current_page_addr;
-        let mut need_read_len = out_value.len();
+        let mut need_read_len = length;
+        let mut out_value = Vec::new();
+        out_value.resize(length, 0);
         while need_read_len != 0 {
             let page = self.fetch_page(current_page_addr)?;
             let bytes = min(
@@ -214,7 +216,7 @@ impl<R: Register> Memory for SparseMemory<R> {
             current_page_addr += RISCV_PAGESIZE as u64;
             current_page_offset = 0;
         }
-        Ok(())
+        Ok(Bytes::from(out_value))
     }
 
     fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {

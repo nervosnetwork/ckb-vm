@@ -298,16 +298,17 @@ impl Memory for Box<AsmCoreMachine> {
         Ok(())
     }
 
-    fn load_bytes(&mut self, addr: u64, out_value: &mut [u8]) -> Result<(), Error> {
-        if out_value.is_empty() {
-            return Ok(());
+    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
+        if length == 0 {
+            return Ok(Bytes::new());
         }
-        let page_indices = get_page_indices(addr, out_value.len() as u64)?;
+        let page_indices = get_page_indices(addr, length as u64)?;
         for page in page_indices.0..=page_indices.1 {
             check_memory(self, page);
         }
-        out_value.copy_from_slice(&self.memory[(addr as usize)..(addr as usize + out_value.len())]);
-        Ok(())
+        Ok(Bytes::from(
+            self.memory[(addr as usize)..(addr as usize + length)].to_vec(),
+        ))
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {

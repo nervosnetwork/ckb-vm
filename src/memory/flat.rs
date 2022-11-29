@@ -204,14 +204,14 @@ impl<R: Register> Memory for FlatMemory<R> {
         Ok(())
     }
 
-    fn load_bytes(&mut self, addr: u64, out_value: &mut [u8]) -> Result<(), Error> {
-        let size = out_value.len() as u64;
-        if size == 0 {
-            return Ok(());
+    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
+        if length == 0 {
+            return Ok(Bytes::new());
         }
-        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        let page_indices = get_page_indices(addr.to_u64(), length as u64)?;
         set_dirty(self, &page_indices)?;
-        out_value.copy_from_slice(&self[addr as usize..(addr + size) as usize]);
-        Ok(())
+        Ok(Bytes::from(
+            self[addr as usize..(addr + length as u64) as usize].to_vec(),
+        ))
     }
 }

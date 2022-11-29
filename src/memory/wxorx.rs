@@ -141,12 +141,12 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         self.inner.store_byte(addr, size, value)
     }
 
-    fn load_bytes(&mut self, addr: u64, out_value: &mut [u8]) -> Result<(), Error> {
-        if out_value.is_empty() {
-            return Ok(());
+    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
+        if length == 0 {
+            return Ok(Bytes::new());
         }
-        let page_indices = get_page_indices(addr, out_value.len() as u64)?;
+        let page_indices = get_page_indices(addr, length as u64)?;
         check_permission(self, &page_indices, FLAG_WRITABLE)?;
-        self.inner.load_bytes(addr, out_value)
+        self.inner.load_bytes(addr, length)
     }
 }

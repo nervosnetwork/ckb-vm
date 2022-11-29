@@ -301,11 +301,10 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
         .store_bytes(addr, &buffer_store.as_slice())
         .expect("store bytes failed");
 
-    let mut buffer_load = Vec::<u8>::new();
-    buffer_load.resize(buffer_size, 0);
-    memory
-        .load_bytes(addr, buffer_load.as_mut_slice())
-        .expect("load bytes failed");
+    let buffer_load = memory
+        .load_bytes(addr, buffer_store.len())
+        .expect("load bytes failed")
+        .to_vec();
 
     assert!(buffer_load.cmp(&buffer_store).is_eq());
 }
