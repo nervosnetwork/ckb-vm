@@ -208,7 +208,11 @@ impl<R: Register> Memory for FlatMemory<R> {
         if length == 0 {
             return Ok(Bytes::new());
         }
-        if length + addr as usize > self.memory_size() {
+        if addr
+            .checked_add(length as u64)
+            .ok_or(Error::MemOutOfBound)?
+            > self.len() as u64
+        {
             return Err(Error::MemOutOfBound);
         }
         Ok(Bytes::from(
