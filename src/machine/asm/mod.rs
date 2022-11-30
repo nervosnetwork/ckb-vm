@@ -190,22 +190,6 @@ fn check_memory_inited(
     Ok(())
 }
 
-fn check_memory_block_inited(
-    machine: &mut Box<AsmCoreMachine>,
-    addr: u64,
-    size: usize,
-) -> Result<(), Error> {
-    let begin_page = addr >> RISCV_PAGE_SHIFTS;
-    let end_page = (addr + size as u64) >> RISCV_PAGE_SHIFTS;
-    for page in begin_page..(end_page + 1) {
-        if page as usize >= RISCV_PAGES {
-            return Err(Error::MemOutOfBound);
-        }
-        check_memory(machine, page);
-    }
-    Ok(())
-}
-
 impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
@@ -314,13 +298,16 @@ impl Memory for Box<AsmCoreMachine> {
         Ok(())
     }
 
-    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
-        if length == 0 {
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Bytes, Error> {
+        if size == 0 {
             return Ok(Bytes::new());
         }
-        check_memory_block_inited(self, addr, length)?;
+        let page_indices = get_page_indices(addr, size)?;
+        for page in page_indices.0..=page_indices.1 {
+            check_memory(self, page);
+        }
         Ok(Bytes::from(
-            self.memory[(addr as usize)..(addr as usize + length)].to_vec(),
+            self.memory[addr as usize..(addr + size) as usize].to_vec(),
         ))
     }
 

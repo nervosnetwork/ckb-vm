@@ -302,7 +302,7 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
         .expect("store bytes failed");
 
     let buffer_load = memory
-        .load_bytes(addr, buffer_store.len())
+        .load_bytes(addr, buffer_store.len() as u64)
         .expect("load bytes failed")
         .to_vec();
 
@@ -314,14 +314,26 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
     } else {
         buffer_store.len() + memory.memory_size()
     };
-    let ret = memory.load_bytes(addr, outofbound_size);
+    let ret = memory.load_bytes(addr, outofbound_size as u64);
     assert!(ret.is_err());
     assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
 
     // address out of bound
-    let ret = memory.load_bytes(addr + memory.memory_size() as u64 + 1, buffer_store.len());
+    let ret = memory.load_bytes(
+        addr + memory.memory_size() as u64 + 1,
+        buffer_store.len() as u64,
+    );
     if buffer_store.is_empty() {
         assert!(ret.is_ok())
+    } else {
+        assert!(ret.is_err());
+        assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+    }
+
+    // addr + size is overflow
+    let ret = memory.load_bytes(addr + (0xFFFFFFFFFFFFFF - addr), buffer_store.len() as u64);
+    if buffer_store.is_empty() {
+        assert!(ret.is_ok());
     } else {
         assert!(ret.is_err());
         assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);

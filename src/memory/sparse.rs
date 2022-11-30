@@ -193,33 +193,24 @@ impl<R: Register> Memory for SparseMemory<R> {
         Ok(())
     }
 
-    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
-        if length == 0 {
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Bytes, Error> {
+        if size == 0 {
             return Ok(Bytes::new());
         }
-        if addr
-            .checked_add(length as u64)
-            .ok_or(Error::MemOutOfBound)?
-            > self.memory_size() as u64
-        {
+        if addr.checked_add(size).ok_or(Error::MemOutOfBound)? > self.memory_size() as u64 {
             return Err(Error::MemOutOfBound);
         }
         let mut current_page_addr = round_page_down(addr);
         let mut current_page_offset = addr - current_page_addr;
-        let mut need_read_len = length;
-        let mut out_value = Vec::new();
-        out_value.resize(length, 0);
+        let mut need_read_len = size;
+        let mut out_value = Vec::<u8>::with_capacity(size as usize);
         while need_read_len != 0 {
             let page = self.fetch_page(current_page_addr)?;
-            let bytes = min(
-                RISCV_PAGESIZE as u64 - current_page_offset,
-                need_read_len as u64,
-            );
-            let readed_len = out_value.len() - need_read_len;
-            out_value[readed_len..(readed_len + bytes as usize)].copy_from_slice(
+            let bytes = min(RISCV_PAGESIZE as u64 - current_page_offset, need_read_len);
+            out_value.extend(
                 &page[current_page_offset as usize..(current_page_offset + bytes) as usize],
             );
-            need_read_len -= bytes as usize;
+            need_read_len -= bytes;
             current_page_addr += RISCV_PAGESIZE as u64;
             current_page_offset = 0;
         }

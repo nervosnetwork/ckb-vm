@@ -47,7 +47,7 @@ pub trait Memory {
     // This is in fact just memset
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error>;
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error>;
-    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error>;
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Bytes, Error>;
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error>;
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error>;
 

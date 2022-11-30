@@ -141,8 +141,8 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         self.inner.store_byte(addr, size, value)
     }
 
-    fn load_bytes(&mut self, addr: u64, length: usize) -> Result<Bytes, Error> {
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Bytes, Error> {
         // inner.load_bytes will check
-        self.inner.load_bytes(addr, length)
+        self.inner.load_bytes(addr, size)
     }
 }
