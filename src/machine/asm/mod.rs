@@ -298,6 +298,19 @@ impl Memory for Box<AsmCoreMachine> {
         Ok(())
     }
 
+    fn load_bytes(&mut self, addr: u64, size: u64) -> Result<Bytes, Error> {
+        if size == 0 {
+            return Ok(Bytes::new());
+        }
+        let page_indices = get_page_indices(addr, size)?;
+        for page in page_indices.0..=page_indices.1 {
+            check_memory(self, page);
+        }
+        Ok(Bytes::from(
+            self.memory[addr as usize..(addr + size) as usize].to_vec(),
+        ))
+    }
+
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_memory_executable(self, addr, 2)?;
         Ok(LittleEndian::read_u16(
