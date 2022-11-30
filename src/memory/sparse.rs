@@ -197,7 +197,11 @@ impl<R: Register> Memory for SparseMemory<R> {
         if length == 0 {
             return Ok(Bytes::new());
         }
-        if length + addr as usize > self.memory_size() {
+        if addr
+            .checked_add(length as u64)
+            .ok_or(Error::MemOutOfBound)?
+            > self.memory_size() as u64
+        {
             return Err(Error::MemOutOfBound);
         }
         let mut current_page_addr = round_page_down(addr);

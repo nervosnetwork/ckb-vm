@@ -211,7 +211,7 @@ impl<R: Register> Memory for FlatMemory<R> {
         if addr
             .checked_add(length as u64)
             .ok_or(Error::MemOutOfBound)?
-            > self.len() as u64
+            > self.memory_size() as u64
         {
             return Err(Error::MemOutOfBound);
         }
