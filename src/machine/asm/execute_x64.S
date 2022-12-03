@@ -164,6 +164,7 @@
 #define MOV_RDX_TO_RS1
 #define MOV_RS2r_TO_RDX movq RS2r, %rdx
 #define MOV_RDX_TO_RS2r movq %rdx, RS2r
+#define MOV_IMM_TO_RCX
 #ifdef IS_WINDOWS
 #define MOV_TEMP1_TO_ARG1 movq TEMP1, ARG1
 #define MOV_MACHINE_TO_ARG2 movq MACHINE, ARG2
@@ -1060,7 +1061,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SLLI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), TEMP1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   shl %cl, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
@@ -1068,7 +1069,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SLLIW:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), TEMP1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   shl %cl, TEMP1
   movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
@@ -1133,7 +1134,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SRAI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), TEMP1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   sar %cl, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
@@ -1141,7 +1142,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SRAIW:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), TEMP1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   sar %cl, TEMP1d
   movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
@@ -1168,7 +1169,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SRLI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), TEMP1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   shr %cl, TEMP1
   WRITE_RD(TEMP1)
   NEXT_INST
@@ -1176,7 +1177,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SRLIW:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), TEMP1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   shr %cl, TEMP1d
   movslq TEMP1d, TEMP1
   WRITE_RD(TEMP1)
@@ -1262,7 +1263,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_BCLRI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   movq $1, TEMP1
   shl %cl, TEMP1
   not TEMP1
@@ -1282,7 +1283,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_BEXTI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   shr %cl, RS1
   and $1, RS1
   WRITE_RD(RS1)
@@ -1301,7 +1302,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_BINVI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   movq $1, TEMP1
   shl %cl, TEMP1
   xor TEMP1, RS1
@@ -1321,7 +1322,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_BSETI:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   movq $1, TEMP1
   shl %cl, TEMP1
   or TEMP1, RS1
@@ -1792,7 +1793,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_SLLIUW:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
-  movq IMMEDIATE, %rcx
+  MOV_IMM_TO_RCX
   mov RS1d, RS1d
   and $0x3f, %cl
   shl %cl, RS1
