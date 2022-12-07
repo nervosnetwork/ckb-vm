@@ -266,8 +266,6 @@ ckb_vm_x64_execute:
   cmp TEMP4, TEMP3
   bne .exit_trace
   ldrb TEMP3w, [TRACE, CKB_VM_ASM_TRACE_OFFSET_LENGTH]
-  cmp TEMP3w, 0
-  beq .exit_trace
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES]
   ldr TEMP1, [TRACE, CKB_VM_ASM_TRACE_OFFSET_CYCLES]
   add TEMP2, TEMP2, TEMP1
