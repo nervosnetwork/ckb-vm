@@ -428,3 +428,15 @@ fn test_asm_thread_safe() {
     });
     thread_join_handle.join().unwrap();
 }
+
+#[test]
+fn test_zero_address() {
+    let buffer = fs::read("tests/programs/zero_address").unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::max_value(), RISCV_MAX_MEMORY);
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine.load_program(&buffer, &vec!["zero".into()]).unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
