@@ -67,7 +67,8 @@ pub fn test_rust_auipc_fusion() {
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
         .unwrap();
 
-    let mut decoder = AuxDecoder::new(build_decoder::<u64>(machine.isa(), machine.version()));
+    let mut decoder =
+        AuxDecoder::new(build_decoder::<u64>(machine.isa(), machine.version()).unwrap());
     machine.set_running(true);
     while machine.running() {
         let pc = *machine.pc();
@@ -98,10 +99,9 @@ pub fn test_asm_auipc_fusion() {
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
         .unwrap();
 
-    let mut decoder = AuxDecoder::new(build_decoder::<u64>(
-        machine.machine.isa(),
-        machine.machine.version(),
-    ));
+    let mut decoder = AuxDecoder::new(
+        build_decoder::<u64>(machine.machine.isa(), machine.machine.version()).unwrap(),
+    );
 
     let pc = *machine.machine.pc();
     let slot = calculate_slot(pc);

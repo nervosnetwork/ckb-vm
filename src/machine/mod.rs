@@ -15,7 +15,7 @@ use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
+    Error, RISCV_GENERAL_REGISTER_NUMBER,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -600,10 +600,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
     // not be practical in production, but it serves as a baseline and
     // reference implementation
     pub fn run(&mut self) -> Result<i8, Error> {
-        if self.isa() & ISA_MOP != 0 && self.version() == VERSION0 {
-            return Err(Error::InvalidVersion);
-        }
-        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version())?;
         self.set_running(true);
         while self.running() {
             if self.reset_signal() {

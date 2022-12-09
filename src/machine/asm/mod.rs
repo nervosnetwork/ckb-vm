@@ -8,8 +8,7 @@ use ckb_vm_definitions::{
         TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS,
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
@@ -20,7 +19,6 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::VERSION0,
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -461,10 +459,7 @@ impl AsmMachine {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
-        if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
-            return Err(Error::InvalidVersion);
-        }
-        let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version())?;
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {

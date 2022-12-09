@@ -5,6 +5,7 @@ use crate::instructions::{
     b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
     InstructionFactory, Itype, R4type, Register, Rtype, Utype,
 };
+use crate::machine::VERSION0;
 use crate::memory::Memory;
 use crate::{Error, ISA_B, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 
@@ -557,13 +558,17 @@ impl Decoder {
     }
 }
 
-pub fn build_decoder<R: Register>(isa: u8, version: u32) -> Decoder {
-    let mut decoder = Decoder::new(isa & ISA_MOP != 0, version);
+pub fn build_decoder<R: Register>(isa: u8, version: u32) -> Result<Decoder, Error> {
+    let mop = isa & ISA_MOP != 0;
+    if mop && version == VERSION0 {
+        return Err(Error::InvalidVersion);
+    }
+    let mut decoder = Decoder::new(mop, version);
     decoder.add_instruction_factory(rvc::factory::<R>);
     decoder.add_instruction_factory(i::factory::<R>);
     decoder.add_instruction_factory(m::factory::<R>);
     if isa & ISA_B != 0 {
         decoder.add_instruction_factory(b::factory::<R>);
     }
-    decoder
+    Ok(decoder)
 }
