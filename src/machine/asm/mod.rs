@@ -465,6 +465,7 @@ impl AsmMachine {
             return Err(Error::InvalidVersion);
         }
         let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        self.decode_trace(&mut decoder)?;
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {
@@ -472,41 +473,7 @@ impl AsmMachine {
             }
             let result = unsafe { ckb_vm_x64_execute(&mut **self.machine.inner_mut()) };
             match result {
-                RET_DECODE_TRACE => {
-                    let pc = *self.machine.pc();
-                    let slot = calculate_slot(pc);
-                    let mut trace = Trace::default();
-                    let mut current_pc = pc;
-                    let mut i = 0;
-                    while i < TRACE_ITEM_LENGTH {
-                        let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
-                        let end_instruction = is_basic_block_end_instruction(instruction);
-                        current_pc += u64::from(instruction_length(instruction));
-                        trace.instructions[i] = instruction;
-                        trace.cycles += self.machine.instruction_cycle_func()(instruction);
-                        let opcode = extract_opcode(instruction);
-                        // Here we are calculating the absolute address used in direct threading
-                        // from label offsets.
-                        trace.thread[i] = unsafe {
-                            u64::from(
-                                *(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize),
-                            ) + (ckb_vm_asm_labels as *const u32 as u64)
-                        };
-                        i += 1;
-                        if end_instruction {
-                            break;
-                        }
-                    }
-                    trace.instructions[i] = blank_instruction(OP_CUSTOM_TRACE_END);
-                    trace.thread[i] = unsafe {
-                        u64::from(
-                            *(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize),
-                        ) + (ckb_vm_asm_labels as *const u32 as u64)
-                    };
-                    trace.address = pc;
-                    trace.length = (current_pc - pc) as u8;
-                    self.machine.inner_mut().traces[slot] = trace;
-                }
+                RET_DECODE_TRACE => self.decode_trace(&mut decoder)?,
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
                 RET_DYNAMIC_JUMP => (),
@@ -523,6 +490,41 @@ impl AsmMachine {
             }
         }
         Ok(self.machine.exit_code())
+    }
+
+    fn decode_trace(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+        let pc = *self.machine.pc();
+        let slot = calculate_slot(pc);
+        let mut trace = Trace::default();
+        let mut current_pc = pc;
+        let mut i = 0;
+        while i < TRACE_ITEM_LENGTH {
+            let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
+            let end_instruction = is_basic_block_end_instruction(instruction);
+            current_pc += u64::from(instruction_length(instruction));
+            trace.instructions[i] = instruction;
+            trace.cycles += self.machine.instruction_cycle_func()(instruction);
+            let opcode = extract_opcode(instruction);
+            // Here we are calculating the absolute address used in direct threading
+            // from label offsets.
+            trace.thread[i] = unsafe {
+                u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize))
+                    + (ckb_vm_asm_labels as *const u32 as u64)
+            };
+            i += 1;
+            if end_instruction {
+                break;
+            }
+        }
+        trace.instructions[i] = blank_instruction(OP_CUSTOM_TRACE_END);
+        trace.thread[i] = unsafe {
+            u64::from(*(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize))
+                + (ckb_vm_asm_labels as *const u32 as u64)
+        };
+        trace.address = pc;
+        trace.length = (current_pc - pc) as u8;
+        self.machine.inner_mut().traces[slot] = trace;
+        Ok(())
     }
 
     pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
