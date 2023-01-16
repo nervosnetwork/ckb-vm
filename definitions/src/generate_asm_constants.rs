@@ -150,6 +150,15 @@ fn main() {
     );
 
     println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_READ_FRAME {}",
+        (&m.last_read_frame as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_WRITE_PAGE {}",
+        (&m.last_write_page as *const u64 as usize) - m_address
+    );
+
+    println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );

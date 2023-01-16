@@ -233,6 +233,9 @@ impl Memory for Box<AsmCoreMachine> {
             self.set_flag(page, flags)?;
             current_addr += RISCV_PAGESIZE as u64;
         }
+        // Clear last read/write page cache
+        self.last_read_frame = u64::max_value();
+        self.last_write_page = u64::max_value();
         Ok(())
     }
 
@@ -247,6 +250,8 @@ impl Memory for Box<AsmCoreMachine> {
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < RISCV_PAGES as u64 {
             self.flags[page as usize] |= flag;
+            // Clear last write page cache
+            self.last_write_page = u64::max_value();
             Ok(())
         } else {
             Err(Error::MemOutOfBound)
@@ -256,6 +261,8 @@ impl Memory for Box<AsmCoreMachine> {
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < RISCV_PAGES as u64 {
             self.flags[page as usize] &= !flag;
+            // Clear last write page cache
+            self.last_write_page = u64::max_value();
             Ok(())
         } else {
             Err(Error::MemOutOfBound)
