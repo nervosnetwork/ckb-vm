@@ -29,7 +29,6 @@
 #define RS3w w25
 #define IMMEDIATE x26
 #define IMMEDIATEw w26
-#define FLAG x27
 
 #define REGISTER_BASE x28
 #define ZERO_VALUE xzr
@@ -83,9 +82,7 @@
   ldr TEMP1, [INST_ARGS] SEP \
   add INST_ARGS, INST_ARGS, 8 SEP \
   ubfx RD, TEMP1, 8, 8 SEP \
-  asr TEMP1, TEMP1, 24 SEP \
-  ubfx FLAG, TEMP1, 0, 8 SEP \
-  asr TEMP1, TEMP1, 8 SEP \
+  asr TEMP1, TEMP1, 32 SEP \
   ldr TEMP2, [INST_PC] SEP \
   add INST_PC, INST_PC, 8 SEP \
   br TEMP2
@@ -412,9 +409,11 @@ ckb_vm_x64_execute:
   NEXT_INST
 .i_branch_success:
   ldr RS1, PC_ADDRESS
-  and FLAG, FLAG, 0xF
-  lsl FLAG, FLAG, 1
-  sub RS1, RS1, FLAG
+  /* Loading instruction flags */
+  ldr TEMP3, [INST_ARGS, -8]
+  and TEMP3, TEMP3, 0xF
+  lsl TEMP3, TEMP3, 1
+  sub RS1, RS1, TEMP3
   add RS1, RS1, IMMEDIATE
   str RS1, PC_ADDRESS
   b .prepare_trace
@@ -492,9 +491,11 @@ ckb_vm_x64_execute:
   DECODE_U
   ldr RS1, PC_ADDRESS
   WRITE_RD(RS1)
-  and FLAG, FLAG, 0xF
-  lsl FLAG, FLAG, 1
-  sub RS1, RS1, FLAG
+  /* Loading instruction flags */
+  ldr TEMP3, [INST_ARGS, -8]
+  and TEMP3, TEMP3, 0xF
+  lsl TEMP3, TEMP3, 1
+  sub RS1, RS1, TEMP3
   add RS1, RS1, IMMEDIATE
   str RS1, PC_ADDRESS
   b .prepare_trace
@@ -1467,9 +1468,11 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_FAR_JUMP_REL:
   DECODE_U
   ldr RS2, PC_ADDRESS
-  and FLAG, FLAG, 0xF
-  lsl FLAG, FLAG, 1
-  sub RS2, RS2, FLAG
+  /* Loading instruction flags */
+  ldr TEMP3, [INST_ARGS, -8]
+  and TEMP3, TEMP3, 0xF
+  lsl TEMP3, TEMP3, 1
+  sub RS2, RS2, TEMP3
   add RS2, RS2, IMMEDIATE
   ldr TEMP1, PC_ADDRESS
   str TEMP1, RA_ADDRESS

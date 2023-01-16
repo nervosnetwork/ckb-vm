@@ -98,7 +98,6 @@
 #define TEMP1 %rdi
 #define TEMP2 %r10
 #define TEMP3 %r11
-#define FLAG TEMP3
 
 #define RDd_RS2sd %eax
 #define RDd RDd_RS2sd
@@ -308,13 +307,20 @@
 #define WRITE_RS3(v) \
   movq v, REGISTER_ADDRESS(RS3); \
 
+/*
+ * Notice we could replace the last 3 instructions with the following:
+ *
+ * addq $8, INST_PC
+ * jmp *-8(TEMP1)
+ *
+ * Even though this would save us one instruction to exectue, keeping the jump
+ * target in TEMP1 actually aids branch predictor for better performance.
+ */
 #define NEXT_INST \
   movq (INST_ARGS), %rcx; \
   addq $8, INST_ARGS; \
   movzbl %ch, RDd_RS2sd; \
-  sar $24, %rcx; \
-  movzx %cl, FLAG; \
-  sar $8, %rcx; \
+  sar $32, %rcx; \
   movq (INST_PC), TEMP1; \
   addq $8, INST_PC; \
   jmp *TEMP1
@@ -513,9 +519,12 @@ ckb_vm_x64_execute:
   NEXT_INST
 .i_branch_success:
   movq PC_ADDRESS, RS1
-  andq $0xF, FLAG
-  shl $1, FLAG
-  subq FLAG, RS1
+  /* Loading flag of current instruction */
+  movq -8(INST_ARGS), TEMP3
+  sar $24, TEMP3
+  andq $0xF, TEMP3
+  shl $1, TEMP3
+  subq TEMP3, RS1
   addq IMMEDIATE, RS1
   movq RS1, PC_ADDRESS
   jmp .prepare_trace
@@ -635,9 +644,12 @@ ckb_vm_x64_execute:
   DECODE_U
   movq PC_ADDRESS, RS1
   WRITE_RD(RS1)
-  andq $0xF, FLAG
-  shl $1, FLAG
-  subq FLAG, RS1
+  /* Loading flag of current instruction */
+  movq -8(INST_ARGS), TEMP3
+  sar $24, TEMP3
+  andq $0xF, TEMP3
+  shl $1, TEMP3
+  subq TEMP3, RS1
   addq IMMEDIATE, RS1
   movq RS1, PC_ADDRESS
   jmp .prepare_trace
@@ -1830,9 +1842,12 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_FAR_JUMP_REL:
   DECODE_U
   movq PC_ADDRESS, RS2r
-  andq $0xF, FLAG
-  shl $1, FLAG
-  subq FLAG, RS2r
+  /* Loading flag of current instruction */
+  movq -8(INST_ARGS), TEMP3
+  sar $24, TEMP3
+  andq $0xF, TEMP3
+  shl $1, TEMP3
+  subq TEMP3, RS2r
   addq IMMEDIATE, RS2r
   movq PC_ADDRESS, TEMP1
   movq TEMP1, RA_ADDRESS
