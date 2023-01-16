@@ -96,75 +96,61 @@ pub fn execute_instruction<Mac: Machine>(
             let value = rs1_value.lt(rs2_value);
             update_register(machine, i.rd(), value);
         }
-        insts::OP_LB => {
+        insts::OP_LB_VERSION0 => {
             let i = Itype(inst);
-            common::lb(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::lb(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
         }
-        insts::OP_LH => {
+        insts::OP_LB_VERSION1 => {
             let i = Itype(inst);
-            common::lh(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::lb(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
         }
-        insts::OP_LW => {
+        insts::OP_LH_VERSION0 => {
             let i = Itype(inst);
-            common::lw(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::lh(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
         }
-        insts::OP_LD => {
+        insts::OP_LH_VERSION1 => {
             let i = Itype(inst);
-            common::ld(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::lh(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
         }
-        insts::OP_LBU => {
+        insts::OP_LW_VERSION0 => {
             let i = Itype(inst);
-            common::lbu(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::lw(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
         }
-        insts::OP_LHU => {
+        insts::OP_LW_VERSION1 => {
             let i = Itype(inst);
-            common::lhu(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::lw(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
         }
-        insts::OP_LWU => {
+        insts::OP_LD_VERSION0 => {
             let i = Itype(inst);
-            common::lwu(
-                machine,
-                i.rd(),
-                i.rs1(),
-                i.immediate_s(),
-                machine.version() == 0,
-            )?;
+            common::ld(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
+        }
+        insts::OP_LD_VERSION1 => {
+            let i = Itype(inst);
+            common::ld(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
+        }
+        insts::OP_LBU_VERSION0 => {
+            let i = Itype(inst);
+            common::lbu(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
+        }
+        insts::OP_LBU_VERSION1 => {
+            let i = Itype(inst);
+            common::lbu(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
+        }
+        insts::OP_LHU_VERSION0 => {
+            let i = Itype(inst);
+            common::lhu(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
+        }
+        insts::OP_LHU_VERSION1 => {
+            let i = Itype(inst);
+            common::lhu(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
+        }
+        insts::OP_LWU_VERSION0 => {
+            let i = Itype(inst);
+            common::lwu(machine, i.rd(), i.rs1(), i.immediate_s(), true)?;
+        }
+        insts::OP_LWU_VERSION1 => {
+            let i = Itype(inst);
+            common::lwu(machine, i.rd(), i.rs1(), i.immediate_s(), false)?;
         }
         insts::OP_ADDI => {
             let i = Itype(inst);
@@ -200,23 +186,25 @@ pub fn execute_instruction<Mac: Machine>(
             let value = rs1_value.lt(&imm_value);
             update_register(machine, i.rd(), value);
         }
-        insts::OP_JALR => {
+        insts::OP_JALR_VERSION0 => {
             let i = Itype(inst);
             let size = instruction_length(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
-            if machine.version() >= 1 {
-                let mut next_pc = machine.registers()[i.rs1()]
-                    .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-                next_pc = next_pc & (!Mac::REG::one());
-                update_register(machine, i.rd(), link);
-                machine.update_pc(next_pc);
-            } else {
-                update_register(machine, i.rd(), link);
-                let mut next_pc = machine.registers()[i.rs1()]
-                    .overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
-                next_pc = next_pc & (!Mac::REG::one());
-                machine.update_pc(next_pc);
-            }
+            update_register(machine, i.rd(), link);
+            let mut next_pc =
+                machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+            next_pc = next_pc & (!Mac::REG::one());
+            machine.update_pc(next_pc);
+        }
+        insts::OP_JALR_VERSION1 => {
+            let i = Itype(inst);
+            let size = instruction_length(inst);
+            let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
+            let mut next_pc =
+                machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
+            next_pc = next_pc & (!Mac::REG::one());
+            update_register(machine, i.rd(), link);
+            machine.update_pc(next_pc);
         }
         insts::OP_SLLI => {
             let i = Itype(inst);

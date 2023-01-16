@@ -3,7 +3,7 @@ use ckb_vm_definitions::registers::SP;
 
 use super::i::nop;
 use super::register::Register;
-use super::utils::{rd, x, xs};
+use super::utils::{jalr, ld, lw, rd, x, xs};
 use super::{blank_instruction, set_instruction_length_2, Instruction, Itype, Rtype, Stype, Utype};
 
 // Notice the location of rs2 in RVC encoding is different from full encoding
@@ -123,7 +123,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_010_00000000000_00 => Some(
             // C.LW
             Itype::new_u(
-                insts::OP_LW,
+                lw(version),
                 compact_register_number(instruction_bits, 2),
                 compact_register_number(instruction_bits, 7),
                 sw_uimmediate(instruction_bits),
@@ -137,7 +137,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                 // C.LD
                 Some(
                     Itype::new_u(
-                        insts::OP_LD,
+                        ld(version),
                         compact_register_number(instruction_bits, 2),
                         compact_register_number(instruction_bits, 7),
                         fld_uimmediate(instruction_bits),
@@ -399,7 +399,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
             let rd = rd(instruction_bits);
             if rd != 0 {
                 // C.LWSP
-                Some(Itype::new_u(insts::OP_LW, rd, SP, lwsp_uimmediate(instruction_bits)).0)
+                Some(Itype::new_u(lw(version), rd, SP, lwsp_uimmediate(instruction_bits)).0)
             } else {
                 // Reserved
                 None
@@ -412,7 +412,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                 let rd = rd(instruction_bits);
                 if rd != 0 {
                     // C.LDSP
-                    Some(Itype::new_u(insts::OP_LD, rd, SP, fldsp_uimmediate(instruction_bits)).0)
+                    Some(Itype::new_u(ld(version), rd, SP, fldsp_uimmediate(instruction_bits)).0)
                 } else {
                     // Reserved
                     None
@@ -427,7 +427,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                     if rs2 == 0 {
                         if rd != 0 {
                             // C.JR
-                            Some(Itype::new_s(insts::OP_JALR, 0, rd, 0).0)
+                            Some(Itype::new_s(jalr(version), 0, rd, 0).0)
                         } else {
                             // Reserved
                             None
@@ -451,7 +451,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                         // C.EBREAK
                         (0, 0) => Some(blank_instruction(insts::OP_EBREAK)),
                         // C.JALR
-                        (rs1, 0) => Some(Itype::new_s(insts::OP_JALR, 1, rs1, 0).0),
+                        (rs1, 0) => Some(Itype::new_s(jalr(version), 1, rs1, 0).0),
                         // C.ADD
                         (rd, rs2) => {
                             if rd != 0 {

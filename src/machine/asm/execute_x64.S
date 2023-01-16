@@ -98,7 +98,6 @@
 #define TEMP1 %rdi
 #define TEMP2 %r10
 #define TEMP3 %r11
-#define FLAG TEMP3
 
 #define RDd_RS2sd %eax
 #define RDd RDd_RS2sd
@@ -134,9 +133,6 @@
 
 #define REGISTER_ADDRESS(r) \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE, r, 8)
-
-#define VERSION_ADDRESS \
-  CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION(MACHINE)
 
 /*
  * Those macros provide slight abstractions over register allocations,
@@ -308,13 +304,20 @@
 #define WRITE_RS3(v) \
   movq v, REGISTER_ADDRESS(RS3); \
 
+/*
+ * Notice we could replace the last 3 instructions with the following:
+ *
+ * addq $8, INST_PC
+ * jmp *-8(TEMP1)
+ *
+ * Even though this would save us one instruction to exectue, keeping the jump
+ * target in TEMP1 actually aids branch predictor for better performance.
+ */
 #define NEXT_INST \
   movq (INST_ARGS), %rcx; \
   addq $8, INST_ARGS; \
   movzbl %ch, RDd_RS2sd; \
-  sar $24, %rcx; \
-  movzx %cl, FLAG; \
-  sar $8, %rcx; \
+  sar $32, %rcx; \
   movq (INST_PC), TEMP1; \
   addq $8, INST_PC; \
   jmp *TEMP1
@@ -513,9 +516,12 @@ ckb_vm_x64_execute:
   NEXT_INST
 .i_branch_success:
   movq PC_ADDRESS, RS1
-  andq $0xF, FLAG
-  shl $1, FLAG
-  subq FLAG, RS1
+  /* Loading flag of current instruction */
+  movq -8(INST_ARGS), TEMP3
+  sar $24, TEMP3
+  andq $0xF, TEMP3
+  shl $1, TEMP3
+  subq TEMP3, RS1
   addq IMMEDIATE, RS1
   movq RS1, PC_ADDRESS
   jmp .prepare_trace
@@ -635,18 +641,15 @@ ckb_vm_x64_execute:
   DECODE_U
   movq PC_ADDRESS, RS1
   WRITE_RD(RS1)
-  andq $0xF, FLAG
-  shl $1, FLAG
-  subq FLAG, RS1
+  /* Loading flag of current instruction */
+  movq -8(INST_ARGS), TEMP3
+  sar $24, TEMP3
+  andq $0xF, TEMP3
+  shl $1, TEMP3
+  subq TEMP3, RS1
   addq IMMEDIATE, RS1
   movq RS1, PC_ADDRESS
   jmp .prepare_trace
-.p2align 3
-.CKB_VM_ASM_LABEL_OP_JALR:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_JALR_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_JALR_VERSION0
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_JALR_VERSION0:
   DECODE_I
@@ -669,12 +672,6 @@ ckb_vm_x64_execute:
   movq RS2r, PC_ADDRESS
   jmp .prepare_trace
 .p2align 3
-.CKB_VM_ASM_LABEL_OP_LB:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LB_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LB_VERSION0
-.p2align 3
 .CKB_VM_ASM_LABEL_OP_LB_VERSION0:
   DECODE_I
   CHECK_READ_BOUND_VERSION0($1)
@@ -690,12 +687,6 @@ ckb_vm_x64_execute:
   movsbq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
-.p2align 3
-.CKB_VM_ASM_LABEL_OP_LBU:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LBU_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LBU_VERSION0
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LBU_VERSION0:
   DECODE_I
@@ -713,12 +704,6 @@ ckb_vm_x64_execute:
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
-.CKB_VM_ASM_LABEL_OP_LD:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LD_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LD_VERSION0
-.p2align 3
 .CKB_VM_ASM_LABEL_OP_LD_VERSION0:
   DECODE_I
   CHECK_READ_BOUND_VERSION0($8)
@@ -735,12 +720,6 @@ ckb_vm_x64_execute:
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
-.CKB_VM_ASM_LABEL_OP_LH:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LH_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LH_VERSION0
-.p2align 3
 .CKB_VM_ASM_LABEL_OP_LH_VERSION0:
   DECODE_I
   CHECK_READ_BOUND_VERSION0($2)
@@ -756,12 +735,6 @@ ckb_vm_x64_execute:
   movswq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
-.p2align 3
-.CKB_VM_ASM_LABEL_OP_LHU:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LHU_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LHU_VERSION0
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LHU_VERSION0:
   DECODE_I
@@ -791,12 +764,6 @@ ckb_vm_x64_execute:
   WRITE_RD(IMMEDIATE)
   NEXT_INST
 .p2align 3
-.CKB_VM_ASM_LABEL_OP_LW:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LW_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LW_VERSION0
-.p2align 3
 .CKB_VM_ASM_LABEL_OP_LW_VERSION0:
   DECODE_I
   CHECK_READ_BOUND_VERSION0($4)
@@ -812,12 +779,6 @@ ckb_vm_x64_execute:
   movslq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY(MACHINE, RS1), RS1
   WRITE_RD(RS1)
   NEXT_INST
-.p2align 3
-.CKB_VM_ASM_LABEL_OP_LWU:
-  mov VERSION_ADDRESS, TEMP1d
-  cmp $1, TEMP1d
-  jge .CKB_VM_ASM_LABEL_OP_LWU_VERSION1
-  jmp .CKB_VM_ASM_LABEL_OP_LWU_VERSION0
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LWU_VERSION0:
   DECODE_I
@@ -1830,9 +1791,12 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_FAR_JUMP_REL:
   DECODE_U
   movq PC_ADDRESS, RS2r
-  andq $0xF, FLAG
-  shl $1, FLAG
-  subq FLAG, RS2r
+  /* Loading flag of current instruction */
+  movq -8(INST_ARGS), TEMP3
+  sar $24, TEMP3
+  andq $0xF, TEMP3
+  shl $1, TEMP3
+  subq TEMP3, RS2r
   addq IMMEDIATE, RS2r
   movq PC_ADDRESS, TEMP1
   movq TEMP1, RA_ADDRESS
