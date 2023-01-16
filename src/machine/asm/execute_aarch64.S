@@ -406,6 +406,7 @@ ckb_vm_x64_execute:
   ldr RS1, PC_ADDRESS
   /* Loading instruction flags */
   ldr TEMP3, [INST_ARGS, -8]
+  asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF
   lsl TEMP3, TEMP3, 1
   sub RS1, RS1, TEMP3
@@ -488,6 +489,7 @@ ckb_vm_x64_execute:
   WRITE_RD(RS1)
   /* Loading instruction flags */
   ldr TEMP3, [INST_ARGS, -8]
+  asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF
   lsl TEMP3, TEMP3, 1
   sub RS1, RS1, TEMP3
@@ -1425,6 +1427,7 @@ ckb_vm_x64_execute:
   ldr RS2, PC_ADDRESS
   /* Loading instruction flags */
   ldr TEMP3, [INST_ARGS, -8]
+  asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF
   lsl TEMP3, TEMP3, 1
   sub RS2, RS2, TEMP3
