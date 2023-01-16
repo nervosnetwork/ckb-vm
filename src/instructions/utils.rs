@@ -1,5 +1,6 @@
 use super::super::machine::Machine;
 use crate::RISCV_GENERAL_REGISTER_NUMBER;
+use ckb_vm_definitions::instructions::{self as insts, InstructionOpcode};
 
 // Inspired from https://github.com/riscv/riscv-isa-sim/blob/master/riscv/decode.h#L105-L106
 #[inline(always)]
@@ -84,5 +85,77 @@ pub fn update_register<M: Machine>(machine: &mut M, register_index: usize, value
     // compact encoding. Hence we are ignoring all writes to x0 register here.
     if register_index > 0 {
         machine.set_register(register_index, value);
+    }
+}
+
+#[inline(always)]
+pub fn jalr(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_JALR_VERSION1
+    } else {
+        insts::OP_JALR_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn lb(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LB_VERSION1
+    } else {
+        insts::OP_LB_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn lbu(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LBU_VERSION1
+    } else {
+        insts::OP_LBU_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn ld(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LD_VERSION1
+    } else {
+        insts::OP_LD_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn lh(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LH_VERSION1
+    } else {
+        insts::OP_LH_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn lhu(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LHU_VERSION1
+    } else {
+        insts::OP_LHU_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn lw(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LW_VERSION1
+    } else {
+        insts::OP_LW_VERSION0
+    }
+}
+
+#[inline(always)]
+pub fn lwu(version: u32) -> InstructionOpcode {
+    if version >= 1 {
+        insts::OP_LWU_VERSION1
+    } else {
+        insts::OP_LWU_VERSION0
     }
 }

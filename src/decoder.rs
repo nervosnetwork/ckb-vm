@@ -312,7 +312,7 @@ impl Decoder {
                 };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
-                    insts::OP_JALR => {
+                    insts::OP_JALR_VERSION1 => {
                         let next_inst = Itype(next_instruction);
                         if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
                             let fuze_imm = head_inst
@@ -353,7 +353,7 @@ impl Decoder {
                 };
                 let next_opcode = extract_opcode(next_instruction);
                 match next_opcode {
-                    insts::OP_JALR => {
+                    insts::OP_JALR_VERSION1 => {
                         let next_inst = Itype(next_instruction);
                         if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
                             let fuze_imm = head_inst

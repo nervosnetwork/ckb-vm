@@ -135,10 +135,6 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CHAOS_SEED {}",
         (&m.chaos_seed as *const u32 as usize) - m_address
     );
-    println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION {}",
-        (&m.version as *const u32 as usize) - m_address
-    );
 
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE {}",

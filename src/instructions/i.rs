@@ -1,8 +1,8 @@
 use ckb_vm_definitions::instructions as insts;
 
 use super::utils::{
-    btype_immediate, funct3, funct7, itype_immediate, jtype_immediate, opcode, rd, rs1, rs2,
-    stype_immediate, utype_immediate,
+    btype_immediate, funct3, funct7, itype_immediate, jalr, jtype_immediate, lb, lbu, ld, lh, lhu,
+    lw, lwu, opcode, rd, rs1, rs2, stype_immediate, utype_immediate,
 };
 use super::{
     blank_instruction, set_instruction_length_4, Instruction, Itype, Register, Rtype, Stype, Utype,
@@ -31,7 +31,7 @@ impl FenceType {
     }
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
@@ -65,7 +65,7 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
         0b_1100111 => {
             let inst_opt = match funct3(instruction_bits) {
                 // I-type jump instructions
-                0b_000 => Some(insts::OP_JALR),
+                0b_000 => Some(jalr(version)),
                 _ => None,
             };
             inst_opt.map(|inst| {
@@ -81,13 +81,13 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction
         0b_0000011 => {
             // I-type load instructions
             let inst_opt = match funct3(instruction_bits) {
-                0b_000 => Some(insts::OP_LB),
-                0b_001 => Some(insts::OP_LH),
-                0b_010 => Some(insts::OP_LW),
-                0b_100 => Some(insts::OP_LBU),
-                0b_101 => Some(insts::OP_LHU),
-                0b_110 if rv64 => Some(insts::OP_LWU),
-                0b_011 if rv64 => Some(insts::OP_LD),
+                0b_000 => Some(lb(version)),
+                0b_001 => Some(lh(version)),
+                0b_010 => Some(lw(version)),
+                0b_100 => Some(lbu(version)),
+                0b_101 => Some(lhu(version)),
+                0b_110 if rv64 => Some(lwu(version)),
+                0b_011 if rv64 => Some(ld(version)),
                 _ => None,
             };
             inst_opt.map(|inst| {
