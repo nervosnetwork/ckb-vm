@@ -39,7 +39,7 @@ pub fn run<R: Register, M: Memory<REG = R>>(
     args: &[Bytes],
     memory_size: usize,
 ) -> Result<i8, Error> {
-    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new(
+    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
         ISA_IMC | ISA_B | ISA_MOP,
         machine::VERSION1,
         u64::max_value(),

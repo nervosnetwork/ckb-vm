@@ -2,7 +2,7 @@
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1};
-use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY};
+use ckb_vm::{DefaultMachineBuilder, ISA_B, ISA_IMC, ISA_MOP};
 use ckb_vm::{Instruction, SparseMemory, WXorXMemory};
 
 use bytes::Bytes;
@@ -14,12 +14,7 @@ pub fn instruction_cycle_func(_: Instruction) -> u64 {
 #[cfg(has_asm)]
 pub fn asm_v1_imcb(path: &str) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(
-        ISA_IMC | ISA_B,
-        VERSION1,
-        u64::max_value(),
-        RISCV_MAX_MEMORY,
-    );
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(instruction_cycle_func))
         .build();
@@ -38,7 +33,6 @@ pub fn int_v1_imcb(
         ISA_IMC | ISA_B,
         VERSION1,
         u64::max_value(),
-        RISCV_MAX_MEMORY,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
@@ -54,12 +48,7 @@ pub fn int_v1_imcb(
 #[cfg(has_asm)]
 pub fn asm_v1_mop(path: &str, args: Vec<Bytes>) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(
-        ISA_IMC | ISA_B | ISA_MOP,
-        VERSION1,
-        u64::max_value(),
-        RISCV_MAX_MEMORY,
-    );
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(instruction_cycle_func))
         .build();
@@ -79,7 +68,6 @@ pub fn int_v1_mop(
         ISA_IMC | ISA_B | ISA_MOP,
         VERSION1,
         u64::max_value(),
-        RISCV_MAX_MEMORY,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)

@@ -15,7 +15,7 @@ use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
+    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -351,7 +351,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
     fn reset(&mut self, max_cycles: u64) {
         self.registers = Default::default();
         self.pc = Default::default();
-        self.memory = M::new(self.memory().memory_size());
+        self.memory = M::new_with_memory(self.memory().memory_size());
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = true;
@@ -386,13 +386,17 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
 }
 
 impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
-    pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
+    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
+        Self::new_with_memory(isa, version, max_cycles, RISCV_MAX_MEMORY)
+    }
+
+    pub fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
         Self {
             registers: Default::default(),
             pc: Default::default(),
             next_pc: Default::default(),
             reset_signal: Default::default(),
-            memory: M::new(memory_size),
+            memory: M::new_with_memory(memory_size),
             cycles: Default::default(),
             max_cycles,
             running: Default::default(),

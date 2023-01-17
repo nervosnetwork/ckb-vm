@@ -30,7 +30,8 @@ pub type Page = [u8; RISCV_PAGESIZE];
 pub trait Memory {
     type REG: Register;
 
-    fn new(memory_size: usize) -> Self;
+    fn new() -> Self;
+    fn new_with_memory(memory_size: usize) -> Self;
     fn init_pages(
         &mut self,
         addr: u64,

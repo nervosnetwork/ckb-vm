@@ -67,7 +67,16 @@ pub struct AsmCoreMachine {
 }
 
 impl AsmCoreMachine {
-    pub fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Box<AsmCoreMachine> {
+    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
+        Self::new_with_memory(isa, version, max_cycles, RISCV_MAX_MEMORY)
+    }
+
+    pub fn new_with_memory(
+        isa: u8,
+        version: u32,
+        max_cycles: u64,
+        memory_size: usize,
+    ) -> Box<AsmCoreMachine> {
         assert_ne!(memory_size, 0);
         assert_eq!(memory_size % RISCV_PAGESIZE, 0);
         assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);

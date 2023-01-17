@@ -46,7 +46,6 @@ fn test_reset_int() {
         ISA_IMC | ISA_MOP,
         VERSION1,
         u64::max_value(),
-        RISCV_MAX_MEMORY,
     );
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
@@ -69,7 +68,6 @@ fn test_reset_int_with_trace() {
         ISA_IMC | ISA_MOP,
         VERSION1,
         u64::max_value(),
-        RISCV_MAX_MEMORY,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
@@ -91,12 +89,7 @@ fn test_reset_asm() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
     let code = Bytes::from(code_data);
 
-    let asm_core = AsmCoreMachine::new(
-        ISA_IMC | ISA_MOP,
-        VERSION1,
-        u64::max_value(),
-        RISCV_MAX_MEMORY,
-    );
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(machine_build::instruction_cycle_func))
         .syscall(Box::new(CustomSyscall {}))
