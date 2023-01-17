@@ -177,7 +177,11 @@
 #define CALL_INITED_MEMORY call inited_memory@plt
 #endif
 
-#define CHECK_READ_FRAMES(address_reg, length) \
+/*
+ * This is an internal macro used by other macros, it should not be used
+ * in instruction implementation directly.
+ */
+#define _CHECK_READ_FRAMES(address_reg, length) \
   movq address_reg, TEMP1; \
   shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
   movq TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_READ_FRAME(MACHINE); \
@@ -224,7 +228,7 @@
   addq $length, TEMP1; \
   cmp MEMORY_SIZE, TEMP1; \
   jae .exit_out_of_bound; \
-  CHECK_READ_FRAMES(address_reg, length)
+  _CHECK_READ_FRAMES(address_reg, length)
 
 #define CHECK_READ_VERSION1(address_reg, length, bound_length) \
   movq address_reg, TEMP1; \
@@ -233,7 +237,7 @@
   addq $length, TEMP1; \
   cmp MEMORY_SIZE, TEMP1; \
   ja .exit_out_of_bound; \
-  CHECK_READ_FRAMES(address_reg, bound_length)
+  _CHECK_READ_FRAMES(address_reg, bound_length)
 
 #define CHECK_WRITE(address_reg, temp_regd, length) \
   movq address_reg, TEMP1; \

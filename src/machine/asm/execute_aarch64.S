@@ -110,7 +110,11 @@
 #define CALL_INITED_MEMORY bl inited_memory
 #endif
 
-#define CHECK_READ_FRAMES(address_reg, length) \
+/*
+ * This is an internal macro used by other macros, it should not be used
+ * in instruction implementation directly.
+ */
+#define _CHECK_READ_FRAMES(address_reg, length) \
   mov TEMP1, address_reg SEP \
   lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
   str TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_READ_FRAME] SEP \
@@ -162,7 +166,7 @@
   add TEMP1, TEMP1, length SEP \
   cmp TEMP1, TEMP2 SEP \
   bhs .exit_out_of_bound SEP \
-  CHECK_READ_FRAMES(address_reg, length)
+  _CHECK_READ_FRAMES(address_reg, length)
 
 #define CHECK_READ_VERSION1(address_reg, length, bound_length) \
   mov TEMP1, address_reg SEP \
@@ -172,7 +176,7 @@
   add TEMP1, TEMP1, length SEP \
   cmp TEMP1, TEMP2 SEP \
   bhi .exit_out_of_bound SEP \
-  CHECK_READ_FRAMES(address_reg, length)
+  _CHECK_READ_FRAMES(address_reg, length)
 
 #define CHECK_WRITE(address_reg, length) \
   mov TEMP1, address_reg SEP \
