@@ -56,6 +56,9 @@ pub struct AsmCoreMachine {
     pub frames_size: u64,
     pub flags_size: u64,
 
+    pub last_read_frame: u64,
+    pub last_write_page: u64,
+
     pub flags: [u8; RISCV_PAGES],
     pub frames: [u8; MEMORY_FRAMES],
     pub traces: [Trace; TRACE_SIZE],
@@ -101,6 +104,9 @@ impl AsmCoreMachine {
         machine.memory_size = memory_size as u64;
         machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
         machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
+
+        machine.last_read_frame = u64::max_value();
+        machine.last_write_page = u64::max_value();
 
         machine
     }

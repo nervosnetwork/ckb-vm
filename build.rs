@@ -24,6 +24,10 @@ fn main() {
     }
 
     if cfg!(any(feature = "asm", feature = "detect-asm")) && can_enable_asm {
+        println!("cargo:rerun-if-changed=src/machine/asm/execute_x64.S");
+        println!("cargo:rerun-if-changed=src/machine/asm/execute_aarch64.S");
+        println!("cargo:rerun-if-changed=src/machine/asm/cdefinitions_generated.h");
+
         use cc::Build;
         use std::path::Path;
         use std::process::Command;
