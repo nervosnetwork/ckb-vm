@@ -109,7 +109,7 @@ fn main() {
     );
     println!();
 
-    let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0, RISCV_MAX_MEMORY);
+    let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0);
     let m_address = &*m as *const AsmCoreMachine as usize;
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS {}",
