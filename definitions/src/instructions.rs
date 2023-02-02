@@ -162,8 +162,41 @@ pub const OP_WIDE_DIV: InstructionOpcode = 0x79;
 pub const OP_WIDE_DIVU: InstructionOpcode = 0x7A;
 pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x7B;
 pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x7C;
-// See: https://github.com/nervosnetwork/ckb-vm/issues/169
+// # ADC
+//
+// Adding a0, a1, and a2 with results in a0 and carry-out in a1.
+//
+// ```
+// add  a0, a0, a1
+// sltu a1, a0, a1
+// add  a0, a0, a2
+// sltu a2, a0, a2
+// or   a1, a1, a2
+// ```
+//
+// - a0 ~ a2 are used as placeholders
+// - a0, a1, a2 != ZERO
 pub const OP_ADC: InstructionOpcode = 0x7D;
+// # SBB
+//
+// Do a0 - a1 - a2 with results in a0 and carry-out in a1.
+//
+// ```
+// sub  a1, a0, a1
+// sltu a3, a0, a1
+// sub  a0, a1, a2
+// sltu a2, a1, a0
+// or   a1, a2, a3
+// ```
+//
+// - a0 ~ a3 are used as placeholders
+// - a3 is a temporary register
+// - a0, a1, a2, a3 != ZERO
+//
+// We need to read 5 instructions to really determine whether these 5 instructions can be fused into a mop instruction,
+// but in fact, when the first instruction is read, we have a high accuracy rate to judge whether the first instruction
+// is the beginning of an sbb mop instructions. This way `sub a1, a0, a1` of writing `sub` is not very common, in most
+// cases we will write like this `sub a0, a0, a1`. Therefore, this effectively distinguishes `sbb` and normal `sub`.
 pub const OP_SBB: InstructionOpcode = 0x7E;
 pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x7F;
 pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x80;
