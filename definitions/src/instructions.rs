@@ -193,10 +193,12 @@ pub const OP_ADC: InstructionOpcode = 0x7D;
 // - a3 is a temporary register
 // - a0, a1, a2, a3 != ZERO
 //
-// We need to read 5 instructions to really determine whether these 5 instructions can be fused into a mop instruction,
-// but in fact, when the first instruction is read, we have a high accuracy rate to judge whether the first instruction
-// is the beginning of an sbb mop instructions. This way `sub a1, a0, a1` of writing `sub` is not very common, in most
-// cases we will write like this `sub a0, a0, a1`. Therefore, this effectively distinguishes `sbb` and normal `sub`.
+// We need to read 5 instructions to really determine whether these 5 instructions can be fused
+// into a mop instruction, zbut in fact, when the first instruction is read, we have a high
+// accuracy rate to judge whether the first instruction is the beginning of an sbb mop
+// instructions. This way `sub a1, a0, a1` of writing `sub` is not very common, in most cases we
+// will write like this `sub a0, a0, a1`. Therefore, this effectively distinguishes `sbb` and
+// normal `sub`.
 pub const OP_SBB: InstructionOpcode = 0x7E;
 pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x7F;
 pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x80;
