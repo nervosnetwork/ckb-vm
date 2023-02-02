@@ -162,6 +162,7 @@ pub const OP_WIDE_DIV: InstructionOpcode = 0x79;
 pub const OP_WIDE_DIVU: InstructionOpcode = 0x7A;
 pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x7B;
 pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x7C;
+// See: https://github.com/nervosnetwork/ckb-vm/issues/169
 pub const OP_ADC: InstructionOpcode = 0x7D;
 pub const OP_SBB: InstructionOpcode = 0x7E;
 pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x7F;
