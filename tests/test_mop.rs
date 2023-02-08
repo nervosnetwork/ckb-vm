@@ -2,7 +2,7 @@ pub mod machine_build;
 
 use bytes::Bytes;
 
-use ckb_vm::SupportMachine;
+use ckb_vm::{CoreMachine, Error, SupportMachine};
 
 #[test]
 #[cfg_attr(miri, ignore)]
@@ -379,5 +379,38 @@ pub fn test_mop_wide_div_zero() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
+    }
+}
+
+#[test]
+pub fn test_mop_jump_rel_version1_bug() {
+    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_jump_rel_version1_bug");
+    let ret = machine.run();
+    assert_eq!(ret, Err(Error::MemOutOfBound));
+    assert_eq!(*machine.pc(), 0xffffffff8000f878);
+
+    let mut machine = machine_build::int_v1_mop("tests/programs/mop_jump_rel_version1_bug", vec![]);
+    let ret = machine.run();
+    assert_eq!(ret, Err(Error::MemOutOfBound));
+    assert_eq!(*machine.pc(), 0x8000f878);
+
+    let mut machine = machine_build::int_mop("tests/programs/mop_jump_rel_version1_bug", vec![], 2);
+    let ret = machine.run();
+    assert_eq!(ret, Err(Error::MemOutOfBound));
+    assert_eq!(*machine.pc(), 0xffffffff8000f878);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm =
+            machine_build::asm_v1_mop("tests/programs/mop_jump_rel_version1_bug", vec![]);
+        let ret_asm = machine_asm.run();
+        assert_eq!(ret, Err(Error::MemOutOfBound));
+        assert_eq!(*machine.pc(), 0xffffffff8000f878);
+
+        let mut machine_asm =
+            machine_build::asm_mop("tests/programs/mop_jump_rel_version1_bug", vec![], 2);
+        let ret_asm = machine_asm.run();
+        assert_eq!(ret, Err(Error::MemOutOfBound));
+        assert_eq!(*machine.pc(), 0xffffffff8000f878);
     }
 }

@@ -600,17 +600,35 @@ impl Decoder {
                 match next_opcode {
                     insts::OP_JALR_VERSION1 => {
                         let next_inst = Itype(next_instruction);
-                        if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
-                            let fuze_imm = head_inst
-                                .immediate_s()
-                                .wrapping_add(next_inst.immediate_s());
-                            let fuze_inst = Utype::new_s(insts::OP_FAR_JUMP_REL, RA, fuze_imm);
-                            let next_size = instruction_length(next_instruction);
-                            let fuze_size = head_size + next_size;
-                            Ok(set_instruction_length_n(fuze_inst.0, fuze_size))
+                        let mut result = head_instruction;
+
+                        if self.version >= VERSION2 {
+                            if next_inst.rs1() == head_inst.rd()
+                                && next_inst.rd() == RA
+                                && next_inst.rs1() == RA
+                            {
+                                if let Some(fuze_imm) =
+                                    head_inst.immediate_s().checked_add(next_inst.immediate_s())
+                                {
+                                    let fuze_inst =
+                                        Utype::new_s(insts::OP_FAR_JUMP_REL, RA, fuze_imm);
+                                    let next_size = instruction_length(next_instruction);
+                                    let fuze_size = head_size + next_size;
+                                    result = set_instruction_length_n(fuze_inst.0, fuze_size);
+                                }
+                            }
                         } else {
-                            Ok(head_instruction)
+                            if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
+                                let fuze_imm = head_inst
+                                    .immediate_s()
+                                    .wrapping_add(next_inst.immediate_s());
+                                let fuze_inst = Utype::new_s(insts::OP_FAR_JUMP_REL, RA, fuze_imm);
+                                let next_size = instruction_length(next_instruction);
+                                let fuze_size = head_size + next_size;
+                                result = set_instruction_length_n(fuze_inst.0, fuze_size);
+                            }
                         }
+                        Ok(result)
                     }
                     insts::OP_ADDI if self.version >= VERSION2 => {
                         let next_inst = Itype(next_instruction);
