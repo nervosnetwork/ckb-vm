@@ -118,7 +118,7 @@ pub fn test_mop_secp256k1() {
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 576612);
+    assert_eq!(machine.machine.cycles(), 576608);
 
     #[cfg(has_asm)]
     {
@@ -134,7 +134,7 @@ pub fn test_mop_secp256k1() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine_asm.machine.cycles(), 576612);
+        assert_eq!(machine_asm.machine.cycles(), 576608);
     }
 }
 

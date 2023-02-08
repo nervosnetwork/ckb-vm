@@ -894,7 +894,7 @@ pub fn execute_instruction<Mac: Machine>(
             let rs1_value = machine.registers()[i.rs1()].clone();
             let rs2_value = machine.registers()[i.rs2()].clone();
             let r = rs1_value.overflowing_sub(&rs2_value);
-            update_register(machine, i.rd(), r.clone());
+            update_register(machine, i.rd(), r);
             let r = rs1_value.lt(&rs2_value);
             update_register(machine, i.rs3(), r);
         }

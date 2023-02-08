@@ -612,6 +612,30 @@ impl Decoder {
                             Ok(head_instruction)
                         }
                     }
+                    insts::OP_ADDI if self.version >= VERSION2 => {
+                        let next_inst = Itype(next_instruction);
+                        let mut result = head_instruction;
+
+                        if next_inst.rs1() == next_inst.rd() && next_inst.rd() == head_inst.rd() {
+                            if let Ok(pc) = i32::try_from(pc) {
+                                if let Some(fuze_imm) = head_inst
+                                    .immediate_s()
+                                    .checked_add(next_inst.immediate_s())
+                                    .and_then(|s| s.checked_add(pc))
+                                {
+                                    let fuze_inst = Utype::new_s(
+                                        insts::OP_CUSTOM_LOAD_IMM,
+                                        head_inst.rd(),
+                                        fuze_imm,
+                                    );
+                                    let next_size = instruction_length(next_instruction);
+                                    let fuze_size = head_size + next_size;
+                                    result = set_instruction_length_n(fuze_inst.0, fuze_size);
+                                }
+                            }
+                        }
+                        Ok(result)
+                    }
                     _ => Ok(head_instruction),
                 }
             }
