@@ -2,7 +2,7 @@ pub mod machine_build;
 
 use bytes::Bytes;
 
-use ckb_vm::{CoreMachine, Error, SupportMachine};
+use ckb_vm::{registers::A0, CoreMachine, Error, SupportMachine};
 
 #[test]
 #[cfg_attr(miri, ignore)]
@@ -404,13 +404,59 @@ pub fn test_mop_jump_rel_version1_bug() {
         let mut machine_asm =
             machine_build::asm_v1_mop("tests/programs/mop_jump_rel_version1_bug", vec![]);
         let ret_asm = machine_asm.run();
-        assert_eq!(ret, Err(Error::MemOutOfBound));
-        assert_eq!(*machine.pc(), 0xffffffff8000f878);
+        assert_eq!(ret_asm, Err(Error::MemOutOfBound));
+        assert_eq!(*machine_asm.machine.pc(), 0x8000f878);
 
         let mut machine_asm =
             machine_build::asm_mop("tests/programs/mop_jump_rel_version1_bug", vec![], 2);
         let ret_asm = machine_asm.run();
-        assert_eq!(ret, Err(Error::MemOutOfBound));
-        assert_eq!(*machine.pc(), 0xffffffff8000f878);
+        assert_eq!(ret_asm, Err(Error::MemOutOfBound));
+        assert_eq!(*machine_asm.machine.pc(), 0xffffffff8000f878);
+    }
+}
+
+#[test]
+pub fn test_mop_jump_rel_version1_reg_not_updated_bug() {
+    let mut machine =
+        machine_build::int_v1_imcb("tests/programs/mop_jump_rel_version1_reg_not_updated_bug");
+    let ret = machine.run();
+    assert_eq!(ret, Err(Error::MemOutOfBound));
+    assert_eq!(machine.registers()[A0], 67174520);
+
+    let mut machine = machine_build::int_v1_mop(
+        "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
+        vec![],
+    );
+    let ret = machine.run();
+    assert_eq!(ret, Err(Error::MemOutOfBound));
+    assert_eq!(machine.registers()[A0], 0);
+
+    let mut machine = machine_build::int_mop(
+        "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
+        vec![],
+        2,
+    );
+    let ret = machine.run();
+    assert_eq!(ret, Err(Error::MemOutOfBound));
+    assert_eq!(machine.registers()[A0], 67174520);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v1_mop(
+            "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
+            vec![],
+        );
+        let ret_asm = machine_asm.run();
+        assert_eq!(ret_asm, Err(Error::MemOutOfBound));
+        assert_eq!(machine_asm.machine.registers()[A0], 0);
+
+        let mut machine_asm = machine_build::asm_mop(
+            "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
+            vec![],
+            2,
+        );
+        let ret_asm = machine_asm.run();
+        assert_eq!(ret_asm, Err(Error::MemOutOfBound));
+        assert_eq!(machine_asm.machine.registers()[A0], 67174520);
     }
 }

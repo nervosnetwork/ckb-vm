@@ -59,4 +59,5 @@ riscv64-unknown-elf-as -o write_large_address.o write_large_address.S && riscv64
 # riscv64-unknown-elf-as -march=rv64i_zba_zbb_zbc orc_bug.S -o orc_bug.o && riscv64-unknown-elf-ld orc_bug.o -o orc_bug && rm orc_bug.o
 riscv64-unknown-elf-as -o zero_address.o zero_address.S && riscv64-unknown-elf-ld -T zero_address.lds -o zero_address zero_address.o && rm zero_address.o
 riscv64-unknown-elf-as -o mop_jump_rel_version1_bug.o mop_jump_rel_version1_bug.S && riscv64-unknown-elf-ld -o mop_jump_rel_version1_bug mop_jump_rel_version1_bug.o && rm mop_jump_rel_version1_bug.o
+riscv64-unknown-elf-as -o mop_jump_rel_version1_reg_not_updated_bug.o mop_jump_rel_version1_reg_not_updated_bug.S && riscv64-unknown-elf-ld -o mop_jump_rel_version1_reg_not_updated_bug mop_jump_rel_version1_reg_not_updated_bug.o && rm mop_jump_rel_version1_reg_not_updated_bug.o
 echo "done"
