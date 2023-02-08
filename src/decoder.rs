@@ -90,8 +90,7 @@ impl Decoder {
         if pc as usize >= RISCV_MAX_MEMORY {
             return Err(Error::MemOutOfBound);
         }
-        // according to RISC-V instruction encoding, the lowest bit in PC will always be zero
-        let instruction_cache_key = (pc >> 1) as usize % INSTRUCTION_CACHE_SIZE;
+        let instruction_cache_key = cache_key(pc);
         let cached_instruction = self.instructions_cache[instruction_cache_key];
         if cached_instruction.0 == pc {
             return Ok(cached_instruction.1);
@@ -545,11 +544,13 @@ impl Decoder {
     }
 
     pub fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
-        if self.mop {
+        let instruction = if self.mop {
             self.decode_mop(memory, pc)
         } else {
             self.decode_raw(memory, pc)
-        }
+        }?;
+        self.instructions_cache[cache_key(pc)] = (pc, instruction);
+        Ok(instruction)
     }
 
     pub fn reset_instructions_cache(&mut self) {
@@ -566,4 +567,18 @@ pub fn build_decoder<R: Register>(isa: u8, version: u32) -> Decoder {
         decoder.add_instruction_factory(b::factory::<R>);
     }
     decoder
+}
+
+#[inline(always)]
+fn cache_key(pc: u64) -> usize {
+    // according to RISC-V instruction encoding, the lowest bit in PC will always be zero
+    let pc = pc >> 1;
+    // Here we try to balance between local code and remote code. At times,
+    // we can find the code jumping to a remote function(e.g., memcpy or
+    // alloc), then resumes execution at a local location. Previous cache
+    // key only optimizes for local operations, while this new cache key
+    // balances the code between a 8192-byte local region, and certain remote
+    // code region. Notice the value 12 and 8 here are chosen by empirical
+    // evidence.
+    ((pc & 0xFF) | (pc >> 12 << 8)) as usize % INSTRUCTION_CACHE_SIZE
 }
