@@ -98,6 +98,8 @@
 #define TEMP1 %rdi
 #define TEMP2 %r10
 #define TEMP3 %r11
+/* This helps remind us that RS4 and TEMP3 shares the same register */
+#define RS4_TEMP1 TEMP1
 
 #define RDd_RS2sd %eax
 #define RDd RDd_RS2sd
@@ -118,6 +120,7 @@
 #define TEMP2b %r10b
 #define TEMP3d %r11d
 #define TEMP3b %r11b
+#define RS4_TEMP1d TEMP1d
 
 #define PC_ADDRESS \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
@@ -365,6 +368,13 @@
   movzbl %ch, RS2rd; \
   sar $16, %rcx; \
   movzbl %cl, RS3d
+
+#define DECODE_R5 \
+  movzbl %cl, RS1d; \
+  movzbl %ch, RS2rd; \
+  sar $16, %rcx; \
+  movzbl %cl, RS3d; \
+  movzbl %ch, RS4_TEMP1d
 
 #ifdef __APPLE__
 .globl _ckb_vm_x64_execute
@@ -1991,6 +2001,62 @@ ckb_vm_x64_execute:
   orq TEMP2, TEMP1
   WRITE_RS1(TEMP1)
   WRITE_RD(%rcx)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_ADCS:
+  DECODE_R4
+  xor TEMP1, TEMP1
+  movq REGISTER_ADDRESS(RS1), %rcx
+  addq REGISTER_ADDRESS(RS2r), %rcx
+  adc $0, TEMP1
+  WRITE_RD(%rcx)
+  WRITE_RS3(TEMP1)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SBBS:
+  DECODE_R4
+  xor TEMP1, TEMP1
+  movq REGISTER_ADDRESS(RS1), %rcx
+  subq REGISTER_ADDRESS(RS2r), %rcx
+  adc $0, TEMP1
+  WRITE_RD(%rcx)
+  WRITE_RS3(TEMP1)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_ADD3A:
+  DECODE_R5
+  xor TEMP2, TEMP2
+  movq REGISTER_ADDRESS(RD), %rcx
+  addq REGISTER_ADDRESS(RS1), %rcx
+  adc $0, TEMP2
+  movq TEMP2, TEMP3
+  addq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
+  WRITE_RD(%rcx)
+  WRITE_RS2r(TEMP2)
+  WRITE_RS3(TEMP3)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_ADD3B:
+  DECODE_R5
+  xor TEMP2, TEMP2
+  movq REGISTER_ADDRESS(RS1), %rcx
+  addq REGISTER_ADDRESS(RS2r), %rcx
+  adc $0, TEMP2
+  movq TEMP2, TEMP3
+  addq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
+  WRITE_RD(%rcx)
+  WRITE_RS1(TEMP2)
+  WRITE_RS3(TEMP3)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_ADD3C:
+  DECODE_R5
+  xor TEMP3, TEMP3
+  movq REGISTER_ADDRESS(RS1), %rcx
+  addq REGISTER_ADDRESS(RS2r), %rcx
+  adcq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
+  WRITE_RD(%rcx)
+  WRITE_RS3(TEMP3)
   NEXT_INST
 .p2align 3
 .exit_out_of_bound:

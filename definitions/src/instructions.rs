@@ -6,6 +6,8 @@
 // +-----+-----+-----+-----+-----+-----+-----+-----+
 // |     | rs3 | rs2 | rs1 | flg | op2 | rd  | op  | R4-type
 // +-----------+-----------------------------------+
+// | rs4 | rs3 | rs2 | rs1 | flg | op2 | rd  | op  | R5-type
+// +-----------+-----------------------------------+
 // |    immediate    | rs1 | flg | op2 | rd  | op  | I-type
 // +-----------------------------------------------+
 // |    immediate    | rs1 | flg | op2 | rs2 | op  | S-type/B-type
@@ -164,9 +166,14 @@ pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x7B;
 pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x7C;
 pub const OP_ADC: InstructionOpcode = 0x7D;
 pub const OP_SBB: InstructionOpcode = 0x7E;
-pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x7F;
-pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x80;
-pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x81;
+pub const OP_ADCS: InstructionOpcode = 0x7F;
+pub const OP_SBBS: InstructionOpcode = 0x80;
+pub const OP_ADD3A: InstructionOpcode = 0x81;
+pub const OP_ADD3B: InstructionOpcode = 0x82;
+pub const OP_ADD3C: InstructionOpcode = 0x83;
+pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x84;
+pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x85;
+pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x86;
 
 pub const MINIMAL_LEVEL1_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_LEVEL1_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
@@ -302,6 +309,11 @@ pub const INSTRUCTION_OPCODE_NAMES_LEVEL1: [&str; MAXIMUM_LEVEL1_OPCODE as usize
     "FAR_JUMP_ABS",
     "ADC",
     "SBB",
+    "ADCS",
+    "SBBS",
+    "ADD3A",
+    "ADD3B",
+    "ADD3C",
     "CUSTOM_LOAD_UIMM",
     "CUSTOM_LOAD_IMM",
     "CUSTOM_TRACE_END",

@@ -6,7 +6,7 @@ use bytes::Bytes;
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, VERSION0, VERSION1,
+        DefaultMachineBuilder, VERSION0, VERSION2,
     },
     ISA_B, ISA_IMC, ISA_MOP,
 };
@@ -57,7 +57,7 @@ fn mop_benchmark(c: &mut Criterion) {
                                       "foo",
                                       "bar"].into_iter().map(|a| a.into()).collect();
         b.iter(|| {
-            let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, u64::max_value());
+            let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::max_value());
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);

@@ -2,7 +2,7 @@ use super::{
     super::{machine::Machine, Error},
     common, extract_opcode, instruction_length,
     utils::update_register,
-    Instruction, Itype, R4type, Register, Rtype, Stype, Utype,
+    Instruction, Itype, R4type, R5type, Register, Rtype, Stype, Utype,
 };
 use ckb_vm_definitions::{instructions as insts, registers::RA};
 
@@ -879,6 +879,83 @@ pub fn execute_instruction<Mac: Machine>(
             let rs3_value = machine.registers()[i.rs3()].clone();
             let r = rs2_value | rs3_value;
             update_register(machine, i.rs1(), r);
+        }
+        insts::OP_ADCS => {
+            let i = R4type(inst);
+            let rs1_value = machine.registers()[i.rs1()].clone();
+            let rs2_value = machine.registers()[i.rs2()].clone();
+            let r = rs1_value.overflowing_add(&rs2_value);
+            update_register(machine, i.rd(), r.clone());
+            let r = r.lt(&rs1_value);
+            update_register(machine, i.rs3(), r);
+        }
+        insts::OP_SBBS => {
+            let i = R4type(inst);
+            let rs1_value = machine.registers()[i.rs1()].clone();
+            let rs2_value = machine.registers()[i.rs2()].clone();
+            let r = rs1_value.overflowing_sub(&rs2_value);
+            update_register(machine, i.rd(), r.clone());
+            let r = rs1_value.lt(&rs2_value);
+            update_register(machine, i.rs3(), r);
+        }
+        insts::OP_ADD3A => {
+            let i = R5type(inst);
+            {
+                let rd_value = machine.registers()[i.rd()].clone();
+                let rs1_value = machine.registers()[i.rs1()].clone();
+                let r = rd_value.overflowing_add(&rs1_value);
+                update_register(machine, i.rd(), r);
+            }
+            {
+                let rd_value = &machine.registers()[i.rd()];
+                let rs1_value = &machine.registers()[i.rs1()];
+                let r = rd_value.lt(rs1_value);
+                update_register(machine, i.rs2(), r);
+            }
+            {
+                let rs2_value = &machine.registers()[i.rs2()];
+                let rs4_value = &machine.registers()[i.rs4()];
+                let r = rs2_value.overflowing_add(rs4_value);
+                update_register(machine, i.rs3(), r);
+            }
+        }
+        insts::OP_ADD3B => {
+            let i = R5type(inst);
+            {
+                let rs1_value = machine.registers()[i.rs1()].clone();
+                let rs2_value = machine.registers()[i.rs2()].clone();
+                let r = rs1_value.overflowing_add(&rs2_value);
+                update_register(machine, i.rd(), r);
+            }
+            {
+                let rd_value = &machine.registers()[i.rd()];
+                let rs1_value = &machine.registers()[i.rs1()];
+                let r = rd_value.lt(rs1_value);
+                update_register(machine, i.rs1(), r);
+            }
+            {
+                let rs1_value = &machine.registers()[i.rs1()];
+                let rs4_value = &machine.registers()[i.rs4()];
+                let r = rs1_value.overflowing_add(rs4_value);
+                update_register(machine, i.rs3(), r);
+            }
+        }
+        insts::OP_ADD3C => {
+            let i = R5type(inst);
+            {
+                let rs1_value = machine.registers()[i.rs1()].clone();
+                let rs2_value = machine.registers()[i.rs2()].clone();
+                let r = rs1_value.overflowing_add(&rs2_value);
+                update_register(machine, i.rd(), r);
+            }
+            {
+                let rd_value = &machine.registers()[i.rd()];
+                let rs1_value = &machine.registers()[i.rs1()];
+                let rs4_value = &machine.registers()[i.rs4()];
+                let r = rd_value.lt(rs1_value);
+                let r = r.overflowing_add(rs4_value);
+                update_register(machine, i.rs3(), r);
+            }
         }
         insts::OP_CUSTOM_LOAD_UIMM => {
             let i = Utype(inst);
