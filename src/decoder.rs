@@ -559,7 +559,14 @@ impl Decoder {
                 match next_opcode {
                     insts::OP_JALR_VERSION1 => {
                         let next_inst = Itype(next_instruction);
-                        if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
+                        let test_condition = if self.version >= VERSION2 {
+                            next_inst.rs1() == head_inst.rd()
+                                && next_inst.rd() == RA
+                                && next_inst.rs1() == RA
+                        } else {
+                            next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA
+                        };
+                        if test_condition {
                             let fuze_imm = head_inst
                                 .immediate_s()
                                 .wrapping_add(next_inst.immediate_s());
