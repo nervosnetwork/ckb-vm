@@ -98,7 +98,7 @@
 #define TEMP1 %rdi
 #define TEMP2 %r10
 #define TEMP3 %r11
-/* This helps remind us that RS4 and TEMP3 shares the same register */
+/* This helps remind us that RS4 and TEMP1 shares the same register */
 #define RS4_TEMP1 TEMP1
 
 #define RDd_RS2sd %eax
