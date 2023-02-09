@@ -1,6 +1,8 @@
 use crate::{
     error::Error,
-    instructions::{extract_opcode, insts, Instruction, Itype, R4type, Rtype, Stype, Utype},
+    instructions::{
+        extract_opcode, insts, Instruction, Itype, R4type, R5type, Rtype, Stype, Utype,
+    },
 };
 use core::convert::TryFrom;
 use core::fmt;
@@ -14,6 +16,7 @@ pub enum TaggedInstruction {
     Stype(Stype),
     Utype(Utype),
     R4type(R4type),
+    R5type(R5type),
 }
 
 impl fmt::Display for TaggedInstruction {
@@ -24,6 +27,7 @@ impl fmt::Display for TaggedInstruction {
             TaggedInstruction::Stype(i) => i.fmt(f),
             TaggedInstruction::Utype(i) => i.fmt(f),
             TaggedInstruction::R4type(i) => i.fmt(f),
+            TaggedInstruction::R5type(i) => i.fmt(f),
         }
     }
 }
@@ -58,6 +62,12 @@ impl From<R4type> for TaggedInstruction {
     }
 }
 
+impl From<R5type> for TaggedInstruction {
+    fn from(i: R5type) -> Self {
+        TaggedInstruction::R5type(i)
+    }
+}
+
 impl From<TaggedInstruction> for Instruction {
     fn from(t: TaggedInstruction) -> Self {
         match t {
@@ -66,6 +76,7 @@ impl From<TaggedInstruction> for Instruction {
             TaggedInstruction::Stype(i) => i.0,
             TaggedInstruction::Utype(i) => i.0,
             TaggedInstruction::R4type(i) => i.0,
+            TaggedInstruction::R5type(i) => i.0,
         }
     }
 }
@@ -204,6 +215,11 @@ impl TryFrom<Instruction> for TaggedInstruction {
             insts::OP_FAR_JUMP_ABS => Utype(i).into(),
             insts::OP_ADC => Rtype(i).into(),
             insts::OP_SBB => R4type(i).into(),
+            insts::OP_ADCS => R4type(i).into(),
+            insts::OP_SBBS => R4type(i).into(),
+            insts::OP_ADD3A => R5type(i).into(),
+            insts::OP_ADD3B => R5type(i).into(),
+            insts::OP_ADD3C => R5type(i).into(),
             insts::OP_CUSTOM_LOAD_UIMM => Utype(i).into(),
             insts::OP_CUSTOM_LOAD_IMM => Utype(i).into(),
             _ => return Err(Error::InvalidOp(op)),

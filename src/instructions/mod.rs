@@ -339,6 +339,69 @@ impl fmt::Display for R4type {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct R5type(pub Instruction);
+
+impl R5type {
+    pub fn new(
+        op: InstructionOpcode,
+        rd: RegisterIndex,
+        rs1: RegisterIndex,
+        rs2: RegisterIndex,
+        rs3: RegisterIndex,
+        rs4: RegisterIndex,
+    ) -> Self {
+        R5type(
+            ((op as u64) >> 8 << 16)
+                | (op as u8 as u64)
+                | ((rd as u8 as u64) << 8)
+                | ((rs1 as u8 as u64) << 32)
+                | ((rs2 as u8 as u64) << 40)
+                | ((rs3 as u8 as u64) << 48)
+                | ((rs4 as u8 as u64) << 56),
+        )
+    }
+
+    pub fn op(self) -> InstructionOpcode {
+        ((self.0 >> 16 << 8) | (self.0 & 0xFF)) as InstructionOpcode
+    }
+
+    pub fn rd(self) -> RegisterIndex {
+        (self.0 >> 8) as u8 as RegisterIndex
+    }
+
+    pub fn rs1(self) -> RegisterIndex {
+        (self.0 >> 32) as u8 as RegisterIndex
+    }
+
+    pub fn rs2(self) -> RegisterIndex {
+        (self.0 >> 40) as u8 as RegisterIndex
+    }
+
+    pub fn rs3(self) -> RegisterIndex {
+        (self.0 >> 48) as u8 as RegisterIndex
+    }
+
+    pub fn rs4(self) -> RegisterIndex {
+        (self.0 >> 56) as u8 as RegisterIndex
+    }
+}
+
+impl fmt::Display for R5type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {},{},{},{},{}",
+            instruction_opcode_name(self.op()).to_lowercase(),
+            REGISTER_ABI_NAMES[self.rd()],
+            REGISTER_ABI_NAMES[self.rs1()],
+            REGISTER_ABI_NAMES[self.rs2()],
+            REGISTER_ABI_NAMES[self.rs3()],
+            REGISTER_ABI_NAMES[self.rs4()]
+        )
+    }
+}
+
 pub fn is_slowpath_instruction(i: Instruction) -> bool {
     i as u8 >= 0xF0
 }

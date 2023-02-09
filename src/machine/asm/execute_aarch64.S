@@ -27,6 +27,16 @@
 #define RS2w w24
 #define RS3 x25
 #define RS3w w25
+/*
+ * This helps remind us that RS4 and TEMP5 shares the same register.
+ * An alternative route is that we can use x14, but that means we will
+ * need yet another pair of stp/ldp in PREPCALL/POSTCALL. Since R5 is
+ * only used to implement a handful of mop instructions, it might be
+ * better start by reusing a temporary register, we can introduce x14
+ * later when there is really the need.
+ */
+#define RS4_TEMP5 x13
+#define RS4_TEMP5w w13
 #define IMMEDIATE x26
 #define IMMEDIATEw w26
 
@@ -100,6 +110,13 @@
   ubfx RS2, TEMP1, 8, 8 SEP \
   asr TEMP1, TEMP1, 16 SEP \
   ubfx RS3, TEMP1, 0, 8
+
+#define DECODE_R5 \
+  ubfx RS1, TEMP1, 0, 8 SEP \
+  ubfx RS2, TEMP1, 8, 8 SEP \
+  asr TEMP1, TEMP1, 16 SEP \
+  ubfx RS3, TEMP1, 0, 8 SEP \
+  ubfx RS4_TEMP5, TEMP1, 8, 8
 
 #define DECODE_U \
   mov IMMEDIATE, TEMP1
@@ -1593,6 +1610,66 @@ ckb_vm_x64_execute:
   orr TEMP1, TEMP1, TEMP2
   WRITE_RS1(TEMP1)
   WRITE_RD(TEMP3)
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_ADCS:
+  DECODE_R4
+  mov TEMP1, 0
+  ldr TEMP3, REGISTER_ADDRESS(RS1)
+  ldr TEMP4, REGISTER_ADDRESS(RS2)
+  adds TEMP3, TEMP3, TEMP4
+  adc TEMP1, TEMP1, TEMP1
+  WRITE_RD(TEMP3)
+  WRITE_RS3(TEMP1)
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_SBBS:
+  DECODE_R4
+  mov TEMP1, 0
+  ldr TEMP3, REGISTER_ADDRESS(RS1)
+  ldr TEMP4, REGISTER_ADDRESS(RS2)
+  subs TEMP3, TEMP3, TEMP4
+  adc TEMP1, TEMP1, TEMP1
+  eor TEMP1, TEMP1, 1
+  WRITE_RD(TEMP3)
+  WRITE_RS3(TEMP1)
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_ADD3A:
+  DECODE_R5
+  mov TEMP2, 0
+  ldr TEMP4, REGISTER_ADDRESS(RD)
+  ldr TEMP1, REGISTER_ADDRESS(RS1)
+  adds TEMP4, TEMP4, TEMP1
+  adc TEMP2, TEMP2, TEMP2
+  mov TEMP3, TEMP2
+  ldr TEMP1, REGISTER_ADDRESS(RS4_TEMP5)
+  add TEMP3, TEMP3, TEMP1
+  WRITE_RD(TEMP4)
+  WRITE_RS2(TEMP2)
+  WRITE_RS3(TEMP3)
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_ADD3B:
+  DECODE_R5
+  mov TEMP2, 0
+  ldr TEMP4, REGISTER_ADDRESS(RS1)
+  ldr TEMP1, REGISTER_ADDRESS(RS2)
+  adds TEMP4, TEMP4, TEMP1
+  adc TEMP2, TEMP2, TEMP2
+  mov TEMP3, TEMP2
+  ldr TEMP1, REGISTER_ADDRESS(RS4_TEMP5)
+  add TEMP3, TEMP3, TEMP1
+  WRITE_RD(TEMP4)
+  WRITE_RS1(TEMP2)
+  WRITE_RS3(TEMP3)
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_ADD3C:
+  DECODE_R5
+  mov TEMP3, 0
+  ldr TEMP1, REGISTER_ADDRESS(RS1)
+  ldr TEMP2, REGISTER_ADDRESS(RS2)
+  ldr TEMP4, REGISTER_ADDRESS(RS4_TEMP5)
+  adds TEMP1, TEMP1, TEMP2
+  adc TEMP3, TEMP3, TEMP4
+  WRITE_RD(TEMP1)
+  WRITE_RS3(TEMP3)
   NEXT_INST
 .exit_max_cycles_exceeded:
   mov x0, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED

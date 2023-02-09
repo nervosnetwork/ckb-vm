@@ -21,6 +21,9 @@ riscv64-unknown-elf-as -o jump0.o jump0.S && riscv64-unknown-elf-ld -o jump0_64 
 # SKIP: minimal
 riscv64-unknown-elf-as -o misaligned_jump.o misaligned_jump.S && riscv64-unknown-elf-ld -o misaligned_jump64 misaligned_jump.o && rm misaligned_jump.o
 riscv64-unknown-elf-as -o mop_adc.o mop_adc.S && riscv64-unknown-elf-ld -o mop_adc mop_adc.o && rm mop_adc.o
+riscv64-unknown-elf-as -o mop_adcs.o mop_adcs.S && riscv64-unknown-elf-ld -o mop_adcs mop_adcs.o && rm mop_adcs.o
+riscv64-unknown-elf-as -o mop_sbbs.o mop_sbbs.S && riscv64-unknown-elf-ld -o mop_sbbs mop_sbbs.o && rm mop_sbbs.o
+riscv64-unknown-elf-as -o mop_add3.o mop_add3.S && riscv64-unknown-elf-ld -o mop_add3 mop_add3.o && rm mop_add3.o
 riscv64-unknown-elf-as -march=rv64imc -o mop_far_jump.o mop_far_jump.S && riscv64-unknown-elf-ld -o mop_far_jump mop_far_jump.o && rm mop_far_jump.o
 riscv64-unknown-elf-gcc -o mop_ld_signextend_32 mop_ld_signextend_32.c
 riscv64-unknown-elf-as -o mop_ld_signextend_32_overflow_bug.o mop_ld_signextend_32_overflow_bug.S && riscv64-unknown-elf-ld -o mop_ld_signextend_32_overflow_bug mop_ld_signextend_32_overflow_bug.o && rm mop_ld_signextend_32_overflow_bug.o
@@ -55,4 +58,7 @@ riscv64-unknown-elf-as -o write_large_address.o write_large_address.S && riscv64
 # riscv64-unknown-elf-as -march=rv64i_zba_zbb_zbc clmul_bug.S -o clmul_bug.o && riscv64-unknown-elf-ld clmul_bug.o -o clmul_bug && rm clmul_bug.o
 # riscv64-unknown-elf-as -march=rv64i_zba_zbb_zbc orc_bug.S -o orc_bug.o && riscv64-unknown-elf-ld orc_bug.o -o orc_bug && rm orc_bug.o
 riscv64-unknown-elf-as -o zero_address.o zero_address.S && riscv64-unknown-elf-ld -T zero_address.lds -o zero_address zero_address.o && rm zero_address.o
+riscv64-unknown-elf-as -o mop_jump_rel_version1_bug.o mop_jump_rel_version1_bug.S && riscv64-unknown-elf-ld -o mop_jump_rel_version1_bug mop_jump_rel_version1_bug.o && rm mop_jump_rel_version1_bug.o
+riscv64-unknown-elf-as -o mop_jump_rel_version1_reg_not_updated_bug.o mop_jump_rel_version1_reg_not_updated_bug.S && riscv64-unknown-elf-ld -o mop_jump_rel_version1_reg_not_updated_bug mop_jump_rel_version1_reg_not_updated_bug.o && rm mop_jump_rel_version1_reg_not_updated_bug.o
+riscv64-unknown-elf-as -o mop_jump_abs_version1_reg_not_updated_bug.o mop_jump_abs_version1_reg_not_updated_bug.S && riscv64-unknown-elf-ld -o mop_jump_abs_version1_reg_not_updated_bug mop_jump_abs_version1_reg_not_updated_bug.o && rm mop_jump_abs_version1_reg_not_updated_bug.o
 echo "done"
