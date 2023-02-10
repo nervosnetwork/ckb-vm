@@ -4,7 +4,7 @@ use ckb_vm_definitions::{
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
         TRACE_ITEM_LENGTH,
     },
-    instructions::{Instruction, INSTRUCTION_OPCODE_NAMES_LEVEL1, MAXIMUM_LEVEL1_OPCODE},
+    instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
     MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
@@ -162,7 +162,7 @@ fn main() {
     );
     println!();
 
-    for (op, name) in INSTRUCTION_OPCODE_NAMES_LEVEL1.iter().enumerate() {
+    for (op, name) in INSTRUCTION_OPCODE_NAMES.iter().enumerate() {
         println!("#define CKB_VM_ASM_OP_{} {}", name, op);
     }
     println!();
@@ -176,15 +176,14 @@ fn main() {
     println!("ckb_vm_asm_labels:");
     println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
-    for name in INSTRUCTION_OPCODE_NAMES_LEVEL1.iter() {
+    for _ in 0..0x10 {
+        println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
+    }
+    for name in INSTRUCTION_OPCODE_NAMES.iter() {
         println!(
             "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_ASM_LABEL_TABLE",
             name
         );
     }
-    for _ in MAXIMUM_LEVEL1_OPCODE + 1..0xF0 {
-        println!("\t.long\t.CKB_VM_ASM_LABEL_OP_UNLOADED - .CKB_VM_ASM_LABEL_TABLE");
-    }
-    println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
 }
