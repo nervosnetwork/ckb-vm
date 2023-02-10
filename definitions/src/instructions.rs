@@ -178,7 +178,7 @@ pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x96;
 pub const MINIMAL_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
 
-pub const INSTRUCTION_OPCODE_NAMES: [&str; MAXIMUM_OPCODE as usize - 15] = [
+pub const INSTRUCTION_OPCODE_NAMES: [&str; (MAXIMUM_OPCODE - MINIMAL_OPCODE + 1) as usize] = [
     "UNLOADED",
     "ADD",
     "ADDI",
@@ -317,5 +317,5 @@ pub const INSTRUCTION_OPCODE_NAMES: [&str; MAXIMUM_OPCODE as usize - 15] = [
 ];
 
 pub fn instruction_opcode_name(i: InstructionOpcode) -> &'static str {
-    INSTRUCTION_OPCODE_NAMES[i as usize - 16]
+    INSTRUCTION_OPCODE_NAMES[(i - MINIMAL_OPCODE) as usize]
 }
