@@ -235,6 +235,17 @@
 
 #define CHECK_READ_VERSION1(address_reg, length) \
   movq address_reg, TEMP1; \
+  shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_READ_FRAME(MACHINE), TEMP2; \
+  cmp TEMP2, TEMP1; \
+  jne 3f; \
+  movq address_reg, TEMP2; \
+  addq $length, TEMP2; \
+  shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP2; \
+  cmp TEMP2, TEMP1; \
+  je 2f; \
+3: ;\
+  movq address_reg, TEMP1; \
   cmp MEMORY_SIZE, TEMP1; \
   jae .exit_out_of_bound; \
   addq $length, TEMP1; \
