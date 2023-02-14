@@ -187,6 +187,17 @@
 
 #define CHECK_READ_VERSION1(address_reg, length) \
   mov TEMP1, address_reg SEP \
+  lsr TEMP1, TEMP1, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
+  ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_READ_FRAME] SEP \
+  cmp TEMP1, TEMP2 SEP \
+  bne 3f SEP \
+  mov TEMP2, address_reg SEP \
+  add TEMP2, TEMP2, length SEP \
+  lsr TEMP2, TEMP2, CKB_VM_ASM_MEMORY_FRAME_SHIFTS SEP \
+  cmp TEMP1, TEMP2 SEP \
+  beq 2f SEP \
+3: \
+  mov TEMP1, address_reg SEP \
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE] SEP \
   cmp TEMP1, TEMP2 SEP \
   bhs .exit_out_of_bound SEP \
