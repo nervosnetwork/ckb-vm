@@ -1,7 +1,5 @@
 pub mod machine_build;
-
 use bytes::Bytes;
-
 use ckb_vm::{registers::A0, CoreMachine, Error, SupportMachine};
 
 #[test]

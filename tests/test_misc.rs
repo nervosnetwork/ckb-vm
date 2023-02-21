@@ -1,18 +1,17 @@
-use rand::{thread_rng, Rng};
-use std::fs;
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::Arc;
-
+use ckb_vm::cost_model::constant_cycles;
+use ckb_vm::machine::VERSION0;
+use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
-    machine::VERSION0,
-    registers::{A0, A1, A2, A3, A4, A5, A7},
     run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
     Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
     RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
-
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
+use rand::{thread_rng, Rng};
+use std::fs;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 
 #[test]
 pub fn test_andi() {
@@ -414,7 +413,7 @@ pub fn test_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 20);
     let mut machine = DefaultMachineBuilder::new(core_machine)
-        .instruction_cycle_func(Box::new(|_| 1))
+        .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     machine

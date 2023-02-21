@@ -1,6 +1,3 @@
-use ckb_vm::{run, FlatMemory, SparseMemory};
-use std::fs;
-
 #[cfg(has_asm)]
 use ckb_vm::{
     machine::{
@@ -9,6 +6,8 @@ use ckb_vm::{
     },
     ISA_IMC,
 };
+use ckb_vm::{run, FlatMemory, SparseMemory};
+use std::fs;
 
 fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {
     let buffer = fs::read(bin_path).unwrap().into();
