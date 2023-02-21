@@ -28,7 +28,7 @@ pub use crate::{
 pub use bytes::Bytes;
 
 pub use ckb_vm_definitions::{
-    registers, DEFAULT_STACK_SIZE, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE,
+    registers, DEFAULT_STACK_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE,
     MEMORY_FRAME_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
     RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
@@ -41,8 +41,8 @@ pub fn run<R: Register, M: Memory<REG = R>>(
     memory_size: usize,
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
-        ISA_IMC | ISA_B | ISA_MOP,
-        machine::VERSION1,
+        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+        machine::VERSION2,
         u64::max_value(),
         memory_size,
     );

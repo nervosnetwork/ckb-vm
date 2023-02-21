@@ -61,6 +61,14 @@ impl CoreMachine for Box<AsmCoreMachine> {
         self.registers[idx] = value;
     }
 
+    fn lr(&self) -> &Self::REG {
+        &self.load_reservation_address
+    }
+
+    fn set_lr(&mut self, value: &Self::REG) {
+        self.load_reservation_address = *value;
+    }
+
     fn isa(&self) -> u8 {
         self.isa
     }
