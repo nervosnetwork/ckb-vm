@@ -1,23 +1,21 @@
-use std::fs;
-
-use ckb_vm::{
-    decoder::{build_decoder, Decoder},
-    instructions::{
-        execute, extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
-    },
-    machine::VERSION1,
-    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
-    SupportMachine, ISA_IMC,
+use ckb_vm::decoder::{build_decoder, Decoder};
+use ckb_vm::instructions::{
+    execute, extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
 };
-use ckb_vm_definitions::instructions as insts;
-
+use ckb_vm::machine::VERSION1;
 #[cfg(has_asm)]
 use ckb_vm::{
     instructions::{blank_instruction, is_basic_block_end_instruction},
     machine::asm::{AsmCoreMachine, AsmMachine},
 };
+use ckb_vm::{
+    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
+    SupportMachine, ISA_IMC,
+};
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::{calculate_slot, Trace, TRACE_ITEM_LENGTH};
+use ckb_vm_definitions::instructions as insts;
+use std::fs;
 
 // This is simplified from https://github.com/xxuejie/ckb-vm-contrib/blob/main/src/decoder.rs
 pub struct AuxDecoder {

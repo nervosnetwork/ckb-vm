@@ -2,6 +2,7 @@
 extern crate derive_more;
 
 pub mod bits;
+pub mod cost_model;
 pub mod debugger;
 pub mod decoder;
 pub mod error;

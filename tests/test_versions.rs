@@ -1,11 +1,8 @@
 #![cfg(has_asm)]
-
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+use ckb_vm::machine::{VERSION0, VERSION1};
+use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
 use ckb_vm::{
-    machine::{
-        asm::{AsmCoreMachine, AsmMachine},
-        VERSION0, VERSION1,
-    },
-    memory::{FLAG_DIRTY, FLAG_FREEZED},
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
     SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
 };
