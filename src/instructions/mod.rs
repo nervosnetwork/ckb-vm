@@ -13,7 +13,9 @@ pub mod tagged;
 pub use self::register::Register;
 use super::Error;
 pub use ckb_vm_definitions::{
-    instructions::{self as insts, instruction_opcode_name, Instruction, InstructionOpcode},
+    instructions::{
+        self as insts, instruction_opcode_name, Instruction, InstructionOpcode, MINIMAL_OPCODE,
+    },
     registers::REGISTER_ABI_NAMES,
 };
 use core::fmt;
@@ -403,7 +405,7 @@ impl fmt::Display for R5type {
 }
 
 pub fn is_slowpath_instruction(i: Instruction) -> bool {
-    i as u8 >= 0xF0
+    (i as u8 as u16) < MINIMAL_OPCODE
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
