@@ -4,7 +4,10 @@ use ckb_vm_definitions::{
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
         TRACE_ITEM_LENGTH,
     },
-    instructions::{Instruction, INSTRUCTION_OPCODE_NAMES},
+    instructions::{
+        instruction_opcode_name, Instruction, INSTRUCTION_OPCODE_NAMES, MAXIMUM_OPCODE,
+        MINIMAL_OPCODE,
+    },
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
     MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
@@ -162,8 +165,12 @@ fn main() {
     );
     println!();
 
-    for (op, name) in INSTRUCTION_OPCODE_NAMES.iter().enumerate() {
-        println!("#define CKB_VM_ASM_OP_{} {}", name, op);
+    for op in MINIMAL_OPCODE..MAXIMUM_OPCODE {
+        println!(
+            "#define CKB_VM_ASM_OP_{} {}",
+            instruction_opcode_name(op),
+            op
+        );
     }
     println!();
 
