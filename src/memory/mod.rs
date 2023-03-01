@@ -64,6 +64,10 @@ pub trait Memory {
     fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
     fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
     fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
+
+    // Load reservation address for atomic extension.
+    fn lr(&self) -> &Self::REG;
+    fn set_lr(&mut self, value: &Self::REG);
 }
 
 #[inline(always)]

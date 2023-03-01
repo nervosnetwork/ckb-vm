@@ -149,4 +149,12 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         // inner.load_bytes will check
         self.inner.load_bytes(addr, size)
     }
+
+    fn lr(&self) -> &Self::REG {
+        self.inner.lr()
+    }
+
+    fn set_lr(&mut self, value: &Self::REG) {
+        self.inner.set_lr(value);
+    }
 }

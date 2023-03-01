@@ -19,6 +19,7 @@ pub struct SparseMemory<R> {
     flags: Vec<u8>,
     memory_size: usize,
     riscv_pages: usize,
+    load_reservation_address: R,
     _inner: PhantomData<R>,
 }
 
@@ -82,6 +83,7 @@ impl<R: Register> Memory for SparseMemory<R> {
             flags: vec![0; memory_size / RISCV_PAGESIZE],
             memory_size,
             riscv_pages: memory_size / RISCV_PAGESIZE,
+            load_reservation_address: R::from_u64(u64::MAX),
             _inner: PhantomData,
         }
     }
@@ -261,5 +263,13 @@ impl<R: Register> Memory for SparseMemory<R> {
                 ((value >> 56) & 0xFF) as u8,
             ],
         )
+    }
+
+    fn lr(&self) -> &Self::REG {
+        &self.load_reservation_address
+    }
+
+    fn set_lr(&mut self, value: &Self::REG) {
+        self.load_reservation_address = value.clone();
     }
 }

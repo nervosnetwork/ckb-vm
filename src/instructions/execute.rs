@@ -170,12 +170,12 @@ pub fn execute_instruction<Mac: Machine>(
             let address = machine.registers()[i.rs1() as usize].clone();
             let value = machine.memory_mut().load32(&address)?;
             update_register(machine, i.rd(), value.sign_extend(&Mac::REG::from_u8(32)));
-            machine.set_lr(&address);
+            machine.memory_mut().set_lr(&address);
         }
         insts::OP_SC_W => {
             let i = Rtype(inst);
             let address = machine.registers()[i.rs1() as usize].clone();
-            let condition = address.eq(machine.lr());
+            let condition = address.eq(machine.memory().lr());
             let mem_value = condition.cond(
                 &machine.registers()[i.rs2() as usize].clone(),
                 &machine.memory_mut().load32(&address)?,
@@ -185,7 +185,7 @@ pub fn execute_instruction<Mac: Machine>(
             let lr_value = condition.cond(&Mac::REG::from_u32(u32::MAX), &address);
             machine.memory_mut().store32(&address, &mem_value)?;
             update_register(machine, i.rd(), rd_value);
-            machine.set_lr(&lr_value);
+            machine.memory_mut().set_lr(&lr_value);
         }
         insts::OP_AMOSWAP_W => {
             let i = Rtype(inst);
@@ -281,12 +281,12 @@ pub fn execute_instruction<Mac: Machine>(
             let address = machine.registers()[i.rs1() as usize].clone();
             let value = machine.memory_mut().load64(&address)?;
             update_register(machine, i.rd(), value);
-            machine.set_lr(&address);
+            machine.memory_mut().set_lr(&address);
         }
         insts::OP_SC_D => {
             let i = Rtype(inst);
             let address = machine.registers()[i.rs1() as usize].clone();
-            let condition = address.eq(machine.lr());
+            let condition = address.eq(machine.memory().lr());
             let mem_value = condition.cond(
                 &machine.registers()[i.rs2() as usize].clone(),
                 &machine.memory_mut().load64(&address)?,
@@ -296,7 +296,7 @@ pub fn execute_instruction<Mac: Machine>(
             let lr_value = condition.cond(&Mac::REG::from_u32(u32::MAX), &address);
             machine.memory_mut().store64(&address, &mem_value)?;
             update_register(machine, i.rd(), rd_value);
-            machine.set_lr(&lr_value);
+            machine.memory_mut().set_lr(&lr_value);
         }
         insts::OP_AMOSWAP_D => {
             let i = Rtype(inst);

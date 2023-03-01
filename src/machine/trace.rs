@@ -70,14 +70,6 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
         self.machine.set_register(idx, value)
     }
 
-    fn lr(&self) -> &Self::REG {
-        self.machine.lr()
-    }
-
-    fn set_lr(&mut self, value: &Self::REG) {
-        self.machine.set_lr(value)
-    }
-
     fn isa(&self) -> u8 {
         self.machine.isa()
     }

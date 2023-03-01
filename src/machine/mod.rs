@@ -44,10 +44,6 @@ pub trait CoreMachine {
     fn registers(&self) -> &[Self::REG];
     fn set_register(&mut self, idx: usize, value: Self::REG);
 
-    // Load reservation address for atomic extension.
-    fn lr(&self) -> &Self::REG;
-    fn set_lr(&mut self, value: &Self::REG);
-
     // Current running machine version, used to support compatible behavior
     // in case of bug fixes.
     fn version(&self) -> u32;
@@ -294,7 +290,6 @@ pub struct DefaultCoreMachine<R, M> {
     cycles: u64,
     max_cycles: u64,
     running: bool,
-    load_reservation_address: R,
     isa: u8,
     version: u32,
     #[cfg(feature = "pprof")]
@@ -330,14 +325,6 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.registers[idx] = value;
-    }
-
-    fn lr(&self) -> &Self::REG {
-        &self.load_reservation_address
-    }
-
-    fn set_lr(&mut self, value: &Self::REG) {
-        self.load_reservation_address = value.clone();
     }
 
     fn isa(&self) -> u8 {
@@ -414,7 +401,6 @@ impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
             cycles: Default::default(),
             max_cycles,
             running: Default::default(),
-            load_reservation_address: R::zero(),
             isa,
             version,
             #[cfg(feature = "pprof")]
@@ -476,14 +462,6 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
         self.inner.set_register(idx, value)
-    }
-
-    fn lr(&self) -> &Self::REG {
-        self.inner.lr()
-    }
-
-    fn set_lr(&mut self, value: &Self::REG) {
-        self.inner.set_lr(value)
     }
 
     fn isa(&self) -> u8 {

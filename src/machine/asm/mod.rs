@@ -61,14 +61,6 @@ impl CoreMachine for Box<AsmCoreMachine> {
         self.registers[idx] = value;
     }
 
-    fn lr(&self) -> &Self::REG {
-        &self.load_reservation_address
-    }
-
-    fn set_lr(&mut self, value: &Self::REG) {
-        self.load_reservation_address = *value;
-    }
-
     fn isa(&self) -> u8 {
         self.isa
     }
@@ -406,6 +398,14 @@ impl Memory for Box<AsmCoreMachine> {
         check_memory_writable(self, addr, 8)?;
         LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
         Ok(())
+    }
+
+    fn lr(&self) -> &Self::REG {
+        &self.load_reservation_address
+    }
+
+    fn set_lr(&mut self, value: &Self::REG) {
+        self.load_reservation_address = *value;
     }
 }
 
