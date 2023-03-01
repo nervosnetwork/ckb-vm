@@ -182,7 +182,7 @@ pub fn execute_instruction<Mac: Machine>(
             );
             let rd_value = condition.cond(&Mac::REG::from_u8(0), &Mac::REG::from_u8(1));
             // Make sure that sc-after-successful-sc fails.
-            let lr_value = condition.cond(&Mac::REG::from_u32(u32::MAX), &address);
+            let lr_value = condition.cond(&Mac::REG::from_u64(u64::MAX), &address);
             machine.memory_mut().store32(&address, &mem_value)?;
             update_register(machine, i.rd(), rd_value);
             machine.memory_mut().set_lr(&lr_value);
@@ -293,7 +293,7 @@ pub fn execute_instruction<Mac: Machine>(
             );
             let rd_value = condition.cond(&Mac::REG::from_u8(0), &Mac::REG::from_u8(1));
             // Make sure that sc-after-successful-sc fails.
-            let lr_value = condition.cond(&Mac::REG::from_u32(u32::MAX), &address);
+            let lr_value = condition.cond(&Mac::REG::from_u64(u64::MAX), &address);
             machine.memory_mut().store64(&address, &mem_value)?;
             update_register(machine, i.rd(), rd_value);
             machine.memory_mut().set_lr(&lr_value);

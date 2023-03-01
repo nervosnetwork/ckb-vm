@@ -356,6 +356,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = true;
+        self.memory_mut().set_lr(&R::from_u64(u64::MAX));
     }
 
     fn reset_signal(&mut self) -> bool {

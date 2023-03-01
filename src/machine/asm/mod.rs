@@ -433,6 +433,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = 1;
+        self.load_reservation_address = u64::MAX;
     }
 
     fn reset_signal(&mut self) -> bool {
