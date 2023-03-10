@@ -7,6 +7,8 @@ authors = ["Nervos Core Dev <dev@nervos.org>"]
 edition = "2021"
 rust-version = "1.61.0"
 autobins = false
+homepage = "https://github.com/nervosnetwork/ckb-vm"
+repository = "https://github.com/nervosnetwork/ckb-vm"
 
 [features]
 enable-chaos-mode-by-default = []
