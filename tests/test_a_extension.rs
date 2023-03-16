@@ -16,3 +16,17 @@ pub fn test_write_permission_bug() {
         assert_eq!(ret_asm.err(), Some(Error::MemWriteOnExecutablePage));
     }
 }
+
+#[test]
+pub fn test_sc_after_sc() {
+    let mut machine = machine_build::int_v2_imacb("tests/programs/sc_after_sc");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v2_imacb("tests/programs/sc_after_sc");
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+    }
+}
