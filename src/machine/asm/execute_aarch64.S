@@ -1100,8 +1100,8 @@ ckb_vm_x64_execute:
   add RS1, RS1, MEMORY_OFFSET_ADDRESS
   ldrsw TEMP1, [MACHINE, RS1]
   WRITE_RD(TEMP1)
-  cmp RS2, TEMP1
-  csel RS2, RS2, TEMP1, le
+  cmp RS2w, TEMP1w
+  csel RS2w, RS2w, TEMP1w, le
   str RS2w, [MACHINE, RS1]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_AMOMAX_W:
@@ -1112,8 +1112,8 @@ ckb_vm_x64_execute:
   add RS1, RS1, MEMORY_OFFSET_ADDRESS
   ldrsw TEMP1, [MACHINE, RS1]
   WRITE_RD(TEMP1)
-  cmp RS2, TEMP1
-  csel RS2, RS2, TEMP1, ge
+  cmp RS2w, TEMP1w
+  csel RS2w, RS2w, TEMP1w, ge
   str RS2w, [MACHINE, RS1]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_AMOMINU_W:
@@ -1124,8 +1124,8 @@ ckb_vm_x64_execute:
   add RS1, RS1, MEMORY_OFFSET_ADDRESS
   ldrsw TEMP1, [MACHINE, RS1]
   WRITE_RD(TEMP1)
-  cmp RS2, TEMP1
-  csel RS2, RS2, TEMP1, ls
+  cmp RS2w, TEMP1w
+  csel RS2w, RS2w, TEMP1w, ls
   str RS2w, [MACHINE, RS1]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_AMOMAXU_W:
@@ -1136,8 +1136,8 @@ ckb_vm_x64_execute:
   add RS1, RS1, MEMORY_OFFSET_ADDRESS
   ldrsw TEMP1, [MACHINE, RS1]
   WRITE_RD(TEMP1)
-  cmp RS2, TEMP1
-  csel RS2, RS2, TEMP1, hs
+  cmp RS2w, TEMP1w
+  csel RS2w, RS2w, TEMP1w, hs
   str RS2w, [MACHINE, RS1]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_LR_D:

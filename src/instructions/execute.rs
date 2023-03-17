@@ -237,7 +237,8 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_AMOMIN_W => {
             let i = Rtype(inst);
             let rs1_value = machine.registers()[i.rs1() as usize].clone();
-            let rs2_value = machine.registers()[i.rs2() as usize].clone();
+            let rs2_value =
+                machine.registers()[i.rs2() as usize].sign_extend(&Mac::REG::from_u8(32));
             let mem_value = machine.memory_mut().load32(&rs1_value)?;
             let mem_value = mem_value.sign_extend(&Mac::REG::from_u8(32));
             update_register(machine, i.rd(), mem_value.clone());
@@ -247,7 +248,8 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_AMOMAX_W => {
             let i = Rtype(inst);
             let rs1_value = machine.registers()[i.rs1() as usize].clone();
-            let rs2_value = machine.registers()[i.rs2() as usize].clone();
+            let rs2_value =
+                machine.registers()[i.rs2() as usize].sign_extend(&Mac::REG::from_u8(32));
             let mem_value = machine.memory_mut().load32(&rs1_value)?;
             let mem_value = mem_value.sign_extend(&Mac::REG::from_u8(32));
             update_register(machine, i.rd(), mem_value.clone());
@@ -257,20 +259,22 @@ pub fn execute_instruction<Mac: Machine>(
         insts::OP_AMOMINU_W => {
             let i = Rtype(inst);
             let rs1_value = machine.registers()[i.rs1() as usize].clone();
-            let rs2_value = machine.registers()[i.rs2() as usize].clone();
+            let rs2_value =
+                machine.registers()[i.rs2() as usize].zero_extend(&Mac::REG::from_u8(32));
             let mem_value = machine.memory_mut().load32(&rs1_value)?;
-            let mem_value = mem_value.sign_extend(&Mac::REG::from_u8(32));
-            update_register(machine, i.rd(), mem_value.clone());
+            let mem_value_sext = mem_value.sign_extend(&Mac::REG::from_u8(32));
+            update_register(machine, i.rd(), mem_value_sext);
             let mem_value = rs2_value.lt(&mem_value).cond(&rs2_value, &mem_value);
             machine.memory_mut().store32(&rs1_value, &mem_value)?;
         }
         insts::OP_AMOMAXU_W => {
             let i = Rtype(inst);
             let rs1_value = machine.registers()[i.rs1() as usize].clone();
-            let rs2_value = machine.registers()[i.rs2() as usize].clone();
+            let rs2_value =
+                machine.registers()[i.rs2() as usize].zero_extend(&Mac::REG::from_u8(32));
             let mem_value = machine.memory_mut().load32(&rs1_value)?;
-            let mem_value = mem_value.sign_extend(&Mac::REG::from_u8(32));
-            update_register(machine, i.rd(), mem_value.clone());
+            let mem_value_sext = mem_value.sign_extend(&Mac::REG::from_u8(32));
+            update_register(machine, i.rd(), mem_value_sext);
             let mem_value = rs2_value.ge(&mem_value).cond(&rs2_value, &mem_value);
             machine.memory_mut().store32(&rs1_value, &mem_value)?;
         }

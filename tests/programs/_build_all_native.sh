@@ -1,6 +1,7 @@
 set -ex
 
 riscv64-unknown-elf-gcc -o alloc_many alloc_many.c
+riscv64-unknown-elf-as -o amo_compare.o amo_compare.S && riscv64-unknown-elf-ld -T amo_compare.lds -o amo_compare amo_compare.o && rm amo_compare.o
 riscv64-unknown-elf-as -o amo_write_permission.o amo_write_permission.S && riscv64-unknown-elf-ld -o amo_write_permission amo_write_permission.o && rm amo_write_permission.o
 # SKIP: andi
 riscv64-unknown-elf-gcc -o argv_null_test argv_null_test.c
