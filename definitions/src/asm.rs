@@ -48,6 +48,7 @@ pub struct AsmCoreMachine {
     pub max_cycles: u64,
     pub chaos_mode: u8,
     pub chaos_seed: u32,
+    pub load_reservation_address: u64,
     pub reset_signal: u8,
     pub isa: u8,
     pub version: u32,

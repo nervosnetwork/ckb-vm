@@ -399,6 +399,14 @@ impl Memory for Box<AsmCoreMachine> {
         LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
         Ok(())
     }
+
+    fn lr(&self) -> &Self::REG {
+        &self.load_reservation_address
+    }
+
+    fn set_lr(&mut self, value: &Self::REG) {
+        self.load_reservation_address = *value;
+    }
 }
 
 impl SupportMachine for Box<AsmCoreMachine> {
@@ -425,6 +433,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = 1;
+        self.load_reservation_address = u64::MAX;
     }
 
     fn reset_signal(&mut self) -> bool {

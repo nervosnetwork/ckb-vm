@@ -2,12 +2,12 @@ use ckb_vm_definitions::instructions::{self as insts};
 use ckb_vm_definitions::registers::{RA, ZERO};
 
 use crate::instructions::{
-    b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
+    a, b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
     InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype,
 };
 use crate::machine::VERSION2;
 use crate::memory::Memory;
-use crate::{Error, ISA_B, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 
 const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 const INSTRUCTION_CACHE_SIZE: usize = 4096;
@@ -868,6 +868,9 @@ pub fn build_decoder<R: Register>(isa: u8, version: u32) -> Decoder {
     decoder.add_instruction_factory(m::factory::<R>);
     if isa & ISA_B != 0 {
         decoder.add_instruction_factory(b::factory::<R>);
+    }
+    if isa & ISA_A != 0 {
+        decoder.add_instruction_factory(a::factory::<R>);
     }
     decoder
 }

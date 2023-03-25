@@ -112,68 +112,91 @@ pub const OP_SUBW: InstructionOpcode = 0x57;
 pub const OP_SW: InstructionOpcode = 0x58;
 pub const OP_XOR: InstructionOpcode = 0x59;
 pub const OP_XORI: InstructionOpcode = 0x5a;
+// A
+pub const OP_LR_W: InstructionOpcode = 0x5b;
+pub const OP_SC_W: InstructionOpcode = 0x5c;
+pub const OP_AMOSWAP_W: InstructionOpcode = 0x5d;
+pub const OP_AMOADD_W: InstructionOpcode = 0x5e;
+pub const OP_AMOXOR_W: InstructionOpcode = 0x5f;
+pub const OP_AMOAND_W: InstructionOpcode = 0x60;
+pub const OP_AMOOR_W: InstructionOpcode = 0x61;
+pub const OP_AMOMIN_W: InstructionOpcode = 0x62;
+pub const OP_AMOMAX_W: InstructionOpcode = 0x63;
+pub const OP_AMOMINU_W: InstructionOpcode = 0x64;
+pub const OP_AMOMAXU_W: InstructionOpcode = 0x65;
+pub const OP_LR_D: InstructionOpcode = 0x66;
+pub const OP_SC_D: InstructionOpcode = 0x67;
+pub const OP_AMOSWAP_D: InstructionOpcode = 0x68;
+pub const OP_AMOADD_D: InstructionOpcode = 0x69;
+pub const OP_AMOXOR_D: InstructionOpcode = 0x6a;
+pub const OP_AMOAND_D: InstructionOpcode = 0x6b;
+pub const OP_AMOOR_D: InstructionOpcode = 0x6c;
+pub const OP_AMOMIN_D: InstructionOpcode = 0x6d;
+pub const OP_AMOMAX_D: InstructionOpcode = 0x6e;
+pub const OP_AMOMINU_D: InstructionOpcode = 0x6f;
+pub const OP_AMOMAXU_D: InstructionOpcode = 0x70;
 // B
-pub const OP_ADDUW: InstructionOpcode = 0x5b;
-pub const OP_ANDN: InstructionOpcode = 0x5c;
-pub const OP_BCLR: InstructionOpcode = 0x5d;
-pub const OP_BCLRI: InstructionOpcode = 0x5e;
-pub const OP_BEXT: InstructionOpcode = 0x5f;
-pub const OP_BEXTI: InstructionOpcode = 0x60;
-pub const OP_BINV: InstructionOpcode = 0x61;
-pub const OP_BINVI: InstructionOpcode = 0x62;
-pub const OP_BSET: InstructionOpcode = 0x63;
-pub const OP_BSETI: InstructionOpcode = 0x64;
-pub const OP_CLMUL: InstructionOpcode = 0x65;
-pub const OP_CLMULH: InstructionOpcode = 0x66;
-pub const OP_CLMULR: InstructionOpcode = 0x67;
-pub const OP_CLZ: InstructionOpcode = 0x68;
-pub const OP_CLZW: InstructionOpcode = 0x69;
-pub const OP_CPOP: InstructionOpcode = 0x6a;
-pub const OP_CPOPW: InstructionOpcode = 0x6b;
-pub const OP_CTZ: InstructionOpcode = 0x6c;
-pub const OP_CTZW: InstructionOpcode = 0x6d;
-pub const OP_MAX: InstructionOpcode = 0x6e;
-pub const OP_MAXU: InstructionOpcode = 0x6f;
-pub const OP_MIN: InstructionOpcode = 0x70;
-pub const OP_MINU: InstructionOpcode = 0x71;
-pub const OP_ORCB: InstructionOpcode = 0x72;
-pub const OP_ORN: InstructionOpcode = 0x73;
-pub const OP_REV8: InstructionOpcode = 0x74;
-pub const OP_ROL: InstructionOpcode = 0x75;
-pub const OP_ROLW: InstructionOpcode = 0x76;
-pub const OP_ROR: InstructionOpcode = 0x77;
-pub const OP_RORI: InstructionOpcode = 0x78;
-pub const OP_RORIW: InstructionOpcode = 0x79;
-pub const OP_RORW: InstructionOpcode = 0x7a;
-pub const OP_SEXTB: InstructionOpcode = 0x7b;
-pub const OP_SEXTH: InstructionOpcode = 0x7c;
-pub const OP_SH1ADD: InstructionOpcode = 0x7d;
-pub const OP_SH1ADDUW: InstructionOpcode = 0x7e;
-pub const OP_SH2ADD: InstructionOpcode = 0x7f;
-pub const OP_SH2ADDUW: InstructionOpcode = 0x80;
-pub const OP_SH3ADD: InstructionOpcode = 0x81;
-pub const OP_SH3ADDUW: InstructionOpcode = 0x82;
-pub const OP_SLLIUW: InstructionOpcode = 0x83;
-pub const OP_XNOR: InstructionOpcode = 0x84;
-pub const OP_ZEXTH: InstructionOpcode = 0x85;
+pub const OP_ADDUW: InstructionOpcode = 0x71;
+pub const OP_ANDN: InstructionOpcode = 0x72;
+pub const OP_BCLR: InstructionOpcode = 0x73;
+pub const OP_BCLRI: InstructionOpcode = 0x74;
+pub const OP_BEXT: InstructionOpcode = 0x75;
+pub const OP_BEXTI: InstructionOpcode = 0x76;
+pub const OP_BINV: InstructionOpcode = 0x77;
+pub const OP_BINVI: InstructionOpcode = 0x78;
+pub const OP_BSET: InstructionOpcode = 0x79;
+pub const OP_BSETI: InstructionOpcode = 0x7a;
+pub const OP_CLMUL: InstructionOpcode = 0x7b;
+pub const OP_CLMULH: InstructionOpcode = 0x7c;
+pub const OP_CLMULR: InstructionOpcode = 0x7d;
+pub const OP_CLZ: InstructionOpcode = 0x7e;
+pub const OP_CLZW: InstructionOpcode = 0x7f;
+pub const OP_CPOP: InstructionOpcode = 0x80;
+pub const OP_CPOPW: InstructionOpcode = 0x81;
+pub const OP_CTZ: InstructionOpcode = 0x82;
+pub const OP_CTZW: InstructionOpcode = 0x83;
+pub const OP_MAX: InstructionOpcode = 0x84;
+pub const OP_MAXU: InstructionOpcode = 0x85;
+pub const OP_MIN: InstructionOpcode = 0x86;
+pub const OP_MINU: InstructionOpcode = 0x87;
+pub const OP_ORCB: InstructionOpcode = 0x88;
+pub const OP_ORN: InstructionOpcode = 0x89;
+pub const OP_REV8: InstructionOpcode = 0x8a;
+pub const OP_ROL: InstructionOpcode = 0x8b;
+pub const OP_ROLW: InstructionOpcode = 0x8c;
+pub const OP_ROR: InstructionOpcode = 0x8d;
+pub const OP_RORI: InstructionOpcode = 0x8e;
+pub const OP_RORIW: InstructionOpcode = 0x8f;
+pub const OP_RORW: InstructionOpcode = 0x90;
+pub const OP_SEXTB: InstructionOpcode = 0x91;
+pub const OP_SEXTH: InstructionOpcode = 0x92;
+pub const OP_SH1ADD: InstructionOpcode = 0x93;
+pub const OP_SH1ADDUW: InstructionOpcode = 0x94;
+pub const OP_SH2ADD: InstructionOpcode = 0x95;
+pub const OP_SH2ADDUW: InstructionOpcode = 0x96;
+pub const OP_SH3ADD: InstructionOpcode = 0x97;
+pub const OP_SH3ADDUW: InstructionOpcode = 0x98;
+pub const OP_SLLIUW: InstructionOpcode = 0x99;
+pub const OP_XNOR: InstructionOpcode = 0x9a;
+pub const OP_ZEXTH: InstructionOpcode = 0x9b;
 // Mop
-pub const OP_WIDE_MUL: InstructionOpcode = 0x86;
-pub const OP_WIDE_MULU: InstructionOpcode = 0x87;
-pub const OP_WIDE_MULSU: InstructionOpcode = 0x88;
-pub const OP_WIDE_DIV: InstructionOpcode = 0x89;
-pub const OP_WIDE_DIVU: InstructionOpcode = 0x8a;
-pub const OP_FAR_JUMP_REL: InstructionOpcode = 0x8b;
-pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0x8c;
-pub const OP_ADC: InstructionOpcode = 0x8d;
-pub const OP_SBB: InstructionOpcode = 0x8e;
-pub const OP_ADCS: InstructionOpcode = 0x8f;
-pub const OP_SBBS: InstructionOpcode = 0x90;
-pub const OP_ADD3A: InstructionOpcode = 0x91;
-pub const OP_ADD3B: InstructionOpcode = 0x92;
-pub const OP_ADD3C: InstructionOpcode = 0x93;
-pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0x94;
-pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0x95;
-pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0x96;
+pub const OP_WIDE_MUL: InstructionOpcode = 0x9c;
+pub const OP_WIDE_MULU: InstructionOpcode = 0x9d;
+pub const OP_WIDE_MULSU: InstructionOpcode = 0x9e;
+pub const OP_WIDE_DIV: InstructionOpcode = 0x9f;
+pub const OP_WIDE_DIVU: InstructionOpcode = 0xa0;
+pub const OP_FAR_JUMP_REL: InstructionOpcode = 0xa1;
+pub const OP_FAR_JUMP_ABS: InstructionOpcode = 0xa2;
+pub const OP_ADC: InstructionOpcode = 0xa3;
+pub const OP_SBB: InstructionOpcode = 0xa4;
+pub const OP_ADCS: InstructionOpcode = 0xa5;
+pub const OP_SBBS: InstructionOpcode = 0xa6;
+pub const OP_ADD3A: InstructionOpcode = 0xa7;
+pub const OP_ADD3B: InstructionOpcode = 0xa8;
+pub const OP_ADD3C: InstructionOpcode = 0xa9;
+pub const OP_CUSTOM_LOAD_UIMM: InstructionOpcode = 0xaa;
+pub const OP_CUSTOM_LOAD_IMM: InstructionOpcode = 0xab;
+pub const OP_CUSTOM_TRACE_END: InstructionOpcode = 0xac;
 
 pub const MINIMAL_OPCODE: InstructionOpcode = OP_UNLOADED;
 pub const MAXIMUM_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
@@ -254,6 +277,28 @@ pub const INSTRUCTION_OPCODE_NAMES: [&str; (MAXIMUM_OPCODE - MINIMAL_OPCODE + 1)
     "SW",
     "XOR",
     "XORI",
+    "LR_W",
+    "SC_W",
+    "AMOSWAP_W",
+    "AMOADD_W",
+    "AMOXOR_W",
+    "AMOAND_W",
+    "AMOOR_W",
+    "AMOMIN_W",
+    "AMOMAX_W",
+    "AMOMINU_W",
+    "AMOMAXU_W",
+    "LR_D",
+    "SC_D",
+    "AMOSWAP_D",
+    "AMOADD_D",
+    "AMOXOR_D",
+    "AMOAND_D",
+    "AMOOR_D",
+    "AMOMIN_D",
+    "AMOMAX_D",
+    "AMOMINU_D",
+    "AMOMAXU_D",
     "ADDUW",
     "ANDN",
     "BCLR",
