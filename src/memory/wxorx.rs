@@ -157,4 +157,9 @@ impl<M: Memory> Memory for WXorXMemory<M> {
     fn set_lr(&mut self, value: &Self::REG) {
         self.inner.set_lr(value);
     }
+
+    #[cfg(feature = "probes")]
+    fn ptr(&self) -> *const Self::REG {
+        self.inner.ptr()
+    }
 }

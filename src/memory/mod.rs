@@ -68,6 +68,11 @@ pub trait Memory {
     // Load reservation address for atomic extension.
     fn lr(&self) -> &Self::REG;
     fn set_lr(&mut self, value: &Self::REG);
+
+    #[cfg(feature = "probes")]
+    fn ptr(&self) -> *const Self::REG {
+        unimplemented!("memory ptr not implemented")
+    }
 }
 
 #[inline(always)]

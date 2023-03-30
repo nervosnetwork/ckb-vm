@@ -229,4 +229,9 @@ impl<R: Register> Memory for FlatMemory<R> {
     fn set_lr(&mut self, value: &Self::REG) {
         self.load_reservation_address = value.clone();
     }
+
+    #[cfg(feature = "probes")]
+    fn ptr(&self) -> *const Self::REG {
+        self.data.as_ptr() as *const Self::REG
+    }
 }

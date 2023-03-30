@@ -7,6 +7,9 @@ use super::{
 use crate::memory::Memory;
 use ckb_vm_definitions::{instructions as insts, registers::RA};
 
+#[cfg(feature = "probes")]
+use crate::probe::probe_jump;
+
 pub fn execute_instruction<Mac: Machine>(
     inst: Instruction,
     machine: &mut Mac,
@@ -417,6 +420,8 @@ pub fn execute_instruction<Mac: Machine>(
             let mut next_pc =
                 machine.registers()[i.rs1()].overflowing_add(&Mac::REG::from_i32(i.immediate_s()));
             next_pc = next_pc & (!Mac::REG::one());
+            #[cfg(feature = "probes")]
+            probe_jump(machine, link.clone(), next_pc.clone());
             update_register(machine, i.rd(), link);
             machine.update_pc(next_pc);
         }
@@ -1037,6 +1042,8 @@ pub fn execute_instruction<Mac: Machine>(
                 .pc()
                 .overflowing_add(&Mac::REG::from_i32(i.immediate_s()))
                 & (!Mac::REG::one());
+            #[cfg(feature = "probes")]
+            probe_jump(machine, link.clone(), next_pc.clone());
             update_register(machine, RA, link);
             machine.update_pc(next_pc);
         }
@@ -1045,6 +1052,8 @@ pub fn execute_instruction<Mac: Machine>(
             let size = instruction_length(inst);
             let link = machine.pc().overflowing_add(&Mac::REG::from_u8(size));
             let next_pc = Mac::REG::from_i32(i.immediate_s()) & (!Mac::REG::one());
+            #[cfg(feature = "probes")]
+            probe_jump(machine, link.clone(), next_pc.clone());
             update_register(machine, RA, link);
             machine.update_pc(next_pc);
         }
