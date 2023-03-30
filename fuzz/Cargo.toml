@@ -10,13 +10,11 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+spike-sys = "0.1.0"
 
 [dependencies.ckb-vm]
 path = ".."
 features = ["asm"]
-
-[dependencies.ckb-vm-fuzz-spike-ffi]
-path = "../fuzz_spike_ffi"
 
 # Prevent this from interfering with workspaces
 [workspace]

@@ -1,7 +1,7 @@
 #![no_main]
 use ckb_vm::{CoreMachine, Memory};
-use ckb_vm_fuzz_spike_ffi::Spike;
 use libfuzzer_sys::fuzz_target;
+use spike_sys::Spike;
 use std::collections::VecDeque;
 
 struct Deque {
