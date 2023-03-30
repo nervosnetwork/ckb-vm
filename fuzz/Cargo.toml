@@ -1,7 +1,7 @@
 [package]
 name = "ckb-vm-fuzz"
-version = "0.0.0"
-authors = ["Automatically generated"]
+version = "0.1.0"
+authors = ["Nervos Core Dev <dev@nervos.org>"]
 publish = false
 edition = "2018"
 
