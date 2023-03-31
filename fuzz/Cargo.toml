@@ -21,6 +21,12 @@ features = ["asm"]
 members = ["."]
 
 [[bin]]
+name = "asm"
+path = "fuzz_targets/asm.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "isa_a"
 path = "fuzz_targets/isa_a.rs"
 test = false

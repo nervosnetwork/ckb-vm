@@ -34,7 +34,8 @@ clippy:
 	cd definitions && cargo clippy --all -- $(clippy_rule)
 
 fuzz:
-	cargo +nightly fuzz run isa_a
+	cargo +nightly fuzz run asm -- -max_total_time=180
+	cargo +nightly fuzz run isa_a -- -max_total_time=180
 
 ci: fmt check clippy test
 	git diff --exit-code Cargo.lock
