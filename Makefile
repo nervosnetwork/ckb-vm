@@ -27,13 +27,15 @@ clippy_rule = -D warnings \
 	-A clippy::unusual_byte_groupings \
 	-A clippy::inconsistent_digit_grouping \
 	-A clippy::large_digit_groups \
-	-A clippy::suspicious_operation_groupings
+	-A clippy::suspicious_operation_groupings \
+	-A clippy::unnecessary_cast
 clippy:
 	cargo clippy --all --features=asm -- $(clippy_rule)
 	cd definitions && cargo clippy --all -- $(clippy_rule)
 
 fuzz:
 	cargo +nightly fuzz run asm -- -max_total_time=180
+	cargo +nightly fuzz run isa_a -- -max_total_time=180
 
 ci: fmt check clippy test
 	git diff --exit-code Cargo.lock

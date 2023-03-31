@@ -1,6 +1,6 @@
 [package]
 name = "ckb-vm-fuzz"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
 publish = false
 edition = "2018"
@@ -9,9 +9,12 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4.0"
-bytes = "1"
-ckb-vm = { path = "..", features = ["asm"] }
+libfuzzer-sys = "0.4"
+spike-sys = "0.1.0"
+
+[dependencies.ckb-vm]
+path = ".."
+features = ["asm"]
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -20,5 +23,11 @@ members = ["."]
 [[bin]]
 name = "asm"
 path = "fuzz_targets/asm.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "isa_a"
+path = "fuzz_targets/isa_a.rs"
 test = false
 doc = false
