@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-spike-sys = "0.1.0"
+spike-sys = "0.1.1"
 
 [dependencies.ckb-vm]
 path = ".."
@@ -29,5 +29,11 @@ doc = false
 [[bin]]
 name = "isa_a"
 path = "fuzz_targets/isa_a.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "isa_b"
+path = "fuzz_targets/isa_b.rs"
 test = false
 doc = false
