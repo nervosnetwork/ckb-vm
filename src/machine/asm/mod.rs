@@ -193,10 +193,6 @@ fn check_memory_inited(
 impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
-    fn new() -> Self {
-        unreachable!()
-    }
-
     fn new_with_memory(_: usize) -> Self {
         unreachable!()
     }
