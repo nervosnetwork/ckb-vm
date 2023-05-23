@@ -83,15 +83,33 @@ jobs:
 
   - job: LinuxArm64AsmCI
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     steps:
       - template: devtools/azure/linux-dependencies.yml
       - script: |
-          sudo apt-get install -y qemu binfmt-support qemu-user-static
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          echo "Comment: updating crates.io cause oom in arm docker, use -v /usr/local/cargo/registry/:/usr/local/cargo/registry/ to skip this problem"
-          cargo update
-          docker run --rm -v `pwd`:/code -v /home/vsts/.cargo/registry/:/usr/local/cargo/registry/ -t arm64v8/rust bash -c "cd /code && cargo test --features=asm"
+          sudo apt-get update -y &&
+          sudo apt install -y git \
+                              build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              zlib1g-dev \
+                              gcc-aarch64-linux-gnu \
+                              g++-aarch64-linux-gnu \
+                              qemu-user-static &&
+          rustup target add aarch64-unknown-linux-gnu
+      - script: |
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc &&
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11" &&
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu" &&
+          cargo test --features=asm --target aarch64-unknown-linux-gnu
         displayName: Run ci-asm on arm64 machines
 
   - job: LinuxArm64TestSuite
