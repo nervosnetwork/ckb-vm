@@ -79,6 +79,7 @@ impl AsmCoreMachine {
         memory_size: usize,
     ) -> Box<AsmCoreMachine> {
         assert_ne!(memory_size, 0);
+        assert!(memory_size <= RISCV_MAX_MEMORY);
         assert_eq!(memory_size % RISCV_PAGESIZE, 0);
         assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
 

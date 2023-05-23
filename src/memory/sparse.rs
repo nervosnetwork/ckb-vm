@@ -70,10 +70,6 @@ impl<R> SparseMemory<R> {
 impl<R: Register> Memory for SparseMemory<R> {
     type REG = R;
 
-    fn new() -> Self {
-        Self::new_with_memory(RISCV_MAX_MEMORY)
-    }
-
     fn new_with_memory(memory_size: usize) -> Self {
         assert!(memory_size <= RISCV_MAX_MEMORY);
         assert!(memory_size % RISCV_PAGESIZE == 0);

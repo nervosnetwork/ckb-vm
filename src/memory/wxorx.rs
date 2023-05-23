@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use super::super::{Error, Register, RISCV_PAGESIZE};
 use super::{
     check_permission, get_page_indices, round_page_down, round_page_up, Memory, FLAG_EXECUTABLE,
     FLAG_FREEZED, FLAG_WRITABLE,
@@ -18,10 +18,6 @@ impl<M: Memory> WXorXMemory<M> {
 
 impl<M: Memory> Memory for WXorXMemory<M> {
     type REG = M::REG;
-
-    fn new() -> Self {
-        Self::new_with_memory(RISCV_MAX_MEMORY)
-    }
 
     fn new_with_memory(memory_size: usize) -> Self {
         Self {
