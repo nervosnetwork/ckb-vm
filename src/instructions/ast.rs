@@ -44,6 +44,7 @@ pub enum SignActionOp2 {
 
 #[derive(Debug, Clone)]
 pub enum Value {
+    Lr,
     Imm(u64),
     Register(usize),
     Op1(ActionOp1, Rc<Value>),
