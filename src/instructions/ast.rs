@@ -52,6 +52,7 @@ pub enum Value {
     SignOp2(SignActionOp2, Rc<Value>, Rc<Value>, bool),
     Cond(Rc<Value>, Rc<Value>, Rc<Value>),
     Load(Rc<Value>, u8),
+    External(Rc<Value>, u64),
 }
 
 impl Default for Value {
