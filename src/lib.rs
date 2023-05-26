@@ -55,11 +55,11 @@ pub fn run_with_memory<R: Register, M: Memory<REG = R>>(
     args: &[Bytes],
     memory: M,
 ) -> Result<i8, Error> {
-    let core_machine = DefaultCoreMachine::<R, M>::new_with_memory(
+    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
         ISA_IMC | ISA_A | ISA_B | ISA_MOP,
         machine::VERSION2,
         u64::max_value(),
-        memory,
+        WXorXMemory::new(memory),
     );
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
     machine.load_program(program, args)?;
