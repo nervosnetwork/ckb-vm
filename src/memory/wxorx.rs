@@ -14,15 +14,23 @@ impl<M: Memory> WXorXMemory<M> {
     pub fn inner_mut(&mut self) -> &mut M {
         &mut self.inner
     }
+
+    pub fn new(inner: M) -> Self {
+        Self { inner }
+    }
+}
+
+impl<M: Memory + Default> Default for WXorXMemory<M> {
+    fn default() -> Self {
+        Self::new(M::default())
+    }
 }
 
 impl<M: Memory> Memory for WXorXMemory<M> {
     type REG = M::REG;
 
-    fn new_with_memory(memory_size: usize) -> Self {
-        Self {
-            inner: M::new_with_memory(memory_size),
-        }
+    fn reset_memory(&mut self) -> Result<(), Error> {
+        self.inner.reset_memory()
     }
 
     fn init_pages(

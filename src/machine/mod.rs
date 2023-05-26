@@ -15,7 +15,7 @@ use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -73,7 +73,7 @@ pub trait SupportMachine: CoreMachine {
     fn set_running(&mut self, running: bool);
 
     // Erase all the states of the virtual machine.
-    fn reset(&mut self, max_cycles: u64);
+    fn reset(&mut self, max_cycles: u64) -> Result<(), Error>;
     fn reset_signal(&mut self) -> bool;
 
     fn add_cycles(&mut self, cycles: u64) -> Result<(), Error> {
@@ -349,14 +349,15 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.max_cycles
     }
 
-    fn reset(&mut self, max_cycles: u64) {
+    fn reset(&mut self, max_cycles: u64) -> Result<(), Error> {
         self.registers = Default::default();
         self.pc = Default::default();
-        self.memory = M::new_with_memory(self.memory().memory_size());
+        self.memory.reset_memory()?;
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = true;
         self.memory_mut().set_lr(&R::from_u64(u64::MAX));
+        Ok(())
     }
 
     fn reset_signal(&mut self) -> bool {
@@ -387,18 +388,20 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
     }
 }
 
-impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
+impl<R: Register, M: Memory + Default> DefaultCoreMachine<R, M> {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
-        Self::new_with_memory(isa, version, max_cycles, RISCV_MAX_MEMORY)
+        Self::new_with_memory(isa, version, max_cycles, M::default())
     }
+}
 
-    pub fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
+impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
+    pub fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory: M) -> Self {
         Self {
             registers: Default::default(),
             pc: Default::default(),
             next_pc: Default::default(),
             reset_signal: Default::default(),
-            memory: M::new_with_memory(memory_size),
+            memory,
             cycles: Default::default(),
             max_cycles,
             running: Default::default(),
@@ -487,8 +490,8 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
         self.inner.max_cycles()
     }
 
-    fn reset(&mut self, max_cycles: u64) {
-        self.inner_mut().reset(max_cycles);
+    fn reset(&mut self, max_cycles: u64) -> Result<(), Error> {
+        self.inner_mut().reset(max_cycles)
     }
 
     fn reset_signal(&mut self) -> bool {

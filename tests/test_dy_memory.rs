@@ -6,17 +6,24 @@ use ckb_vm::{
     },
     ISA_IMC,
 };
-use ckb_vm::{run, FlatMemory, SparseMemory};
+use ckb_vm::{run_with_memory, FlatMemory, SparseMemory};
 use std::fs;
 
 fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {
     let buffer = fs::read(bin_path).unwrap().into();
-    let result =
-        run::<u64, SparseMemory<u64>>(&buffer, &vec![bin_name.clone().into()], memory_size);
+    let result = run_with_memory::<u64, SparseMemory<u64>>(
+        &buffer,
+        &vec![bin_name.clone().into()],
+        SparseMemory::new_with_memory(memory_size),
+    );
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
-    let result = run::<u64, FlatMemory<u64>>(&buffer, &vec![bin_name.clone().into()], memory_size);
+    let result = run_with_memory::<u64, FlatMemory<u64>>(
+        &buffer,
+        &vec![bin_name.clone().into()],
+        FlatMemory::new_with_memory(memory_size),
+    );
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 
@@ -48,11 +55,19 @@ fn test_dy_memory() {
 fn test_memory_out_of_bounds() {
     let memory_size = 1024 * 256;
     let buffer = fs::read("tests/programs/alloc_many").unwrap().into();
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["alloc_many".into()], memory_size);
+    let result = run_with_memory::<u64, SparseMemory<u64>>(
+        &buffer,
+        &vec!["alloc_many".into()],
+        SparseMemory::new_with_memory(memory_size),
+    );
     assert!(result.is_err());
     assert_eq!(ckb_vm::Error::MemOutOfBound, result.err().unwrap());
 
-    let result = run::<u64, FlatMemory<u64>>(&buffer, &vec!["alloc_many".into()], memory_size);
+    let result = run_with_memory::<u64, FlatMemory<u64>>(
+        &buffer,
+        &vec!["alloc_many".into()],
+        FlatMemory::new_with_memory(memory_size),
+    );
     assert!(result.is_err());
     assert_eq!(ckb_vm::Error::MemOutOfBound, result.err().unwrap());
 

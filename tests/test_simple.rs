@@ -1,14 +1,14 @@
 use ckb_vm::machine::VERSION0;
 use ckb_vm::{
     run, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory, Instruction, SparseMemory,
-    SupportMachine, ISA_IMC, RISCV_MAX_MEMORY,
+    SupportMachine, ISA_IMC,
 };
 use std::fs;
 
 #[test]
 pub fn test_simple_instructions() {
     let buffer = fs::read("tests/programs/simple").unwrap().into();
-    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["simple".into()], RISCV_MAX_MEMORY);
+    let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["simple".into()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -16,7 +16,7 @@ pub fn test_simple_instructions() {
 #[test]
 pub fn test_simple_instructions_64() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["simple".into()], RISCV_MAX_MEMORY);
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["simple".into()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -24,7 +24,7 @@ pub fn test_simple_instructions_64() {
 #[test]
 pub fn test_simple_instructions_flatmemory() {
     let buffer = fs::read("tests/programs/simple").unwrap().into();
-    let result = run::<u32, FlatMemory<u32>>(&buffer, &vec!["simple".into()], RISCV_MAX_MEMORY);
+    let result = run::<u32, FlatMemory<u32>>(&buffer, &vec!["simple".into()]);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
 }
@@ -71,7 +71,7 @@ pub fn test_simple_max_cycles_reached() {
 #[test]
 pub fn test_simple_invalid_bits() {
     let buffer = fs::read("tests/programs/simple").unwrap().into();
-    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["simple".into()], RISCV_MAX_MEMORY);
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["simple".into()]);
     assert!(result.is_err());
     assert_eq!(result.unwrap_err(), Error::ElfBits);
 }

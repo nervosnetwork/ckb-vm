@@ -193,8 +193,13 @@ fn check_memory_inited(
 impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
-    fn new_with_memory(_: usize) -> Self {
-        unreachable!()
+    fn reset_memory(&mut self) -> Result<(), Error> {
+        self.flags = [0; RISCV_PAGES];
+        self.frames = [0; MEMORY_FRAMES];
+        self.load_reservation_address = u64::MAX;
+        self.last_read_frame = u64::max_value();
+        self.last_write_page = u64::max_value();
+        Ok(())
     }
 
     fn init_pages(
@@ -418,18 +423,16 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.max_cycles
     }
 
-    fn reset(&mut self, max_cycles: u64) {
+    fn reset(&mut self, max_cycles: u64) -> Result<(), Error> {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
-        self.flags = [0; RISCV_PAGES];
         for i in 0..TRACE_SIZE {
             self.traces[i] = Trace::default();
         }
-        self.frames = [0; MEMORY_FRAMES];
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = 1;
-        self.load_reservation_address = u64::MAX;
+        self.reset_memory()
     }
 
     fn reset_signal(&mut self) -> bool {
