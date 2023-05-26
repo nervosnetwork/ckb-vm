@@ -24,7 +24,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
             return Ok(false);
         }
         let cycles = machine.cycles();
-        machine.reset(machine.max_cycles());
+        machine.reset(machine.max_cycles()).expect("reset");
         machine.set_cycles(cycles);
         let code_data = std::fs::read("tests/programs/reset_callee").unwrap();
         let code = Bytes::from(code_data);

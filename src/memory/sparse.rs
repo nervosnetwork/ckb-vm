@@ -23,7 +23,7 @@ pub struct SparseMemory<R> {
     _inner: PhantomData<R>,
 }
 
-impl<R> SparseMemory<R> {
+impl<R: Register> SparseMemory<R> {
     fn fetch_page(&mut self, aligned_addr: u64) -> Result<&mut Page, Error> {
         let page = aligned_addr / RISCV_PAGESIZE as u64;
         if page >= self.riscv_pages as u64 {
@@ -65,12 +65,8 @@ impl<R> SparseMemory<R> {
         }
         Ok(value)
     }
-}
 
-impl<R: Register> Memory for SparseMemory<R> {
-    type REG = R;
-
-    fn new_with_memory(memory_size: usize) -> Self {
+    pub fn new_with_memory(memory_size: usize) -> Self {
         assert!(memory_size <= RISCV_MAX_MEMORY);
         assert!(memory_size % RISCV_PAGESIZE == 0);
         Self {
@@ -82,6 +78,24 @@ impl<R: Register> Memory for SparseMemory<R> {
             load_reservation_address: R::from_u64(u64::MAX),
             _inner: PhantomData,
         }
+    }
+}
+
+impl<R: Register> Default for SparseMemory<R> {
+    fn default() -> Self {
+        Self::new_with_memory(RISCV_MAX_MEMORY)
+    }
+}
+
+impl<R: Register> Memory for SparseMemory<R> {
+    type REG = R;
+
+    fn reset_memory(&mut self) -> Result<(), Error> {
+        self.indices = vec![INVALID_PAGE_INDEX; self.indices.len()];
+        memset(&mut self.flags, 0);
+        self.pages.clear();
+        self.load_reservation_address = R::from_u64(u64::MAX);
+        Ok(())
     }
 
     fn init_pages(

@@ -1,7 +1,7 @@
 // This example is mainly to test whether there is memory overflow.
 // Under linux, we choose to use smem, which can monitor memory changes more accurately
 
-use ckb_vm::{run, Bytes, FlatMemory, SparseMemory};
+use ckb_vm::{run_with_memory, Bytes, FlatMemory, SparseMemory};
 use lazy_static::lazy_static;
 use std::process::{id, Command};
 
@@ -127,10 +127,10 @@ fn check_interpreter(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let result = run::<u64, SparseMemory<u64>>(
+        let result = run_with_memory::<u64, SparseMemory<u64>>(
             &BIN_PATH_BUFFER,
             &vec![BIN_NAME.clone().into()],
-            memory_size,
+            SparseMemory::new_with_memory(memory_size),
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
@@ -147,10 +147,10 @@ fn check_falt(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let result = run::<u64, FlatMemory<u64>>(
+        let result = run_with_memory::<u64, FlatMemory<u64>>(
             &BIN_PATH_BUFFER,
             &vec![BIN_NAME.clone().into()],
-            memory_size,
+            FlatMemory::new_with_memory(memory_size),
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);

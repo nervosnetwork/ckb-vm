@@ -30,22 +30,37 @@ impl<R> DerefMut for FlatMemory<R> {
     }
 }
 
-/// A flat chunk of memory used for RISC-V machine, it lacks all the permission
-/// checking logic.
-impl<R: Register> Memory for FlatMemory<R> {
-    type REG = R;
-
-    fn new_with_memory(memory_size: usize) -> Self {
+impl<R: Register> FlatMemory<R> {
+    pub fn new_with_memory(memory_size: usize) -> Self {
         assert!(memory_size <= RISCV_MAX_MEMORY);
         assert!(memory_size % RISCV_PAGESIZE == 0);
         Self {
-            data: vec![0; memory_size as usize],
+            data: vec![0; memory_size],
             flags: vec![0; memory_size / RISCV_PAGESIZE],
             memory_size,
             riscv_pages: memory_size / RISCV_PAGESIZE,
             load_reservation_address: R::from_u64(u64::MAX),
             _inner: PhantomData,
         }
+    }
+}
+
+impl<R: Register> Default for FlatMemory<R> {
+    fn default() -> Self {
+        Self::new_with_memory(RISCV_MAX_MEMORY)
+    }
+}
+
+/// A flat chunk of memory used for RISC-V machine, it lacks all the permission
+/// checking logic.
+impl<R: Register> Memory for FlatMemory<R> {
+    type REG = R;
+
+    fn reset_memory(&mut self) -> Result<(), Error> {
+        memset(&mut self.data, 0);
+        memset(&mut self.flags, 0);
+        self.load_reservation_address = R::from_u64(u64::MAX);
+        Ok(())
     }
 
     fn init_pages(
