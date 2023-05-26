@@ -7,7 +7,7 @@ trigger:
     - '*'
 
 variables:
-  TEST_SUITE_COMMIT: 441e0f2149c097ccad133b040544dca13caeb01e
+  TEST_SUITE_COMMIT: 86480364649c9cb6ac01674fe51156e7cf50a31a
 
 jobs:
   - job: LinuxCIDeps

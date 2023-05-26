@@ -10,7 +10,7 @@ use ckb_vm::{
     },
     ISA_B, ISA_IMC, ISA_MOP,
 };
-use ckb_vm::{run, SparseMemory, RISCV_MAX_MEMORY};
+use ckb_vm::{run, SparseMemory};
 use criterion::Criterion;
 use std::fs;
 
@@ -23,7 +23,7 @@ fn interpret_benchmark(c: &mut Criterion) {
                                       "foo",
                                       "bar"].into_iter().map(|a| a.into()).collect();
 
-        b.iter(|| run::<u64, SparseMemory<u64>>(&buffer, &args[..], RISCV_MAX_MEMORY).unwrap());
+        b.iter(|| run::<u64, SparseMemory<u64>>(&buffer, &args[..]).unwrap());
     });
 }
 
