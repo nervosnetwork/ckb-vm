@@ -125,5 +125,4 @@ impl AsmCoreMachine {
     pub fn set_max_cycles(&mut self, cycles: u64) {
         self.max_cycles = cycles;
     }
-
 }
