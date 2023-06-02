@@ -11,7 +11,7 @@ use ckb_vm::machine::{
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{DefaultMachineBuilder, Error, Memory, Register, Syscalls, ISA_IMC, RISCV_MAX_MEMORY};
+use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_IMC};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -81,6 +81,7 @@ fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
 
     assert_eq!(machine1.cycles(), machine2.cycles());
     assert_eq!(machine1.full_registers(), machine2.full_registers());
+    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     assert_eq!(machine1.full_memory(), machine2.full_memory());
 
     machine2.set_max_cycles(100000 + 200000);
@@ -94,6 +95,7 @@ fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
 
     assert_eq!(machine2.cycles(), machine3.cycles());
     assert_eq!(machine2.full_registers(), machine3.full_registers());
+    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     assert_eq!(machine2.full_memory(), machine3.full_memory());
 
     machine3.set_max_cycles(100000 + 200000 + 400000);
@@ -126,6 +128,7 @@ fn test_resume2_load_data_asm_2_interpreter() {
 
     assert_eq!(machine1.cycles(), machine2.cycles());
     assert_eq!(machine1.full_registers(), machine2.full_registers());
+    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     assert_eq!(machine1.full_memory(), machine2.full_memory());
 
     machine2.set_max_cycles(except_cycles + 10);
@@ -159,6 +162,7 @@ fn test_resume2_load_data_interpreter_2_asm() {
 
     assert_eq!(machine1.cycles(), machine2.cycles());
     assert_eq!(machine1.full_registers(), machine2.full_registers());
+    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     assert_eq!(machine1.full_memory(), machine2.full_memory());
 
     machine2.set_max_cycles(except_cycles + 10);
@@ -515,7 +519,9 @@ impl Machine {
         }
     }
 
+    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     fn full_memory(&mut self) -> Result<Bytes, Error> {
+        use ckb_vm::{Memory, RISCV_MAX_MEMORY};
         use Machine::*;
         match self {
             Asm(inner, _) => inner
