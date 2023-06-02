@@ -11,7 +11,7 @@ use ckb_vm::machine::{
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, Memory, Register, Syscalls, ISA_IMC, RISCV_MAX_MEMORY};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -78,6 +78,11 @@ fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
 
     let mut machine2 = MachineTy::Interpreter.build(data_source.clone(), version);
     machine2.resume(snapshot1).unwrap();
+
+    assert_eq!(machine1.cycles(), machine2.cycles());
+    assert_eq!(machine1.full_registers(), machine2.full_registers());
+    assert_eq!(machine1.full_memory(), machine2.full_memory());
+
     machine2.set_max_cycles(100000 + 200000);
     let result2 = machine2.run();
     assert_eq!(result2.unwrap_err(), Error::CyclesExceeded);
@@ -86,6 +91,11 @@ fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
 
     let mut machine3 = MachineTy::Asm.build(data_source, version);
     machine3.resume(snapshot2).unwrap();
+
+    assert_eq!(machine2.cycles(), machine3.cycles());
+    assert_eq!(machine2.full_registers(), machine3.full_registers());
+    assert_eq!(machine2.full_memory(), machine3.full_memory());
+
     machine3.set_max_cycles(100000 + 200000 + 400000);
     let result3 = machine3.run();
     let cycles3 = machine3.cycles();
@@ -113,6 +123,11 @@ fn test_resume2_load_data_asm_2_interpreter() {
 
     let mut machine2 = MachineTy::Interpreter.build(data_source, version);
     machine2.resume(snapshot).unwrap();
+
+    assert_eq!(machine1.cycles(), machine2.cycles());
+    assert_eq!(machine1.full_registers(), machine2.full_registers());
+    assert_eq!(machine1.full_memory(), machine2.full_memory());
+
     machine2.set_max_cycles(except_cycles + 10);
 
     let result2 = machine2.run();
@@ -141,6 +156,11 @@ fn test_resume2_load_data_interpreter_2_asm() {
 
     let mut machine2 = MachineTy::Asm.build(data_source, version);
     machine2.resume(snapshot).unwrap();
+
+    assert_eq!(machine1.cycles(), machine2.cycles());
+    assert_eq!(machine1.full_registers(), machine2.full_registers());
+    assert_eq!(machine1.full_memory(), machine2.full_memory());
+
     machine2.set_max_cycles(except_cycles + 10);
 
     let result2 = machine2.run();
@@ -493,6 +513,41 @@ impl Machine {
             Interpreter(inner, _) => inner.cycles(),
             InterpreterWithTrace(inner, _) => inner.machine.cycles(),
         }
+    }
+
+    fn full_memory(&mut self) -> Result<Bytes, Error> {
+        use Machine::*;
+        match self {
+            Asm(inner, _) => inner
+                .machine
+                .memory_mut()
+                .load_bytes(0, RISCV_MAX_MEMORY as u64),
+            Interpreter(inner, _) => inner.memory_mut().load_bytes(0, RISCV_MAX_MEMORY as u64),
+            InterpreterWithTrace(inner, _) => inner
+                .machine
+                .memory_mut()
+                .load_bytes(0, RISCV_MAX_MEMORY as u64),
+        }
+    }
+
+    fn full_registers(&self) -> [u64; 33] {
+        use Machine::*;
+        let mut regs = [0u64; 33];
+        match self {
+            Asm(inner, _) => {
+                regs[0..32].copy_from_slice(inner.machine.registers());
+                regs[32] = *inner.machine.pc();
+            }
+            Interpreter(inner, _) => {
+                regs[0..32].copy_from_slice(inner.registers());
+                regs[32] = *inner.pc();
+            }
+            InterpreterWithTrace(inner, _) => {
+                regs[0..32].copy_from_slice(inner.machine.registers());
+                regs[32] = *inner.machine.pc();
+            }
+        };
+        regs
     }
 
     fn snapshot(&mut self) -> Result<Snapshot2<u64>, Error> {
