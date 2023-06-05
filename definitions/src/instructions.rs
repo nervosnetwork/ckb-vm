@@ -254,7 +254,7 @@ macro_rules! __for_each_inst_inner {
 macro_rules! for_each_inst {
     ($callback:ident) => {
         $crate::__for_each_inst_inner!($callback);
-    }
+    };
 }
 
 /// Generates a match expression containing all instructions, it takes 3
@@ -267,12 +267,10 @@ macro_rules! for_each_inst {
 /// not match any opcode
 #[macro_export]
 macro_rules! for_each_inst_match {
-    ($callback:ident, $val:expr, $others:expr) => {
-        {
-            $crate::__for_each_inst_inner!((1, __res__, $val, $callback, $others));
-            __res__
-        }
-    }
+    ($callback:ident, $val:expr, $others:expr) => {{
+        $crate::__for_each_inst_inner!((1, __res__, $val, $callback, $others));
+        __res__
+    }};
 }
 
 /// Generates a match expression doing fold on all instructions
@@ -285,7 +283,7 @@ macro_rules! for_each_inst_match {
 macro_rules! for_each_inst_fold {
     ($callback:ident, $x:ident) => {
         $crate::__for_each_inst_inner!((2, $x, $callback));
-    }
+    };
 }
 
 macro_rules! define_instruction {
