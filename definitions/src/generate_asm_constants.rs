@@ -5,15 +5,25 @@ use ckb_vm_definitions::{
         TRACE_ITEM_LENGTH,
     },
     instructions::{
-        instruction_opcode_name, Instruction, INSTRUCTION_OPCODE_NAMES, MAXIMUM_OPCODE,
+        instruction_opcode_name, Instruction, MAXIMUM_OPCODE,
         MINIMAL_OPCODE,
     },
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
     MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
     RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    for_each_inst,
 };
 use std::mem::{size_of, zeroed};
+
+macro_rules! print_inst_label {
+    ($name:ident, $real_name:ident, $code:expr) => {
+        println!(
+            "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_ASM_LABEL_TABLE",
+            stringify!($real_name)
+        );
+    };
+}
 
 // This utility helps us generate C-based macros containing definitions
 // such as return code, opcode, struct size, struct offset, etc. The exact
@@ -215,11 +225,6 @@ fn main() {
     for _ in 0..0x10 {
         println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
     }
-    for name in INSTRUCTION_OPCODE_NAMES.iter() {
-        println!(
-            "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_ASM_LABEL_TABLE",
-            name
-        );
-    }
+    for_each_inst!(print_inst_label);
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
 }
