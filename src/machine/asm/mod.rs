@@ -5,7 +5,7 @@ use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_SUSPEND, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
@@ -13,6 +13,7 @@ use ckb_vm_definitions::{
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
+use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::{
     decoder::{build_decoder, Decoder},
@@ -456,7 +457,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
 }
 
 extern "C" {
-    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, s: *mut u8) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
     pub fn ckb_vm_asm_labels();
@@ -464,11 +465,15 @@ extern "C" {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+    pub suspend: Arc<AtomicBool>,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
-        Self { machine }
+        Self {
+            machine,
+            suspend: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -489,7 +494,12 @@ impl AsmMachine {
             if self.machine.reset_signal() {
                 decoder.reset_instructions_cache();
             }
-            let result = unsafe { ckb_vm_x64_execute(&mut **self.machine.inner_mut()) };
+            let result = unsafe {
+                ckb_vm_x64_execute(
+                    &mut **self.machine.inner_mut(),
+                    &*self.suspend as *const _ as *mut u8,
+                )
+            };
             match result {
                 RET_DECODE_TRACE => {
                     let pc = *self.machine.pc();
@@ -538,6 +548,11 @@ impl AsmMachine {
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                     execute_instruction(instruction, &mut self.machine)?;
                 }
+                RET_SUSPEND => {
+                    self.suspend
+                        .store(false, std::sync::atomic::Ordering::SeqCst);
+                    return Err(Error::Suspend);
+                }
                 _ => return Err(Error::Asm(result)),
             }
         }
@@ -567,7 +582,12 @@ impl AsmMachine {
         trace.length = len;
         self.machine.inner_mut().traces[slot] = trace;
 
-        let result = unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) };
+        let result = unsafe {
+            ckb_vm_x64_execute(
+                &mut (**self.machine.inner_mut()),
+                &*self.suspend as *const _ as *mut u8,
+            )
+        };
         match result {
             RET_DECODE_TRACE => (),
             RET_ECALL => self.machine.ecall()?,
