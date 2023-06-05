@@ -9,9 +9,9 @@ use std::sync::Arc;
 pub mod machine_build;
 
 #[test]
-pub fn test_asm_suspend() {
+pub fn test_asm_pause() {
     let expect_cycles = {
-        let buffer = fs::read("tests/programs/suspend_resume").unwrap().into();
+        let buffer = fs::read("tests/programs/pause_resume").unwrap().into();
         let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::max_value());
         let core = DefaultMachineBuilder::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
@@ -22,7 +22,7 @@ pub fn test_asm_suspend() {
         machine.machine.cycles()
     };
 
-    let buffer = fs::read("tests/programs/suspend_resume").unwrap().into();
+    let buffer = fs::read("tests/programs/pause_resume").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::max_value());
     let core = DefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
@@ -30,14 +30,14 @@ pub fn test_asm_suspend() {
     let mut machine = AsmMachine::new(core);
     machine.load_program(&buffer, &vec!["main".into()]).unwrap();
 
-    let branch_suspend_cnt = Arc::new(AtomicU32::new(0));
-    let branch_suspend_cnt_jh = branch_suspend_cnt.clone();
+    let branch_pause_cnt = Arc::new(AtomicU32::new(0));
+    let branch_pause_cnt_jh = branch_pause_cnt.clone();
 
-    let signal = machine.suspend.clone();
+    let signal = machine.pause.clone();
     let jh = std::thread::spawn(move || loop {
         let result = machine.run();
-        if result == Err(Error::Suspend) {
-            branch_suspend_cnt_jh.fetch_add(1, Ordering::SeqCst);
+        if result == Err(Error::Pause) {
+            branch_pause_cnt_jh.fetch_add(1, Ordering::SeqCst);
             continue;
         } else {
             assert!(result.is_ok());
@@ -48,8 +48,8 @@ pub fn test_asm_suspend() {
     });
     for _ in 0..10 {
         std::thread::sleep(std::time::Duration::from_millis(100));
-        signal.store(true, Ordering::SeqCst);
+        signal.store(1, Ordering::SeqCst);
     }
     jh.join().unwrap();
-    assert_eq!(branch_suspend_cnt.load(Ordering::SeqCst), 10);
+    assert_eq!(branch_pause_cnt.load(Ordering::SeqCst), 10);
 }

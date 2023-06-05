@@ -47,8 +47,8 @@ pub enum Error {
     MemWriteOnExecutablePage,
     #[display(fmt = "memory error: write on freezed page")]
     MemWriteOnFreezedPage,
-    #[display(fmt = "suspend")]
-    Suspend,
+    #[display(fmt = "pause")]
+    Pause,
     #[display(fmt = "unexpected error")]
     Unexpected(String),
     #[display(fmt = "unimplemented")]

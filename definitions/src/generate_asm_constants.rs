@@ -1,8 +1,8 @@
 use ckb_vm_definitions::{
     asm::{
         AsmCoreMachine, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
-        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        RET_SUSPEND, TRACE_ITEM_LENGTH,
+        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
+        RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     instructions::{
         instruction_opcode_name, Instruction, INSTRUCTION_OPCODE_NAMES, MAXIMUM_OPCODE,
@@ -64,7 +64,7 @@ fn main() {
         RET_INVALID_PERMISSION
     );
     println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
-    println!("#define CKB_VM_ASM_RET_SUSPEND {}", RET_SUSPEND);
+    println!("#define CKB_VM_ASM_RET_PAUSE {}", RET_PAUSE);
     println!();
 
     println!("#define CKB_VM_ASM_REGISTER_RA {}", RA);

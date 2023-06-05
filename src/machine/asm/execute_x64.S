@@ -74,7 +74,7 @@
 #define MACHINE %rsi
 #define TRACE %rbx
 #define MEMORY_SIZE %r13
-#define SUSPEND %r14
+#define PAUSE %r14
 
 /*
  * INST_PC contains the current address of decoded Instruction in
@@ -407,7 +407,7 @@ ckb_vm_x64_execute:
   push %r12
   push %r13
   push %r14
-  mov ARG2, SUSPEND
+  mov ARG2, PAUSE
   mov ARG1, MACHINE
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE(MACHINE), MEMORY_SIZE
 .p2align 3
@@ -443,9 +443,9 @@ ckb_vm_x64_execute:
   NEXT_INST
 .p2align 3
 .prepare_trace:
-  movzbl 0(SUSPEND), %eax
+  movzbl 0(PAUSE), %eax
   cmp $0, %rax
-  jnz .exit_suspend
+  jnz .exit_pause
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
@@ -2355,8 +2355,8 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_SLOWPATH, ARG_RETd
   jmp .exit
 .p2align 3
-.exit_suspend:
-  mov $CKB_VM_ASM_RET_SUSPEND, ARG_RETd
+.exit_pause:
+  mov $CKB_VM_ASM_RET_PAUSE, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_trace:

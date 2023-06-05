@@ -4,8 +4,8 @@ pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
     asm::{
         calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
-        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_SLOWPATH,
-        RET_SUSPEND, TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
+        RET_SLOWPATH, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
@@ -13,7 +13,7 @@ use ckb_vm_definitions::{
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{atomic::AtomicU8, Arc};
 
 use crate::{
     decoder::{build_decoder, Decoder},
@@ -465,14 +465,14 @@ extern "C" {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
-    pub suspend: Arc<AtomicBool>,
+    pub pause: Arc<AtomicU8>,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
         Self {
             machine,
-            suspend: Arc::new(AtomicBool::new(false)),
+            pause: Arc::new(AtomicU8::new(0)),
         }
     }
 
@@ -497,7 +497,7 @@ impl AsmMachine {
             let result = unsafe {
                 ckb_vm_x64_execute(
                     &mut **self.machine.inner_mut(),
-                    &*self.suspend as *const _ as *mut u8,
+                    &*self.pause as *const _ as *mut u8,
                 )
             };
             match result {
@@ -548,10 +548,9 @@ impl AsmMachine {
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                     execute_instruction(instruction, &mut self.machine)?;
                 }
-                RET_SUSPEND => {
-                    self.suspend
-                        .store(false, std::sync::atomic::Ordering::SeqCst);
-                    return Err(Error::Suspend);
+                RET_PAUSE => {
+                    self.pause.store(0, std::sync::atomic::Ordering::SeqCst);
+                    return Err(Error::Pause);
                 }
                 _ => return Err(Error::Asm(result)),
             }
@@ -585,7 +584,7 @@ impl AsmMachine {
         let result = unsafe {
             ckb_vm_x64_execute(
                 &mut (**self.machine.inner_mut()),
-                &*self.suspend as *const _ as *mut u8,
+                &*self.pause as *const _ as *mut u8,
             )
         };
         match result {
