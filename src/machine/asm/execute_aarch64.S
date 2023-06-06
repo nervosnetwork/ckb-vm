@@ -5,7 +5,7 @@
 #define UINT64_MAX 0xffffffffffffffff
 
 #define MACHINE x0
-#define SIGNAL x1
+#define PAUSE x1
 
 #define TEMP1 x9
 #define TEMP1w w9
@@ -45,7 +45,6 @@
 #define ZERO_VALUE xzr
 
 #define MEMORY_OFFSET_ADDRESS x29
-#define PAUSE x30
 
 #ifdef __APPLE__
 #define SEP %%
@@ -54,14 +53,16 @@
 #endif
 
 #define PREPCALL \
-  stp x0, x9, [sp, -48]! SEP \
-  stp x10, x11, [sp, 16] SEP \
-  stp x12, x13, [sp, 32]
+  stp x0, x1, [sp, -64]! SEP \
+  stp x9, x10, [sp, 16] SEP \
+  stp x11, x12, [sp, 32] SEP \
+  stp x13, x14, [sp, 48] SEP \
 
 #define POSTCALL \
-  ldp x12, x13, [sp, 32] SEP \
-  ldp x10, x11, [sp, 16] SEP \
-  ldp x0, x9, [sp], 48
+  ldp x13, x14, [sp, 48] SEP \
+  ldp x11, x12, [sp, 32] SEP \
+  ldp x9, x10, [sp, 16] SEP \
+  ldp x0, x1, [sp], 64
 
 #define REGISTER_ADDRESS(r) [REGISTER_BASE, r, lsl 3]
 #define ZERO_ADDRESS [REGISTER_BASE]
@@ -338,7 +339,7 @@ ckb_vm_x64_execute:
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREAD
   NEXT_INST
 .prepare_trace:
-  ldr TEMP2, [PAUSE]
+  ldrb TEMP2w, [PAUSE]
   cmp TEMP2, ZERO_VALUE
   bne .exit_pause
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
