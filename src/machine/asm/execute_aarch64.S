@@ -5,6 +5,7 @@
 #define UINT64_MAX 0xffffffffffffffff
 
 #define MACHINE x0
+#define SIGNAL x1
 
 #define TEMP1 x9
 #define TEMP1w w9
@@ -44,6 +45,7 @@
 #define ZERO_VALUE xzr
 
 #define MEMORY_OFFSET_ADDRESS x29
+#define SIGNAL x30
 
 #ifdef __APPLE__
 #define SEP %%
@@ -336,6 +338,9 @@ ckb_vm_x64_execute:
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREAD
   NEXT_INST
 .prepare_trace:
+  ldr TEMP2, [SIGNAL]
+  cmp TEMP2, ZERO_VALUE
+  bne .exit_pause
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
   mov TEMP3, TEMP2
   lsr TEMP2, TEMP2, 2
@@ -1950,6 +1955,9 @@ ckb_vm_x64_execute:
   b .exit
 .exit_invalid_permission:
   mov x0, CKB_VM_ASM_RET_INVALID_PERMISSION
+  b .exit
+.exit_pause:
+  mov x0, CKB_VM_ASM_RET_PAUSE
   b .exit
 .exit_trace:
 .CKB_VM_ASM_LABEL_OP_UNLOADED:
