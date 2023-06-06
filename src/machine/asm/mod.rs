@@ -20,7 +20,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::{Pause, VERSION0},
+    machine::VERSION0,
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -464,15 +464,11 @@ extern "C" {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
-    pub pause: Pause,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
-        Self {
-            machine,
-            pause: Pause::new(),
-        }
+        Self { machine }
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
@@ -494,7 +490,10 @@ impl AsmMachine {
                 decoder.reset_instructions_cache();
             }
             let result = unsafe {
-                ckb_vm_x64_execute(&mut **self.machine.inner_mut(), self.pause.get_raw_ptr())
+                ckb_vm_x64_execute(
+                    &mut **self.machine.inner_mut(),
+                    self.machine.pause.get_raw_ptr(),
+                )
             };
             match result {
                 RET_DECODE_TRACE => {
@@ -545,7 +544,7 @@ impl AsmMachine {
                     execute_instruction(instruction, &mut self.machine)?;
                 }
                 RET_PAUSE => {
-                    self.pause.free();
+                    self.machine.pause.free();
                     return Err(Error::Pause);
                 }
                 _ => return Err(Error::Asm(result)),
@@ -578,7 +577,10 @@ impl AsmMachine {
         self.machine.inner_mut().traces[slot] = trace;
 
         let result = unsafe {
-            ckb_vm_x64_execute(&mut (**self.machine.inner_mut()), self.pause.get_raw_ptr())
+            ckb_vm_x64_execute(
+                &mut (**self.machine.inner_mut()),
+                self.machine.pause.get_raw_ptr(),
+            )
         };
         match result {
             RET_DECODE_TRACE => (),

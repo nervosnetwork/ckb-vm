@@ -7,7 +7,7 @@ int fib(int n) {
 }
 
 int main() {
-    // A calculation problem, it takes about 2 seconds.
+    // A calculation problem, it takes about 2 seconds in asm.
     if (fib(35) == 9227465) {
         return 0;
     };

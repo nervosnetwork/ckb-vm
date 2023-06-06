@@ -427,6 +427,7 @@ pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64 + Send + Sync;
 
 pub struct DefaultMachine<Inner> {
     inner: Inner,
+    pause: Pause,
 
     // We have run benchmarks on secp256k1 verification, the performance
     // cost of the Box wrapper here is neglectable, hence we are sticking
@@ -594,6 +595,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         self.inner
     }
 
+    pub fn pause(&self) -> Pause {
+        self.pause.clone()
+    }
+
     pub fn exit_code(&self) -> i8 {
         self.exit_code
     }
@@ -617,6 +622,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.set_running(true);
         while self.running() {
+            if self.pause.has_interrupted() {
+                self.pause.free();
+                return Err(Error::Pause);
+            }
             if self.reset_signal() {
                 decoder.reset_instructions_cache();
             }
@@ -675,6 +684,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     pub fn build(self) -> DefaultMachine<Inner> {
         DefaultMachine {
             inner: self.inner,
+            pause: Pause::new(),
             instruction_cycle_func: self.instruction_cycle_func,
             debugger: self.debugger,
             syscalls: self.syscalls,
@@ -697,6 +707,10 @@ impl Pause {
 
     pub fn interrupt(&self) {
         self.s.store(1, Ordering::SeqCst);
+    }
+
+    pub(crate) fn has_interrupted(&self) -> bool {
+        self.s.load(Ordering::SeqCst) != 0
     }
 
     pub(crate) fn get_raw_ptr(&self) -> *mut u8 {

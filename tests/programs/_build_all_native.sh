@@ -10,6 +10,8 @@ riscv64-unknown-elf-as -o ckbforks.o ckbforks.S && riscv64-unknown-elf-ld -o ckb
 # TODO: clzw_bug
 # SKIP: decoder_instructions_cache_pc_out_of_bound_timeout
 riscv64-unknown-elf-as -o ebreak.o ebreak.S && riscv64-unknown-elf-ld -o ebreak64 ebreak.o && rm ebreak.o
+riscv64-unknown-elf-gcc -o fib30 fib30.c
+riscv64-unknown-elf-gcc -o fib35 fib35.c
 # SKIP: flat_crash_64
 # SKIP: goblin_overflow_elf
 # SKIP: invalid_file_offset64*
@@ -52,7 +54,6 @@ riscv64-unknown-elf-as -o sc_after_sc.o sc_after_sc.S && riscv64-unknown-elf-ld 
 # SKIP: simple
 riscv64-unknown-elf-gcc -o simple64 simple.c
 riscv64-unknown-elf-as -o sp_alignment_test.o sp_alignment_test.S && riscv64-unknown-elf-ld -o sp_alignment_test sp_alignment_test.o && rm sp_alignment_test.o
-riscv64-unknown-elf-gcc -o pause_resume pause_resume.c
 riscv64-unknown-elf-as -o syscall.o syscall.S && riscv64-unknown-elf-ld -o syscall64 syscall.o && rm syscall.o
 riscv64-unknown-elf-as -o trace.o trace.S && riscv64-unknown-elf-ld -o trace64 trace.o && rm trace.o
 # SKIP: unaligned64
