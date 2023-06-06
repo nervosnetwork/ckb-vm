@@ -45,7 +45,7 @@
 #define ZERO_VALUE xzr
 
 #define MEMORY_OFFSET_ADDRESS x29
-#define SIGNAL x30
+#define PAUSE x30
 
 #ifdef __APPLE__
 #define SEP %%
@@ -338,7 +338,7 @@ ckb_vm_x64_execute:
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREAD
   NEXT_INST
 .prepare_trace:
-  ldr TEMP2, [SIGNAL]
+  ldr TEMP2, [PAUSE]
   cmp TEMP2, ZERO_VALUE
   bne .exit_pause
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]

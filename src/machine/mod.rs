@@ -684,11 +684,11 @@ impl<Inner> DefaultMachineBuilder<Inner> {
 }
 
 #[derive(Clone)]
-pub struct Signal {
+pub struct Pause {
     s: Arc<AtomicU8>,
 }
 
-impl Signal {
+impl Pause {
     pub fn new() -> Self {
         Self {
             s: Arc::new(AtomicU8::new(0)),
