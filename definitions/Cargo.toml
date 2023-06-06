@@ -16,3 +16,6 @@ enable-chaos-mode-by-default = []
 [[bin]]
 name = "generate_asm_constants"
 path = "src/generate_asm_constants.rs"
+
+[dependencies]
+paste = "1.0.12"

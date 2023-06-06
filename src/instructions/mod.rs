@@ -455,6 +455,8 @@ pub fn instruction_length(i: Instruction) -> u8 {
 mod tests {
     use super::i::factory;
     use super::*;
+    use ckb_vm_definitions::{for_each_inst_fold, instructions::MAXIMUM_OPCODE};
+    use std::cmp::{max, min};
     use std::mem::size_of;
 
     #[test]
@@ -477,5 +479,31 @@ mod tests {
         let stype = Stype(decoded);
 
         assert_eq!("beq a0,a5,-192", format!("{}", stype));
+    }
+
+    macro_rules! update_min_opcode {
+        ($name:ident, $real_name:ident, $code:expr, $x:ident) => {
+            $x = min($code, $x);
+        };
+    }
+
+    #[test]
+    fn test_minimal_opcode_is_minimal() {
+        let mut o = MINIMAL_OPCODE;
+        for_each_inst_fold!(update_min_opcode, o);
+        assert_eq!(MINIMAL_OPCODE, o);
+    }
+
+    macro_rules! update_max_opcode {
+        ($name:ident, $real_name:ident, $code:expr, $x:ident) => {
+            $x = max($code, $x);
+        };
+    }
+
+    #[test]
+    fn test_maximal_opcode_is_maximal() {
+        let mut o = MAXIMUM_OPCODE;
+        for_each_inst_fold!(update_max_opcode, o);
+        assert_eq!(MAXIMUM_OPCODE, o);
     }
 }
