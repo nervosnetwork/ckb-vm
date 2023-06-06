@@ -693,7 +693,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Pause {
     s: Arc<AtomicU8>,
 }
@@ -709,15 +709,15 @@ impl Pause {
         self.s.store(1, Ordering::SeqCst);
     }
 
-    pub(crate) fn has_interrupted(&self) -> bool {
+    pub fn has_interrupted(&self) -> bool {
         self.s.load(Ordering::SeqCst) != 0
     }
 
-    pub(crate) fn get_raw_ptr(&self) -> *mut u8 {
+    pub fn get_raw_ptr(&self) -> *mut u8 {
         &*self.s as *const _ as *mut u8
     }
 
-    pub(crate) fn free(&mut self) {
+    pub fn free(&mut self) {
         self.s.store(0, Ordering::SeqCst);
     }
 }

@@ -1,5 +1,3 @@
-#[cfg(has_asm)]
-use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::{Error, SupportMachine};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
