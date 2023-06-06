@@ -13,7 +13,6 @@ use ckb_vm_definitions::{
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
-use std::sync::{atomic::AtomicU8, Arc};
 
 use crate::{
     decoder::{build_decoder, Decoder},
@@ -21,7 +20,7 @@ use crate::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
     },
-    machine::VERSION0,
+    machine::{Signal, VERSION0},
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -465,14 +464,14 @@ extern "C" {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
-    pub pause: Arc<AtomicU8>,
+    pub signal: Signal,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
         Self {
             machine,
-            pause: Arc::new(AtomicU8::new(0)),
+            signal: Signal::new(),
         }
     }
 
@@ -495,10 +494,7 @@ impl AsmMachine {
                 decoder.reset_instructions_cache();
             }
             let result = unsafe {
-                ckb_vm_x64_execute(
-                    &mut **self.machine.inner_mut(),
-                    &*self.pause as *const _ as *mut u8,
-                )
+                ckb_vm_x64_execute(&mut **self.machine.inner_mut(), self.signal.get_raw_ptr())
             };
             match result {
                 RET_DECODE_TRACE => {
@@ -549,7 +545,7 @@ impl AsmMachine {
                     execute_instruction(instruction, &mut self.machine)?;
                 }
                 RET_PAUSE => {
-                    self.pause.store(0, std::sync::atomic::Ordering::SeqCst);
+                    self.signal.free();
                     return Err(Error::Pause);
                 }
                 _ => return Err(Error::Asm(result)),
@@ -582,10 +578,7 @@ impl AsmMachine {
         self.machine.inner_mut().traces[slot] = trace;
 
         let result = unsafe {
-            ckb_vm_x64_execute(
-                &mut (**self.machine.inner_mut()),
-                &*self.pause as *const _ as *mut u8,
-            )
+            ckb_vm_x64_execute(&mut (**self.machine.inner_mut()), self.signal.get_raw_ptr())
         };
         match result {
             RET_DECODE_TRACE => (),

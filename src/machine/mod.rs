@@ -4,6 +4,8 @@ pub mod elf_adaptor;
 pub mod trace;
 
 use std::fmt::{self, Display};
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 
 use bytes::Bytes;
 use scroll::Pread;
@@ -678,5 +680,30 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             syscalls: self.syscalls,
             exit_code: 0,
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct Signal {
+    s: Arc<AtomicU8>,
+}
+
+impl Signal {
+    pub fn new() -> Self {
+        Self {
+            s: Arc::new(AtomicU8::new(0)),
+        }
+    }
+
+    pub fn interrupt(&self) {
+        self.s.store(1, Ordering::SeqCst);
+    }
+
+    pub(crate) fn get_raw_ptr(&self) -> *mut u8 {
+        &*self.s as *const _ as *mut u8
+    }
+
+    pub(crate) fn free(&mut self) {
+        self.s.store(0, Ordering::SeqCst);
     }
 }

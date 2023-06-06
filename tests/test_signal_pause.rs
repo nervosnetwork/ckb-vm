@@ -33,7 +33,7 @@ pub fn test_asm_pause() {
     let branch_pause_cnt = Arc::new(AtomicU32::new(0));
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
 
-    let signal = machine.pause.clone();
+    let signal = machine.signal.clone();
     let jh = std::thread::spawn(move || loop {
         let result = machine.run();
         if result == Err(Error::Pause) {
@@ -48,7 +48,7 @@ pub fn test_asm_pause() {
     });
     for _ in 0..10 {
         std::thread::sleep(std::time::Duration::from_millis(100));
-        signal.store(1, Ordering::SeqCst);
+        signal.interrupt()
     }
     jh.join().unwrap();
     assert_eq!(branch_pause_cnt.load(Ordering::SeqCst), 10);
