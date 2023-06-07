@@ -48,26 +48,70 @@ pub use paste::paste;
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __apply {
-    ($callback:ident, $(($name:ident, $code:expr)),*) => {
+    ((0, $callback:ident), $(($name:ident, $code:expr)),*) => {
         $crate::instructions::paste! {
             $(
                 $callback!([< OP_ $name >], $name, $code);
             )*
         }
     };
-    ((1, $res:ident, $x:expr, $callback:ident, $others:expr), $(($name:ident, $code:expr)),*) => {
+    ((1, $x:ident, $callback:ident), $(($name:ident, $code:expr)),*) => {
         $crate::instructions::paste! {
-            let $res = match $x {
+            $(
+                $callback!([< OP_ $name >], $name, $code, $x);
+            )*
+        }
+    };
+    ((2, $x:ident, $y:ident, $callback:ident), $(($name:ident, $code:expr)),*) => {
+        $crate::instructions::paste! {
+            $(
+                $callback!([< OP_ $name >], $name, $code, $x, $y);
+            )*
+        }
+    };
+    ((100, $res:ident, $val:expr, $callback:ident, $others:expr), $(($name:ident, $code:expr)),*) => {
+        $crate::instructions::paste! {
+            let $res = match $val {
                 $( $code => $callback!([< OP_ $name >], $name, $code), )*
                 _ => $others
             };
         }
     };
-    ((2, $x:ident, $callback:ident), $(($name:ident, $code:expr)),*) => {
+    ((101, $x:ident, $res:ident, $val:expr, $callback:ident, $others:expr), $(($name:ident, $code:expr)),*) => {
         $crate::instructions::paste! {
-            $(
-                $callback!([< OP_ $name >], $name, $code, $x);
-            )*
+            let $res = match $val {
+                $( $code => $callback!([< OP_ $name >], $name, $code, $x), )*
+                _ => $others
+            };
+        }
+    };
+    ((102, $x:ident, $y:ident, $res:ident, $val:expr, $callback:ident, $others:expr), $(($name:ident, $code:expr)),*) => {
+        $crate::instructions::paste! {
+            let $res = match $val {
+                $( $code => $callback!([< OP_ $name >], $name, $code, $x, $y), )*
+                _ => $others
+            };
+        }
+    };
+    ((200, $res:ident, $callback:ident), $(($name:ident, $code:expr)),*) => {
+        $crate::instructions::paste! {
+            let $res = [
+                $( $callback!([< OP_ $name >], $name, $code), )*
+            ];
+        }
+    };
+    ((201, $x:ident, $res:ident, $callback:ident), $(($name:ident, $code:expr)),*) => {
+        $crate::instructions::paste! {
+            let $res = [
+                $( $callback!([< OP_ $name >], $name, $code, $x), )*
+            ];
+        }
+    };
+    ((202, $x:ident, $y:ident, $res:ident, $callback:ident), $(($name:ident, $code:expr)),*) => {
+        $crate::instructions::paste! {
+            let $res = [
+                $( $callback!([< OP_ $name >], $name, $code, $x, $y), )*
+            ];
         }
     };
 }
@@ -245,16 +289,33 @@ macro_rules! __for_each_inst_inner {
 }
 
 /// Generates a possible definition for each instruction, it leverages
-/// a callback macro that takes 3 arguments:
+/// a callback macro that takes (at least) 3 arguments:
 ///
 /// 1. $name: an identifier containing the full defined opcode name,
 /// e.g., OP_ADD
 /// 2. $real_name: an identifier containing just the opcode part, e.g., ADD
 /// 3. $code: an expr containing the actual opcode number
+///
+/// Free variables are attached to the variants ending with inst1, inst2, etc.
+/// Those free variables will also be appended as arguments to the callback macro.
 #[macro_export]
 macro_rules! for_each_inst {
     ($callback:ident) => {
-        $crate::__for_each_inst_inner!($callback);
+        $crate::__for_each_inst_inner!((0, $callback));
+    };
+}
+
+#[macro_export]
+macro_rules! for_each_inst1 {
+    ($callback:ident, $x:ident) => {
+        $crate::__for_each_inst_inner!((1, $x, $callback));
+    };
+}
+
+#[macro_export]
+macro_rules! for_each_inst2 {
+    ($callback:ident, $x:ident, $y:ident) => {
+        $crate::__for_each_inst_inner!((2, $x, $y, $callback));
     };
 }
 
@@ -266,27 +327,63 @@ macro_rules! for_each_inst {
 /// * A value expression containing the actual value to match against.
 /// * An expression used as wildcard matches when the passed value does
 /// not match any opcode
+///
+/// * Free variables are attached to the variants ending with match1, match2, etc.
 #[macro_export]
 macro_rules! for_each_inst_match {
     ($callback:ident, $val:expr, $others:expr) => {{
-        $crate::__for_each_inst_inner!((1, __res__, $val, $callback, $others));
+        $crate::__for_each_inst_inner!((100, __res__, $val, $callback, $others));
         __res__
     }};
 }
 
-/// Generates a match expression doing fold on all instructions
-///
-/// * A callback macro that takes 4 arguments: the first 3 arguments are
-/// exactly the same as the 3 callback arguments in +for_each_inst+, the
-/// 4th argument here is the identifier below to work with hygienic macros.
-/// * An identifier for a mutable variable used for folding
 #[macro_export]
-macro_rules! for_each_inst_fold {
-    ($callback:ident, $x:ident) => {
-        $crate::__for_each_inst_inner!((2, $x, $callback));
-    };
+macro_rules! for_each_inst_match1 {
+    ($callback:ident, $val:expr, $others:expr, $x:ident) => {{
+        $crate::__for_each_inst_inner!((101, $x, __res__, $val, $callback, $others));
+        __res__
+    }};
 }
 
+#[macro_export]
+macro_rules! for_each_inst_match2 {
+    ($callback:ident, $val:expr, $others:expr, $x:ident, $y:ident) => {{
+        $crate::__for_each_inst_inner!((102, $x, $y, __res__, $val, $callback, $others));
+        __res__
+    }};
+}
+
+/// Generates an array on all instructions
+///
+/// * A callback macro that takes the exact same arguments as callback
+/// macro in +for_each_inst+
+///
+/// * Free variables are attached to the variants ending with fold1, fold2, etc.
+#[macro_export]
+macro_rules! for_each_inst_array {
+    ($callback:ident) => {{
+        $crate::__for_each_inst_inner!((200, __res__, $callback));
+        __res__
+    }};
+}
+
+#[macro_export]
+macro_rules! for_each_inst_array1 {
+    ($callback:ident, $x:ident) => {{
+        $crate::__for_each_inst_inner!((201, $x, __res__, $callback));
+        __res__
+    }};
+}
+
+#[macro_export]
+macro_rules! for_each_inst_array2 {
+    ($callback:ident, $x:ident, $y:ident) => {{
+        $crate::__for_each_inst_inner!((202, $x, $y, __res__, $callback));
+        __res__
+    }};
+}
+
+// Define the actual opcodes
 macro_rules! define_instruction {
     ($name:ident, $real_name:ident, $code:expr) => {
         pub const $name: InstructionOpcode = $code;

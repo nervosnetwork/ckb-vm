@@ -21,7 +21,9 @@ pub use ckb_vm_definitions::{
     registers::REGISTER_ABI_NAMES,
 };
 use core::fmt;
-pub use execute::{execute, execute_instruction};
+pub use execute::{
+    execute, execute_instruction, execute_with_thread, handle_invalid_op, Thread, ThreadFactory,
+};
 
 pub type RegisterIndex = usize;
 pub type SImmediate = i32;
@@ -442,7 +444,7 @@ pub fn instruction_length(i: Instruction) -> u8 {
 mod tests {
     use super::i::factory;
     use super::*;
-    use ckb_vm_definitions::{for_each_inst_fold, instructions::MAXIMUM_OPCODE};
+    use ckb_vm_definitions::{for_each_inst1, instructions::MAXIMUM_OPCODE};
     use std::cmp::{max, min};
     use std::mem::size_of;
 
@@ -477,7 +479,7 @@ mod tests {
     #[test]
     fn test_minimal_opcode_is_minimal() {
         let mut o = MINIMAL_OPCODE;
-        for_each_inst_fold!(update_min_opcode, o);
+        for_each_inst1!(update_min_opcode, o);
         assert_eq!(MINIMAL_OPCODE, o);
     }
 
@@ -490,7 +492,7 @@ mod tests {
     #[test]
     fn test_maximal_opcode_is_maximal() {
         let mut o = MAXIMUM_OPCODE;
-        for_each_inst_fold!(update_max_opcode, o);
+        for_each_inst1!(update_max_opcode, o);
         assert_eq!(MAXIMUM_OPCODE, o);
     }
 

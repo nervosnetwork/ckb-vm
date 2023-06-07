@@ -2,7 +2,8 @@ use super::{
     super::{
         decoder::build_decoder,
         instructions::{
-            execute, instruction_length, is_basic_block_end_instruction, Instruction, Register,
+            execute_with_thread, extract_opcode, handle_invalid_op, instruction_length,
+            is_basic_block_end_instruction, Instruction, Register, Thread, ThreadFactory,
         },
         Error,
     },
@@ -19,12 +20,24 @@ const TRACE_ITEM_LENGTH: usize = 16;
 // Shifts to truncate a value so 2 traces has the minimal chance of sharing code.
 const TRACE_ADDRESS_SHIFTS: usize = 2;
 
-#[derive(Default)]
-struct Trace {
+struct Trace<Inner: Machine> {
     address: u64,
     length: usize,
     instruction_count: u8,
     instructions: [Instruction; TRACE_ITEM_LENGTH],
+    threads: [Thread<Inner>; TRACE_ITEM_LENGTH],
+}
+
+impl<Inner: Machine> Default for Trace<Inner> {
+    fn default() -> Self {
+        Trace {
+            address: 0,
+            length: 0,
+            instruction_count: 0,
+            instructions: [0; TRACE_ITEM_LENGTH],
+            threads: [handle_invalid_op::<Inner>; TRACE_ITEM_LENGTH],
+        }
+    }
 }
 
 #[inline(always)]
@@ -32,10 +45,11 @@ fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
-pub struct TraceMachine<Inner> {
+pub struct TraceMachine<Inner: SupportMachine> {
     pub machine: DefaultMachine<Inner>,
 
-    traces: Vec<Trace>,
+    factory: ThreadFactory<DefaultMachine<Inner>>,
+    traces: Vec<Trace<DefaultMachine<Inner>>>,
 }
 
 impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
@@ -93,6 +107,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
     pub fn new(machine: DefaultMachine<Inner>) -> Self {
         Self {
             machine,
+            factory: ThreadFactory::create(),
             traces: vec![],
         }
     }
@@ -126,6 +141,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
                     let end_instruction = is_basic_block_end_instruction(instruction);
                     current_pc += u64::from(instruction_length(instruction));
                     self.traces[slot].instructions[i] = instruction;
+                    self.traces[slot].threads[i] = self.factory[extract_opcode(instruction)];
                     i += 1;
                     if end_instruction {
                         break;
@@ -136,10 +152,14 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
                 self.traces[slot].instruction_count = i as u8;
             }
             for i in 0..self.traces[slot].instruction_count {
-                let i = self.traces[slot].instructions[i as usize];
-                let cycles = self.machine.instruction_cycle_func()(i);
+                let inst = self.traces[slot].instructions[i as usize];
+                let cycles = self.machine.instruction_cycle_func()(inst);
                 self.machine.add_cycles(cycles)?;
-                execute(i, self)?;
+                execute_with_thread(
+                    inst,
+                    &mut self.machine,
+                    &self.traces[slot].threads[i as usize],
+                )?;
             }
         }
         Ok(self.machine.exit_code())
