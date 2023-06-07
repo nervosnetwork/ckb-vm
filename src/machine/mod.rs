@@ -721,3 +721,15 @@ impl Pause {
         self.s.store(0, Ordering::SeqCst);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicU8;
+
+    #[test]
+    fn test_atomicu8() {
+        // Assert AtomicU8 type has the same in-memory representation as u8.
+        // This ensures that Pause::get_raw_ptr() works properly.
+        assert_eq!(std::mem::size_of::<AtomicU8>(), 1);
+    }
+}
