@@ -4,6 +4,8 @@ pub mod elf_adaptor;
 pub mod trace;
 
 use std::fmt::{self, Display};
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 
 use bytes::Bytes;
 use scroll::Pread;
@@ -422,6 +424,7 @@ pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64 + Send + Sync;
 
 pub struct DefaultMachine<Inner> {
     inner: Inner,
+    pause: Pause,
 
     // We have run benchmarks on secp256k1 verification, the performance
     // cost of the Box wrapper here is neglectable, hence we are sticking
@@ -589,6 +592,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         self.inner
     }
 
+    pub fn pause(&self) -> Pause {
+        self.pause.clone()
+    }
+
     pub fn exit_code(&self) -> i8 {
         self.exit_code
     }
@@ -612,6 +619,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.set_running(true);
         while self.running() {
+            if self.pause.has_interrupted() {
+                self.pause.free();
+                return Err(Error::Pause);
+            }
             if self.reset_signal() {
                 decoder.reset_instructions_cache();
             }
@@ -670,10 +681,52 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     pub fn build(self) -> DefaultMachine<Inner> {
         DefaultMachine {
             inner: self.inner,
+            pause: Pause::new(),
             instruction_cycle_func: self.instruction_cycle_func,
             debugger: self.debugger,
             syscalls: self.syscalls,
             exit_code: 0,
         }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct Pause {
+    s: Arc<AtomicU8>,
+}
+
+impl Pause {
+    pub fn new() -> Self {
+        Self {
+            s: Arc::new(AtomicU8::new(0)),
+        }
+    }
+
+    pub fn interrupt(&self) {
+        self.s.store(1, Ordering::SeqCst);
+    }
+
+    pub fn has_interrupted(&self) -> bool {
+        self.s.load(Ordering::SeqCst) != 0
+    }
+
+    pub fn get_raw_ptr(&self) -> *mut u8 {
+        &*self.s as *const _ as *mut u8
+    }
+
+    pub fn free(&mut self) {
+        self.s.store(0, Ordering::SeqCst);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicU8;
+
+    #[test]
+    fn test_atomicu8() {
+        // Assert AtomicU8 type has the same in-memory representation as u8.
+        // This ensures that Pause::get_raw_ptr() works properly.
+        assert_eq!(std::mem::size_of::<AtomicU8>(), 1);
     }
 }

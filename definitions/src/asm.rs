@@ -17,6 +17,7 @@ pub const RET_CYCLES_OVERFLOW: u8 = 6;
 pub const RET_OUT_OF_BOUND: u8 = 7;
 pub const RET_INVALID_PERMISSION: u8 = 8;
 pub const RET_SLOWPATH: u8 = 9;
+pub const RET_PAUSE: u8 = 10;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {

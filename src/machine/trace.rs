@@ -109,6 +109,10 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
         // larger trace item length.
         self.traces.resize_with(TRACE_SIZE, Trace::default);
         while self.machine.running() {
+            if self.machine.pause.has_interrupted() {
+                self.machine.pause.free();
+                return Err(Error::Pause);
+            }
             if self.machine.reset_signal() {
                 decoder.reset_instructions_cache();
                 for i in self.traces.iter_mut() {
