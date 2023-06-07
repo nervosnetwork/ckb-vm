@@ -339,7 +339,7 @@ ckb_vm_x64_execute:
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREAD
   NEXT_INST
 .prepare_trace:
-  ldrb TEMP2w, [PAUSE]
+  ldarb TEMP2w, [PAUSE]
   cmp TEMP2, ZERO_VALUE
   bne .exit_pause
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
