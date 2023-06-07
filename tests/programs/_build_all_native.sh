@@ -40,6 +40,7 @@ riscv64-unknown-elf-as -o mulw.o mulw.S && riscv64-unknown-elf-ld -o mulw64 mulw
 # SKIP: op_rvc_slli_crash_32
 # SKIP: op_rvc_srai_crash_32
 # SKIP: op_rvc_srli_crash_32
+riscv64-unknown-elf-gcc -o pause_resume pause_resume.c
 # TODO: pcnt
 riscv64-unknown-elf-as -o read_at_boundary.o read_at_boundary.S && riscv64-unknown-elf-ld -o read_at_boundary64 read_at_boundary.o && rm read_at_boundary.o
 riscv64-unknown-elf-as -o read_memory.o read_memory.S && riscv64-unknown-elf-ld -o read_memory read_memory.o && rm read_memory.o
