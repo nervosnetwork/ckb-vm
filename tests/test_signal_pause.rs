@@ -30,7 +30,7 @@ pub fn test_asm_pause() {
         }
     });
     for _ in 0..10 {
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(std::time::Duration::from_millis(10));
         signal.interrupt()
     }
     jh.join().unwrap();
@@ -62,7 +62,7 @@ pub fn test_int_pause() {
         }
     });
     for _ in 0..10 {
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(std::time::Duration::from_millis(10));
         signal.interrupt()
     }
     jh.join().unwrap();
