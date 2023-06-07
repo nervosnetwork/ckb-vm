@@ -515,4 +515,24 @@ mod tests {
             }
         }
     }
+
+    macro_rules! test_opcode_with_last {
+        ($name:ident, $real_name:ident, $code:expr, $last:ident) => {
+            assert_eq!(
+                $last + 1,
+                $code,
+                "Opcode {} ({}) does not follow last opcode!",
+                stringify!($real_name),
+                $code
+            );
+            $last = $code;
+        };
+    }
+
+    #[test]
+    fn test_opcodes_are_defined_seqentially() {
+        let mut last = MINIMAL_OPCODE - 1;
+        for_each_inst1!(test_opcode_with_last, last);
+        assert_eq!(last, MAXIMUM_OPCODE);
+    }
 }
