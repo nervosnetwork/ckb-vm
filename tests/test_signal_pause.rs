@@ -7,12 +7,12 @@ pub mod machine_build;
 #[test]
 pub fn test_asm_pause() {
     let expect_cycles = {
-        let mut machine = machine_build::asm_v2_imacb("tests/programs/fib35");
+        let mut machine = machine_build::asm_v2_imacb("tests/programs/pause_resume");
         machine.run().unwrap();
         machine.machine.cycles()
     };
 
-    let mut machine = machine_build::asm_v2_imacb("tests/programs/fib35");
+    let mut machine = machine_build::asm_v2_imacb("tests/programs/pause_resume");
     let branch_pause_cnt = Arc::new(AtomicU32::new(0));
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
 
@@ -30,7 +30,7 @@ pub fn test_asm_pause() {
         }
     });
     for _ in 0..10 {
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::thread::sleep(std::time::Duration::from_millis(100));
         signal.interrupt()
     }
     jh.join().unwrap();
@@ -40,12 +40,12 @@ pub fn test_asm_pause() {
 #[test]
 pub fn test_int_pause() {
     let expect_cycles = {
-        let mut machine = machine_build::int_v2_imacb("tests/programs/fib30");
+        let mut machine = machine_build::int_v2_imacb("tests/programs/pause_resume");
         machine.run().unwrap();
         machine.machine.cycles()
     };
 
-    let mut machine = machine_build::int_v2_imacb("tests/programs/fib30");
+    let mut machine = machine_build::int_v2_imacb("tests/programs/pause_resume");
     let branch_pause_cnt = Arc::new(AtomicU32::new(0));
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
     let signal = machine.machine.pause();
@@ -62,7 +62,7 @@ pub fn test_int_pause() {
         }
     });
     for _ in 0..10 {
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::thread::sleep(std::time::Duration::from_millis(100));
         signal.interrupt()
     }
     jh.join().unwrap();
