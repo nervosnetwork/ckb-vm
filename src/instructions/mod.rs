@@ -15,7 +15,8 @@ pub use self::register::Register;
 use super::Error;
 pub use ckb_vm_definitions::{
     instructions::{
-        self as insts, instruction_opcode_name, Instruction, InstructionOpcode, MINIMAL_OPCODE,
+        self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
+        MAXIMUM_BASIC_BLOCK_END_OPCODE, MINIMAL_BASIC_BLOCK_END_OPCODE, MINIMAL_OPCODE,
     },
     registers::REGISTER_ABI_NAMES,
 };
@@ -410,23 +411,9 @@ pub fn is_slowpath_instruction(i: Instruction) -> bool {
 }
 
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
-    matches!(
-        extract_opcode(i),
-        insts::OP_AUIPC
-            | insts::OP_JALR_VERSION0
-            | insts::OP_JALR_VERSION1
-            | insts::OP_BEQ
-            | insts::OP_BNE
-            | insts::OP_BLT
-            | insts::OP_BGE
-            | insts::OP_BLTU
-            | insts::OP_BGEU
-            | insts::OP_ECALL
-            | insts::OP_EBREAK
-            | insts::OP_JAL
-            | insts::OP_FAR_JUMP_ABS
-            | insts::OP_FAR_JUMP_REL
-    ) | is_slowpath_instruction(i)
+    let opcode = extract_opcode(i);
+    (MINIMAL_BASIC_BLOCK_END_OPCODE..=MAXIMUM_BASIC_BLOCK_END_OPCODE).contains(&opcode)
+        || is_slowpath_instruction(i)
 }
 
 #[inline(always)]
@@ -505,5 +492,25 @@ mod tests {
         let mut o = MAXIMUM_OPCODE;
         for_each_inst_fold!(update_max_opcode, o);
         assert_eq!(MAXIMUM_OPCODE, o);
+    }
+
+    #[test]
+    fn test_basic_block_end_opcode_is_in_range() {
+        for o in MINIMAL_OPCODE..=MAXIMUM_OPCODE {
+            if is_basic_block_end_instruction(blank_instruction(o)) {
+                assert!(
+                    o >= MINIMAL_BASIC_BLOCK_END_OPCODE,
+                    "Opcode {} ({}) is smaller than minimal basic block end opcode!",
+                    o,
+                    instruction_opcode_name(o)
+                );
+                assert!(
+                    o <= MAXIMUM_BASIC_BLOCK_END_OPCODE,
+                    "Opcode {} ({}) is bigger than maximum basic block end opcode!",
+                    o,
+                    instruction_opcode_name(o)
+                );
+            }
+        }
     }
 }
