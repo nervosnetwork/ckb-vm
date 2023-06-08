@@ -190,6 +190,140 @@ fn check_memory_inited(
     Ok(())
 }
 
+// A newtype supporting fast store_byte / store_bytes without memory
+// permission checking
+struct FastMemory<'a>(&'a mut Box<AsmCoreMachine>);
+
+impl<'a> FastMemory<'a> {
+    fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
+        let aligned_start = round_page_down(addr);
+        if aligned_start < addr {
+            check_memory(self.0, aligned_start >> RISCV_PAGE_SHIFTS);
+        }
+        let end = addr.wrapping_add(size);
+        let aligned_end = round_page_down(end);
+        if aligned_end < end {
+            check_memory(self.0, aligned_end >> RISCV_PAGE_SHIFTS);
+        }
+        let page_indices = get_page_indices(addr, size)?;
+        for page in page_indices.0..=page_indices.1 {
+            let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
+            self.0.frames[frame as usize] = 1;
+            self.0.set_flag(page, FLAG_DIRTY)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> Memory for FastMemory<'a> {
+    type REG = u64;
+
+    fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
+        if value.is_empty() {
+            return Ok(());
+        }
+        self.prepare_memory(addr, value.len() as u64)?;
+        let slice = &mut self.0.memory[addr as usize..addr as usize + value.len()];
+        slice.copy_from_slice(value);
+        Ok(())
+    }
+
+    fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error> {
+        if size == 0 {
+            return Ok(());
+        }
+        self.prepare_memory(addr, size)?;
+        memset(
+            &mut self.0.memory[addr as usize..(addr + size) as usize],
+            value,
+        );
+        Ok(())
+    }
+
+    fn reset_memory(&mut self) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn init_pages(
+        &mut self,
+        _addr: u64,
+        _size: u64,
+        _flags: u8,
+        _source: Option<Bytes>,
+        _offset_from_addr: u64,
+    ) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn fetch_flag(&mut self, _page: u64) -> Result<u8, Error> {
+        unreachable!()
+    }
+
+    fn set_flag(&mut self, _page: u64, _flag: u8) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn clear_flag(&mut self, _page: u64, _flag: u8) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn memory_size(&self) -> usize {
+        unreachable!()
+    }
+
+    fn load_bytes(&mut self, _addr: u64, _size: u64) -> Result<Bytes, Error> {
+        unreachable!()
+    }
+
+    fn execute_load16(&mut self, _addr: u64) -> Result<u16, Error> {
+        unreachable!()
+    }
+
+    fn execute_load32(&mut self, _addr: u64) -> Result<u32, Error> {
+        unreachable!()
+    }
+
+    fn load8(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
+        unreachable!()
+    }
+
+    fn load16(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
+        unreachable!()
+    }
+
+    fn load32(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
+        unreachable!()
+    }
+
+    fn load64(&mut self, _addr: &Self::REG) -> Result<Self::REG, Error> {
+        unreachable!()
+    }
+
+    fn store8(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn store16(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn store32(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn store64(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
+        unreachable!()
+    }
+
+    fn lr(&self) -> &Self::REG {
+        unreachable!()
+    }
+
+    fn set_lr(&mut self, _value: &Self::REG) {
+        unreachable!()
+    }
+}
+
 impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
@@ -231,7 +365,7 @@ impl Memory for Box<AsmCoreMachine> {
             }
             current_addr += RISCV_PAGESIZE as u64;
         }
-        fill_page_data(self, addr, size, source, offset_from_addr)?;
+        fill_page_data(&mut FastMemory(self), addr, size, source, offset_from_addr)?;
         current_addr = addr;
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE as u64;
