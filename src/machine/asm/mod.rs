@@ -15,7 +15,7 @@ use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
 
 use crate::{
-    decoder::{build_decoder, Decoder},
+    decoder::{build_decoder, InstDecoder},
     instructions::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
@@ -614,14 +614,18 @@ impl AsmMachine {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
+        let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        self.run_with_decoder(&mut decoder)
+    }
+
+    pub fn run_with_decoder<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
-        let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {
-                decoder.reset_instructions_cache();
+                decoder.reset_instructions_cache()?;
             }
             let result = unsafe {
                 ckb_vm_x64_execute(
@@ -687,7 +691,7 @@ impl AsmMachine {
         Ok(self.machine.exit_code())
     }
 
-    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+    pub fn step<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<(), Error> {
         // Decode only one instruction into a trace
         let pc = *self.machine.pc();
         let slot = calculate_slot(pc);

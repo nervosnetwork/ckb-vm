@@ -11,7 +11,7 @@ use bytes::Bytes;
 use scroll::Pread;
 
 use super::debugger::Debugger;
-use super::decoder::{build_decoder, Decoder};
+use super::decoder::{build_decoder, InstDecoder};
 use super::instructions::{execute, Instruction, Register};
 use super::memory::{round_page_down, round_page_up, Memory};
 use super::syscalls::Syscalls;
@@ -616,10 +616,14 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
     // not be practical in production, but it serves as a baseline and
     // reference implementation
     pub fn run(&mut self) -> Result<i8, Error> {
+        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        self.run_with_decoder(&mut decoder)
+    }
+
+    pub fn run_with_decoder<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
         if self.isa() & ISA_MOP != 0 && self.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
-        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.set_running(true);
         while self.running() {
             if self.pause.has_interrupted() {
@@ -627,14 +631,14 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
                 return Err(Error::Pause);
             }
             if self.reset_signal() {
-                decoder.reset_instructions_cache();
+                decoder.reset_instructions_cache()?;
             }
-            self.step(&mut decoder)?;
+            self.step(decoder)?;
         }
         Ok(self.exit_code())
     }
 
-    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+    pub fn step<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<(), Error> {
         let instruction = {
             let pc = self.pc().to_u64();
             let memory = self.memory_mut();

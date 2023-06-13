@@ -1,4 +1,4 @@
-use ckb_vm::decoder::{build_decoder, Decoder};
+use ckb_vm::decoder::{build_decoder, Decoder, InstDecoder};
 use ckb_vm::instructions::{
     execute, extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
 };
