@@ -12,6 +12,11 @@ use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
 const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 const INSTRUCTION_CACHE_SIZE: usize = 4096;
 
+pub trait InstDecoder {
+    fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error>;
+    fn reset_instructions_cache(&mut self) -> Result<(), Error>;
+}
+
 pub struct Decoder {
     factories: Vec<InstructionFactory>,
     mop: bool,
@@ -847,8 +852,10 @@ impl Decoder {
             _ => Ok(head_instruction),
         }
     }
+}
 
-    pub fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+impl InstDecoder for Decoder {
+    fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         if self.mop {
             self.decode_mop(memory, pc)
         } else {
@@ -856,8 +863,9 @@ impl Decoder {
         }
     }
 
-    pub fn reset_instructions_cache(&mut self) {
+    fn reset_instructions_cache(&mut self) -> Result<(), Error> {
         self.instructions_cache = [(RISCV_MAX_MEMORY as u64, 0); INSTRUCTION_CACHE_SIZE];
+        Ok(())
     }
 }
 

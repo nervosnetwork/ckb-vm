@@ -1,6 +1,6 @@
 use super::{
     super::{
-        decoder::build_decoder,
+        decoder::{build_decoder, InstDecoder},
         instructions::{
             execute_with_thread, extract_opcode, handle_invalid_op, instruction_length,
             is_basic_block_end_instruction, Instruction, Register, Thread, ThreadFactory,
@@ -118,6 +118,10 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
 
     pub fn run(&mut self) -> Result<i8, Error> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
+        self.run_with_decoder(&mut decoder)
+    }
+
+    pub fn run_with_decoder<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
         // to tweak the code here if we choose to use a larger trace size or
@@ -129,7 +133,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
                 return Err(Error::Pause);
             }
             if self.machine.reset_signal() {
-                decoder.reset_instructions_cache();
+                decoder.reset_instructions_cache()?;
                 for i in self.traces.iter_mut() {
                     *i = Trace::default()
                 }
