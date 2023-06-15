@@ -83,6 +83,9 @@
 #define INST_PC %r8
 #define INST_ARGS %r9
 
+#define INST_PCd %r8d
+#define INST_ARGSd %r9d
+
 /*
  * Rules to meet when considering register allocations:
  * * RD and TEMP1 cannot be %rcx to set aside %cl for shifts
@@ -438,8 +441,10 @@ ckb_vm_x64_execute:
   andq $8191, %rax
   imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
   prefetcht2 CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax)
-  lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
+  mov CKB_VM_ASM_TRACE_OFFSET_COUNT(TRACE), INST_ARGSd
+  shl $3, INST_ARGS
+  addq INST_PC, INST_ARGS
   NEXT_INST
 .p2align 3
 .prepare_trace:
@@ -465,8 +470,10 @@ ckb_vm_x64_execute:
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   addq %rdx, PC_ADDRESS
-  lea CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS(TRACE), INST_ARGS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
+  mov CKB_VM_ASM_TRACE_OFFSET_COUNT(TRACE), INST_ARGSd
+  shl $3, INST_ARGS
+  addq INST_PC, INST_ARGS
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADDI:

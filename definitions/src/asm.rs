@@ -24,18 +24,29 @@ pub fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> 2) & (TRACE_SIZE - 1)
 }
 
-#[derive(Default)]
 #[repr(C)]
 pub struct Trace {
     pub address: u64,
     pub length: u32,
-    // For traces with fixed number of instructions, this is purely a padding
-    _unused_count: u32,
+    pub count: u32,
     pub cycles: u64,
-    pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code
     pub thread: [u64; TRACE_ITEM_LENGTH + 1],
+    pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
+}
+
+impl Default for Trace {
+    fn default() -> Self {
+        Trace {
+            address: 0,
+            length: 0,
+            count: (TRACE_ITEM_LENGTH + 1) as u32,
+            cycles: 0,
+            instructions: [0; TRACE_ITEM_LENGTH + 1],
+            thread: [0; TRACE_ITEM_LENGTH + 1],
+        }
+    }
 }
 
 // Although the memory here is an array, but when it is created,
