@@ -5,7 +5,7 @@ use ckb_vm_definitions::{
         RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
-    instructions::{instruction_opcode_name, Instruction, MAXIMUM_OPCODE, MINIMAL_OPCODE},
+    instructions::{instruction_opcode_name, MAXIMUM_OPCODE, MINIMAL_OPCODE},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
     MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
@@ -107,12 +107,12 @@ fn main() {
         (&t.length as *const u32 as usize) - t_address
     );
     println!(
-        "#define CKB_VM_ASM_TRACE_OFFSET_CYCLES {}",
-        (&t.cycles as *const u64 as usize) - t_address
+        "#define CKB_VM_ASM_TRACE_OFFSET_COUNT {}",
+        (&t.count as *const u32 as usize) - t_address
     );
     println!(
-        "#define CKB_VM_ASM_TRACE_OFFSET_INSTRUCTIONS {}",
-        (&t.instructions as *const Instruction as usize) - t_address
+        "#define CKB_VM_ASM_TRACE_OFFSET_CYCLES {}",
+        (&t.cycles as *const u64 as usize) - t_address
     );
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_THREAD {}",
