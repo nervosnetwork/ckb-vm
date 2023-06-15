@@ -28,7 +28,9 @@ pub fn calculate_slot(addr: u64) -> usize {
 #[repr(C)]
 pub struct Trace {
     pub address: u64,
-    pub length: u8,
+    pub length: u32,
+    // For traces with fixed number of instructions, this is purely a padding
+    _unused_count: u32,
     pub cycles: u64,
     pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
     // We are using direct threaded code here:

@@ -421,7 +421,7 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
   jne .exit_trace
-  movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
+  mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
   cmp $0, %rdx
   je .exit_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
@@ -455,7 +455,7 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
   jne .exit_trace
-  movzbl CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
+  mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
   cmp $0, %rdx
   je .exit_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax

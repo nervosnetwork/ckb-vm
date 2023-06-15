@@ -104,7 +104,7 @@ fn main() {
     );
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_LENGTH {}",
-        (&t.length as *const u8 as usize) - t_address
+        (&t.length as *const u32 as usize) - t_address
     );
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_CYCLES {}",
