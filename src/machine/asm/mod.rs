@@ -666,7 +666,7 @@ impl AsmMachine {
                         ) + (ckb_vm_asm_labels as *const u32 as u64)
                     };
                     trace.address = pc;
-                    trace.length = (current_pc - pc) as u8;
+                    trace.length = (current_pc - pc) as u32;
                     self.machine.inner_mut().traces[slot] = trace;
                 }
                 RET_ECALL => self.machine.ecall()?,
@@ -711,7 +711,7 @@ impl AsmMachine {
                 + (ckb_vm_asm_labels as *const u32 as u64)
         };
         trace.address = pc;
-        trace.length = len;
+        trace.length = len as u32;
         self.machine.inner_mut().traces[slot] = trace;
 
         let result = unsafe {

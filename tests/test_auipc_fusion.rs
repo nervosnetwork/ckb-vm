@@ -130,7 +130,7 @@ pub fn test_asm_auipc_fusion() {
             + (ckb_vm_asm_labels as *const u32 as u64)
     };
     trace.address = pc;
-    trace.length = (current_pc - pc) as u8;
+    trace.length = (current_pc - pc) as u32;
     machine.machine.inner_mut().traces[slot] = trace;
 
     let result = machine.run().expect("run");
