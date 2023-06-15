@@ -13,7 +13,7 @@ use ckb_vm::{
     SupportMachine, ISA_IMC,
 };
 #[cfg(has_asm)]
-use ckb_vm_definitions::asm::{calculate_slot, Trace, TRACE_ITEM_LENGTH};
+use ckb_vm_definitions::asm::{calculate_slot, FixedTrace, TRACE_ITEM_LENGTH};
 use ckb_vm_definitions::instructions as insts;
 use std::fs;
 
@@ -99,7 +99,7 @@ pub fn test_asm_auipc_fusion() {
 
     let pc = *machine.machine.pc();
     let slot = calculate_slot(pc);
-    let mut trace = Trace::default();
+    let mut trace = FixedTrace::default();
     let mut current_pc = pc;
     let mut i = 0;
     while i < TRACE_ITEM_LENGTH {

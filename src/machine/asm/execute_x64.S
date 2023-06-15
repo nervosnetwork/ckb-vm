@@ -325,12 +325,6 @@
   POSTCALL; \
 2:
 
-#define ADDRESS_TO_SLOT_ADDRESS(r) \
-  shr $5, r; \
-  andq $8191, r; \
-  imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, r; \
-  lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, r), r
-
 #define WRITE_RD_VALUE(v, temp_reg) \
   movq v, temp_reg; \
   movq temp_reg, REGISTER_ADDRESS(RD); \
@@ -419,7 +413,7 @@ ckb_vm_x64_execute:
   mov %eax, %ecx
   shr $2, %eax
   andq $8191, %rax
-  imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
+  imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
   lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
@@ -439,7 +433,7 @@ ckb_vm_x64_execute:
   mov %eax, %ecx
   shr $2, %eax
   andq $8191, %rax
-  imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
+  imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
   prefetcht2 CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax)
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
   mov CKB_VM_ASM_TRACE_OFFSET_COUNT(TRACE), INST_ARGSd
@@ -455,7 +449,7 @@ ckb_vm_x64_execute:
   mov %eax, %ecx
   shr $2, %eax
   andq $8191, %rax
-  imul $CKB_VM_ASM_TRACE_STRUCT_SIZE, %eax
+  imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
   lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx

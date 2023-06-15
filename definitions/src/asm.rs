@@ -25,7 +25,7 @@ pub fn calculate_slot(addr: u64) -> usize {
 }
 
 #[repr(C)]
-pub struct Trace {
+pub struct FixedTrace {
     pub address: u64,
     pub length: u32,
     pub count: u32,
@@ -36,9 +36,9 @@ pub struct Trace {
     pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
 }
 
-impl Default for Trace {
+impl Default for FixedTrace {
     fn default() -> Self {
-        Trace {
+        FixedTrace {
             address: 0,
             length: 0,
             count: (TRACE_ITEM_LENGTH + 1) as u32,
@@ -76,7 +76,7 @@ pub struct AsmCoreMachine {
 
     pub flags: [u8; RISCV_PAGES],
     pub frames: [u8; MEMORY_FRAMES],
-    pub traces: [Trace; TRACE_SIZE],
+    pub traces: [FixedTrace; TRACE_SIZE],
 
     pub memory: [u8; RISCV_MAX_MEMORY],
 }
@@ -122,7 +122,7 @@ impl AsmCoreMachine {
         machine.isa = isa;
         machine.flags = [0; RISCV_PAGES];
         for i in 0..TRACE_SIZE {
-            machine.traces[i] = Trace::default();
+            machine.traces[i] = Default::default();
         }
         machine.frames = [0; MEMORY_FRAMES];
 

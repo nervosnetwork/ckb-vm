@@ -1,8 +1,8 @@
 use ckb_vm_definitions::{
     asm::{
-        AsmCoreMachine, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
-        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
-        RET_SLOWPATH, TRACE_ITEM_LENGTH,
+        AsmCoreMachine, FixedTrace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
+        RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
+        RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
     instructions::{instruction_opcode_name, MAXIMUM_OPCODE, MINIMAL_OPCODE},
@@ -92,12 +92,12 @@ fn main() {
     println!();
 
     println!(
-        "#define CKB_VM_ASM_TRACE_STRUCT_SIZE {}",
-        size_of::<Trace>()
+        "#define CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE {}",
+        size_of::<FixedTrace>()
     );
 
-    let t: Trace = unsafe { zeroed() };
-    let t_address = &t as *const Trace as usize;
+    let t: FixedTrace = unsafe { zeroed() };
+    let t_address = &t as *const FixedTrace as usize;
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_ADDRESS {}",
         (&t.address as *const u64 as usize) - t_address
@@ -183,7 +183,7 @@ fn main() {
     );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES {}",
-        (&m.traces as *const Trace as usize) - m_address
+        (&m.traces as *const FixedTrace as usize) - m_address
     );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",

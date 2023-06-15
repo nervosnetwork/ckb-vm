@@ -3,9 +3,9 @@ use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
     asm::{
-        calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
-        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
-        RET_SLOWPATH, TRACE_ITEM_LENGTH, TRACE_SIZE,
+        calculate_slot, FixedTrace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
+        RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
+        RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
@@ -561,7 +561,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
         for i in 0..TRACE_SIZE {
-            self.traces[i] = Trace::default();
+            self.traces[i] = Default::default();
         }
         self.cycles = 0;
         self.max_cycles = max_cycles;
@@ -637,7 +637,7 @@ impl AsmMachine {
                 RET_DECODE_TRACE => {
                     let pc = *self.machine.pc();
                     let slot = calculate_slot(pc);
-                    let mut trace = Trace::default();
+                    let mut trace = FixedTrace::default();
                     let mut current_pc = pc;
                     let mut i = 0;
                     while i < TRACE_ITEM_LENGTH {
@@ -695,7 +695,7 @@ impl AsmMachine {
         // Decode only one instruction into a trace
         let pc = *self.machine.pc();
         let slot = calculate_slot(pc);
-        let mut trace = Trace::default();
+        let mut trace = FixedTrace::default();
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
         trace.instructions[0] = instruction;
@@ -734,7 +734,7 @@ impl AsmMachine {
             }
             _ => return Err(Error::Asm(result)),
         }
-        self.machine.inner_mut().traces[slot] = Trace::default();
+        self.machine.inner_mut().traces[slot] = FixedTrace::default();
         Ok(())
     }
 }
