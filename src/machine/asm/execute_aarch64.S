@@ -19,9 +19,7 @@
 #define TEMP5w w13
 #define TRACE x19
 #define INST_PC x20
-#define INST_PCw w20
 #define INST_ARGS x21
-#define INST_ARGSw w21
 
 #define RD x22
 #define RS1 x23
@@ -91,11 +89,11 @@
 
 #define NEXT_INST \
   ldr TEMP1, [INST_ARGS] SEP \
-  add INST_ARGS, INST_ARGS, 8 SEP \
+  add INST_ARGS, INST_ARGS, 16 SEP \
   ubfx RD, TEMP1, 8, 8 SEP \
   asr TEMP1, TEMP1, 32 SEP \
   ldr TEMP2, [INST_PC] SEP \
-  add INST_PC, INST_PC, 8 SEP \
+  add INST_PC, INST_PC, 16 SEP \
   br TEMP2
 
 #define DECODE_R \
@@ -338,9 +336,7 @@ ckb_vm_x64_execute:
   ldr TEMP1, =CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES
   prfm pldl3keep, [TEMP2, TEMP1]
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREAD
-  ldr INST_ARGSw, [TRACE, CKB_VM_ASM_TRACE_OFFSET_COUNT]
-  lsl INST_ARGS, INST_ARGS, 3
-  add INST_ARGS, INST_ARGS, INST_PC
+  add INST_ARGS, INST_PC, 8
   NEXT_INST
 .prepare_trace:
   ldarb TEMP2w, [PAUSE]
@@ -373,9 +369,7 @@ ckb_vm_x64_execute:
   add TEMP3, TEMP3, TEMP4
   str TEMP3, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREAD
-  ldr INST_ARGSw, [TRACE, CKB_VM_ASM_TRACE_OFFSET_COUNT]
-  lsl INST_ARGS, INST_ARGS, 3
-  add INST_ARGS, INST_ARGS, INST_PC
+  add INST_ARGS, INST_PC, 8
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_ADDI:
   DECODE_I
@@ -470,7 +464,7 @@ ckb_vm_x64_execute:
 .i_branch_success:
   ldr RS1, PC_ADDRESS
   /* Loading instruction flags */
-  ldr TEMP3, [INST_ARGS, -8]
+  ldr TEMP3, [INST_ARGS, -16]
   asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF
   lsl TEMP3, TEMP3, 1
@@ -553,7 +547,7 @@ ckb_vm_x64_execute:
   ldr RS1, PC_ADDRESS
   WRITE_RD(RS1)
   /* Loading instruction flags */
-  ldr TEMP3, [INST_ARGS, -8]
+  ldr TEMP3, [INST_ARGS, -16]
   asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF
   lsl TEMP3, TEMP3, 1
@@ -1761,7 +1755,7 @@ ckb_vm_x64_execute:
   DECODE_U
   ldr RS2, PC_ADDRESS
   /* Loading instruction flags */
-  ldr TEMP3, [INST_ARGS, -8]
+  ldr TEMP3, [INST_ARGS, -16]
   asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF
   lsl TEMP3, TEMP3, 1

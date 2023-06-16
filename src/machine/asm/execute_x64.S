@@ -83,9 +83,6 @@
 #define INST_PC %r8
 #define INST_ARGS %r9
 
-#define INST_PCd %r8d
-#define INST_ARGSd %r9d
-
 /*
  * Rules to meet when considering register allocations:
  * * RD and TEMP1 cannot be %rcx to set aside %cl for shifts
@@ -354,11 +351,11 @@
  */
 #define NEXT_INST \
   movq (INST_ARGS), %rcx; \
-  addq $8, INST_ARGS; \
+  addq $16, INST_ARGS; \
   movzbl %ch, RDd_RS2sd; \
   sar $32, %rcx; \
   movq (INST_PC), TEMP1; \
-  addq $8, INST_PC; \
+  addq $16, INST_PC; \
   jmp *TEMP1
 
 #define DECODE_R \
@@ -436,9 +433,8 @@ ckb_vm_x64_execute:
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
   prefetcht2 CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax)
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
-  mov CKB_VM_ASM_TRACE_OFFSET_COUNT(TRACE), INST_ARGSd
-  shl $3, INST_ARGS
-  addq INST_PC, INST_ARGS
+  mov INST_PC, INST_ARGS
+  add $8, INST_ARGS
   NEXT_INST
 .p2align 3
 .prepare_trace:
@@ -465,9 +461,8 @@ ckb_vm_x64_execute:
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   addq %rdx, PC_ADDRESS
   lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
-  mov CKB_VM_ASM_TRACE_OFFSET_COUNT(TRACE), INST_ARGSd
-  shl $3, INST_ARGS
-  addq INST_PC, INST_ARGS
+  mov INST_PC, INST_ARGS
+  add $8, INST_ARGS
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADDI:
@@ -572,7 +567,7 @@ ckb_vm_x64_execute:
 .i_branch_success:
   movq PC_ADDRESS, RS1
   /* Loading flag of current instruction */
-  movq -8(INST_ARGS), TEMP3
+  movq -16(INST_ARGS), TEMP3
   sar $24, TEMP3
   andq $0xF, TEMP3
   shl $1, TEMP3
@@ -697,7 +692,7 @@ ckb_vm_x64_execute:
   movq PC_ADDRESS, RS1
   WRITE_RD(RS1)
   /* Loading flag of current instruction */
-  movq -8(INST_ARGS), TEMP3
+  movq -16(INST_ARGS), TEMP3
   sar $24, TEMP3
   andq $0xF, TEMP3
   shl $1, TEMP3
@@ -2113,7 +2108,7 @@ ckb_vm_x64_execute:
   DECODE_U
   movq PC_ADDRESS, RS2r
   /* Loading flag of current instruction */
-  movq -8(INST_ARGS), TEMP3
+  movq -16(INST_ARGS), TEMP3
   sar $24, TEMP3
   andq $0xF, TEMP3
   shl $1, TEMP3

@@ -108,15 +108,14 @@ pub fn test_asm_auipc_fusion() {
             .unwrap();
         let end_instruction = is_basic_block_end_instruction(instruction);
         current_pc += u64::from(instruction_length(instruction));
-        trace.instructions[i] = instruction;
         trace.cycles += machine.machine.instruction_cycle_func()(instruction);
         let opcode = extract_opcode(instruction);
         // Here we are calculating the absolute address used in direct threading
         // from label offsets.
-        trace.thread[i] = unsafe {
+        trace.set_thread(i, instruction, unsafe {
             u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize))
                 + (ckb_vm_asm_labels as *const u32 as u64)
-        };
+        });
         i += 1;
         if end_instruction {
             break;
@@ -124,11 +123,10 @@ pub fn test_asm_auipc_fusion() {
     }
     assert_eq!(i, 6);
     assert_eq!(current_pc, 0x1008e);
-    trace.instructions[i] = blank_instruction(insts::OP_CUSTOM_TRACE_END);
-    trace.thread[i] = unsafe {
+    trace.set_thread(i, blank_instruction(insts::OP_CUSTOM_TRACE_END), unsafe {
         u64::from(*(ckb_vm_asm_labels as *const u32).offset(insts::OP_CUSTOM_TRACE_END as isize))
             + (ckb_vm_asm_labels as *const u32 as u64)
-    };
+    });
     trace.address = pc;
     trace.length = (current_pc - pc) as u32;
     machine.machine.inner_mut().traces[slot] = trace;

@@ -535,4 +535,12 @@ mod tests {
         for_each_inst1!(test_opcode_with_last, last);
         assert_eq!(last, MAXIMUM_OPCODE);
     }
+
+    #[test]
+    fn test_instruction_is_essentially_u64() {
+        assert_eq!(
+            std::mem::size_of::<Instruction>(),
+            std::mem::size_of::<u64>()
+        );
+    }
 }

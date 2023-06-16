@@ -28,12 +28,25 @@ pub fn calculate_slot(addr: u64) -> usize {
 pub struct FixedTrace {
     pub address: u64,
     pub length: u32,
-    pub count: u32,
     pub cycles: u64,
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code
-    pub thread: [u64; TRACE_ITEM_LENGTH + 1],
-    pub instructions: [Instruction; TRACE_ITEM_LENGTH + 1],
+    // each individual thread is made of 2 consecutive
+    // items here: the jumping offset, and the actual decoded
+    // instructions. Since we will use both of them as plain
+    // u64 values anyway in the assembly code, we cast the
+    // Instruction type to u64. A test case will ensure that
+    // Instruction type stays the same as u64 type.
+    pub thread: [u64; 2 * (TRACE_ITEM_LENGTH + 1)],
+}
+
+impl FixedTrace {
+    pub fn set_thread(&mut self, idx: usize, instruction: Instruction, thread: u64) {
+        if idx < TRACE_ITEM_LENGTH + 1 {
+            self.thread[idx * 2] = thread;
+            self.thread[idx * 2 + 1] = instruction;
+        }
+    }
 }
 
 impl Default for FixedTrace {
@@ -41,10 +54,8 @@ impl Default for FixedTrace {
         FixedTrace {
             address: 0,
             length: 0,
-            count: (TRACE_ITEM_LENGTH + 1) as u32,
             cycles: 0,
-            instructions: [0; TRACE_ITEM_LENGTH + 1],
-            thread: [0; TRACE_ITEM_LENGTH + 1],
+            thread: [0; 2 * (TRACE_ITEM_LENGTH + 1)],
         }
     }
 }
