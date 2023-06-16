@@ -25,6 +25,7 @@ pub fn calculate_slot(addr: u64) -> usize {
 }
 
 #[repr(C)]
+#[derive(Clone, Debug)]
 pub struct FixedTrace {
     pub address: u64,
     pub length: u32,
