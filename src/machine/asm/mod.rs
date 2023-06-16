@@ -644,27 +644,25 @@ impl AsmMachine {
                         let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
-                        trace.instructions[i] = instruction;
                         trace.cycles += self.machine.instruction_cycle_func()(instruction);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.
-                        trace.thread[i] = unsafe {
+                        trace.set_thread(i, instruction, unsafe {
                             u64::from(
                                 *(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize),
                             ) + (ckb_vm_asm_labels as *const u32 as u64)
-                        };
+                        });
                         i += 1;
                         if end_instruction {
                             break;
                         }
                     }
-                    trace.instructions[i] = blank_instruction(OP_CUSTOM_TRACE_END);
-                    trace.thread[i] = unsafe {
+                    trace.set_thread(i, blank_instruction(OP_CUSTOM_TRACE_END), unsafe {
                         u64::from(
                             *(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize),
                         ) + (ckb_vm_asm_labels as *const u32 as u64)
-                    };
+                    });
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u32;
                     self.machine.inner_mut().traces[slot] = trace;
@@ -698,18 +696,16 @@ impl AsmMachine {
         let mut trace = FixedTrace::default();
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
-        trace.instructions[0] = instruction;
         trace.cycles += self.machine.instruction_cycle_func()(instruction);
         let opcode = extract_opcode(instruction);
-        trace.thread[0] = unsafe {
+        trace.set_thread(0, instruction, unsafe {
             u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))
                 + (ckb_vm_asm_labels as *const u32 as u64)
-        };
-        trace.instructions[1] = blank_instruction(OP_CUSTOM_TRACE_END);
-        trace.thread[1] = unsafe {
+        });
+        trace.set_thread(1, blank_instruction(OP_CUSTOM_TRACE_END), unsafe {
             u64::from(*(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize))
                 + (ckb_vm_asm_labels as *const u32 as u64)
-        };
+        });
         trace.address = pc;
         trace.length = len as u32;
         self.machine.inner_mut().traces[slot] = trace;
