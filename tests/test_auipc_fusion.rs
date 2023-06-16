@@ -1,19 +1,13 @@
 use ckb_vm::decoder::{build_decoder, Decoder, InstDecoder};
 use ckb_vm::instructions::{
-    execute, extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
+    extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
 };
+#[cfg(has_asm)]
+use ckb_vm::machine::asm::{traces::SimpleFixedTraceDecoder, AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::VERSION1;
-#[cfg(has_asm)]
 use ckb_vm::{
-    instructions::{blank_instruction, is_basic_block_end_instruction},
-    machine::asm::{AsmCoreMachine, AsmMachine},
+    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory, ISA_IMC,
 };
-use ckb_vm::{
-    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
-    SupportMachine, ISA_IMC,
-};
-#[cfg(has_asm)]
-use ckb_vm_definitions::asm::{calculate_slot, FixedTrace, TRACE_ITEM_LENGTH};
 use ckb_vm_definitions::instructions as insts;
 use std::fs;
 
@@ -26,8 +20,10 @@ impl AuxDecoder {
     pub fn new(inner: Decoder) -> Self {
         Self { inner }
     }
+}
 
-    pub fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+impl InstDecoder for AuxDecoder {
+    fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         let head_inst = self.inner.decode(memory, pc)?;
         match extract_opcode(head_inst) {
             insts::OP_AUIPC => {
@@ -46,6 +42,10 @@ impl AuxDecoder {
 
         Ok(head_inst)
     }
+
+    fn reset_instructions_cache(&mut self) -> Result<(), Error> {
+        self.inner.reset_instructions_cache()
+    }
 }
 
 #[test]
@@ -62,25 +62,13 @@ pub fn test_rust_auipc_fusion() {
         .unwrap();
 
     let mut decoder = AuxDecoder::new(build_decoder::<u64>(machine.isa(), machine.version()));
-    machine.set_running(true);
-    while machine.running() {
-        let pc = *machine.pc();
-        let i = decoder.decode(machine.memory_mut(), pc).expect("decode");
-
-        execute(i, &mut machine).expect("execute");
-    }
-
-    let result = machine.exit_code();
+    let result = machine.run_with_decoder(&mut decoder).unwrap();
     assert_eq!(result, 0);
 }
 
 #[cfg(has_asm)]
 #[test]
 pub fn test_asm_auipc_fusion() {
-    extern "C" {
-        fn ckb_vm_asm_labels();
-    }
-
     let buffer = fs::read("tests/programs/auipc_no_sign_extend")
         .unwrap()
         .into();
@@ -92,45 +80,12 @@ pub fn test_asm_auipc_fusion() {
         .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
         .unwrap();
 
-    let mut decoder = AuxDecoder::new(build_decoder::<u64>(
+    let decoder = AuxDecoder::new(build_decoder::<u64>(
         machine.machine.isa(),
         machine.machine.version(),
     ));
+    let mut decoder = SimpleFixedTraceDecoder::new(decoder);
 
-    let pc = *machine.machine.pc();
-    let slot = calculate_slot(pc);
-    let mut trace = FixedTrace::default();
-    let mut current_pc = pc;
-    let mut i = 0;
-    while i < TRACE_ITEM_LENGTH {
-        let instruction = decoder
-            .decode(machine.machine.memory_mut(), current_pc)
-            .unwrap();
-        let end_instruction = is_basic_block_end_instruction(instruction);
-        current_pc += u64::from(instruction_length(instruction));
-        trace.cycles += machine.machine.instruction_cycle_func()(instruction);
-        let opcode = extract_opcode(instruction);
-        // Here we are calculating the absolute address used in direct threading
-        // from label offsets.
-        trace.set_thread(i, instruction, unsafe {
-            u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize))
-                + (ckb_vm_asm_labels as *const u32 as u64)
-        });
-        i += 1;
-        if end_instruction {
-            break;
-        }
-    }
-    assert_eq!(i, 6);
-    assert_eq!(current_pc, 0x1008e);
-    trace.set_thread(i, blank_instruction(insts::OP_CUSTOM_TRACE_END), unsafe {
-        u64::from(*(ckb_vm_asm_labels as *const u32).offset(insts::OP_CUSTOM_TRACE_END as isize))
-            + (ckb_vm_asm_labels as *const u32 as u64)
-    });
-    trace.address = pc;
-    trace.length = (current_pc - pc) as u32;
-    machine.machine.inner_mut().traces[slot] = trace;
-
-    let result = machine.run().expect("run");
+    let result = machine.run_with_decoder(&mut decoder).expect("run");
     assert_eq!(result, 0);
 }
