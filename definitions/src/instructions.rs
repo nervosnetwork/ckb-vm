@@ -283,7 +283,8 @@ macro_rules! __for_each_inst_inner {
             (JALR_VERSION1, 0xa9),
             (FAR_JUMP_REL, 0xaa),
             (FAR_JUMP_ABS, 0xab),
-            (CUSTOM_TRACE_END, 0xac)
+            (CUSTOM_ASM_TRACE_JUMP, 0xac),
+            (CUSTOM_TRACE_END, 0xad)
         );
     };
 }

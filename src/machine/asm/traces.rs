@@ -1,12 +1,15 @@
 use crate::{
     ckb_vm_definitions::{
         asm::{calculate_slot, FixedTrace, TRACE_ITEM_LENGTH, TRACE_SIZE},
-        instructions::{Instruction, OP_CUSTOM_TRACE_END},
+        instructions::{
+            Instruction, InstructionOpcode, OP_CUSTOM_ASM_TRACE_JUMP, OP_CUSTOM_TRACE_END,
+        },
     },
     decoder::InstDecoder,
     error::Error,
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
+        is_slowpath_instruction,
     },
     machine::{
         asm::{ckb_vm_asm_labels, AsmCoreMachine},
@@ -27,17 +30,24 @@ pub trait TraceDecoder: InstDecoder {
     fn reset(&mut self) -> Result<(), Error>;
 }
 
+pub fn label_from_fastpath_opcode(opcode: InstructionOpcode) -> u64 {
+    debug_assert!(!is_slowpath_instruction(blank_instruction(opcode)));
+    unsafe {
+        u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize))
+            + (ckb_vm_asm_labels as *const u32 as u64)
+    }
+}
+
 pub fn decode_fixed_trace<D: InstDecoder>(
     decoder: &mut D,
     machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
     maximum_insts: Option<usize>,
-) -> Result<(FixedTrace, bool), Error> {
+) -> Result<(FixedTrace, usize), Error> {
     let pc = *machine.pc();
 
     let mut trace = FixedTrace::default();
     let mut current_pc = pc;
     let mut i = 0;
-    let mut basic_block_end = false;
 
     let size = match maximum_insts {
         Some(items) => std::cmp::min(items, TRACE_ITEM_LENGTH),
@@ -51,23 +61,21 @@ pub fn decode_fixed_trace<D: InstDecoder>(
         let opcode = extract_opcode(instruction);
         // Here we are calculating the absolute address used in direct threading
         // from label offsets.
-        trace.set_thread(i, instruction, unsafe {
-            u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize))
-                + (ckb_vm_asm_labels as *const u32 as u64)
-        });
+        trace.set_thread(i, instruction, label_from_fastpath_opcode(opcode));
         i += 1;
         if end_instruction {
-            basic_block_end = true;
             break;
         }
     }
-    trace.set_thread(i, blank_instruction(OP_CUSTOM_TRACE_END), unsafe {
-        u64::from(*(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize))
-            + (ckb_vm_asm_labels as *const u32 as u64)
-    });
+    trace.set_thread(
+        i,
+        blank_instruction(OP_CUSTOM_TRACE_END),
+        label_from_fastpath_opcode(OP_CUSTOM_TRACE_END),
+    );
+    i += 1;
     trace.address = pc;
     trace.length = (current_pc - pc) as u32;
-    Ok((trace, basic_block_end))
+    Ok((trace, i))
 }
 
 /// A simple and naive trace decoder that only works with 8192 fixed traces.
@@ -183,3 +191,182 @@ impl<D: InstDecoder> InstDecoder for MemoizedFixedTraceDecoder<D> {
     }
 }
 
+/// This is similar to FixedTrace, except that it uses a special pattern
+/// named [flexible array member](https://en.wikipedia.org/wiki/Flexible_array_member).
+/// The individual fields in this data structure, albeit similar to FixedTrace,
+/// are marked as privates so one cannot directly instantiate a struct of
+/// DynamicTrace. Instead, all constructions of DynamicTrace are done via
+/// DynamicTraceBuilder, which builds `Box<DynamicTrace>`. This is due to the
+/// reasons that we might have a variable number of `threads` allocated at the
+/// end of this data structure. So on the surface, it might appear that a
+/// struct of DynamicTrace is 24 bytes. In reality it is bigger than this:
+/// a struct of DynamicTrace containing 30 opcodes could be
+/// 24 + 30 * 16 + 16 = 520 bytes long(the final 16 bytes are for OP_CUSTOM_TRACE_END).
+/// Using `Box<DynamicTrace>`, together with `DynamicTraceBuilder`, helps us to
+/// abstract this details away when we are constructing the types. The underlying
+/// assembly code cannot tell the difference between DynamicTrace and FixedTrace.
+#[repr(C)]
+pub struct DynamicTrace {
+    address: u64,
+    length: u32,
+    cycles: u64,
+}
+
+pub struct DynamicTraceBuilder {
+    start_address: u64,
+    length: u32,
+    cycles: u64,
+    insts: Vec<(Instruction, u64)>,
+}
+
+impl DynamicTraceBuilder {
+    pub fn new(start_address: u64) -> Self {
+        Self {
+            start_address,
+            length: 0,
+            cycles: 0,
+            insts: vec![],
+        }
+    }
+
+    pub fn next_pc(&self) -> u64 {
+        self.start_address + self.length as u64
+    }
+
+    pub fn push(&mut self, inst: Instruction, cycles: u64) {
+        let opcode = extract_opcode(inst);
+        // Here we are calculating the absolute address used in direct threading
+        // from label offsets.
+        let label = label_from_fastpath_opcode(opcode);
+        self.length += u32::from(instruction_length(inst));
+        self.cycles += cycles;
+        self.insts.push((inst, label));
+    }
+
+    pub fn build(mut self) -> Box<DynamicTrace> {
+        self.insts.push((
+            blank_instruction(OP_CUSTOM_TRACE_END),
+            label_from_fastpath_opcode(OP_CUSTOM_TRACE_END),
+        ));
+        let fixed_size = std::mem::size_of::<DynamicTrace>();
+        let total_size = fixed_size + self.insts.len() * 16;
+        let p = unsafe {
+            let layout = Layout::array::<u8>(total_size).unwrap();
+            alloc(layout)
+        };
+        let threads = unsafe { p.add(fixed_size) } as *mut u64;
+        for (i, (inst, label)) in self.insts.iter().enumerate() {
+            unsafe {
+                threads.offset(i as isize * 2).write(*label);
+                threads.offset(i as isize * 2 + 1).write(*inst);
+            }
+        }
+        let mut trace = unsafe { Box::from_raw(p as *mut DynamicTrace) };
+        trace.address = self.start_address;
+        trace.length = self.length;
+        trace.cycles = self.cycles;
+        trace
+    }
+}
+
+/// A memoized trace decoder that also generates DynamicTrace for longer
+/// sequential code.
+pub struct MemoizedDynamicTraceDecoder<D: InstDecoder> {
+    inner: SimpleFixedTraceDecoder<D>,
+    fixed_cache: HashMap<u64, FixedTrace>,
+    dynamic_cache: HashMap<u64, Box<DynamicTrace>>,
+}
+
+impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
+    pub fn new(decoder: D) -> Self {
+        Self {
+            inner: SimpleFixedTraceDecoder::new(decoder),
+            fixed_cache: HashMap::default(),
+            dynamic_cache: HashMap::default(),
+        }
+    }
+
+    fn find_or_build_dynamic_trace(
+        &mut self,
+        pc: u64,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+    ) -> Result<*const DynamicTrace, Error> {
+        if let Some(trace) = self.dynamic_cache.get(&pc) {
+            return Ok(trace.as_ref() as *const DynamicTrace);
+        }
+        let mut builder = DynamicTraceBuilder::new(pc);
+        loop {
+            let instruction = self.decode(machine.memory_mut(), builder.next_pc())?;
+            let end_instruction = is_basic_block_end_instruction(instruction);
+            let cycles = machine.instruction_cycle_func()(instruction);
+            builder.push(instruction, cycles);
+            if end_instruction {
+                break;
+            }
+        }
+        let dynamic_trace = builder.build();
+        let p = dynamic_trace.as_ref() as *const DynamicTrace;
+        self.dynamic_cache.insert(pc, dynamic_trace);
+        Ok(p)
+    }
+}
+
+impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
+    fn fixed_traces(&self) -> *const FixedTrace {
+        self.inner.fixed_traces()
+    }
+
+    fn fixed_trace_size(&self) -> u64 {
+        self.inner.fixed_trace_size()
+    }
+
+    fn prepare_traces(
+        &mut self,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+    ) -> Result<(), Error> {
+        let pc = *machine.pc();
+        let slot = calculate_slot(pc);
+        let trace = match self.fixed_cache.get(&pc) {
+            Some(trace) => trace.clone(),
+            None => {
+                let (mut trace, count) =
+                    decode_fixed_trace(&mut self.inner.decoder, machine, None)?;
+                if let Some((inst, _)) = trace.thread(count.wrapping_sub(2)) {
+                    if !is_basic_block_end_instruction(inst) {
+                        // Decoded trace is not yet a full basic block, there
+                        // are still sequential code left. We can build a dynamic
+                        // trace here covering the remaining of the sequential code
+                        // to speed up processing
+                        let dynamic_trace =
+                            self.find_or_build_dynamic_trace(pc + trace.length as u64, machine)?;
+                        trace.set_thread(
+                            count.wrapping_sub(1),
+                            dynamic_trace as u64,
+                            label_from_fastpath_opcode(OP_CUSTOM_ASM_TRACE_JUMP),
+                        );
+                    }
+                }
+                self.fixed_cache.insert(pc, trace.clone());
+                trace
+            }
+        };
+        self.inner.traces[slot] = trace;
+        Ok(())
+    }
+
+    fn reset(&mut self) -> Result<(), Error> {
+        self.fixed_cache.clear();
+        self.dynamic_cache.clear();
+        self.inner.reset()
+    }
+}
+
+impl<D: InstDecoder> InstDecoder for MemoizedDynamicTraceDecoder<D> {
+    fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+        self.inner.decode(memory, pc)
+    }
+
+    fn reset_instructions_cache(&mut self) -> Result<(), Error> {
+        self.inner.reset_instructions_cache()
+    }
+}

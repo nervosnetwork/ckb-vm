@@ -42,6 +42,14 @@ pub struct FixedTrace {
 }
 
 impl FixedTrace {
+    pub fn thread(&self, idx: usize) -> Option<(Instruction, u64)> {
+        if idx < TRACE_ITEM_LENGTH + 1 {
+            Some((self._threads[idx * 2 + 1], self._threads[idx * 2]))
+        } else {
+            None
+        }
+    }
+
     pub fn set_thread(&mut self, idx: usize, instruction: Instruction, thread: u64) {
         if idx < TRACE_ITEM_LENGTH + 1 {
             self._threads[idx * 2] = thread;

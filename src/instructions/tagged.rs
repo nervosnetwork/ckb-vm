@@ -93,6 +93,7 @@ impl TryFrom<Instruction> for TaggedInstruction {
             insts::OP_FENCEI => Rtype(i).into(),
             insts::OP_FENCE => Rtype(i).into(),
             insts::OP_CUSTOM_TRACE_END => Rtype(i).into(),
+            insts::OP_CUSTOM_ASM_TRACE_JUMP => Rtype(i).into(),
             insts::OP_SUB => Rtype(i).into(),
             insts::OP_SUBW => Rtype(i).into(),
             insts::OP_ADD => Rtype(i).into(),
