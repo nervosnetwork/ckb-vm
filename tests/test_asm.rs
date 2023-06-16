@@ -1,6 +1,8 @@
 #![cfg(has_asm)]
+use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::decoder::build_decoder;
+use ckb_vm::machine::asm::traces::{MemoizedDynamicTraceDecoder, MemoizedFixedTraceDecoder};
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1};
 use ckb_vm::memory::Memory;
@@ -434,5 +436,43 @@ fn test_zero_address() {
     machine.load_program(&buffer, &vec!["zero".into()]).unwrap();
     let result = machine.run();
     assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+fn test_memoized_secp256k1() {
+    let isa = ISA_IMC;
+    let version = VERSION1;
+    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let asm_core = AsmCoreMachine::new(isa, version, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    let args: Vec<Bytes> = vec!["secp256k1_bench",
+                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+                                      "foo",
+                                      "bar"].into_iter().map(|a| a.into()).collect();
+    machine.load_program(&buffer, &args).unwrap();
+    let mut decoder = MemoizedFixedTraceDecoder::new(build_decoder::<u64>(isa, version));
+    let result = machine.run_with_decoder(&mut decoder);
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+fn test_memoized_dynamic_secp256k1() {
+    let isa = ISA_IMC;
+    let version = VERSION1;
+    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let asm_core = AsmCoreMachine::new(isa, version, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    let args: Vec<Bytes> = vec!["secp256k1_bench",
+                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+                                      "foo",
+                                      "bar"].into_iter().map(|a| a.into()).collect();
+    machine.load_program(&buffer, &args).unwrap();
+    let mut decoder = MemoizedDynamicTraceDecoder::new(build_decoder::<u64>(isa, version));
+    let result = machine.run_with_decoder(&mut decoder);
     assert_eq!(result.unwrap(), 0);
 }

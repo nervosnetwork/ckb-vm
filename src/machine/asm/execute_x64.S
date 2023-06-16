@@ -439,6 +439,24 @@ ckb_vm_x64_execute:
   add $8, INST_ARGS
   NEXT_INST
 .p2align 3
+.CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:
+  /* Load current instruction as the full trace address */
+  movq -16(INST_ARGS), TRACE
+  /* Prefetch trace info for the consecutive block */
+  prefetcht2 CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE)
+  mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
+  addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
+  jc .exit_cycles_overflow
+  cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
+  ja .exit_max_cycles_exceeded
+  movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
+  addq %rdx, PC_ADDRESS
+  lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
+  mov INST_PC, INST_ARGS
+  add $8, INST_ARGS
+  NEXT_INST
+.p2align 3
 .prepare_trace:
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_PAUSE(INVOKE_DATA), %rax
   movzbl 0(%rax), %eax

@@ -1533,6 +1533,13 @@ pub fn handle_custom_trace_end<Mac: Machine>(
     handle_invalid_op(machine, inst)
 }
 
+pub fn handle_custom_asm_trace_jump<Mac: Machine>(
+    machine: &mut Mac,
+    inst: Instruction,
+) -> Result<(), Error> {
+    handle_invalid_op(machine, inst)
+}
+
 pub fn handle_invalid_op<Mac: Machine>(_machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     Err(Error::InvalidOp(extract_opcode(inst)))
 }
