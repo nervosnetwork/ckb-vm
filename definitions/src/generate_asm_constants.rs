@@ -1,8 +1,8 @@
 use ckb_vm_definitions::{
     asm::{
-        AsmCoreMachine, FixedTrace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
-        RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
+        AsmCoreMachine, FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE,
+        RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED,
+        RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
     instructions::{instruction_opcode_name, MAXIMUM_OPCODE, MINIMAL_OPCODE},
@@ -111,8 +111,24 @@ fn main() {
         (&t.cycles as *const u64 as usize) - t_address
     );
     println!(
-        "#define CKB_VM_ASM_TRACE_OFFSET_THREAD {}",
-        (&t.thread as *const u64 as usize) - t_address
+        "#define CKB_VM_ASM_TRACE_OFFSET_THREADS {}",
+        (&t._threads as *const u64 as usize) - t_address
+    );
+    println!();
+
+    let i: InvokeData = unsafe { zeroed() };
+    let i_address = &i as *const InvokeData as usize;
+    println!(
+        "#define CKB_VM_ASM_INVOKE_DATA_OFFSET_PAUSE {}",
+        (&i.pause as *const _ as usize) - i_address,
+    );
+    println!(
+        "#define CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES {}",
+        (&i.fixed_traces as *const _ as usize) - i_address,
+    );
+    println!(
+        "#define CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK {}",
+        (&i.fixed_trace_mask as *const _ as usize) - i_address,
     );
     println!();
 
@@ -176,10 +192,6 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY {}",
         memory_offset_address
-    );
-    println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES {}",
-        (&m.traces as *const FixedTrace as usize) - m_address
     );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",

@@ -74,7 +74,7 @@
 #define MACHINE %rsi
 #define TRACE %rbx
 #define MEMORY_SIZE %r13
-#define PAUSE %r14
+#define INVOKE_DATA %r14
 
 /*
  * INST_PC contains the current address of decoded Instruction in
@@ -401,7 +401,7 @@ ckb_vm_x64_execute:
   push %r12
   push %r13
   push %r14
-  mov ARG2, PAUSE
+  mov ARG2, INVOKE_DATA
   mov ARG1, MACHINE
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE(MACHINE), MEMORY_SIZE
 .p2align 3
@@ -409,9 +409,10 @@ ckb_vm_x64_execute:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
-  andq $8191, %rax
+  andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
-  lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
+  movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), TRACE
+  addq %rax, TRACE
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
   jne .exit_trace
@@ -429,24 +430,27 @@ ckb_vm_x64_execute:
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
-  andq $8191, %rax
+  andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
-  prefetcht2 CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax)
-  lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
+  movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), %rdx
+  prefetcht2 0(%rdx, %rax)
+  lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
   mov INST_PC, INST_ARGS
   add $8, INST_ARGS
   NEXT_INST
 .p2align 3
 .prepare_trace:
-  movzbl 0(PAUSE), %eax
+  movq CKB_VM_ASM_INVOKE_DATA_OFFSET_PAUSE(INVOKE_DATA), %rax
+  movzbl 0(%rax), %eax
   cmp $0, %rax
   jnz .exit_pause
   movq PC_ADDRESS, %rax
   mov %eax, %ecx
   shr $2, %eax
-  andq $8191, %rax
+  andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
-  lea CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_TRACES(MACHINE, %rax), TRACE
+  movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), TRACE
+  addq %rax, TRACE
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
   jne .exit_trace
@@ -460,7 +464,7 @@ ckb_vm_x64_execute:
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   addq %rdx, PC_ADDRESS
-  lea CKB_VM_ASM_TRACE_OFFSET_THREAD(TRACE), INST_PC
+  lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
   mov INST_PC, INST_ARGS
   add $8, INST_ARGS
   NEXT_INST

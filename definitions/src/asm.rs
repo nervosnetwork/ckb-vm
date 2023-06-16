@@ -37,14 +37,14 @@ pub struct FixedTrace {
     // u64 values anyway in the assembly code, we cast the
     // Instruction type to u64. A test case will ensure that
     // Instruction type stays the same as u64 type.
-    pub thread: [u64; 2 * (TRACE_ITEM_LENGTH + 1)],
+    pub _threads: [u64; 2 * (TRACE_ITEM_LENGTH + 1)],
 }
 
 impl FixedTrace {
     pub fn set_thread(&mut self, idx: usize, instruction: Instruction, thread: u64) {
         if idx < TRACE_ITEM_LENGTH + 1 {
-            self.thread[idx * 2] = thread;
-            self.thread[idx * 2 + 1] = instruction;
+            self._threads[idx * 2] = thread;
+            self._threads[idx * 2 + 1] = instruction;
         }
     }
 }
@@ -55,9 +55,16 @@ impl Default for FixedTrace {
             address: 0,
             length: 0,
             cycles: 0,
-            thread: [0; 2 * (TRACE_ITEM_LENGTH + 1)],
+            _threads: [0; 2 * (TRACE_ITEM_LENGTH + 1)],
         }
     }
+}
+
+#[repr(C)]
+pub struct InvokeData {
+    pub pause: *mut u8,
+    pub fixed_traces: *const FixedTrace,
+    pub fixed_trace_mask: u64,
 }
 
 // Although the memory here is an array, but when it is created,
@@ -87,7 +94,6 @@ pub struct AsmCoreMachine {
 
     pub flags: [u8; RISCV_PAGES],
     pub frames: [u8; MEMORY_FRAMES],
-    pub traces: [FixedTrace; TRACE_SIZE],
 
     pub memory: [u8; RISCV_MAX_MEMORY],
 }
@@ -132,9 +138,6 @@ impl AsmCoreMachine {
         machine.version = version;
         machine.isa = isa;
         machine.flags = [0; RISCV_PAGES];
-        for i in 0..TRACE_SIZE {
-            machine.traces[i] = Default::default();
-        }
         machine.frames = [0; MEMORY_FRAMES];
 
         machine.memory_size = memory_size as u64;

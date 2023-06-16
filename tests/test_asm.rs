@@ -385,7 +385,8 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
     assert_eq!(result.unwrap_err(), Error::MemOutOfBound);
 }
 
-pub fn test_asm_step() {
+#[test]
+fn test_asm_step() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::new(asm_core).build();

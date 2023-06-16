@@ -1,11 +1,13 @@
+pub mod traces;
+
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
     asm::{
-        calculate_slot, FixedTrace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
+        FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_PAUSE, RET_SLOWPATH,
     },
     instructions::OP_CUSTOM_TRACE_END,
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
@@ -16,11 +18,11 @@ use std::os::raw::c_uchar;
 
 use crate::{
     decoder::{build_decoder, InstDecoder},
-    instructions::{
-        blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction,
+    instructions::{blank_instruction, execute_instruction, extract_opcode, instruction_length},
+    machine::{
+        asm::traces::{SimpleFixedTraceDecoder, TraceDecoder},
+        VERSION0,
     },
-    machine::VERSION0,
     memory::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
@@ -560,9 +562,6 @@ impl SupportMachine for Box<AsmCoreMachine> {
     fn reset(&mut self, max_cycles: u64) -> Result<(), Error> {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
-        for i in 0..TRACE_SIZE {
-            self.traces[i] = Default::default();
-        }
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = 1;
@@ -590,7 +589,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
 }
 
 extern "C" {
-    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, s: *mut u8) -> c_uchar;
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *const InvokeData) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
     pub fn ckb_vm_asm_labels();
@@ -614,59 +613,31 @@ impl AsmMachine {
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {
-        let mut decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        let decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
+        let mut decoder = SimpleFixedTraceDecoder::new(decoder);
         self.run_with_decoder(&mut decoder)
     }
 
-    pub fn run_with_decoder<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
+    pub fn run_with_decoder<D: TraceDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
         self.machine.set_running(true);
         while self.machine.running() {
             if self.machine.reset_signal() {
-                decoder.reset_instructions_cache()?;
+                decoder.reset()?;
             }
+            debug_assert!(decoder.fixed_trace_size().is_power_of_two());
             let result = unsafe {
-                ckb_vm_x64_execute(
-                    &mut **self.machine.inner_mut(),
-                    self.machine.pause.get_raw_ptr(),
-                )
+                let data = InvokeData {
+                    pause: self.machine.pause.get_raw_ptr(),
+                    fixed_traces: decoder.fixed_traces(),
+                    fixed_trace_mask: decoder.fixed_trace_size().wrapping_sub(1),
+                };
+                ckb_vm_x64_execute(&mut **self.machine.inner_mut(), &data as *const _)
             };
             match result {
-                RET_DECODE_TRACE => {
-                    let pc = *self.machine.pc();
-                    let slot = calculate_slot(pc);
-                    let mut trace = FixedTrace::default();
-                    let mut current_pc = pc;
-                    let mut i = 0;
-                    while i < TRACE_ITEM_LENGTH {
-                        let instruction = decoder.decode(self.machine.memory_mut(), current_pc)?;
-                        let end_instruction = is_basic_block_end_instruction(instruction);
-                        current_pc += u64::from(instruction_length(instruction));
-                        trace.cycles += self.machine.instruction_cycle_func()(instruction);
-                        let opcode = extract_opcode(instruction);
-                        // Here we are calculating the absolute address used in direct threading
-                        // from label offsets.
-                        trace.set_thread(i, instruction, unsafe {
-                            u64::from(
-                                *(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize),
-                            ) + (ckb_vm_asm_labels as *const u32 as u64)
-                        });
-                        i += 1;
-                        if end_instruction {
-                            break;
-                        }
-                    }
-                    trace.set_thread(i, blank_instruction(OP_CUSTOM_TRACE_END), unsafe {
-                        u64::from(
-                            *(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize),
-                        ) + (ckb_vm_asm_labels as *const u32 as u64)
-                    });
-                    trace.address = pc;
-                    trace.length = (current_pc - pc) as u32;
-                    self.machine.inner_mut().traces[slot] = trace;
-                }
+                RET_DECODE_TRACE => decoder.prepare_traces(&mut self.machine)?,
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
                 RET_DYNAMIC_JUMP => (),
@@ -692,7 +663,6 @@ impl AsmMachine {
     pub fn step<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<(), Error> {
         // Decode only one instruction into a trace
         let pc = *self.machine.pc();
-        let slot = calculate_slot(pc);
         let mut trace = FixedTrace::default();
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
@@ -708,13 +678,14 @@ impl AsmMachine {
         });
         trace.address = pc;
         trace.length = len as u32;
-        self.machine.inner_mut().traces[slot] = trace;
 
         let result = unsafe {
-            ckb_vm_x64_execute(
-                &mut (**self.machine.inner_mut()),
-                self.machine.pause.get_raw_ptr(),
-            )
+            let data = InvokeData {
+                pause: self.machine.pause.get_raw_ptr(),
+                fixed_traces: &trace as *const FixedTrace,
+                fixed_trace_mask: 0,
+            };
+            ckb_vm_x64_execute(&mut **self.machine.inner_mut(), &data as *const _)
         };
         match result {
             RET_DECODE_TRACE => (),
@@ -730,14 +701,13 @@ impl AsmMachine {
             }
             _ => return Err(Error::Asm(result)),
         }
-        self.machine.inner_mut().traces[slot] = FixedTrace::default();
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use ckb_vm_definitions::asm::TRACE_ITEM_LENGTH;
 
     #[test]
     fn test_asm_constant_rules() {
