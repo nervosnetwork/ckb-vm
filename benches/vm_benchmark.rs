@@ -4,8 +4,9 @@ extern crate criterion;
 use bytes::Bytes;
 #[cfg(has_asm)]
 use ckb_vm::{
+    decoder::build_decoder,
     machine::{
-        asm::{AsmCoreMachine, AsmMachine},
+        asm::{traces::MemoizedFixedTraceDecoder, AsmCoreMachine, AsmMachine},
         DefaultMachineBuilder, VERSION0, VERSION2,
     },
     ISA_B, ISA_IMC, ISA_MOP,
@@ -67,9 +68,45 @@ fn mop_benchmark(c: &mut Criterion) {
     });
 }
 
+#[cfg(has_asm)]
+fn mop_memoized_benchmark(c: &mut Criterion) {
+    c.bench_function("interpret secp256k1_bench via assembly mop (memoized decoder)", |b| {
+        let isa = ISA_IMC | ISA_B | ISA_MOP;
+        let version = VERSION2;
+        let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+        let args: Vec<Bytes> = vec!["secp256k1_bench",
+                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+                                      "foo",
+                                      "bar"].into_iter().map(|a| a.into()).collect();
+        let mut decoder = MemoizedFixedTraceDecoder::new(build_decoder::<u64>(isa, version));
+        let asm_core = AsmCoreMachine::new(isa, version, u64::max_value());
+        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            .build();
+        let mut machine = AsmMachine::new(core);
+        machine.load_program(&buffer, &args).unwrap();
+        machine.run_with_decoder(&mut decoder).unwrap();
+
+        b.iter(|| {
+            let asm_core = AsmCoreMachine::new(isa, version, u64::max_value());
+            let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+                .build();
+            let mut machine = AsmMachine::new(core);
+            machine.load_program(&buffer, &args).unwrap();
+            machine.run_with_decoder(&mut decoder).unwrap()
+        });
+    });
+}
+
 #[cfg(not(has_asm))]
 criterion_group!(benches, interpret_benchmark);
 
 #[cfg(has_asm)]
-criterion_group!(benches, interpret_benchmark, asm_benchmark, mop_benchmark,);
+criterion_group!(
+    benches,
+    interpret_benchmark,
+    asm_benchmark,
+    mop_benchmark,
+    mop_memoized_benchmark
+);
 criterion_main!(benches);

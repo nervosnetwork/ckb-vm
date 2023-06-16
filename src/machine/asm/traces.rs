@@ -14,7 +14,8 @@ use crate::{
     },
     memory::Memory,
 };
-use std::alloc::{alloc_zeroed, Layout};
+use std::alloc::{alloc, alloc_zeroed, Layout};
+use std::collections::HashMap;
 
 pub trait TraceDecoder: InstDecoder {
     fn fixed_traces(&self) -> *const FixedTrace;
@@ -30,12 +31,13 @@ pub fn decode_fixed_trace<D: InstDecoder>(
     decoder: &mut D,
     machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
     maximum_insts: Option<usize>,
-) -> Result<FixedTrace, Error> {
+) -> Result<(FixedTrace, bool), Error> {
     let pc = *machine.pc();
 
     let mut trace = FixedTrace::default();
     let mut current_pc = pc;
     let mut i = 0;
+    let mut basic_block_end = false;
 
     let size = match maximum_insts {
         Some(items) => std::cmp::min(items, TRACE_ITEM_LENGTH),
@@ -55,6 +57,7 @@ pub fn decode_fixed_trace<D: InstDecoder>(
         });
         i += 1;
         if end_instruction {
+            basic_block_end = true;
             break;
         }
     }
@@ -64,7 +67,7 @@ pub fn decode_fixed_trace<D: InstDecoder>(
     });
     trace.address = pc;
     trace.length = (current_pc - pc) as u32;
-    Ok(trace)
+    Ok((trace, basic_block_end))
 }
 
 /// A simple and naive trace decoder that only works with 8192 fixed traces.
@@ -98,7 +101,7 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
         &mut self,
         machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
     ) -> Result<(), Error> {
-        let trace = decode_fixed_trace(&mut self.decoder, machine, None)?;
+        let (trace, _) = decode_fixed_trace(&mut self.decoder, machine, None)?;
         let slot = calculate_slot(*machine.pc());
         self.traces[slot] = trace;
         Ok(())
@@ -121,3 +124,62 @@ impl<D: InstDecoder> InstDecoder for SimpleFixedTraceDecoder<D> {
         self.decoder.reset_instructions_cache()
     }
 }
+
+/// A fixed trace decoder that memorizes all traces after the initial decoding
+pub struct MemoizedFixedTraceDecoder<D: InstDecoder> {
+    inner: SimpleFixedTraceDecoder<D>,
+    cache: HashMap<u64, FixedTrace>,
+}
+
+impl<D: InstDecoder> MemoizedFixedTraceDecoder<D> {
+    pub fn new(decoder: D) -> Self {
+        Self {
+            inner: SimpleFixedTraceDecoder::new(decoder),
+            cache: HashMap::default(),
+        }
+    }
+}
+
+impl<D: InstDecoder> TraceDecoder for MemoizedFixedTraceDecoder<D> {
+    fn fixed_traces(&self) -> *const FixedTrace {
+        self.inner.fixed_traces()
+    }
+
+    fn fixed_trace_size(&self) -> u64 {
+        self.inner.fixed_trace_size()
+    }
+
+    fn prepare_traces(
+        &mut self,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+    ) -> Result<(), Error> {
+        let pc = *machine.pc();
+        let slot = calculate_slot(pc);
+        let trace = match self.cache.get(&pc) {
+            Some(trace) => trace.clone(),
+            None => {
+                let (trace, _) = decode_fixed_trace(&mut self.inner.decoder, machine, None)?;
+                self.cache.insert(pc, trace.clone());
+                trace
+            }
+        };
+        self.inner.traces[slot] = trace;
+        Ok(())
+    }
+
+    fn reset(&mut self) -> Result<(), Error> {
+        self.cache.clear();
+        self.inner.reset()
+    }
+}
+
+impl<D: InstDecoder> InstDecoder for MemoizedFixedTraceDecoder<D> {
+    fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
+        self.inner.decode(memory, pc)
+    }
+
+    fn reset_instructions_cache(&mut self) -> Result<(), Error> {
+        self.inner.reset_instructions_cache()
+    }
+}
+

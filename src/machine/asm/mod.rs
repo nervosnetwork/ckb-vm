@@ -9,7 +9,6 @@ use ckb_vm_definitions::{
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
         RET_PAUSE, RET_SLOWPATH,
     },
-    instructions::OP_CUSTOM_TRACE_END,
     ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS,
 };
@@ -18,9 +17,9 @@ use std::os::raw::c_uchar;
 
 use crate::{
     decoder::{build_decoder, InstDecoder},
-    instructions::{blank_instruction, execute_instruction, extract_opcode, instruction_length},
+    instructions::execute_instruction,
     machine::{
-        asm::traces::{SimpleFixedTraceDecoder, TraceDecoder},
+        asm::traces::{decode_fixed_trace, SimpleFixedTraceDecoder, TraceDecoder},
         VERSION0,
     },
     memory::{
@@ -662,22 +661,7 @@ impl AsmMachine {
 
     pub fn step<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<(), Error> {
         // Decode only one instruction into a trace
-        let pc = *self.machine.pc();
-        let mut trace = FixedTrace::default();
-        let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-        let len = instruction_length(instruction) as u8;
-        trace.cycles += self.machine.instruction_cycle_func()(instruction);
-        let opcode = extract_opcode(instruction);
-        trace.set_thread(0, instruction, unsafe {
-            u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))
-                + (ckb_vm_asm_labels as *const u32 as u64)
-        });
-        trace.set_thread(1, blank_instruction(OP_CUSTOM_TRACE_END), unsafe {
-            u64::from(*(ckb_vm_asm_labels as *const u32).offset(OP_CUSTOM_TRACE_END as isize))
-                + (ckb_vm_asm_labels as *const u32 as u64)
-        });
-        trace.address = pc;
-        trace.length = len as u32;
+        let (trace, _) = decode_fixed_trace(decoder, &mut self.machine, Some(1))?;
 
         let result = unsafe {
             let data = InvokeData {
