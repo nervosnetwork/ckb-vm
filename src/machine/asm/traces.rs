@@ -382,3 +382,35 @@ impl<D: InstDecoder> InstDecoder for MemoizedDynamicTraceDecoder<D> {
         self.inner.reset_instructions_cache()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::{size_of, zeroed};
+
+    #[test]
+    fn test_dynamic_trace_has_the_same_layout_as_fixed_trace() {
+        let f: FixedTrace = unsafe { zeroed() };
+        let f_address = &f as *const FixedTrace as usize;
+
+        let d: DynamicTrace = unsafe { zeroed() };
+        let d_address = &d as *const DynamicTrace as usize;
+
+        assert_eq!(
+            (&f.address as *const _ as usize) - f_address,
+            (&d.address as *const _ as usize) - d_address,
+        );
+        assert_eq!(
+            (&f.length as *const _ as usize) - f_address,
+            (&d.length as *const _ as usize) - d_address,
+        );
+        assert_eq!(
+            (&f.cycles as *const _ as usize) - f_address,
+            (&d.cycles as *const _ as usize) - d_address,
+        );
+        assert_eq!(
+            (&f._threads as *const _ as usize) - f_address,
+            size_of::<DynamicTrace>(),
+        );
+    }
+}
