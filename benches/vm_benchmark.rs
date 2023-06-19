@@ -96,6 +96,7 @@ fn mop_memoized_benchmark(c: &mut Criterion) {
                 .build();
             let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, &args).unwrap();
+            decoder.clear_traces();
             machine.run_with_decoder(&mut decoder).unwrap()
         });
     });
@@ -126,6 +127,7 @@ fn mop_memoized_dynamic_benchmark(c: &mut Criterion) {
                 .build();
             let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, &args).unwrap();
+            decoder.clear_traces();
             machine.run_with_decoder(&mut decoder).unwrap()
         });
     });

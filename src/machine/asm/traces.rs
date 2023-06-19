@@ -94,6 +94,12 @@ impl<D: InstDecoder> SimpleFixedTraceDecoder<D> {
         };
         Self { decoder, traces }
     }
+
+    pub fn clear_traces(&mut self) {
+        for i in 0..TRACE_SIZE {
+            self.traces[i] = FixedTrace::default();
+        }
+    }
 }
 
 impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
@@ -116,9 +122,7 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        for i in 0..TRACE_SIZE {
-            self.traces[i] = FixedTrace::default();
-        }
+        self.clear_traces();
         self.decoder.reset_instructions_cache()
     }
 }
@@ -145,6 +149,10 @@ impl<D: InstDecoder> MemoizedFixedTraceDecoder<D> {
             inner: SimpleFixedTraceDecoder::new(decoder),
             cache: HashMap::default(),
         }
+    }
+
+    pub fn clear_traces(&mut self) {
+        self.inner.clear_traces();
     }
 }
 
@@ -284,6 +292,10 @@ impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
             fixed_cache: HashMap::default(),
             dynamic_cache: HashMap::default(),
         }
+    }
+
+    pub fn clear_traces(&mut self) {
+        self.inner.clear_traces();
     }
 
     fn find_or_build_dynamic_trace(
