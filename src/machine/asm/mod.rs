@@ -16,6 +16,7 @@ use std::os::raw::c_uchar;
 
 use crate::{
     decoder::{build_decoder, Decoder},
+    elf::ProgramMetadata,
     instructions::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
         is_basic_block_end_instruction,
@@ -423,6 +424,10 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.max_cycles
     }
 
+    fn set_max_cycles(&mut self, max_cycles: u64) {
+        self.max_cycles = max_cycles;
+    }
+
     fn reset(&mut self, max_cycles: u64) {
         self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         self.pc = 0;
@@ -479,6 +484,16 @@ impl AsmMachine {
 
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: &[Bytes],
+    ) -> Result<u64, Error> {
+        self.machine
+            .load_program_with_metadata(program, metadata, args)
     }
 
     pub fn run(&mut self) -> Result<i8, Error> {

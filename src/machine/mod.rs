@@ -1,6 +1,5 @@
 #[cfg(has_asm)]
 pub mod asm;
-pub mod elf_adaptor;
 pub mod trace;
 
 use std::fmt::{self, Display};
@@ -8,12 +7,12 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 use bytes::Bytes;
-use scroll::Pread;
 
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, Decoder};
+use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{round_page_down, round_page_up, Memory};
+use super::memory::Memory;
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
@@ -70,6 +69,7 @@ pub trait SupportMachine: CoreMachine {
     fn cycles(&self) -> u64;
     fn set_cycles(&mut self, cycles: u64);
     fn max_cycles(&self) -> u64;
+    fn set_max_cycles(&mut self, cycles: u64);
 
     fn running(&self) -> bool;
     fn set_running(&mut self, running: bool);
@@ -101,84 +101,8 @@ pub trait SupportMachine: CoreMachine {
 
     fn load_elf_inner(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
         let version = self.version();
-        // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
-        // * https://github.com/nervosnetwork/ckb-vm/issues/143
-        let (e_entry, program_headers): (u64, Vec<elf_adaptor::ProgramHeader>) =
-            if version < VERSION1 {
-                use goblin_v023::container::Ctx;
-                use goblin_v023::elf::{program_header::ProgramHeader, Header};
-                let header = program.pread::<Header>(0)?;
-                let container = header.container().map_err(|_e| Error::ElfBits)?;
-                let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
-                if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                    return Err(Error::ElfBits);
-                }
-                let ctx = Ctx::new(container, endianness);
-                let program_headers = ProgramHeader::parse(
-                    program,
-                    header.e_phoff as usize,
-                    header.e_phnum as usize,
-                    ctx,
-                )?
-                .iter()
-                .map(elf_adaptor::ProgramHeader::from_v0)
-                .collect();
-                (header.e_entry, program_headers)
-            } else {
-                use goblin_v040::container::Ctx;
-                use goblin_v040::elf::{program_header::ProgramHeader, Header};
-                let header = program.pread::<Header>(0)?;
-                let container = header.container().map_err(|_e| Error::ElfBits)?;
-                let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
-                if Self::REG::BITS != if container.is_big() { 64 } else { 32 } {
-                    return Err(Error::ElfBits);
-                }
-                let ctx = Ctx::new(container, endianness);
-                let program_headers = ProgramHeader::parse(
-                    program,
-                    header.e_phoff as usize,
-                    header.e_phnum as usize,
-                    ctx,
-                )?
-                .iter()
-                .map(elf_adaptor::ProgramHeader::from_v1)
-                .collect();
-                (header.e_entry, program_headers)
-            };
-        let mut bytes: u64 = 0;
-        for program_header in program_headers {
-            if program_header.p_type == elf_adaptor::PT_LOAD {
-                let aligned_start = round_page_down(program_header.p_vaddr);
-                let padding_start = program_header.p_vaddr.wrapping_sub(aligned_start);
-                let size = round_page_up(program_header.p_memsz.wrapping_add(padding_start));
-                let slice_start = program_header.p_offset;
-                let slice_end = program_header
-                    .p_offset
-                    .wrapping_add(program_header.p_filesz);
-                if slice_start > slice_end || slice_end > program.len() as u64 {
-                    return Err(Error::ElfSegmentAddrOrSizeError);
-                }
-                self.memory_mut().init_pages(
-                    aligned_start,
-                    size,
-                    elf_adaptor::convert_flags(program_header.p_flags, version < VERSION1)?,
-                    Some(program.slice(slice_start as usize..slice_end as usize)),
-                    padding_start,
-                )?;
-                if version < VERSION1 {
-                    self.memory_mut()
-                        .store_byte(aligned_start, padding_start, 0)?;
-                }
-                bytes = bytes.checked_add(slice_end - slice_start).ok_or_else(|| {
-                    Error::Unexpected(String::from("The bytes count overflowed on loading elf"))
-                })?;
-            }
-        }
-        if update_pc {
-            self.update_pc(Self::REG::from_u64(e_entry));
-            self.commit_pc();
-        }
-        Ok(bytes)
+        let metadata = parse_elf::<Self::REG>(program, version)?;
+        self.load_binary(program, &metadata, update_pc)
     }
 
     fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
@@ -193,6 +117,56 @@ pub trait SupportMachine: CoreMachine {
         //     }
         // }
         self.load_elf_inner(program, update_pc)
+    }
+
+    fn load_binary_inner(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        update_pc: bool,
+    ) -> Result<u64, Error> {
+        let version = self.version();
+        let mut bytes: u64 = 0;
+        for action in &metadata.actions {
+            let LoadingAction {
+                addr,
+                size,
+                flags,
+                source,
+                offset_from_addr,
+            } = action;
+
+            self.memory_mut().init_pages(
+                *addr,
+                *size,
+                *flags,
+                Some(program.slice(source.start as usize..source.end as usize)),
+                *offset_from_addr,
+            )?;
+            if version < VERSION1 {
+                self.memory_mut().store_byte(*addr, *offset_from_addr, 0)?;
+            }
+            bytes = bytes
+                .checked_add(source.end - source.start)
+                .ok_or_else(|| {
+                    Error::Unexpected(String::from("The bytes count overflowed on loading elf"))
+                })?;
+        }
+        if update_pc {
+            self.update_pc(Self::REG::from_u64(metadata.entry));
+            self.commit_pc();
+        }
+        Ok(bytes)
+    }
+
+    fn load_binary(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        update_pc: bool,
+    ) -> Result<u64, Error> {
+        // Similar to load_elf, this provides a way to adjust the behavior of load_binary_inner
+        self.load_binary_inner(program, metadata, update_pc)
     }
 
     fn initialize_stack(
@@ -351,6 +325,10 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.max_cycles
     }
 
+    fn set_max_cycles(&mut self, max_cycles: u64) {
+        self.max_cycles = max_cycles;
+    }
+
     fn reset(&mut self, max_cycles: u64) {
         self.registers = Default::default();
         self.pc = Default::default();
@@ -490,6 +468,10 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
         self.inner.max_cycles()
     }
 
+    fn set_max_cycles(&mut self, max_cycles: u64) {
+        self.inner.set_max_cycles(max_cycles)
+    }
+
     fn reset(&mut self, max_cycles: u64) {
         self.inner_mut().reset(max_cycles);
     }
@@ -566,6 +548,32 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
 impl<Inner: SupportMachine> DefaultMachine<Inner> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         let elf_bytes = self.load_elf(program, true)?;
+        let stack_bytes = self.initialize(args)?;
+        let bytes = elf_bytes.checked_add(stack_bytes).ok_or_else(|| {
+            Error::Unexpected(String::from(
+                "The bytes count overflowed on loading program",
+            ))
+        })?;
+        Ok(bytes)
+    }
+
+    pub fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: &[Bytes],
+    ) -> Result<u64, Error> {
+        let elf_bytes = self.load_binary(program, metadata, true)?;
+        let stack_bytes = self.initialize(args)?;
+        let bytes = elf_bytes.checked_add(stack_bytes).ok_or_else(|| {
+            Error::Unexpected(String::from(
+                "The bytes count overflowed on loading program",
+            ))
+        })?;
+        Ok(bytes)
+    }
+
+    fn initialize(&mut self, args: &[Bytes]) -> Result<u64, Error> {
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
         }
@@ -580,12 +588,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         if self.inner.version() >= VERSION1 {
             debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
         }
-        let bytes = elf_bytes.checked_add(stack_bytes).ok_or_else(|| {
-            Error::Unexpected(String::from(
-                "The bytes count overflowed on loading program",
-            ))
-        })?;
-        Ok(bytes)
+        Ok(stack_bytes)
     }
 
     pub fn take_inner(self) -> Inner {
