@@ -5,11 +5,13 @@ pub mod bits;
 pub mod cost_model;
 pub mod debugger;
 pub mod decoder;
+pub mod elf;
 pub mod error;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
 pub mod snapshot;
+pub mod snapshot2;
 pub mod syscalls;
 
 pub use bytes;
