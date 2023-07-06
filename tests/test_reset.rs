@@ -11,7 +11,7 @@ use ckb_vm::{
 #[allow(dead_code)]
 mod machine_build;
 
-pub struct CustomSyscall {}
+pub struct CustomSyscall;
 
 impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
     fn initialize(&mut self, _: &mut Mac) -> Result<(), Error> {
@@ -50,7 +50,7 @@ fn test_reset_int() {
     );
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(Box::new(constant_cycles))
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(CustomSyscall)
         .build();
     machine.load_program(&code, &vec![]).unwrap();
     let result = machine.run();
@@ -73,7 +73,7 @@ fn test_reset_int_with_trace() {
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
             .instruction_cycle_func(Box::new(constant_cycles))
-            .syscall(Box::new(CustomSyscall {}))
+            .syscall(CustomSyscall)
             .build(),
     );
     machine.load_program(&code, &vec![]).unwrap();
@@ -93,7 +93,7 @@ fn test_reset_asm() {
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
-        .syscall(Box::new(CustomSyscall {}))
+        .syscall(CustomSyscall)
         .build();
     let mut machine = AsmMachine::new(core);
     machine.load_program(&code, &vec![]).unwrap();

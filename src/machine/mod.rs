@@ -8,6 +8,8 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 
+use crate::syscalls::BoxedSyscalls;
+
 use super::debugger::Debugger;
 use super::decoder::{build_decoder, InstDecoder};
 use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
@@ -403,7 +405,7 @@ impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
 
 pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64 + Send + Sync;
 
-pub struct DefaultMachine<Inner> {
+pub struct DefaultMachine<Inner, S = ()> {
     inner: Inner,
     pause: Pause,
 
@@ -413,11 +415,11 @@ pub struct DefaultMachine<Inner> {
     // we can change to static dispatch.
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
-    syscalls: Vec<Box<dyn Syscalls<Inner>>>,
+    syscalls: S,
     exit_code: i8,
 }
 
-impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
+impl<Inner: CoreMachine, S> CoreMachine for DefaultMachine<Inner, S> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -458,7 +460,7 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
+impl<Inner: SupportMachine, S: Syscalls<Inner>> SupportMachine for DefaultMachine<Inner, S> {
     fn cycles(&self) -> u64 {
         self.inner.cycles()
     }
@@ -497,7 +499,7 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Machine for DefaultMachine<Inner> {
+impl<Inner: SupportMachine, S: Syscalls<Inner>> Machine for DefaultMachine<Inner, S> {
     fn ecall(&mut self) -> Result<(), Error> {
         let code = self.registers()[A7].to_u64();
         match code {
@@ -508,14 +510,12 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<Inner> {
                 Ok(())
             }
             _ => {
-                for syscall in &mut self.syscalls {
-                    let processed = syscall.ecall(&mut self.inner)?;
-                    if processed {
-                        if self.cycles() > self.max_cycles() {
-                            return Err(Error::CyclesExceeded);
-                        }
-                        return Ok(());
+                let processed = self.syscalls.ecall(&mut self.inner)?;
+                if processed {
+                    if self.cycles() > self.max_cycles() {
+                        return Err(Error::CyclesExceeded);
                     }
+                    return Ok(());
                 }
                 Err(Error::InvalidEcall(code))
             }
@@ -533,7 +533,7 @@ impl<Inner: SupportMachine> Machine for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
+impl<Inner: CoreMachine, S> Display for DefaultMachine<Inner, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pc  : 0x{:16X}", self.pc().to_u64())?;
         for (i, name) in REGISTER_ABI_NAMES.iter().enumerate() {
@@ -548,7 +548,37 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> DefaultMachine<Inner> {
+impl<Inner, S> DefaultMachine<Inner, S> {
+    pub fn take_inner(self) -> Inner {
+        self.inner
+    }
+
+    pub fn pause(&self) -> Pause {
+        self.pause.clone()
+    }
+
+    pub fn exit_code(&self) -> i8 {
+        self.exit_code
+    }
+
+    pub fn instruction_cycle_func(&self) -> &InstructionCycleFunc {
+        &self.instruction_cycle_func
+    }
+
+    pub fn inner_mut(&mut self) -> &mut Inner {
+        &mut self.inner
+    }
+
+    pub fn syscalls(&self) -> &S {
+        &self.syscalls
+    }
+
+    pub fn syscalls_mut(&mut self) -> &mut S {
+        &mut self.syscalls
+    }
+}
+
+impl<Inner: SupportMachine, S: Syscalls<Inner>> DefaultMachine<Inner, S> {
     pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
         let elf_bytes = self.load_elf(program, true)?;
         let stack_bytes = self.initialize(args)?;
@@ -577,9 +607,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
     }
 
     fn initialize(&mut self, args: &[Bytes]) -> Result<u64, Error> {
-        for syscall in &mut self.syscalls {
-            syscall.initialize(&mut self.inner)?;
-        }
+        self.syscalls.initialize(&mut self.inner)?;
         if let Some(debugger) = &mut self.debugger {
             debugger.initialize(&mut self.inner)?;
         }
@@ -592,26 +620,6 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
             debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
         }
         Ok(stack_bytes)
-    }
-
-    pub fn take_inner(self) -> Inner {
-        self.inner
-    }
-
-    pub fn pause(&self) -> Pause {
-        self.pause.clone()
-    }
-
-    pub fn exit_code(&self) -> i8 {
-        self.exit_code
-    }
-
-    pub fn instruction_cycle_func(&self) -> &InstructionCycleFunc {
-        &self.instruction_cycle_func
-    }
-
-    pub fn inner_mut(&mut self) -> &mut Inner {
-        &mut self.inner
     }
 
     // This is the most naive way of running the VM, it only decodes each
@@ -653,23 +661,26 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
     }
 }
 
-pub struct DefaultMachineBuilder<Inner> {
+pub struct DefaultMachineBuilder<Inner, S = ()> {
     inner: Inner,
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
-    syscalls: Vec<Box<dyn Syscalls<Inner>>>,
+    syscalls: S,
 }
 
-impl<Inner> DefaultMachineBuilder<Inner> {
+// Use S = () by default. It can be replaced with syscall later.
+impl<Inner> DefaultMachineBuilder<Inner, ()> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
             instruction_cycle_func: Box::new(|_| 0),
             debugger: None,
-            syscalls: vec![],
+            syscalls: (),
         }
     }
+}
 
+impl<Inner, S> DefaultMachineBuilder<Inner, S> {
     pub fn instruction_cycle_func(
         mut self,
         instruction_cycle_func: Box<InstructionCycleFunc>,
@@ -678,17 +689,42 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         self
     }
 
-    pub fn syscall(mut self, syscall: Box<dyn Syscalls<Inner>>) -> Self {
-        self.syscalls.push(syscall);
-        self
-    }
-
     pub fn debugger(mut self, debugger: Box<dyn Debugger<Inner>>) -> Self {
         self.debugger = Some(debugger);
         self
     }
 
-    pub fn build(self) -> DefaultMachine<Inner> {
+    /// Set system call handler for the machine.
+    pub fn syscall<S1>(self, syscalls: S1) -> DefaultMachineBuilder<Inner, S1> {
+        DefaultMachineBuilder {
+            inner: self.inner,
+            instruction_cycle_func: self.instruction_cycle_func,
+            debugger: self.debugger,
+            syscalls,
+        }
+    }
+
+    /// Like syscall but the handler is boxed and type-erased.
+    pub fn syscall_boxed<S1>(
+        self,
+        syscall: S1,
+    ) -> DefaultMachineBuilder<Inner, BoxedSyscalls<Inner>>
+    where
+        Inner: SupportMachine,
+        S1: Syscalls<Inner> + Send + Sync + 'static,
+    {
+        self.syscall(Box::new(syscall) as BoxedSyscalls<Inner>)
+    }
+
+    /// Like syscall but have better type inference for closure parameter type.
+    pub fn syscall_cb<F>(self, syscalls: F) -> DefaultMachineBuilder<Inner, F>
+    where
+        F: FnMut(&mut Inner) -> Result<bool, Error>,
+    {
+        self.syscall(syscalls)
+    }
+
+    pub fn build(self) -> DefaultMachine<Inner, S> {
         DefaultMachine {
             inner: self.inner,
             pause: Pause::new(),

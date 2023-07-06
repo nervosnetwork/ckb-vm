@@ -9,7 +9,7 @@ use ckb_vm::{
     ISA_A, ISA_B, ISA_IMC, ISA_MOP,
 };
 
-pub struct SleepSyscall {}
+pub struct SleepSyscall;
 
 impl<Mac: SupportMachine> Syscalls<Mac> for SleepSyscall {
     fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
@@ -30,12 +30,12 @@ impl<Mac: SupportMachine> Syscalls<Mac> for SleepSyscall {
 }
 
 #[cfg(has_asm)]
-pub fn asm_v1_imcb(path: &str) -> AsmMachine {
+pub fn asm_v1_imcb(path: &str) -> AsmMachine<SleepSyscall> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
-        .syscall(Box::new(SleepSyscall {}))
+        .syscall(SleepSyscall)
         .build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -46,7 +46,7 @@ pub fn asm_v1_imcb(path: &str) -> AsmMachine {
 
 pub fn int_v1_imcb(
     path: &str,
-) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>> {
+) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, SleepSyscall> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_B,
@@ -56,7 +56,7 @@ pub fn int_v1_imcb(
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
             .instruction_cycle_func(Box::new(constant_cycles))
-            .syscall(Box::new(SleepSyscall {}))
+            .syscall(SleepSyscall)
             .build(),
     );
     machine
@@ -66,17 +66,17 @@ pub fn int_v1_imcb(
 }
 
 #[cfg(has_asm)]
-pub fn asm_v1_mop(path: &str, args: Vec<Bytes>) -> AsmMachine {
+pub fn asm_v1_mop(path: &str, args: Vec<Bytes>) -> AsmMachine<SleepSyscall> {
     asm_mop(path, args, VERSION1)
 }
 
 #[cfg(has_asm)]
-pub fn asm_mop(path: &str, args: Vec<Bytes>, version: u32) -> AsmMachine {
+pub fn asm_mop(path: &str, args: Vec<Bytes>, version: u32) -> AsmMachine<SleepSyscall> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, version, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
-        .syscall(Box::new(SleepSyscall {}))
+        .syscall(SleepSyscall)
         .build();
     let mut machine = AsmMachine::new(core);
     let mut argv = vec![Bytes::from("main")];
@@ -88,7 +88,7 @@ pub fn asm_mop(path: &str, args: Vec<Bytes>, version: u32) -> AsmMachine {
 pub fn int_v1_mop(
     path: &str,
     args: Vec<Bytes>,
-) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>> {
+) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, SleepSyscall> {
     int_mop(path, args, VERSION1)
 }
 
@@ -96,7 +96,7 @@ pub fn int_mop(
     path: &str,
     args: Vec<Bytes>,
     version: u32,
-) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>> {
+) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, SleepSyscall> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_B | ISA_MOP,
@@ -106,7 +106,7 @@ pub fn int_mop(
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
             .instruction_cycle_func(Box::new(constant_cycles))
-            .syscall(Box::new(SleepSyscall {}))
+            .syscall(SleepSyscall)
             .build(),
     );
     let mut argv = vec![Bytes::from("main")];
@@ -116,12 +116,12 @@ pub fn int_mop(
 }
 
 #[cfg(has_asm)]
-pub fn asm_v2_imacb(path: &str) -> AsmMachine {
+pub fn asm_v2_imacb(path: &str) -> AsmMachine<SleepSyscall> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::max_value());
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
-        .syscall(Box::new(SleepSyscall {}))
+        .syscall(SleepSyscall)
         .build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -132,7 +132,7 @@ pub fn asm_v2_imacb(path: &str) -> AsmMachine {
 
 pub fn int_v2_imacb(
     path: &str,
-) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>> {
+) -> TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, SleepSyscall> {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_A | ISA_B,
@@ -142,7 +142,7 @@ pub fn int_v2_imacb(
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
             .instruction_cycle_func(Box::new(constant_cycles))
-            .syscall(Box::new(SleepSyscall {}))
+            .syscall(SleepSyscall)
             .build(),
     );
     machine

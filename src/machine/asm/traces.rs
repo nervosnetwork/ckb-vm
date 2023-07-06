@@ -23,9 +23,9 @@ use std::collections::HashMap;
 pub trait TraceDecoder: InstDecoder {
     fn fixed_traces(&self) -> *const FixedTrace;
     fn fixed_trace_size(&self) -> u64;
-    fn prepare_traces(
+    fn prepare_traces<S>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, S>,
     ) -> Result<(), Error>;
     fn reset(&mut self) -> Result<(), Error>;
 }
@@ -38,9 +38,9 @@ pub fn label_from_fastpath_opcode(opcode: InstructionOpcode) -> u64 {
     }
 }
 
-pub fn decode_fixed_trace<D: InstDecoder>(
+pub fn decode_fixed_trace<D: InstDecoder, S>(
     decoder: &mut D,
-    machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+    machine: &mut DefaultMachine<Box<AsmCoreMachine>, S>,
     maximum_insts: Option<usize>,
 ) -> Result<(FixedTrace, usize), Error> {
     let pc = *machine.pc();
@@ -111,9 +111,9 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
         TRACE_SIZE as u64
     }
 
-    fn prepare_traces(
+    fn prepare_traces<S>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, S>,
     ) -> Result<(), Error> {
         let (trace, _) = decode_fixed_trace(&mut self.decoder, machine, None)?;
         let slot = calculate_slot(*machine.pc());
@@ -165,9 +165,9 @@ impl<D: InstDecoder> TraceDecoder for MemoizedFixedTraceDecoder<D> {
         self.inner.fixed_trace_size()
     }
 
-    fn prepare_traces(
+    fn prepare_traces<S>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, S>,
     ) -> Result<(), Error> {
         let pc = *machine.pc();
         let slot = calculate_slot(pc);
@@ -298,10 +298,10 @@ impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
         self.inner.clear_traces();
     }
 
-    fn find_or_build_dynamic_trace(
+    fn find_or_build_dynamic_trace<S>(
         &mut self,
         pc: u64,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, S>,
     ) -> Result<*const DynamicTrace, Error> {
         if let Some(trace) = self.dynamic_cache.get(&pc) {
             return Ok(trace.as_ref() as *const DynamicTrace);
@@ -332,9 +332,9 @@ impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
         self.inner.fixed_trace_size()
     }
 
-    fn prepare_traces(
+    fn prepare_traces<S>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, S>,
     ) -> Result<(), Error> {
         let pc = *machine.pc();
         let slot = calculate_slot(pc);

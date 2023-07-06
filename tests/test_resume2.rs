@@ -382,7 +382,7 @@ impl MachineTy {
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, 0);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
-                    .syscall(Box::new(InsertDataSyscall(context.clone())))
+                    .syscall(InsertDataSyscall(context.clone()))
                     .build();
                 Machine::Asm(AsmMachine::new(core1), context)
             }
@@ -396,7 +396,7 @@ impl MachineTy {
                         core_machine1,
                     )
                     .instruction_cycle_func(Box::new(constant_cycles))
-                    .syscall(Box::new(InsertDataSyscall(context.clone())))
+                    .syscall(InsertDataSyscall(context.clone()))
                     .build(),
                     context,
                 )
@@ -412,7 +412,7 @@ impl MachineTy {
                             DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
                         >::new(core_machine1)
                         .instruction_cycle_func(Box::new(constant_cycles))
-                        .syscall(Box::new(InsertDataSyscall(context.clone())))
+                        .syscall(InsertDataSyscall(context.clone()))
                         .build(),
                     ),
                     context,
@@ -423,13 +423,16 @@ impl MachineTy {
 }
 
 enum Machine {
-    Asm(AsmMachine, Arc<Mutex<Snapshot2Context<u64, TestSource>>>),
+    Asm(
+        AsmMachine<InsertDataSyscall>,
+        Arc<Mutex<Snapshot2Context<u64, TestSource>>>,
+    ),
     Interpreter(
-        DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
+        DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, InsertDataSyscall>,
         Arc<Mutex<Snapshot2Context<u64, TestSource>>>,
     ),
     InterpreterWithTrace(
-        TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
+        TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, InsertDataSyscall>,
         Arc<Mutex<Snapshot2Context<u64, TestSource>>>,
     ),
 }

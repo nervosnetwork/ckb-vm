@@ -1,3 +1,5 @@
+use crate::Syscalls;
+
 use super::{
     super::{
         decoder::{build_decoder, InstDecoder},
@@ -46,14 +48,14 @@ fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
-pub struct TraceMachine<Inner: SupportMachine> {
-    pub machine: DefaultMachine<Inner>,
+pub struct TraceMachine<Inner: SupportMachine, S: Syscalls<Inner> = ()> {
+    pub machine: DefaultMachine<Inner, S>,
 
-    factory: ThreadFactory<DefaultMachine<Inner>>,
-    traces: Vec<Trace<DefaultMachine<Inner>>>,
+    factory: ThreadFactory<DefaultMachine<Inner, S>>,
+    traces: Vec<Trace<DefaultMachine<Inner, S>>>,
 }
 
-impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
+impl<Inner: SupportMachine, S: Syscalls<Inner>> CoreMachine for TraceMachine<Inner, S> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -94,7 +96,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
+impl<Inner: SupportMachine, S: Syscalls<Inner>> Machine for TraceMachine<Inner, S> {
     fn ecall(&mut self) -> Result<(), Error> {
         self.machine.ecall()
     }
@@ -104,8 +106,8 @@ impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> TraceMachine<Inner> {
-    pub fn new(machine: DefaultMachine<Inner>) -> Self {
+impl<Inner: SupportMachine, S: Syscalls<Inner>> TraceMachine<Inner, S> {
+    pub fn new(machine: DefaultMachine<Inner, S>) -> Self {
         Self {
             machine,
             factory: ThreadFactory::create(),
