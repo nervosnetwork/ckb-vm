@@ -2,8 +2,8 @@
 extern crate derive_more;
 
 pub mod bits;
+pub mod context;
 pub mod cost_model;
-pub mod debugger;
 pub mod decoder;
 pub mod error;
 pub mod instructions;
@@ -16,11 +16,11 @@ pub use bytes;
 pub use ckb_vm_definitions;
 
 pub use crate::{
-    debugger::Debugger,
+    context::ExecutionContext,
     instructions::{Instruction, Register},
     machine::{
         trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
-        DefaultMachineBuilder, InstructionCycleFunc, Machine, SupportMachine,
+        DefaultMachineBuilder, Machine, SupportMachine,
     },
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,

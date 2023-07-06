@@ -7,7 +7,7 @@ use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1};
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::snapshot::{make_snapshot, resume, Snapshot};
-use ckb_vm::{DefaultMachineBuilder, Error, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, ExecutionContext, ISA_IMC};
 use std::fs::File;
 use std::io::Read;
 
@@ -208,7 +208,7 @@ impl MachineTy {
             MachineTy::Asm => {
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-                    .instruction_cycle_func(Box::new(constant_cycles))
+                    .context(ConstantCyclesCtx)
                     .build();
                 Machine::Asm(AsmMachine::new(core1))
             }
@@ -220,7 +220,7 @@ impl MachineTy {
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
                         core_machine1,
                     )
-                    .instruction_cycle_func(Box::new(constant_cycles))
+                    .context(ConstantCyclesCtx)
                     .build(),
                 )
             }
@@ -233,7 +233,7 @@ impl MachineTy {
                         DefaultMachineBuilder::<
                             DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
                         >::new(core_machine1)
-                        .instruction_cycle_func(Box::new(constant_cycles))
+                        .context(ConstantCyclesCtx)
                         .build(),
                     ),
                 )
@@ -242,10 +242,22 @@ impl MachineTy {
     }
 }
 
+struct ConstantCyclesCtx;
+
+impl<Mac: SupportMachine> ExecutionContext<Mac> for ConstantCyclesCtx {
+    fn instruction_cycles(&self, inst: ckb_vm::Instruction) -> u64 {
+        constant_cycles(inst)
+    }
+}
+
 enum Machine {
-    Asm(AsmMachine),
-    Interpreter(DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
-    InterpreterWithTrace(TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>),
+    Asm(AsmMachine<ConstantCyclesCtx>),
+    Interpreter(
+        DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, ConstantCyclesCtx>,
+    ),
+    InterpreterWithTrace(
+        TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, ConstantCyclesCtx>,
+    ),
 }
 
 impl Machine {

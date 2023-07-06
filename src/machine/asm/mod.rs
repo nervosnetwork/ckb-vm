@@ -25,8 +25,8 @@ use crate::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    CoreMachine, DefaultMachine, Error, ExecutionContext, Machine, Memory, SupportMachine,
+    MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -465,12 +465,12 @@ extern "C" {
     pub fn ckb_vm_asm_labels();
 }
 
-pub struct AsmMachine {
-    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+pub struct AsmMachine<Ctx = ()> {
+    pub machine: DefaultMachine<Box<AsmCoreMachine>, Ctx>,
 }
 
-impl AsmMachine {
-    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
+impl<Ctx: ExecutionContext<Box<AsmCoreMachine>>> AsmMachine<Ctx> {
+    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>, Ctx>) -> Self {
         Self { machine }
     }
 
@@ -510,7 +510,7 @@ impl AsmMachine {
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
                         trace.instructions[i] = instruction;
-                        trace.cycles += self.machine.instruction_cycle_func()(instruction);
+                        trace.cycles += self.machine.context().instruction_cycles(instruction);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.
@@ -564,7 +564,7 @@ impl AsmMachine {
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
         trace.instructions[0] = instruction;
-        trace.cycles += self.machine.instruction_cycle_func()(instruction);
+        trace.cycles += self.machine.context().instruction_cycles(instruction);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {
             u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))

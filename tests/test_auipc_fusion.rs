@@ -109,7 +109,8 @@ pub fn test_asm_auipc_fusion() {
         let end_instruction = is_basic_block_end_instruction(instruction);
         current_pc += u64::from(instruction_length(instruction));
         trace.instructions[i] = instruction;
-        trace.cycles += machine.machine.instruction_cycle_func()(instruction);
+        // Default cycles func always return zero.
+        trace.cycles += 0;
         let opcode = extract_opcode(instruction);
         // Here we are calculating the absolute address used in direct threading
         // from label offsets.

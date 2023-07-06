@@ -1,3 +1,5 @@
+use crate::ExecutionContext;
+
 use super::{
     super::{
         decoder::build_decoder,
@@ -32,13 +34,13 @@ fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
-pub struct TraceMachine<Inner> {
-    pub machine: DefaultMachine<Inner>,
+pub struct TraceMachine<Inner, Ctx> {
+    pub machine: DefaultMachine<Inner, Ctx>,
 
     traces: Vec<Trace>,
 }
 
-impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
+impl<Inner: SupportMachine, Ctx: ExecutionContext<Inner>> CoreMachine for TraceMachine<Inner, Ctx> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -79,7 +81,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
+impl<Inner: SupportMachine, S: ExecutionContext<Inner>> Machine for TraceMachine<Inner, S> {
     fn ecall(&mut self) -> Result<(), Error> {
         self.machine.ecall()
     }
@@ -89,8 +91,8 @@ impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> TraceMachine<Inner> {
-    pub fn new(machine: DefaultMachine<Inner>) -> Self {
+impl<Inner: SupportMachine, Ctx: ExecutionContext<Inner>> TraceMachine<Inner, Ctx> {
+    pub fn new(machine: DefaultMachine<Inner, Ctx>) -> Self {
         Self {
             machine,
             traces: vec![],
@@ -141,7 +143,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             }
             for i in 0..self.traces[slot].instruction_count {
                 let i = self.traces[slot].instructions[i as usize];
-                let cycles = self.machine.instruction_cycle_func()(i);
+                let cycles = self.machine.context().instruction_cycles(i);
                 self.machine.add_cycles(cycles)?;
                 execute(i, self)?;
             }
