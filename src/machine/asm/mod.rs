@@ -27,8 +27,8 @@ use crate::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    CoreMachine, DefaultMachine, Error, ExecutionContext, Machine, Memory, SupportMachine,
+    MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -599,12 +599,12 @@ extern "C" {
     pub fn ckb_vm_asm_labels();
 }
 
-pub struct AsmMachine {
-    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+pub struct AsmMachine<Ctx = ()> {
+    pub machine: DefaultMachine<Box<AsmCoreMachine>, Ctx>,
 }
 
-impl AsmMachine {
-    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
+impl<Ctx: ExecutionContext<Box<AsmCoreMachine>>> AsmMachine<Ctx> {
+    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>, Ctx>) -> Self {
         Self { machine }
     }
 

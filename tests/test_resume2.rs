@@ -11,7 +11,7 @@ use ckb_vm::machine::{
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, ExecutionContext, Register, ISA_IMC};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -343,11 +343,7 @@ impl DataSource<u64> for TestSource {
 
 struct InsertDataSyscall(Arc<Mutex<Snapshot2Context<u64, TestSource>>>);
 
-impl<Mac: SupportMachine> Syscalls<Mac> for InsertDataSyscall {
-    fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
-        Ok(())
-    }
-
+impl<Mac: SupportMachine> ExecutionContext<Mac> for InsertDataSyscall {
     fn ecall(&mut self, machine: &mut Mac) -> Result<bool, Error> {
         let code = &machine.registers()[A7];
         if code.to_i32() != 1111 {
@@ -366,6 +362,10 @@ impl<Mac: SupportMachine> Syscalls<Mac> for InsertDataSyscall {
         machine.set_register(A0, Mac::REG::from_u64(0));
         Ok(true)
     }
+
+    fn instruction_cycles(&self, inst: ckb_vm::Instruction) -> u64 {
+        constant_cycles(inst)
+    }
 }
 
 enum MachineTy {
@@ -381,8 +381,7 @@ impl MachineTy {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
                 let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, 0);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
-                    .instruction_cycle_func(Box::new(constant_cycles))
-                    .syscall(Box::new(InsertDataSyscall(context.clone())))
+                    .context(InsertDataSyscall(context.clone()))
                     .build();
                 Machine::Asm(AsmMachine::new(core1), context)
             }
@@ -395,8 +394,7 @@ impl MachineTy {
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
                         core_machine1,
                     )
-                    .instruction_cycle_func(Box::new(constant_cycles))
-                    .syscall(Box::new(InsertDataSyscall(context.clone())))
+                    .context(InsertDataSyscall(context.clone()))
                     .build(),
                     context,
                 )
@@ -411,8 +409,7 @@ impl MachineTy {
                         DefaultMachineBuilder::<
                             DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
                         >::new(core_machine1)
-                        .instruction_cycle_func(Box::new(constant_cycles))
-                        .syscall(Box::new(InsertDataSyscall(context.clone())))
+                        .context(InsertDataSyscall(context.clone()))
                         .build(),
                     ),
                     context,
@@ -423,13 +420,16 @@ impl MachineTy {
 }
 
 enum Machine {
-    Asm(AsmMachine, Arc<Mutex<Snapshot2Context<u64, TestSource>>>),
+    Asm(
+        AsmMachine<InsertDataSyscall>,
+        Arc<Mutex<Snapshot2Context<u64, TestSource>>>,
+    ),
     Interpreter(
-        DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
+        DefaultMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, InsertDataSyscall>,
         Arc<Mutex<Snapshot2Context<u64, TestSource>>>,
     ),
     InterpreterWithTrace(
-        TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>,
+        TraceMachine<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>, InsertDataSyscall>,
         Arc<Mutex<Snapshot2Context<u64, TestSource>>>,
     ),
 }

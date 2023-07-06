@@ -16,6 +16,7 @@ use crate::{
         CoreMachine, DefaultMachine,
     },
     memory::Memory,
+    ExecutionContext,
 };
 use std::alloc::{alloc, alloc_zeroed, Layout};
 use std::collections::HashMap;
@@ -23,9 +24,9 @@ use std::collections::HashMap;
 pub trait TraceDecoder: InstDecoder {
     fn fixed_traces(&self) -> *const FixedTrace;
     fn fixed_trace_size(&self) -> u64;
-    fn prepare_traces(
+    fn prepare_traces<Ctx: ExecutionContext<Box<AsmCoreMachine>>>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, Ctx>,
     ) -> Result<(), Error>;
     fn reset(&mut self) -> Result<(), Error>;
 }
@@ -38,9 +39,9 @@ pub fn label_from_fastpath_opcode(opcode: InstructionOpcode) -> u64 {
     }
 }
 
-pub fn decode_fixed_trace<D: InstDecoder>(
+pub fn decode_fixed_trace<D: InstDecoder, Ctx: ExecutionContext<Box<AsmCoreMachine>>>(
     decoder: &mut D,
-    machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+    machine: &mut DefaultMachine<Box<AsmCoreMachine>, Ctx>,
     maximum_insts: Option<usize>,
 ) -> Result<(FixedTrace, usize), Error> {
     let pc = *machine.pc();
@@ -57,7 +58,7 @@ pub fn decode_fixed_trace<D: InstDecoder>(
         let instruction = decoder.decode(machine.memory_mut(), current_pc)?;
         let end_instruction = is_basic_block_end_instruction(instruction);
         current_pc += u64::from(instruction_length(instruction));
-        trace.cycles += machine.instruction_cycle_func()(instruction);
+        trace.cycles += machine.context().instruction_cycles(instruction);
         let opcode = extract_opcode(instruction);
         // Here we are calculating the absolute address used in direct threading
         // from label offsets.
@@ -111,9 +112,9 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
         TRACE_SIZE as u64
     }
 
-    fn prepare_traces(
+    fn prepare_traces<Ctx: ExecutionContext<Box<AsmCoreMachine>>>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, Ctx>,
     ) -> Result<(), Error> {
         let (trace, _) = decode_fixed_trace(&mut self.decoder, machine, None)?;
         let slot = calculate_slot(*machine.pc());
@@ -165,9 +166,9 @@ impl<D: InstDecoder> TraceDecoder for MemoizedFixedTraceDecoder<D> {
         self.inner.fixed_trace_size()
     }
 
-    fn prepare_traces(
+    fn prepare_traces<Ctx: ExecutionContext<Box<AsmCoreMachine>>>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, Ctx>,
     ) -> Result<(), Error> {
         let pc = *machine.pc();
         let slot = calculate_slot(pc);
@@ -298,10 +299,10 @@ impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
         self.inner.clear_traces();
     }
 
-    fn find_or_build_dynamic_trace(
+    fn find_or_build_dynamic_trace<Ctx: ExecutionContext<Box<AsmCoreMachine>>>(
         &mut self,
         pc: u64,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, Ctx>,
     ) -> Result<*const DynamicTrace, Error> {
         if let Some(trace) = self.dynamic_cache.get(&pc) {
             return Ok(trace.as_ref() as *const DynamicTrace);
@@ -310,7 +311,7 @@ impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
         loop {
             let instruction = self.decode(machine.memory_mut(), builder.next_pc())?;
             let end_instruction = is_basic_block_end_instruction(instruction);
-            let cycles = machine.instruction_cycle_func()(instruction);
+            let cycles = machine.context().instruction_cycles(instruction);
             builder.push(instruction, cycles);
             if end_instruction {
                 break;
@@ -332,9 +333,9 @@ impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
         self.inner.fixed_trace_size()
     }
 
-    fn prepare_traces(
+    fn prepare_traces<Ctx: ExecutionContext<Box<AsmCoreMachine>>>(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<Box<AsmCoreMachine>, Ctx>,
     ) -> Result<(), Error> {
         let pc = *machine.pc();
         let slot = calculate_slot(pc);
