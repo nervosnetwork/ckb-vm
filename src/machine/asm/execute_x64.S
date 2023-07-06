@@ -1,3 +1,7 @@
+#define CONCAT(A, B) A ## _ ## B
+#define CONCAT_EXPAND(A, B) CONCAT(A,B)
+#define CKB_VM_VERSIONED_SYMBOL(symbol) CONCAT_EXPAND(symbol, CKB_VM_VERSION)
+
 #define CKB_VM_ASM_GENERATE_LABEL_TABLES 1
 #include "cdefinitions_generated.h"
 
@@ -177,11 +181,11 @@
 #endif
 
 #ifdef __APPLE__
-#define CALL_INITED_MEMORY call _inited_memory
+#define CALL_INITED_MEMORY call CKB_VM_VERSIONED_SYMBOL(_ckb_vm_inited_memory)
 #elif defined IS_WINDOWS
-#define CALL_INITED_MEMORY call inited_memory
+#define CALL_INITED_MEMORY call CKB_VM_VERSIONED_SYMBOL(ckb_vm_inited_memory)
 #else
-#define CALL_INITED_MEMORY call inited_memory@plt
+#define CALL_INITED_MEMORY call CKB_VM_VERSIONED_SYMBOL(ckb_vm_inited_memory)##@plt
 #endif
 
 /*
@@ -392,11 +396,11 @@
   movzbl %ch, RS4_TEMP1d
 
 #ifdef __APPLE__
-.globl _ckb_vm_x64_execute
-_ckb_vm_x64_execute:
+.globl CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x86_execute)
+CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x86_execute):
 #else
-.globl ckb_vm_x64_execute
-ckb_vm_x64_execute:
+.globl CKB_VM_VERSIONED_SYMBOL(ckb_vm_x86_execute)
+CKB_VM_VERSIONED_SYMBOL(ckb_vm_x86_execute):
 #endif
 #ifdef IS_WINDOWS
   push %rsi

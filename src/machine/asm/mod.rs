@@ -76,7 +76,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
 // but consider that in the asm machine, `frame_index` is stored in `rdi` and `machine`
 // is stored in `rsi`, there is no need to exchange the values in the two registers
 // in this way.
-#[no_mangle]
+#[export_name = concat!("ckb_vm_inited_memory_", env!("CKB_VM_VERSION"))]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
     let addr_to = ((frame_index + 1) << MEMORY_FRAME_SHIFTS) as usize;
@@ -457,9 +457,11 @@ impl SupportMachine for Box<AsmCoreMachine> {
 }
 
 extern "C" {
-    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, s: *mut u8) -> c_uchar;
+    #[link_name = concat!("ckb_vm_x86_execute_", env!("CKB_VM_VERSION"))]
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *mut u8) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
+    #[link_name = concat!("ckb_vm_asm_labels_", env!("CKB_VM_VERSION"))]
     pub fn ckb_vm_asm_labels();
 }
 
