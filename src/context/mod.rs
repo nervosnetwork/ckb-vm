@@ -9,26 +9,22 @@ pub trait ExecutionContext<Mac: SupportMachine> {
         // underscore(_). It doesn't look good in docs. Also when someone
         // implements this method with IDE completion, they will need to remove
         // the staring underscore.
-        #[allow(clippy::drop_ref)]
-        drop(machine);
+        let _ = machine;
         Ok(())
     }
     /// Return true if the syscall has been processed. If a module returns
     /// false, Machine would continue to leverage the next syscall module to
     /// process.
     fn ecall(&mut self, machine: &mut Mac) -> Result<bool, Error> {
-        #[allow(clippy::drop_ref)]
-        drop(machine);
+        let _ = machine;
         Ok(false)
     }
     fn ebreak(&mut self, machine: &mut Mac) -> Result<(), Error> {
-        #[allow(clippy::drop_ref)]
-        drop(machine);
+        let _ = machine;
         Ok(())
     }
     fn instruction_cycles(&self, inst: Instruction) -> u64 {
-        #[allow(clippy::drop_copy)]
-        drop(inst);
+        let _ = inst;
         0
     }
 }
