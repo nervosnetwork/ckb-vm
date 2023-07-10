@@ -1,7 +1,7 @@
 use ckb_vm_definitions::instructions::Instruction;
 
 use super::Error;
-use crate::{machine::SupportMachine, syscalls::Syscalls};
+use crate::{machine::SupportMachine, syscalls::Syscalls, Debugger};
 
 pub trait ExecutionContext<Mac: SupportMachine> {
     fn initialize(&mut self, machine: &mut Mac) -> Result<(), Error> {
@@ -82,25 +82,26 @@ where
     }
 }
 
-pub struct WithDebugger<Ctx, F> {
+pub struct WithDebugger<Ctx, Dbg> {
     pub(super) base: Ctx,
-    pub(super) debugger: F,
+    pub(super) debugger: Dbg,
 }
 
-impl<Ctx, F, Mac> ExecutionContext<Mac> for WithDebugger<Ctx, F>
+impl<Ctx, Dbg, Mac> ExecutionContext<Mac> for WithDebugger<Ctx, Dbg>
 where
     Mac: SupportMachine,
     Ctx: ExecutionContext<Mac>,
-    F: FnMut(&mut Mac) -> Result<(), Error>,
+    Dbg: Debugger<Mac>,
 {
     fn initialize(&mut self, machine: &mut Mac) -> Result<(), Error> {
-        self.base.initialize(machine)
+        self.base.initialize(machine)?;
+        self.debugger.initialize(machine)
     }
     fn ecall(&mut self, machine: &mut Mac) -> Result<bool, Error> {
         self.base.ecall(machine)
     }
     fn ebreak(&mut self, machine: &mut Mac) -> Result<(), Error> {
-        (self.debugger)(machine)
+        self.debugger.ebreak(machine)
     }
     fn instruction_cycles(&self, inst: Instruction) -> u64 {
         self.base.instruction_cycles(inst)
@@ -147,11 +148,10 @@ pub trait ExecutionContextExt<Mac: SupportMachine>: ExecutionContext<Mac> {
     }
 
     /// Replace the debugger.
-    fn with_debugger<F>(self, debugger: F) -> WithDebugger<Self, F>
+    fn with_debugger<Dbg>(self, debugger: Dbg) -> WithDebugger<Self, Dbg>
     where
         Self: Sized,
-        // For type inference.
-        F: FnMut(&mut Mac) -> Result<(), Error>,
+        Dbg: Debugger<Mac>,
     {
         WithDebugger {
             base: self,

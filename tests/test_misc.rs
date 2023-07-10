@@ -2,8 +2,8 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::VERSION0;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
-    run, CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, ExecutionContext,
-    FlatMemory, Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
+    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
+    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
     RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
 #[cfg(has_asm)]
@@ -72,7 +72,7 @@ pub struct CustomDebugger {
     pub value: Arc<AtomicU8>,
 }
 
-impl<Mac: SupportMachine> ExecutionContext<Mac> for CustomDebugger {
+impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
     fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
         self.value.store(1, Ordering::Relaxed);
         Ok(())
@@ -91,9 +91,9 @@ pub fn test_ebreak() {
     let core_machine =
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
     let mut machine = DefaultMachineBuilder::new(core_machine)
-        .context(CustomDebugger {
+        .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
-        })
+        }))
         .build();
     machine
         .load_program(&buffer, &vec!["ebreak".into()])

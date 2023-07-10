@@ -4,6 +4,7 @@ extern crate derive_more;
 pub mod bits;
 pub mod context;
 pub mod cost_model;
+pub mod debugger;
 pub mod decoder;
 pub mod elf;
 pub mod error;
@@ -19,6 +20,7 @@ pub use ckb_vm_definitions;
 
 pub use crate::{
     context::ExecutionContext,
+    debugger::Debugger,
     instructions::{Instruction, Register},
     machine::{
         trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,

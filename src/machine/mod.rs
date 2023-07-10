@@ -8,6 +8,8 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 
+use crate::Debugger;
+
 use super::context::*;
 use super::decoder::{build_decoder, InstDecoder};
 use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
@@ -705,11 +707,15 @@ impl<Inner, Ctx> DefaultMachineBuilder<Inner, Ctx> {
         }
     }
 
-    /// Set debugger callback.
-    pub fn debugger<F>(self, debugger: F) -> DefaultMachineBuilder<Inner, WithDebugger<Ctx, F>>
+    /// Set debugger.
+    pub fn debugger<Dbg>(
+        self,
+        debugger: Dbg,
+    ) -> DefaultMachineBuilder<Inner, WithDebugger<Ctx, Dbg>>
     where
-        // For type inference.
-        F: FnMut(&mut Inner) -> Result<(), Error>,
+        Inner: SupportMachine,
+        // For type checking.
+        Dbg: Debugger<Inner>,
     {
         DefaultMachineBuilder {
             inner: self.inner,
