@@ -5,8 +5,10 @@ use crate::{machine::SupportMachine, syscalls::Syscalls};
 
 pub trait ExecutionContext<Mac: SupportMachine> {
     fn initialize(&mut self, machine: &mut Mac) -> Result<(), Error> {
-        // We don't want to change param name to start with _ or others
-        // implementing this would need to remove the _.
+        // We don't want to change the param name to start with an
+        // underscore(_). It doesn't look good in docs. Also when someone
+        // implements this method with IDE completion, they will need to remove
+        // the staring underscore.
         #[allow(clippy::drop_ref)]
         drop(machine);
         Ok(())
