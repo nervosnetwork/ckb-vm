@@ -457,7 +457,7 @@ impl SupportMachine for Box<AsmCoreMachine> {
 }
 
 extern "C" {
-    #[link_name = concat!("ckb_vm_x86_execute_", env!("CKB_VM_VERSION"))]
+    #[link_name = concat!("ckb_vm_x64_execute_", env!("CKB_VM_VERSION"))]
     pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *mut u8) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.

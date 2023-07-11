@@ -396,11 +396,11 @@
   movzbl %ch, RS4_TEMP1d
 
 #ifdef __APPLE__
-.globl CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x86_execute)
-CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x86_execute):
+.globl CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x64_execute)
+CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x64_execute):
 #else
-.globl CKB_VM_VERSIONED_SYMBOL(ckb_vm_x86_execute)
-CKB_VM_VERSIONED_SYMBOL(ckb_vm_x86_execute):
+.globl CKB_VM_VERSIONED_SYMBOL(ckb_vm_x64_execute)
+CKB_VM_VERSIONED_SYMBOL(ckb_vm_x64_execute):
 #endif
 #ifdef IS_WINDOWS
   push %rsi
