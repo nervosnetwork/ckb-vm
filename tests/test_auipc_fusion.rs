@@ -77,9 +77,7 @@ pub fn test_rust_auipc_fusion() {
 #[cfg(has_asm)]
 #[test]
 pub fn test_asm_auipc_fusion() {
-    extern "C" {
-        fn ckb_vm_asm_labels();
-    }
+    use ckb_vm::machine::asm::ckb_vm_asm_labels;
 
     let buffer = fs::read("tests/programs/auipc_no_sign_extend")
         .unwrap()
