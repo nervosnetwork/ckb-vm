@@ -206,11 +206,11 @@ fn main() {
 
     println!("#ifdef CKB_VM_ASM_GENERATE_LABEL_TABLES");
     println!("#ifdef __APPLE__");
-    println!(".global _ckb_vm_asm_labels");
-    println!("_ckb_vm_asm_labels:");
+    println!(".global CKB_VM_VERSIONED_SYMBOL(_ckb_vm_asm_labels)");
+    println!("CKB_VM_VERSIONED_SYMBOL(_ckb_vm_asm_labels):");
     println!("#else");
-    println!(".global ckb_vm_asm_labels");
-    println!("ckb_vm_asm_labels:");
+    println!(".global CKB_VM_VERSIONED_SYMBOL(ckb_vm_asm_labels)");
+    println!("CKB_VM_VERSIONED_SYMBOL(ckb_vm_asm_labels):");
     println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
     for _ in 0..0x10 {

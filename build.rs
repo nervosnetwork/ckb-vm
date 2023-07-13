@@ -6,6 +6,11 @@
 fn main() {
     use std::env;
 
+    let version = env::var("CARGO_PKG_VERSION")
+        .unwrap()
+        .replace(['.', '-'], "_");
+    println!("cargo:rustc-env=CKB_VM_VERSION={version}");
+
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     let is_windows = target_family == "windows";
@@ -63,6 +68,7 @@ fn main() {
             let mut expand_command = Command::new("clang");
             expand_command
                 .arg("-E")
+                .arg(format!("-DCKB_VM_VERSION={version}"))
                 .arg("src/machine/asm/execute_x64.S")
                 .arg("-o")
                 .arg(&expand_path);
@@ -84,9 +90,13 @@ fn main() {
 
             build.object(&compile_path);
         } else if x64_asm {
-            build.file("src/machine/asm/execute_x64.S");
+            build
+                .define("CKB_VM_VERSION", &*version)
+                .file("src/machine/asm/execute_x64.S");
         } else if aarch64_asm {
-            build.file("src/machine/asm/execute_aarch64.S");
+            build
+                .define("CKB_VM_VERSION", &*version)
+                .file("src/machine/asm/execute_aarch64.S");
         }
 
         build.include("src/machine/asm").compile("asm");

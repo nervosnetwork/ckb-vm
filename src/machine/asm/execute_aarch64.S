@@ -1,3 +1,7 @@
+#define CONCAT(A, B) A ## _ ## B
+#define CONCAT_EXPAND(A, B) CONCAT(A,B)
+#define CKB_VM_VERSIONED_SYMBOL(symbol) CONCAT_EXPAND(symbol, CKB_VM_VERSION)
+
 #define CKB_VM_ASM_GENERATE_LABEL_TABLES 1
 #include "cdefinitions_generated.h"
 
@@ -126,9 +130,9 @@
   mov IMMEDIATE, TEMP1
 
 #ifdef __APPLE__
-#define CALL_INITED_MEMORY bl _inited_memory
+#define CALL_INITED_MEMORY bl CKB_VM_VERSIONED_SYMBOL(_ckb_vm_inited_memory)
 #else
-#define CALL_INITED_MEMORY bl inited_memory
+#define CALL_INITED_MEMORY bl CKB_VM_VERSIONED_SYMBOL(ckb_vm_inited_memory)
 #endif
 
 /*
@@ -284,11 +288,11 @@
 
 .p2align 3
 #ifdef __APPLE__
-.globl _ckb_vm_x64_execute
-_ckb_vm_x64_execute:
+.globl CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x64_execute)
+CKB_VM_VERSIONED_SYMBOL(_ckb_vm_x64_execute):
 #else
-.globl ckb_vm_x64_execute
-ckb_vm_x64_execute:
+.globl CKB_VM_VERSIONED_SYMBOL(ckb_vm_x64_execute)
+CKB_VM_VERSIONED_SYMBOL(ckb_vm_x64_execute):
 #endif
   stp x19, x20, [sp, -96]!
   stp x21, x22, [sp, 16]

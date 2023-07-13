@@ -5,7 +5,9 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1};
 use ckb_vm::memory::Memory;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
-use ckb_vm::{Debugger, DefaultMachineBuilder, Error, Register, SupportMachine, Syscalls, ISA_IMC};
+use ckb_vm::{
+    DefaultMachineBuilder, Error, ExecutionContext, Register, SupportMachine, Syscalls, ISA_IMC,
+};
 use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
@@ -69,7 +71,7 @@ pub struct CustomDebugger {
     pub value: Arc<AtomicU8>,
 }
 
-impl<Mac: SupportMachine> Debugger<Mac> for CustomDebugger {
+impl<Mac: SupportMachine> ExecutionContext<Mac> for CustomDebugger {
     fn initialize(&mut self, _machine: &mut Mac) -> Result<(), Error> {
         self.value.store(1, Ordering::Relaxed);
         Ok(())
@@ -88,9 +90,9 @@ pub fn test_asm_ebreak() {
 
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
     let core = DefaultMachineBuilder::new(asm_core)
-        .debugger(Box::new(CustomDebugger {
+        .context(CustomDebugger {
             value: Arc::clone(&value),
-        }))
+        })
         .build();
     let mut machine = AsmMachine::new(core);
     machine

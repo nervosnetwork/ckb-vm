@@ -25,8 +25,8 @@ use crate::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    CoreMachine, DefaultMachine, Error, ExecutionContext, Machine, Memory, SupportMachine,
+    MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -76,7 +76,7 @@ impl CoreMachine for Box<AsmCoreMachine> {
 // but consider that in the asm machine, `frame_index` is stored in `rdi` and `machine`
 // is stored in `rsi`, there is no need to exchange the values in the two registers
 // in this way.
-#[no_mangle]
+#[export_name = concat!("ckb_vm_inited_memory_", env!("CKB_VM_VERSION"))]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
     let addr_to = ((frame_index + 1) << MEMORY_FRAME_SHIFTS) as usize;
@@ -457,18 +457,20 @@ impl SupportMachine for Box<AsmCoreMachine> {
 }
 
 extern "C" {
-    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, s: *mut u8) -> c_uchar;
+    #[link_name = concat!("ckb_vm_x64_execute_", env!("CKB_VM_VERSION"))]
+    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *mut u8) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
+    #[link_name = concat!("ckb_vm_asm_labels_", env!("CKB_VM_VERSION"))]
     pub fn ckb_vm_asm_labels();
 }
 
-pub struct AsmMachine {
-    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+pub struct AsmMachine<Ctx = ()> {
+    pub machine: DefaultMachine<Box<AsmCoreMachine>, Ctx>,
 }
 
-impl AsmMachine {
-    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
+impl<Ctx: ExecutionContext<Box<AsmCoreMachine>>> AsmMachine<Ctx> {
+    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>, Ctx>) -> Self {
         Self { machine }
     }
 
@@ -508,7 +510,7 @@ impl AsmMachine {
                         let end_instruction = is_basic_block_end_instruction(instruction);
                         current_pc += u64::from(instruction_length(instruction));
                         trace.instructions[i] = instruction;
-                        trace.cycles += self.machine.instruction_cycle_func()(instruction);
+                        trace.cycles += self.machine.context().instruction_cycles(instruction);
                         let opcode = extract_opcode(instruction);
                         // Here we are calculating the absolute address used in direct threading
                         // from label offsets.
@@ -562,7 +564,7 @@ impl AsmMachine {
         let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
         let len = instruction_length(instruction) as u8;
         trace.instructions[0] = instruction;
-        trace.cycles += self.machine.instruction_cycle_func()(instruction);
+        trace.cycles += self.machine.context().instruction_cycles(instruction);
         let opcode = extract_opcode(instruction);
         trace.thread[0] = unsafe {
             u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as isize))
