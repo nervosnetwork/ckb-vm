@@ -44,6 +44,9 @@ pub trait Memory {
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error>;
     fn memory_size(&self) -> usize;
+    fn memory_pages(&self) -> usize {
+        self.memory_size() >> RISCV_PAGE_SHIFTS
+    }
 
     // This is in fact just memset
     fn store_byte(&mut self, addr: u64, size: u64, value: u8) -> Result<(), Error>;

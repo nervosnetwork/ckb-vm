@@ -26,7 +26,7 @@ use crate::{
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
     CoreMachine, DefaultMachine, Error, ExecutionContext, Machine, Memory, SupportMachine,
-    MEMORY_FRAME_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    MEMORY_FRAME_SHIFTS, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -113,7 +113,7 @@ fn check_memory_writable(
 ) -> Result<(), Error> {
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
-    if page as usize >= RISCV_PAGES {
+    if page as usize >= machine.memory_pages() {
         return Err(Error::MemOutOfBound);
     }
     check_permission(machine, page, FLAG_WRITABLE)?;
@@ -124,7 +124,7 @@ fn check_memory_writable(
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
-        if page as usize >= RISCV_PAGES {
+        if page as usize >= machine.memory_pages() {
             return Err(Error::MemOutOfBound);
         } else {
             check_permission(machine, page, FLAG_WRITABLE)?;
@@ -144,7 +144,7 @@ fn check_memory_executable(
     debug_assert!(size == 2 || size == 4);
 
     let page = addr >> RISCV_PAGE_SHIFTS;
-    if page as usize >= RISCV_PAGES {
+    if page as usize >= machine.memory_pages() {
         return Err(Error::MemOutOfBound);
     }
     check_permission(machine, page, FLAG_EXECUTABLE)?;
@@ -154,7 +154,7 @@ fn check_memory_executable(
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
-        if page as usize >= RISCV_PAGES {
+        if page as usize >= machine.memory_pages() {
             return Err(Error::MemOutOfBound);
         } else {
             check_permission(machine, page, FLAG_EXECUTABLE)?;
@@ -172,7 +172,7 @@ fn check_memory_inited(
 ) -> Result<(), Error> {
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
-    if page as usize >= RISCV_PAGES {
+    if page as usize >= machine.memory_pages() {
         return Err(Error::MemOutOfBound);
     }
     check_memory(machine, page);
@@ -181,7 +181,7 @@ fn check_memory_inited(
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
-        if page as usize >= RISCV_PAGES {
+        if page as usize >= machine.memory_pages() {
             return Err(Error::MemOutOfBound);
         } else {
             check_memory(machine, page);
@@ -212,9 +212,10 @@ impl Memory for Box<AsmCoreMachine> {
         if round_page_down(addr) != addr || round_page_up(size) != size {
             return Err(Error::MemPageUnalignedAccess);
         }
-        if addr > RISCV_MAX_MEMORY as u64
-            || size > RISCV_MAX_MEMORY as u64
-            || addr + size > RISCV_MAX_MEMORY as u64
+        let memory_size = self.memory_size() as u64;
+        if addr > memory_size
+            || size > memory_size as u64
+            || addr + size > memory_size as u64
             || offset_from_addr > size
         {
             return Err(Error::MemOutOfBound);
@@ -244,7 +245,7 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.memory_pages() as u64 {
             Ok(self.flags[page as usize])
         } else {
             Err(Error::MemOutOfBound)
@@ -252,7 +253,7 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.memory_pages() as u64 {
             self.flags[page as usize] |= flag;
             // Clear last write page cache
             self.last_write_page = u64::max_value();
@@ -263,7 +264,7 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
-        if page < RISCV_PAGES as u64 {
+        if page < self.memory_pages() as u64 {
             self.flags[page as usize] &= !flag;
             // Clear last write page cache
             self.last_write_page = u64::max_value();
