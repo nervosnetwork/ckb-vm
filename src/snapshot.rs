@@ -44,7 +44,7 @@ pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error>
         snap.registers[i] = v.to_u64();
     }
 
-    for i in 0..(machine.memory().memory_size() >> RISCV_PAGE_SHIFTS) {
+    for i in 0..machine.memory().memory_pages() {
         let flag = machine.memory_mut().fetch_flag(i as u64)?;
         if flag & FLAG_DIRTY != 0 {
             let addr_from = i << RISCV_PAGE_SHIFTS;

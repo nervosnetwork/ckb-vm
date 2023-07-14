@@ -7,7 +7,7 @@ use crate::instructions::{
 };
 use crate::machine::VERSION2;
 use crate::memory::Memory;
-use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
+use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_PAGESIZE};
 
 const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 const INSTRUCTION_CACHE_SIZE: usize = 4096;
@@ -30,7 +30,7 @@ impl Decoder {
             factories: vec![],
             mop,
             version,
-            instructions_cache: vec![(RISCV_MAX_MEMORY as u64, 0); INSTRUCTION_CACHE_SIZE],
+            instructions_cache: vec![(u64::MAX as u64, 0); INSTRUCTION_CACHE_SIZE],
         }
     }
 
@@ -91,8 +91,9 @@ impl Decoder {
     }
 
     pub fn decode_raw<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
-        // since we are using RISCV_MAX_MEMORY as the default key in the instruction cache, have to check out of bound error first
-        if pc as usize >= RISCV_MAX_MEMORY {
+        // since we are using u64::MAX as the default key in the instruction cache, have to check out of bound
+        // error first.
+        if pc as usize >= memory.memory_size() {
             return Err(Error::MemOutOfBound);
         }
         let instruction_cache_key = {
@@ -861,7 +862,7 @@ impl Decoder {
     }
 
     pub fn reset_instructions_cache(&mut self) {
-        self.instructions_cache = vec![(RISCV_MAX_MEMORY as u64, 0); INSTRUCTION_CACHE_SIZE];
+        self.instructions_cache = vec![(u64::MAX, 0); INSTRUCTION_CACHE_SIZE];
     }
 }
 

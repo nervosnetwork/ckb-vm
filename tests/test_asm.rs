@@ -2,7 +2,7 @@
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::decoder::build_decoder;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
-use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1};
+use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::Memory;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{Debugger, DefaultMachineBuilder, Error, Register, SupportMachine, Syscalls, ISA_IMC};
@@ -434,4 +434,14 @@ fn test_zero_address() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_big_binary() {
+    let buffer = fs::read("tests/programs/big_binary").unwrap().into();
+    let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION2, u64::max_value(), 1024 * 512);
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    let result = machine.load_program(&buffer, &vec!["simple".into()]);
+    assert_eq!(result, Err(Error::MemOutOfBound));
 }
