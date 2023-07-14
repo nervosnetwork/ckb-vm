@@ -1,6 +1,6 @@
 use super::super::machine::Machine;
 use super::super::memory::Memory;
-use super::super::RISCV_MAX_MEMORY;
+use super::super::RISCV_MAX_MEMORY_V0;
 use super::register::Register;
 use super::utils::update_register;
 use super::{Error, RegisterIndex, SImmediate, UImmediate};
@@ -85,7 +85,8 @@ fn check_load_boundary<R: Register>(version0: bool, address: &R, bytes: u64) -> 
     if version0 {
         let address = address.to_u64();
         let end = address.checked_add(bytes).ok_or(Error::MemOutOfBound)?;
-        if end == RISCV_MAX_MEMORY as u64 {
+        // The memory size of CKB-VM V0 is 4M.
+        if end == RISCV_MAX_MEMORY_V0 as u64 {
             return Err(Error::MemOutOfBound);
         }
     }

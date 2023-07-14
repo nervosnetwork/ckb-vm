@@ -96,8 +96,9 @@ impl Decoder {
     }
 
     pub fn decode_raw<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
-        // since we are using RISCV_MAX_MEMORY as the default key in the instruction cache, have to check out of bound error first
-        if pc as usize >= RISCV_MAX_MEMORY {
+        // since we are using RISCV_MAX_MEMORY as the default key in the instruction cache, have to check out of bound
+        // error first.
+        if pc as usize >= memory.memory_size() {
             return Err(Error::MemOutOfBound);
         }
         let instruction_cache_key = {
