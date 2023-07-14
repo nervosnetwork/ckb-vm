@@ -3,7 +3,7 @@ use crate::{
     elf::{LoadingAction, ProgramMetadata},
     machine::SupportMachine,
     memory::{Memory, FLAG_DIRTY},
-    Error, Register, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    Error, Register, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
 };
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
@@ -146,7 +146,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
     /// Create a snapshot for the passed machine.
     pub fn make_snapshot<M: SupportMachine>(&self, machine: &mut M) -> Result<Snapshot2<I>, Error> {
         let mut dirty_pages: Vec<(u64, u8, Vec<u8>)> = vec![];
-        for i in 0..(machine.memory().memory_size() as u64 >> RISCV_PAGE_SHIFTS) {
+        for i in 0..machine.memory().memory_pages() as u64 {
             if self.pages.contains_key(&i) {
                 continue;
             }
