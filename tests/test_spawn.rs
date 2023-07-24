@@ -178,7 +178,7 @@ pub fn test_spawn_int() {
             }))
             .build(),
     );
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, &["main".into()]).unwrap();
     let result = machine.run();
     assert!(result.is_ok());
     assert!(result.unwrap() == 0);
@@ -204,7 +204,7 @@ pub fn test_spawn_asm() {
         }))
         .build();
     let mut machine = AsmMachine::new(machine_core);
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, &["main".into()]).unwrap();
     let result = machine.run();
     assert!(result.is_ok());
     assert!(result.unwrap() == 0);
