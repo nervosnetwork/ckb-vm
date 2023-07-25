@@ -183,7 +183,7 @@ pub fn test_spawn_int() {
     assert!(result.is_ok());
     assert!(result.unwrap() == 0);
     // When the VM makes 64 recursive calls, make sure the stack is less than 1M.
-    println!("stack size: {}", (cur_sp - *min_sp.lock().unwrap()));
+    println!("stack size: {}", cur_sp - *min_sp.lock().unwrap());
     assert!((cur_sp - *min_sp.lock().unwrap()) < 1024 * 1024);
 }
 
@@ -210,6 +210,6 @@ pub fn test_spawn_asm() {
     assert!(result.is_ok());
     assert!(result.unwrap() == 0);
     // When the VM makes 64 recursive calls, make sure the stack is less than 1M.
-    println!("stack size: {}", (cur_sp - *min_sp.lock().unwrap()));
+    println!("stack size: {}", cur_sp - *min_sp.lock().unwrap());
     assert!((cur_sp - *min_sp.lock().unwrap()) < 1024 * 1024);
 }
