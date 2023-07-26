@@ -36,6 +36,14 @@ jobs:
       - script: make ci-asm
         displayName: Run ci-asm
 
+  - job: LinuxSpawnStackCheck
+    pool:
+      vmImage: 'ubuntu-20.04'
+    steps:
+      - template: devtools/azure/linux-dependencies.yml
+      - script: cargo test test_spawn --release --features=asm -- --nocapture
+        displayName: Run spawn tests
+
   - job: LinuxCI
     pool:
       vmImage: 'ubuntu-20.04'
