@@ -101,10 +101,10 @@ pub struct AsmCoreMachine {
     pub last_read_frame: u64,
     pub last_write_page: u64,
 
+    pub memory_ptr: u64,
+
     pub flags: [u8; RISCV_PAGES],
     pub frames: [u8; MEMORY_FRAMES],
-
-    pub memory: [u8; RISCV_MAX_MEMORY],
 }
 
 impl AsmCoreMachine {
@@ -122,12 +122,8 @@ impl AsmCoreMachine {
         assert!(memory_size <= RISCV_MAX_MEMORY);
         assert_eq!(memory_size % RISCV_PAGESIZE, 0);
         assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
-
         let mut machine = unsafe {
-            let machine_size =
-                std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
-
-            let layout = Layout::array::<u8>(machine_size).unwrap();
+            let layout = Layout::new::<AsmCoreMachine>();
             let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };

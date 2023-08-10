@@ -1,4 +1,6 @@
 use ckb_vm::cost_model::constant_cycles;
+#[cfg(has_asm)]
+use ckb_vm::machine::asm::AsmMachine;
 use ckb_vm::machine::VERSION0;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
@@ -247,12 +249,11 @@ fn assert_memory_load_bytes_all<R: Rng>(
     );
 
     #[cfg(has_asm)]
-    assert_memory_load_bytes(
-        rng,
-        &mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000),
-        buf_size,
-        addr,
-    );
+    {
+        let asm_core_machine = AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000);
+        let asm_machine = AsmMachine::new(DefaultMachineBuilder::new(asm_core_machine).build());
+        assert_memory_load_bytes(rng, &mut asm_machine.machine.take_inner(), buf_size, addr);
+    }
 }
 
 fn assert_memory_load_bytes<R: Rng, M: Memory>(

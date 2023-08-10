@@ -24,7 +24,7 @@ use crate::{
         VERSION0,
     },
     memory::{
-        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
+        fill_page_data, get_page_indices, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
@@ -81,13 +81,21 @@ impl CoreMachine for Box<AsmCoreMachine> {
 #[no_mangle]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
-    let addr_to = ((frame_index + 1) << MEMORY_FRAME_SHIFTS) as usize;
     if machine.chaos_mode != 0 {
         let mut gen = rand::rngs::StdRng::seed_from_u64(machine.chaos_seed.into());
-        gen.fill_bytes(&mut machine.memory[addr_from..addr_to]);
+        let slice = unsafe {
+            let memory = machine.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr_from);
+            std::slice::from_raw_parts_mut(memory_from, 1 << MEMORY_FRAME_SHIFTS)
+        };
+        gen.fill_bytes(slice);
         machine.chaos_seed = gen.next_u32();
     } else {
-        memset(&mut machine.memory[addr_from..addr_to], 0);
+        unsafe {
+            let memory = machine.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr_from);
+            memory_from.write_bytes(0, 1 << MEMORY_FRAME_SHIFTS);
+        }
     }
 }
 
@@ -232,7 +240,11 @@ impl<'a> Memory for FastMemory<'a> {
             return Ok(());
         }
         self.prepare_memory(addr, value.len() as u64)?;
-        let slice = &mut self.0.memory[addr as usize..addr as usize + value.len()];
+        let slice = unsafe {
+            let memory = self.0.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts_mut(memory_from, value.len())
+        };
         slice.copy_from_slice(value);
         Ok(())
     }
@@ -242,10 +254,11 @@ impl<'a> Memory for FastMemory<'a> {
             return Ok(());
         }
         self.prepare_memory(addr, size)?;
-        memset(
-            &mut self.0.memory[addr as usize..(addr + size) as usize],
-            value,
-        );
+        unsafe {
+            let memory = self.0.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            memory_from.write_bytes(value, size as usize);
+        }
         Ok(())
     }
 
@@ -432,8 +445,11 @@ impl Memory for Box<AsmCoreMachine> {
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
-        slice.copy_from_slice(value);
+        unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            memory_from.copy_from(value.as_ptr(), value.len());
+        }
         Ok(())
     }
 
@@ -447,10 +463,11 @@ impl Memory for Box<AsmCoreMachine> {
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        memset(
-            &mut self.memory[addr as usize..(addr + size) as usize],
-            value,
-        );
+        unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            memory_from.write_bytes(value, size as usize);
+        }
         Ok(())
     }
 
@@ -462,86 +479,122 @@ impl Memory for Box<AsmCoreMachine> {
         for page in page_indices.0..=page_indices.1 {
             check_memory(self, page);
         }
-        Ok(Bytes::from(
-            self.memory[addr as usize..(addr + size) as usize].to_vec(),
-        ))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, size as usize)
+        };
+        Ok(Bytes::from(slice))
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_memory_executable(self, addr, 2)?;
-        Ok(LittleEndian::read_u16(
-            &self.memory[addr as usize..addr as usize + 2],
-        ))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, 2)
+        };
+        Ok(LittleEndian::read_u16(slice))
     }
 
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
         check_memory_executable(self, addr, 4)?;
-        Ok(LittleEndian::read_u32(
-            &self.memory[addr as usize..addr as usize + 4],
-        ))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, 4)
+        };
+        Ok(LittleEndian::read_u32(slice))
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 1)?;
-        Ok(u64::from(self.memory[addr as usize]))
+        let value = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            memory_from.read()
+        };
+        Ok(u64::from(value))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 2)?;
-        Ok(u64::from(LittleEndian::read_u16(
-            &self.memory[addr as usize..addr as usize + 2],
-        )))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, 2)
+        };
+        Ok(u64::from(LittleEndian::read_u16(slice)))
     }
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 4)?;
-        Ok(u64::from(LittleEndian::read_u32(
-            &self.memory[addr as usize..addr as usize + 4],
-        )))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, 4)
+        };
+        Ok(u64::from(LittleEndian::read_u32(slice)))
     }
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 8)?;
-        Ok(LittleEndian::read_u64(
-            &self.memory[addr as usize..addr as usize + 8],
-        ))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, 8)
+        };
+        Ok(LittleEndian::read_u64(slice))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 1)?;
-        self.memory[addr as usize] = (*value) as u8;
+        unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            memory_from.write(*value as u8)
+        }
         Ok(())
     }
 
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 2)?;
-        LittleEndian::write_u16(
-            &mut self.memory[addr as usize..(addr + 2) as usize],
-            *value as u16,
-        );
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts_mut(memory_from, 2)
+        };
+        LittleEndian::write_u16(slice, *value as u16);
         Ok(())
     }
 
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 4)?;
-        LittleEndian::write_u32(
-            &mut self.memory[addr as usize..(addr + 4) as usize],
-            *value as u32,
-        );
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts_mut(memory_from, 4)
+        };
+        LittleEndian::write_u32(slice, *value as u32);
         Ok(())
     }
 
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 8)?;
-        LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts_mut(memory_from, 8)
+        };
+        LittleEndian::write_u64(slice, *value as u64);
         Ok(())
     }
 
@@ -609,11 +662,15 @@ extern "C" {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+    pub memory: Vec<u8>,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
-        Self { machine }
+        let memory = Vec::with_capacity(machine.inner.memory_size as usize);
+        let mut s = Self { machine, memory };
+        s.machine.inner.memory_ptr = s.memory.as_ptr() as u64;
+        s
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {

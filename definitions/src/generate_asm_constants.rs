@@ -183,31 +183,19 @@ fn main() {
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_WRITE_PAGE {}",
         (&m.last_write_page as *const u64 as usize) - m_address
     );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_PTR {}",
+        (&m.memory_ptr as *const u64 as usize) - m_address
+    );
 
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS {}",
         (&m.flags as *const u8 as usize) - m_address
     );
-    let memory_offset_address = (&m.memory as *const u8 as usize) - m_address;
-    println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY {}",
-        memory_offset_address
-    );
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",
         (&m.frames as *const u8 as usize) - m_address
     );
-    println!();
-
-    println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_H {}",
-        memory_offset_address.wrapping_shr(12).wrapping_shl(12)
-    );
-    println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_L {}",
-        memory_offset_address & 0xFFF
-    );
-
     println!();
 
     for op in MINIMAL_OPCODE..MAXIMUM_OPCODE {

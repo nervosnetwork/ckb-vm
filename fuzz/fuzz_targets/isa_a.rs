@@ -39,10 +39,11 @@ fuzz_target!(|data: [u8; 512]| {
             ckb_vm::SparseMemory<u64>,
         >::new(ckb_vm_isa, ckb_vm_version, u64::MAX))
         .build();
-    let mut ckb_vm_asm = ckb_vm::DefaultMachineBuilder::new(
-        ckb_vm::machine::asm::AsmCoreMachine::new(ckb_vm_isa, ckb_vm_version, u64::MAX),
-    )
-    .build();
+    let mut ckb_vm_asm_core =
+        ckb_vm::machine::asm::AsmCoreMachine::new(ckb_vm_isa, ckb_vm_version, u64::MAX);
+    let ckb_vm_asm_memory: Vec<u8> = Vec::with_capacity(ckb_vm_asm_core.memory_size as usize);
+    ckb_vm_asm_core.memory_ptr = ckb_vm_asm_memory.as_ptr() as u64;
+    let mut ckb_vm_asm = ckb_vm::DefaultMachineBuilder::new(ckb_vm_asm_core).build();
 
     let insts: [u32; 18] = [
         0b00001_00_00000_00000_010_00000_0101111, // AMOSWAP.W
