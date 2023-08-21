@@ -42,7 +42,9 @@ fuzz_target!(|data: [u8; 512]| {
     let mut ckb_vm_asm_core =
         ckb_vm::machine::asm::AsmCoreMachine::new(ckb_vm_isa, ckb_vm_version, u64::MAX);
     let ckb_vm_asm_memory: Vec<u8> = Vec::with_capacity(ckb_vm_asm_core.memory_size as usize);
+    let ckb_vm_asm_flags: Vec<u8> = vec![0x00; ckb_vm_asm_core.flags_size as usize];
     ckb_vm_asm_core.memory_ptr = ckb_vm_asm_memory.as_ptr() as u64;
+    ckb_vm_asm_core.flags_ptr = ckb_vm_asm_flags.as_ptr() as u64;
     let mut ckb_vm_asm = ckb_vm::DefaultMachineBuilder::new(ckb_vm_asm_core).build();
 
     let insts: [u32; 18] = [

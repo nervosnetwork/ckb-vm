@@ -28,7 +28,7 @@ use crate::{
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_PAGES, RISCV_PAGESIZE,
+    RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -350,7 +350,10 @@ impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
     fn reset_memory(&mut self) -> Result<(), Error> {
-        self.flags = [0; RISCV_PAGES];
+        unsafe {
+            let flags = self.flags_ptr as *mut u8;
+            flags.write_bytes(0x00, self.flags_size as usize);
+        }
         self.frames = [0; MEMORY_FRAMES];
         self.load_reservation_address = u64::MAX;
         self.last_read_frame = u64::max_value();
@@ -403,7 +406,11 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
         if page < self.memory_pages() as u64 {
-            Ok(self.flags[page as usize])
+            unsafe {
+                let flags = self.flags_ptr as *mut u8;
+                let flag_addr = flags.add(page as usize);
+                Ok(flag_addr.read())
+            }
         } else {
             Err(Error::MemOutOfBound)
         }
@@ -411,7 +418,13 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            self.flags[page as usize] |= flag;
+            unsafe {
+                let flags = self.flags_ptr as *mut u8;
+                let flag_addr = flags.add(page as usize);
+                let old = flag_addr.read();
+                let new = old | flag;
+                flag_addr.write(new);
+            }
             // Clear last write page cache
             self.last_write_page = u64::max_value();
             Ok(())
@@ -422,7 +435,13 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            self.flags[page as usize] &= !flag;
+            unsafe {
+                let flags = self.flags_ptr as *mut u8;
+                let flag_addr = flags.add(page as usize);
+                let old = flag_addr.read();
+                let new = old & !flag;
+                flag_addr.write(new);
+            }
             // Clear last write page cache
             self.last_write_page = u64::max_value();
             Ok(())
@@ -663,13 +682,20 @@ extern "C" {
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
     pub memory: Vec<u8>,
+    pub memory_flags: Vec<u8>,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
         let memory = Vec::with_capacity(machine.inner.memory_size as usize);
-        let mut s = Self { machine, memory };
+        let memory_flags = vec![0; machine.inner.flags_size as usize];
+        let mut s = Self {
+            machine,
+            memory,
+            memory_flags,
+        };
         s.machine.inner.memory_ptr = s.memory.as_ptr() as u64;
+        s.machine.inner.flags_ptr = s.memory_flags.as_ptr() as u64;
         s
     }
 

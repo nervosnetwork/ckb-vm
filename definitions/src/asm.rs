@@ -1,6 +1,6 @@
 use crate::{
     instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
 use std::alloc::{alloc, Layout};
 
@@ -102,8 +102,8 @@ pub struct AsmCoreMachine {
     pub last_write_page: u64,
 
     pub memory_ptr: u64,
+    pub flags_ptr: u64,
 
-    pub flags: [u8; RISCV_PAGES],
     pub frames: [u8; MEMORY_FRAMES],
 }
 
@@ -142,7 +142,6 @@ impl AsmCoreMachine {
         machine.reset_signal = 0;
         machine.version = version;
         machine.isa = isa;
-        machine.flags = [0; RISCV_PAGES];
         machine.frames = [0; MEMORY_FRAMES];
 
         machine.memory_size = memory_size as u64;
