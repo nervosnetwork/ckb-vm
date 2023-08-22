@@ -198,13 +198,20 @@ struct FastMemory<'a>(&'a mut Box<AsmCoreMachine>);
 
 impl<'a> FastMemory<'a> {
     fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
-        let aligned_start = round_page_down(addr);
-        if aligned_start < addr {
-            check_memory(self.0, aligned_start >> RISCV_PAGE_SHIFTS);
+        let frame_start = addr >> MEMORY_FRAME_SHIFTS << MEMORY_FRAME_SHIFTS;
+        // There is some memory space between the start of the first memory
+        // frame touched, and the starting address of memory to be written. We
+        // will need to initialize the last memory frame.
+        if frame_start < addr {
+            check_memory(self.0, addr >> RISCV_PAGE_SHIFTS);
         }
         let end = addr.wrapping_add(size);
         let aligned_end = round_page_down(end);
-        if aligned_end < end {
+        let frame_next_start = ((end >> MEMORY_FRAME_SHIFTS) + 1) << MEMORY_FRAME_SHIFTS;
+        // There is some memory space between the ending address of memory to be
+        // written, and the end of the last memory frame touched, we will need to
+        // initialize the last memory frame.
+        if (aligned_end + RISCV_PAGESIZE as u64) < frame_next_start {
             check_memory(self.0, aligned_end >> RISCV_PAGE_SHIFTS);
         }
         let page_indices = get_page_indices(addr, size)?;

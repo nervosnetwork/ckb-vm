@@ -486,3 +486,16 @@ pub fn test_big_binary() {
     let result = machine.load_program(&buffer, &vec!["simple".into()]);
     assert_eq!(result, Err(Error::MemOutOfBound));
 }
+
+#[test]
+fn test_fast_memory_initialization_bug() {
+    let isa = ISA_IMC;
+    let version = VERSION1;
+    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let mut asm_core = AsmCoreMachine::new(isa, version, u64::max_value());
+    asm_core.memory[0] = 0x1;
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine.load_program(&buffer, &[]).unwrap();
+    assert_eq!(machine.machine.memory_mut().load8(&0).unwrap(), 0);
+}
