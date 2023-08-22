@@ -487,6 +487,7 @@ pub fn test_big_binary() {
     assert_eq!(result, Err(Error::MemOutOfBound));
 }
 
+#[cfg(not(feature = "enable-chaos-mode-by-default"))]
 #[test]
 fn test_fast_memory_initialization_bug() {
     let isa = ISA_IMC;
