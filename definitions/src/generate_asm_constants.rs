@@ -192,8 +192,8 @@ fn main() {
         (&m.flags_ptr as *const u64 as usize) - m_address
     );
     println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES {}",
-        (&m.frames as *const u8 as usize) - m_address
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR {}",
+        (&m.frames_ptr as *const u64 as usize) - m_address
     );
     println!();
 

@@ -1,5 +1,5 @@
 use crate::{
-    instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
+    instructions::Instruction, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
     RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
 use std::alloc::{alloc, Layout};
@@ -103,8 +103,7 @@ pub struct AsmCoreMachine {
 
     pub memory_ptr: u64,
     pub flags_ptr: u64,
-
-    pub frames: [u8; MEMORY_FRAMES],
+    pub frames_ptr: u64,
 }
 
 impl AsmCoreMachine {
@@ -142,7 +141,6 @@ impl AsmCoreMachine {
         machine.reset_signal = 0;
         machine.version = version;
         machine.isa = isa;
-        machine.frames = [0; MEMORY_FRAMES];
 
         machine.memory_size = memory_size as u64;
         machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;

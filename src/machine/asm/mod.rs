@@ -9,8 +9,7 @@ use ckb_vm_definitions::{
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
         RET_PAUSE, RET_SLOWPATH,
     },
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS,
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
@@ -101,9 +100,14 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
 
 fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
     let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
-    if machine.frames[frame as usize] == 0 {
-        inited_memory(frame, machine);
-        machine.frames[frame as usize] = 1;
+    unsafe {
+        let frames_ptr = machine.frames_ptr as *mut u8;
+        let frame_addr = frames_ptr.add(frame as usize);
+        let frame_flag = frame_addr.read();
+        if frame_flag == 0 {
+            inited_memory(frame, machine);
+        }
+        frame_addr.write(0x01);
     }
 }
 
@@ -225,7 +229,11 @@ impl<'a> FastMemory<'a> {
         let page_indices = get_page_indices(addr, size)?;
         for page in page_indices.0..=page_indices.1 {
             let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
-            self.0.frames[frame as usize] = 1;
+            unsafe {
+                let frames_ptr = self.0.frames_ptr as *mut u8;
+                let frame_addr = frames_ptr.add(frame as usize);
+                frame_addr.write(0x01);
+            }
             self.0.set_flag(page, FLAG_DIRTY)?;
         }
         Ok(())
@@ -353,8 +361,9 @@ impl Memory for Box<AsmCoreMachine> {
         unsafe {
             let flags = self.flags_ptr as *mut u8;
             flags.write_bytes(0x00, self.flags_size as usize);
+            let frames = self.frames_ptr as *mut u8;
+            frames.write_bytes(0x00, self.frames_size as usize);
         }
-        self.frames = [0; MEMORY_FRAMES];
         self.load_reservation_address = u64::MAX;
         self.last_read_frame = u64::max_value();
         self.last_write_page = u64::max_value();
@@ -683,19 +692,23 @@ pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
     pub memory: Vec<u8>,
     pub memory_flags: Vec<u8>,
+    pub frames: Vec<u8>,
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
         let memory = Vec::with_capacity(machine.inner.memory_size as usize);
         let memory_flags = vec![0; machine.inner.flags_size as usize];
+        let frames = vec![0; machine.inner.frames_size as usize];
         let mut s = Self {
             machine,
             memory,
             memory_flags,
+            frames,
         };
         s.machine.inner.memory_ptr = s.memory.as_ptr() as u64;
         s.machine.inner.flags_ptr = s.memory_flags.as_ptr() as u64;
+        s.machine.inner.frames_ptr = s.frames.as_ptr() as u64;
         s
     }
 
