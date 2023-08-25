@@ -99,15 +99,15 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
 }
 
 fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
-    let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
+    let frame_index = page >> MEMORY_FRAME_PAGE_SHIFTS;
     unsafe {
-        let frames_ptr = machine.frames_ptr as *mut u8;
-        let frame_addr = frames_ptr.add(frame as usize);
+        let frames = machine.frames_ptr as *mut u8;
+        let frame_addr = frames.add(frame_index as usize);
         let frame_flag = frame_addr.read();
         if frame_flag == 0 {
-            inited_memory(frame, machine);
+            inited_memory(frame_index, machine);
+            frame_addr.write(0x01);
         }
-        frame_addr.write(0x01);
     }
 }
 
@@ -228,10 +228,10 @@ impl<'a> FastMemory<'a> {
         }
         let page_indices = get_page_indices(addr, size)?;
         for page in page_indices.0..=page_indices.1 {
-            let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
+            let frame_index = page >> MEMORY_FRAME_PAGE_SHIFTS;
             unsafe {
-                let frames_ptr = self.0.frames_ptr as *mut u8;
-                let frame_addr = frames_ptr.add(frame as usize);
+                let frames = self.0.frames_ptr as *mut u8;
+                let frame_addr = frames.add(frame_index as usize);
                 frame_addr.write(0x01);
             }
             self.0.set_flag(page, FLAG_DIRTY)?;
