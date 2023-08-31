@@ -12,6 +12,7 @@ use ckb_vm_definitions::{
     ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS,
 };
 use rand::{prelude::RngCore, SeedableRng};
+use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 use std::os::raw::c_uchar;
 
 use crate::{
@@ -690,25 +691,39 @@ extern "C" {
 
 pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
-    pub memory: Vec<u8>,
-    pub memory_flags: Vec<u8>,
-    pub frames: Vec<u8>,
+    pub memory: u64,
+    pub flags: u64,
+    pub frames: u64,
+}
+
+impl Drop for AsmMachine {
+    fn drop(&mut self) {
+        let memory_layout = Layout::array::<u8>(self.machine.inner.memory_size as usize).unwrap();
+        unsafe { dealloc(self.memory as *mut u8, memory_layout) };
+        let flags_layout = Layout::array::<u8>(self.machine.inner.flags_size as usize).unwrap();
+        unsafe { dealloc(self.flags as *mut u8, flags_layout) };
+        let frames_layout = Layout::array::<u8>(self.machine.inner.frames_size as usize).unwrap();
+        unsafe { dealloc(self.frames as *mut u8, frames_layout) };
+    }
 }
 
 impl AsmMachine {
     pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
-        let memory = Vec::with_capacity(machine.inner.memory_size as usize);
-        let memory_flags = vec![0; machine.inner.flags_size as usize];
-        let frames = vec![0; machine.inner.frames_size as usize];
+        let memory_layout = Layout::array::<u8>(machine.inner.memory_size as usize).unwrap();
+        let memory = unsafe { alloc(memory_layout) } as u64;
+        let flags_layout = Layout::array::<u8>(machine.inner.flags_size as usize).unwrap();
+        let flags = unsafe { alloc_zeroed(flags_layout) } as u64;
+        let frames_layout = Layout::array::<u8>(machine.inner.frames_size as usize).unwrap();
+        let frames = unsafe { alloc_zeroed(frames_layout) } as u64;
         let mut s = Self {
             machine,
             memory,
-            memory_flags,
+            flags,
             frames,
         };
-        s.machine.inner.memory_ptr = s.memory.as_ptr() as u64;
-        s.machine.inner.flags_ptr = s.memory_flags.as_ptr() as u64;
-        s.machine.inner.frames_ptr = s.frames.as_ptr() as u64;
+        s.machine.inner.memory_ptr = s.memory;
+        s.machine.inner.flags_ptr = s.flags;
+        s.machine.inner.frames_ptr = s.frames;
         s
     }
 

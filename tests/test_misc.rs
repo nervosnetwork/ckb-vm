@@ -251,8 +251,8 @@ fn assert_memory_load_bytes_all<R: Rng>(
     #[cfg(has_asm)]
     {
         let asm_core_machine = AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000);
-        let asm_machine = AsmMachine::new(DefaultMachineBuilder::new(asm_core_machine).build());
-        assert_memory_load_bytes(rng, &mut asm_machine.machine.take_inner(), buf_size, addr);
+        let mut asm_machine = AsmMachine::new(DefaultMachineBuilder::new(asm_core_machine).build());
+        assert_memory_load_bytes(rng, asm_machine.machine.inner_mut(), buf_size, addr);
     }
 }
 
