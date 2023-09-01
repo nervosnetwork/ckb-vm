@@ -156,3 +156,21 @@ impl AsmCoreMachine {
         self.max_cycles = cycles;
     }
 }
+
+impl AsmCoreMachine {
+    pub fn cast_ptr_to_slice(&self, ptr: u64, offset: usize, size: usize) -> &[u8] {
+        unsafe {
+            let ptr = ptr as *mut u8;
+            let ptr = ptr.add(offset);
+            std::slice::from_raw_parts(ptr, size)
+        }
+    }
+
+    pub fn cast_ptr_to_slice_mut(&self, ptr: u64, offset: usize, size: usize) -> &mut [u8] {
+        unsafe {
+            let ptr = ptr as *mut u8;
+            let ptr = ptr.add(offset);
+            std::slice::from_raw_parts_mut(ptr, size)
+        }
+    }
+}
