@@ -1,6 +1,6 @@
 steps:
 - script: |
-    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.61.0-x86_64-apple-darwin
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.71.1-x86_64-apple-darwin
     set PATH=$PATH:~/.cargo/bin
     rustup install nightly
   displayName: Install rust
