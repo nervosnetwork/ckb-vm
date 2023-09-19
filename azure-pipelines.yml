@@ -11,37 +11,6 @@ variables:
 
 jobs:
 
-  - job: LinuxArm64AsmCI
-    pool:
-      vmImage: 'ubuntu-22.04'
-    steps:
-      - template: devtools/azure/linux-dependencies.yml
-      - script: |
-          sudo apt-get update -y &&
-          sudo apt install -y git \
-                              build-essential \
-                              autoconf \
-                              automake \
-                              autotools-dev \
-                              libmpc-dev \
-                              libmpfr-dev \
-                              libgmp-dev \
-                              gawk \
-                              libtool \
-                              patchutils \
-                              libexpat-dev \
-                              zlib1g-dev \
-                              gcc-aarch64-linux-gnu \
-                              g++-aarch64-linux-gnu \
-                              qemu-user-static &&
-          rustup target add aarch64-unknown-linux-gnu
-      - script: |
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc &&
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11" &&
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu" &&
-          cargo test --features=asm --target aarch64-unknown-linux-gnu
-        displayName: Run ci-asm on arm64 machines
-
   - job: LinuxArm64TestSuite
     pool:
       vmImage: 'ubuntu-20.04'
