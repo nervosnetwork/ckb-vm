@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Dep
+        run: |
+          rustup component add clippy
+          rustup component add rustfmt
       # https://github.com/EmbarkStudios/cargo-deny-action
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
@@ -17,6 +21,8 @@ jobs:
           command: check advisories licenses sources bans
       - name: Run ci-generated
         run: make ci-generated
+      - name: Run ci
+        run: make ci
       - name: Run ci-asm
         run: make ci-asm
       - name: Run spawn tests in release
