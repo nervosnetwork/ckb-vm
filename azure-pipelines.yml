@@ -167,14 +167,6 @@ jobs:
           echo "Uploaded code coverage"
         displayName: Run code coverage
 
-  - job: OSXCI
-    pool:
-      vmImage: 'macOS-11'
-    steps:
-      - template: devtools/azure/osx-dependencies.yml
-      - script: make ci-asm
-        displayName: Run unit tests
-
   - job: WinCI
     pool:
       vmImage: 'windows-2019'
