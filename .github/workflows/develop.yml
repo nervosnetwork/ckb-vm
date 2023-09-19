@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Run ci-asm
         run: |
-          sudo apt-get update -y
+          sudo apt update -y
           sudo apt install -y git \
                               build-essential \
                               autoconf \
@@ -80,6 +80,39 @@ jobs:
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11"
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu"
           cargo test --features=asm --target aarch64-unknown-linux-gnu
+      - name: Run test suites
+        run: |
+          sudo apt update -y
+          sudo apt install -y git \
+                              build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              zlib1g-dev
+          git clone https://github.com/nervosnetwork/ckb-vm-test-suite
+          ln -snf .. ckb-vm-test-suite/ckb-vm
+          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
+          cd ckb-vm-test-suite
+          git checkout 86480364649c9cb6ac01674fe51156e7cf50a31a
+          git submodule update --init --recursive
+          RISCV=`pwd`/../riscv ./test.sh --build-only
+          cd ..
+          sudo apt install -y qemu binfmt-support qemu-user-static
+          sudo apt install -y gcc-multilib
+          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
+          rustup target add aarch64-unknown-linux-gnu
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          cd ckb-vm-test-suite
+          cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd ..
+          cd ..
+          docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
 
   macos:
     runs-on: macos-latest
