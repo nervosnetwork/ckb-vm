@@ -25,6 +25,8 @@ jobs:
         run: make ci
       - name: Run ci-asm
         run: make ci-asm
+      - name: Run ci-asm-chaos
+        run: make ci-asm-chaos
       - name: Run spawn tests in release
         run: cargo test test_spawn --release --features=asm -- --nocapture
 
@@ -51,5 +53,6 @@ jobs:
       - name: Run ci-asm
         shell: pwsh
         run: |
-          $env:path+="C:\Users\runneradmin\scoop\shims"
+          $env:path="C:\Users\runneradmin\scoop\apps\llvm\current;"+$env:path
+          $env:path="C:\Users\runneradmin\scoop\apps\yasm\current;"+$env:path
           make ci-asm

@@ -11,14 +11,6 @@ variables:
 
 jobs:
 
-  - job: LinuxCIASMChaos
-    pool:
-      vmImage: 'ubuntu-20.04'
-    steps:
-      - template: devtools/azure/linux-dependencies.yml
-      - script: make ci-asm-chaos
-        displayName: Run ci-asm-chaos
-
   - job: LinuxTestSuite
     pool:
       vmImage: 'ubuntu-20.04'
