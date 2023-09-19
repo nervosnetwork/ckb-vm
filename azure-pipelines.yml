@@ -11,35 +11,6 @@ variables:
 
 jobs:
 
-  - job: LinuxTestSuite
-    pool:
-      vmImage: 'ubuntu-20.04'
-    steps:
-      - template: devtools/azure/linux-dependencies.yml
-      - script: |
-          sudo apt install -y git \
-                              build-essential \
-                              autoconf \
-                              automake \
-                              autotools-dev \
-                              libmpc-dev \
-                              libmpfr-dev \
-                              libgmp-dev \
-                              gawk \
-                              libtool \
-                              patchutils \
-                              libexpat-dev \
-                              zlib1g-dev
-      - script: |
-          git clone https://github.com/nervosnetwork/ckb-vm-test-suite &&
-          ln -snf .. ckb-vm-test-suite/ckb-vm &&
-          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv &&
-          cd ckb-vm-test-suite &&
-          git checkout $TEST_SUITE_COMMIT &&
-          git submodule update --init --recursive &&
-          RISCV=`pwd`/../riscv ./test.sh
-        displayName: Run test suite
-
   - job: LinuxArm64AsmCI
     pool:
       vmImage: 'ubuntu-22.04'

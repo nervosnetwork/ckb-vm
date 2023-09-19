@@ -27,6 +27,28 @@ jobs:
         run: make ci-asm
       - name: Run ci-asm-chaos
         run: make ci-asm-chaos
+      - name: Run test suites
+        run: |
+          sudo apt install -y git \
+                              build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              zlib1g-dev
+          git clone https://github.com/nervosnetwork/ckb-vm-test-suite
+          ln -snf .. ckb-vm-test-suite/ckb-vm
+          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
+          cd ckb-vm-test-suite
+          git checkout 86480364649c9cb6ac01674fe51156e7cf50a31a
+          git submodule update --init --recursive
+          RISCV=`pwd`/../riscv ./test.sh
       - name: Run spawn tests in release
         run: cargo test test_spawn --release --features=asm -- --nocapture
 
