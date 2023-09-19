@@ -34,3 +34,22 @@ jobs:
       - uses: actions/checkout@v3
       - name: Run ci-asm
         run: make ci-asm
+
+  windows:
+    # We must use windows-2019 here, otherwise we will encounter some bugs, for futher details, see
+    # https://github.com/yasm/yasm/issues/153
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v3
+      - name: Dep
+        shell: pwsh
+        # https://github.com/ScoopInstaller/Install#for-admin
+        run: |
+          iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
+          scoop install llvm
+          scoop install yasm
+      - name: Run ci-asm
+        shell: pwsh
+        run: |
+          $env:path+="C:\Users\runneradmin\scoop\shims"
+          make ci-asm

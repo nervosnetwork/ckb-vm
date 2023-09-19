@@ -166,11 +166,3 @@ jobs:
           bash <(curl -s https://codecov.io/bash) &&
           echo "Uploaded code coverage"
         displayName: Run code coverage
-
-  - job: WinCI
-    pool:
-      vmImage: 'windows-2019'
-    steps:
-      - template: devtools/azure/windows-dependencies.yml
-      - script: make ci-asm
-        displayName: Run unit tests
