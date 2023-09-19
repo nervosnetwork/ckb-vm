@@ -17,3 +17,5 @@ jobs:
           command: check advisories licenses sources bans
       - name: Run ci-generated
         run: make ci-generated
+      - name: Run ci-asm
+        run: make ci-asm
