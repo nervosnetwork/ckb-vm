@@ -10,15 +10,6 @@ variables:
   TEST_SUITE_COMMIT: 86480364649c9cb6ac01674fe51156e7cf50a31a
 
 jobs:
-  - job: LinuxCIDeps
-    pool:
-      vmImage: 'ubuntu-20.04'
-    steps:
-      - template: devtools/azure/linux-dependencies.yml
-      - script: cargo install cargo-deny --locked --version 0.12.1
-        displayName: Install cargo deny
-      - script: make ci-deps
-        displayName: Run ci-deps
 
   - job: LinuxCIGenerated
     pool:

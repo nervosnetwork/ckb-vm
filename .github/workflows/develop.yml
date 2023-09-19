@@ -1,0 +1,17 @@
+name: develop
+
+on:
+  pull_request:
+  push:
+
+jobs:
+
+  linux-x86:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      # https://github.com/EmbarkStudios/cargo-deny-action
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          arguments: --all-features
+          command: check advisories licenses sources bans
