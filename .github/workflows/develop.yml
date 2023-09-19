@@ -15,3 +15,5 @@ jobs:
         with:
           arguments: --all-features
           command: check advisories licenses sources bans
+      - name: Run ci-generated
+        run: make ci-generated
