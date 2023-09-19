@@ -27,7 +27,7 @@ jobs:
         run: make ci-asm
       - name: Run ci-asm-chaos
         run: make ci-asm-chaos
-      - name: Run test suites
+      - name: Run test suite
         run: |
           sudo apt install -y git \
                               build-essential \
@@ -56,35 +56,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Run ci-asm
+      - name: Dep
         run: |
           sudo apt update -y
-          sudo apt install -y git \
-                              build-essential \
-                              autoconf \
-                              automake \
-                              autotools-dev \
-                              libmpc-dev \
-                              libmpfr-dev \
-                              libgmp-dev \
-                              gawk \
-                              libtool \
-                              patchutils \
-                              libexpat-dev \
-                              zlib1g-dev \
-                              gcc-aarch64-linux-gnu \
-                              g++-aarch64-linux-gnu \
-                              qemu-user-static
-          rustup target add aarch64-unknown-linux-gnu
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11"
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu"
-          cargo test --features=asm --target aarch64-unknown-linux-gnu
-      - name: Run test suites
-        run: |
-          sudo apt update -y
-          sudo apt install -y git \
-                              build-essential \
+          sudo apt install -y build-essential \
                               autoconf \
                               automake \
                               autotools-dev \
@@ -96,6 +71,9 @@ jobs:
                               patchutils \
                               libexpat-dev \
                               zlib1g-dev
+          rustup target add aarch64-unknown-linux-gnu
+      - name: Pre build
+        run: |
           git clone https://github.com/nervosnetwork/ckb-vm-test-suite
           ln -snf .. ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
@@ -104,10 +82,18 @@ jobs:
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh --build-only
           cd ..
+      - name: Run ci-asm
+        run: |
+          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11"
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu"
+          cargo test --features=asm --target aarch64-unknown-linux-gnu
+      - name: Run test suite
+        run: |
           sudo apt install -y qemu binfmt-support qemu-user-static
           sudo apt install -y gcc-multilib
           sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
-          rustup target add aarch64-unknown-linux-gnu
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           cd ckb-vm-test-suite
           cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd ..
