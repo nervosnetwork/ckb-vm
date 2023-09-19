@@ -19,3 +19,5 @@ jobs:
         run: make ci-generated
       - name: Run ci-asm
         run: make ci-asm
+      - name: Run spawn tests in release
+        run: cargo test test_spawn --release --features=asm -- --nocapture
