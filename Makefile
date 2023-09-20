@@ -40,9 +40,6 @@ fuzz:
 ci: fmt check clippy test
 	git diff --exit-code Cargo.lock
 
-ci-deps: security-audit check-licenses check-crates
-	git diff --exit-code Cargo.lock
-
 ci-asm: test-asm
 	git diff --exit-code Cargo.lock
 
@@ -51,21 +48,6 @@ ci-asm-chaos: test-asm-chaos
 
 ci-generated: update-cdefinitions
 	git diff --exit-code src/machine/asm/cdefinitions_generated.h
-
-# Use cargo-deny to audit Cargo.lock for crates with security vulnerabilities
-security-audit:
-	@cargo deny --version || cargo install cargo-deny
-	@cargo deny check --hide-inclusion-graph --show-stats advisories sources
-
-# Use cargo-deny to check licenses for all dependencies.
-check-licenses:
-	@cargo deny --version || cargo install cargo-deny
-	@cargo deny check --hide-inclusion-graph --show-stats licenses
-
-# Use cargo-deny to check specific crates, detect and handle multiple versions of the same crate and wildcards version requirement.
-check-crates:
-	@cargo deny --version || cargo install cargo-deny
-	@cargo deny check --hide-inclusion-graph --show-stats bans
 
 update-cdefinitions:
 	cargo run --manifest-path=definitions/Cargo.toml --bin generate_asm_constants > src/machine/asm/cdefinitions_generated.h
