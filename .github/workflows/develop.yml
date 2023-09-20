@@ -6,28 +6,49 @@ on:
 
 jobs:
 
-  linux-x86:
+  linux-x86-deny:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Dep
-        run: |
-          rustup component add clippy
-          rustup component add rustfmt
       # https://github.com/EmbarkStudios/cargo-deny-action
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           arguments: --all-features
           command: check advisories licenses sources bans
+
+  linux-x86-ci-generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Run ci-generated
         run: make ci-generated
+
+  linux-x86-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Run ci
-        run: make ci
+        run: rustup component add clippy rustfmt && make ci
+
+  linux-x86-ci-asm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Run ci-asm
         run: make ci-asm
+
+  linux-x86-ci-asm-chaos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Run ci-asm-chaos
         run: make ci-asm-chaos
-      - name: Run test suite
+
+  linux-x86-test-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Dep
         run: |
           sudo apt install -y git \
                               build-essential \
@@ -42,6 +63,8 @@ jobs:
                               patchutils \
                               libexpat-dev \
                               zlib1g-dev
+      - name: Run test suite
+        run: |
           git clone https://github.com/nervosnetwork/ckb-vm-test-suite
           ln -snf .. ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
@@ -49,10 +72,45 @@ jobs:
           git checkout 86480364649c9cb6ac01674fe51156e7cf50a31a
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh
+
+  linux-x86-test-spawn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Run spawn tests in release
         run: cargo test test_spawn --release --features=asm -- --nocapture
 
-  linux-arm:
+  linux-arm-ci-asm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Dep
+        run: |
+          sudo apt-get update -y
+          sudo apt install -y build-essential \
+                              autoconf \
+                              automake \
+                              autotools-dev \
+                              libmpc-dev \
+                              libmpfr-dev \
+                              libgmp-dev \
+                              gawk \
+                              libtool \
+                              patchutils \
+                              libexpat-dev \
+                              zlib1g-dev \
+                              gcc-aarch64-linux-gnu \
+                              g++-aarch64-linux-gnu \
+                              qemu-user-static
+          rustup target add aarch64-unknown-linux-gnu
+      - name: Run ci-asm
+        run: |
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc &&
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11" &&
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu" &&
+          cargo test --features=asm --target aarch64-unknown-linux-gnu
+
+  linux-arm-test-suite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -82,13 +140,6 @@ jobs:
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh --build-only
           cd ..
-      - name: Run ci-asm
-        run: |
-          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/11"
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu"
-          cargo test --features=asm --target aarch64-unknown-linux-gnu
       - name: Run test suite
         run: |
           sudo apt install -y qemu binfmt-support qemu-user-static
@@ -100,14 +151,14 @@ jobs:
           cd ..
           docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
 
-  macos:
+  macos-x86-ci-asm:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
       - name: Run ci-asm
         run: make ci-asm
 
-  windows:
+  windows-x86-ci-asm:
     # We must use windows-2019 here, otherwise we will encounter some bugs, for futher details, see
     # https://github.com/yasm/yasm/issues/153
     runs-on: windows-2019
