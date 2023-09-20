@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Dep
+      - name: Install dependencies
         run: |
           sudo apt install -y git \
                               build-essential \
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Dep
+      - name: Install dependencies
         run: |
           sudo apt-get update -y
           sudo apt install -y build-essential \
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Dep
+      - name: Install dependencies
         run: |
           sudo apt update -y
           sudo apt install -y build-essential \
@@ -130,7 +130,7 @@ jobs:
                               libexpat-dev \
                               zlib1g-dev
           rustup target add aarch64-unknown-linux-gnu
-      - name: Pre build
+      - name: Build test suite
         run: |
           git clone https://github.com/nervosnetwork/ckb-vm-test-suite
           ln -snf .. ckb-vm-test-suite/ckb-vm
@@ -164,7 +164,7 @@ jobs:
     runs-on: windows-2019
     steps:
       - uses: actions/checkout@v3
-      - name: Dep
+      - name: Install dependencies
         shell: pwsh
         # https://github.com/ScoopInstaller/Install#for-admin
         run: |
