@@ -12,7 +12,7 @@ pub mod wxorx;
 
 pub use ckb_vm_definitions::{
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
-    MEMORY_FRAME_PAGE_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
+    DEFAULT_MEMORY_SIZE, MEMORY_FRAME_PAGE_SHIFTS, RISCV_PAGE_SHIFTS,
 };
 
 #[inline(always)]
@@ -100,18 +100,21 @@ pub fn fill_page_data<M: Memory>(
     Ok(())
 }
 
-// `size` should be none zero u64
-pub fn get_page_indices(addr: u64, size: u64) -> Result<(u64, u64), Error> {
+pub fn check_no_overflow(addr: u64, size: u64, memory_size: u64) -> Result<(), Error> {
     let (addr_end, overflowed) = addr.overflowing_add(size);
-    if overflowed {
-        return Err(Error::MemOutOfBound);
+    if overflowed || addr_end > memory_size {
+        Err(Error::MemOutOfBound)
+    } else {
+        Ok(())
     }
-    if addr_end > RISCV_MAX_MEMORY as u64 {
-        return Err(Error::MemOutOfBound);
-    }
+}
+
+// `size` should be none zero u64
+pub fn get_page_indices(addr: u64, size: u64) -> (u64, u64) {
+    let addr_end = addr.wrapping_add(size);
     let page = addr >> RISCV_PAGE_SHIFTS;
     let page_end = (addr_end - 1) >> RISCV_PAGE_SHIFTS;
-    Ok((page, page_end))
+    (page, page_end)
 }
 
 pub fn check_permission<M: Memory>(

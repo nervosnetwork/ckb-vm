@@ -24,8 +24,8 @@ use crate::{
         VERSION0,
     },
     memory::{
-        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
-        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+        check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
+        round_page_up, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
     RISCV_PAGESIZE,
@@ -204,6 +204,7 @@ struct FastMemory<'a>(&'a mut Box<AsmCoreMachine>);
 
 impl<'a> FastMemory<'a> {
     fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
+        check_no_overflow(addr, size, self.0.memory_size)?;
         let frame_start = addr >> MEMORY_FRAME_SHIFTS << MEMORY_FRAME_SHIFTS;
         // There is some memory space between the start of the first memory
         // frame touched, and the starting address of memory to be written. We
@@ -220,7 +221,7 @@ impl<'a> FastMemory<'a> {
         if (aligned_end + RISCV_PAGESIZE as u64) < frame_next_start {
             check_memory(self.0, aligned_end >> RISCV_PAGE_SHIFTS);
         }
-        let page_indices = get_page_indices(addr, size)?;
+        let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             let frame_index = page >> MEMORY_FRAME_PAGE_SHIFTS;
             let slice = self
@@ -442,7 +443,8 @@ impl Memory for Box<AsmCoreMachine> {
         if value.is_empty() {
             return Ok(());
         }
-        let page_indices = get_page_indices(addr, value.len() as u64)?;
+        check_no_overflow(addr, value.len() as u64, self.memory_size)?;
+        let page_indices = get_page_indices(addr, value.len() as u64);
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
@@ -457,7 +459,8 @@ impl Memory for Box<AsmCoreMachine> {
         if size == 0 {
             return Ok(());
         }
-        let page_indices = get_page_indices(addr, size)?;
+        check_no_overflow(addr, size, self.memory_size)?;
+        let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
@@ -472,7 +475,8 @@ impl Memory for Box<AsmCoreMachine> {
         if size == 0 {
             return Ok(Bytes::new());
         }
-        let page_indices = get_page_indices(addr, size)?;
+        check_no_overflow(addr, size, self.memory_size)?;
+        let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             check_memory(self, page);
         }

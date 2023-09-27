@@ -8,8 +8,8 @@ use ckb_vm_definitions::{
     instructions::{instruction_opcode_name, MAXIMUM_OPCODE, MINIMAL_OPCODE},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
-    MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
+    RISCV_PAGE_SHIFTS,
 };
 use std::mem::{size_of, zeroed};
 
@@ -30,17 +30,14 @@ macro_rules! print_inst_label {
 // of this as a workaround to the problem that build.rs cannot depend on any
 // of its crate contents.
 fn main() {
-    println!("#define CKB_VM_ASM_RISCV_MAX_MEMORY {}", RISCV_MAX_MEMORY);
     println!("#define CKB_VM_ASM_RISCV_PAGE_SHIFTS {}", RISCV_PAGE_SHIFTS);
     println!("#define CKB_VM_ASM_RISCV_PAGE_SIZE {}", RISCV_PAGESIZE);
     println!("#define CKB_VM_ASM_RISCV_PAGE_MASK {}", RISCV_PAGESIZE - 1);
-    println!("#define CKB_VM_ASM_RISCV_PAGES {}", RISCV_PAGES);
     println!(
         "#define CKB_VM_ASM_MEMORY_FRAME_SHIFTS {}",
         MEMORY_FRAME_SHIFTS
     );
     println!("#define CKB_VM_ASM_MEMORY_FRAMESIZE {}", MEMORY_FRAMESIZE);
-    println!("#define CKB_VM_ASM_MEMORY_FRAMES {}", MEMORY_FRAMES);
     println!(
         "#define CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS {}",
         MEMORY_FRAME_PAGE_SHIFTS

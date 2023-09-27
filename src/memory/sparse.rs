@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
+use super::super::{Error, Register, DEFAULT_MEMORY_SIZE, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
 use super::{fill_page_data, memset, round_page_down, Memory, Page, FLAG_DIRTY};
 
 use bytes::Bytes;
@@ -67,7 +67,6 @@ impl<R: Register> SparseMemory<R> {
     }
 
     pub fn new_with_memory(memory_size: usize) -> Self {
-        assert!(memory_size <= RISCV_MAX_MEMORY);
         assert!(memory_size % RISCV_PAGESIZE == 0);
         Self {
             indices: vec![INVALID_PAGE_INDEX; memory_size / RISCV_PAGESIZE],
@@ -83,7 +82,7 @@ impl<R: Register> SparseMemory<R> {
 
 impl<R: Register> Default for SparseMemory<R> {
     fn default() -> Self {
-        Self::new_with_memory(RISCV_MAX_MEMORY)
+        Self::new_with_memory(DEFAULT_MEMORY_SIZE)
     }
 }
 
