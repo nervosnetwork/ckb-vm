@@ -8,7 +8,9 @@ fn main() {
 
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     let is_windows = target_family == "windows";
+    let is_msvc = is_windows && (target_env == "msvc");
     let is_unix = target_family == "unix";
     let is_x86_64 = target_arch == "x86_64";
     let is_aarch64 = target_arch == "aarch64";
@@ -28,63 +30,18 @@ fn main() {
         println!("cargo:rerun-if-changed=src/machine/asm/execute_aarch64.S");
         println!("cargo:rerun-if-changed=src/machine/asm/cdefinitions_generated.h");
 
-        use cc::Build;
-        use std::path::Path;
-        use std::process::Command;
+        let mut build = cc::Build::new();
 
-        fn run_command(mut c: Command) {
-            println!("Running Command[{:?}]", c);
-
-            let output = c.output().unwrap_or_else(|e| {
-                panic!("Error running Command[{:?}], error: {:?}", c, e);
-            });
-
-            if !output.status.success() {
-                use std::io::{self, Write};
-                io::stdout()
-                    .write_all(&output.stdout)
-                    .expect("stdout write");
-                io::stderr()
-                    .write_all(&output.stderr)
-                    .expect("stderr write");
-
-                panic!(
-                    "Command[{:?}] exits with non-success status: {:?}",
-                    c, output.status
-                );
-            }
-        }
-
-        let mut build = Build::new();
-
-        if is_windows && x64_asm {
-            let out_dir = env::var("OUT_DIR").unwrap();
-            let expand_path = Path::new(&out_dir).join("execute_x64-expanded.S");
-            let mut expand_command = Command::new("clang");
-            expand_command
-                .arg("-E")
-                .arg("src/machine/asm/execute_x64.S")
-                .arg("-o")
-                .arg(&expand_path);
-            run_command(expand_command);
-
-            let compile_path = Path::new(&out_dir).join("execute_x64.o");
-            let mut compile_command = Command::new("yasm");
-            compile_command
-                .arg("-p")
-                .arg("gas")
-                .arg("-f")
-                .arg("x64")
-                .arg("-m")
-                .arg("amd64")
-                .arg(&expand_path)
-                .arg("-o")
-                .arg(&compile_path);
-            run_command(compile_command);
-
-            build.object(&compile_path);
-        } else if x64_asm {
+        if x64_asm {
             build.file("src/machine/asm/execute_x64.S");
+            if is_msvc {
+                // For now, only an assembly source code is required for CKB-VM, we won't
+                // need to build any C source file here. Hence we can use this simpler solution
+                // to set the default compiler to GCC. We will need to manually trigger the
+                // command to assemble the assembly code file, should any C source file is also
+                // required here.
+                build.compiler("gcc");
+            }
         } else if aarch64_asm {
             build.file("src/machine/asm/execute_aarch64.S");
         }
