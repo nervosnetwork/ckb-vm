@@ -159,9 +159,7 @@ jobs:
         run: make ci-asm
 
   windows-x86-ci-asm:
-    # We must use windows-2019 here, otherwise we will encounter some bugs, for futher details, see
-    # https://github.com/yasm/yasm/issues/153
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
@@ -169,11 +167,8 @@ jobs:
         # https://github.com/ScoopInstaller/Install#for-admin
         run: |
           iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
-          scoop install llvm
-          scoop install yasm
+          scoop install mingw
       - name: Run ci-asm
         shell: pwsh
         run: |
-          $env:path="C:\Users\runneradmin\scoop\apps\llvm\current;"+$env:path
-          $env:path="C:\Users\runneradmin\scoop\apps\yasm\current;"+$env:path
           make ci-asm
