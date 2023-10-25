@@ -2,7 +2,7 @@ use crate::{
     instructions::Instruction, DEFAULT_MEMORY_SIZE, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
     RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
 };
-use std::alloc::{alloc, Layout};
+use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -106,6 +106,17 @@ pub struct AsmCoreMachine {
     pub frames_ptr: u64,
 }
 
+impl Drop for AsmCoreMachine {
+    fn drop(&mut self) {
+        let memory_layout = Layout::array::<u8>(self.memory_size as usize).unwrap();
+        unsafe { dealloc(self.memory_ptr as *mut u8, memory_layout) };
+        let flags_layout = Layout::array::<u8>(self.flags_size as usize).unwrap();
+        unsafe { dealloc(self.flags_ptr as *mut u8, flags_layout) };
+        let frames_layout = Layout::array::<u8>(self.frames_size as usize).unwrap();
+        unsafe { dealloc(self.frames_ptr as *mut u8, frames_layout) };
+    }
+}
+
 impl AsmCoreMachine {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
         Self::new_with_memory(isa, version, max_cycles, DEFAULT_MEMORY_SIZE)
@@ -147,6 +158,13 @@ impl AsmCoreMachine {
 
         machine.last_read_frame = u64::max_value();
         machine.last_write_page = u64::max_value();
+
+        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
+        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
+        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
 
         machine
     }
