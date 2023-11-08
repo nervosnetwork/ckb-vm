@@ -9,8 +9,7 @@ use ckb_vm_definitions::{
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
         RET_PAUSE, RET_SLOWPATH,
     },
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS,
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::os::raw::c_uchar;
@@ -24,11 +23,11 @@ use crate::{
         VERSION0,
     },
     memory::{
-        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
-        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+        check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
+        round_page_up, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
     CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_PAGES, RISCV_PAGESIZE,
+    RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -81,21 +80,27 @@ impl CoreMachine for Box<AsmCoreMachine> {
 #[no_mangle]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
-    let addr_to = ((frame_index + 1) << MEMORY_FRAME_SHIFTS) as usize;
+    let slice =
+        machine.cast_ptr_to_slice_mut(machine.memory_ptr, addr_from, 1 << MEMORY_FRAME_SHIFTS);
     if machine.chaos_mode != 0 {
         let mut gen = rand::rngs::StdRng::seed_from_u64(machine.chaos_seed.into());
-        gen.fill_bytes(&mut machine.memory[addr_from..addr_to]);
+        gen.fill_bytes(slice);
         machine.chaos_seed = gen.next_u32();
     } else {
-        memset(&mut machine.memory[addr_from..addr_to], 0);
+        memset(slice, 0);
     }
 }
 
 fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
-    let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
-    if machine.frames[frame as usize] == 0 {
-        inited_memory(frame, machine);
-        machine.frames[frame as usize] = 1;
+    let frame_index = page >> MEMORY_FRAME_PAGE_SHIFTS;
+    unsafe {
+        let frames = machine.frames_ptr as *mut u8;
+        let frame_addr = frames.add(frame_index as usize);
+        let frame_flag = frame_addr.read();
+        if frame_flag == 0 {
+            inited_memory(frame_index, machine);
+            frame_addr.write(0x01);
+        }
     }
 }
 
@@ -198,6 +203,7 @@ struct FastMemory<'a>(&'a mut Box<AsmCoreMachine>);
 
 impl<'a> FastMemory<'a> {
     fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
+        check_no_overflow(addr, size, self.0.memory_size)?;
         let frame_start = addr >> MEMORY_FRAME_SHIFTS << MEMORY_FRAME_SHIFTS;
         // There is some memory space between the start of the first memory
         // frame touched, and the starting address of memory to be written. We
@@ -214,10 +220,13 @@ impl<'a> FastMemory<'a> {
         if (aligned_end + RISCV_PAGESIZE as u64) < frame_next_start {
             check_memory(self.0, aligned_end >> RISCV_PAGE_SHIFTS);
         }
-        let page_indices = get_page_indices(addr, size)?;
+        let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
-            let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
-            self.0.frames[frame as usize] = 1;
+            let frame_index = page >> MEMORY_FRAME_PAGE_SHIFTS;
+            let slice = self
+                .0
+                .cast_ptr_to_slice_mut(self.0.frames_ptr, frame_index as usize, 1);
+            slice[0] = 1;
             self.0.set_flag(page, FLAG_DIRTY)?;
         }
         Ok(())
@@ -232,7 +241,9 @@ impl<'a> Memory for FastMemory<'a> {
             return Ok(());
         }
         self.prepare_memory(addr, value.len() as u64)?;
-        let slice = &mut self.0.memory[addr as usize..addr as usize + value.len()];
+        let slice = self
+            .0
+            .cast_ptr_to_slice_mut(self.0.memory_ptr, addr as usize, value.len());
         slice.copy_from_slice(value);
         Ok(())
     }
@@ -242,10 +253,10 @@ impl<'a> Memory for FastMemory<'a> {
             return Ok(());
         }
         self.prepare_memory(addr, size)?;
-        memset(
-            &mut self.0.memory[addr as usize..(addr + size) as usize],
-            value,
-        );
+        let slice = self
+            .0
+            .cast_ptr_to_slice_mut(self.0.memory_ptr, addr as usize, size as usize);
+        memset(slice, value);
         Ok(())
     }
 
@@ -337,8 +348,10 @@ impl Memory for Box<AsmCoreMachine> {
     type REG = u64;
 
     fn reset_memory(&mut self) -> Result<(), Error> {
-        self.flags = [0; RISCV_PAGES];
-        self.frames = [0; MEMORY_FRAMES];
+        let slice = self.cast_ptr_to_slice_mut(self.flags_ptr, 0, self.flags_size as usize);
+        memset(slice, 0);
+        let slice = self.cast_ptr_to_slice_mut(self.frames_ptr, 0, self.frames_size as usize);
+        memset(slice, 0);
         self.load_reservation_address = u64::MAX;
         self.last_read_frame = u64::max_value();
         self.last_write_page = u64::max_value();
@@ -390,7 +403,8 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
         if page < self.memory_pages() as u64 {
-            Ok(self.flags[page as usize])
+            let slice = self.cast_ptr_to_slice(self.flags_ptr, page as usize, 1);
+            Ok(slice[0])
         } else {
             Err(Error::MemOutOfBound)
         }
@@ -398,7 +412,8 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            self.flags[page as usize] |= flag;
+            let slice = self.cast_ptr_to_slice_mut(self.flags_ptr, page as usize, 1);
+            slice[0] |= flag;
             // Clear last write page cache
             self.last_write_page = u64::max_value();
             Ok(())
@@ -409,7 +424,8 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            self.flags[page as usize] &= !flag;
+            let slice = self.cast_ptr_to_slice_mut(self.flags_ptr, page as usize, 1);
+            slice[0] &= !flag;
             // Clear last write page cache
             self.last_write_page = u64::max_value();
             Ok(())
@@ -426,13 +442,14 @@ impl Memory for Box<AsmCoreMachine> {
         if value.is_empty() {
             return Ok(());
         }
-        let page_indices = get_page_indices(addr, value.len() as u64)?;
+        check_no_overflow(addr, value.len() as u64, self.memory_size)?;
+        let page_indices = get_page_indices(addr, value.len() as u64);
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
+        let slice = self.cast_ptr_to_slice_mut(self.memory_ptr, addr as usize, value.len());
         slice.copy_from_slice(value);
         Ok(())
     }
@@ -441,16 +458,15 @@ impl Memory for Box<AsmCoreMachine> {
         if size == 0 {
             return Ok(());
         }
-        let page_indices = get_page_indices(addr, size)?;
+        check_no_overflow(addr, size, self.memory_size)?;
+        let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        memset(
-            &mut self.memory[addr as usize..(addr + size) as usize],
-            value,
-        );
+        let slice = self.cast_ptr_to_slice_mut(self.memory_ptr, addr as usize, size as usize);
+        memset(slice, value);
         Ok(())
     }
 
@@ -458,90 +474,88 @@ impl Memory for Box<AsmCoreMachine> {
         if size == 0 {
             return Ok(Bytes::new());
         }
-        let page_indices = get_page_indices(addr, size)?;
+        check_no_overflow(addr, size, self.memory_size)?;
+        let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             check_memory(self, page);
         }
-        Ok(Bytes::from(
-            self.memory[addr as usize..(addr + size) as usize].to_vec(),
-        ))
+        let slice = unsafe {
+            let memory = self.memory_ptr as *mut u8;
+            let memory_from = memory.add(addr as usize);
+            std::slice::from_raw_parts(memory_from, size as usize)
+        };
+        Ok(Bytes::from(slice))
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_memory_executable(self, addr, 2)?;
-        Ok(LittleEndian::read_u16(
-            &self.memory[addr as usize..addr as usize + 2],
-        ))
+        let slice = self.cast_ptr_to_slice(self.memory_ptr, addr as usize, 2);
+        Ok(LittleEndian::read_u16(slice))
     }
 
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
         check_memory_executable(self, addr, 4)?;
-        Ok(LittleEndian::read_u32(
-            &self.memory[addr as usize..addr as usize + 4],
-        ))
+        let slice = self.cast_ptr_to_slice(self.memory_ptr, addr as usize, 4);
+        Ok(LittleEndian::read_u32(slice))
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 1)?;
-        Ok(u64::from(self.memory[addr as usize]))
+        let slice = self.cast_ptr_to_slice(self.memory_ptr, addr as usize, 1);
+        Ok(u64::from(slice[0]))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 2)?;
-        Ok(u64::from(LittleEndian::read_u16(
-            &self.memory[addr as usize..addr as usize + 2],
-        )))
+        let slice = self.cast_ptr_to_slice(self.memory_ptr, addr as usize, 2);
+        Ok(u64::from(LittleEndian::read_u16(slice)))
     }
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 4)?;
-        Ok(u64::from(LittleEndian::read_u32(
-            &self.memory[addr as usize..addr as usize + 4],
-        )))
+        let slice = self.cast_ptr_to_slice(self.memory_ptr, addr as usize, 4);
+        Ok(u64::from(LittleEndian::read_u32(slice)))
     }
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 8)?;
-        Ok(LittleEndian::read_u64(
-            &self.memory[addr as usize..addr as usize + 8],
-        ))
+        let slice = self.cast_ptr_to_slice(self.memory_ptr, addr as usize, 8);
+        Ok(LittleEndian::read_u64(slice))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 1)?;
-        self.memory[addr as usize] = (*value) as u8;
+        let slice = self.cast_ptr_to_slice_mut(self.memory_ptr, addr as usize, 1);
+        slice[0] = *value as u8;
         Ok(())
     }
 
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 2)?;
-        LittleEndian::write_u16(
-            &mut self.memory[addr as usize..(addr + 2) as usize],
-            *value as u16,
-        );
+        let slice = self.cast_ptr_to_slice_mut(self.memory_ptr, addr as usize, 2);
+        LittleEndian::write_u16(slice, *value as u16);
         Ok(())
     }
 
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 4)?;
-        LittleEndian::write_u32(
-            &mut self.memory[addr as usize..(addr + 4) as usize],
-            *value as u32,
-        );
+        let slice = self.cast_ptr_to_slice_mut(self.memory_ptr, addr as usize, 4);
+        LittleEndian::write_u32(slice, *value as u32);
         Ok(())
     }
 
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 8)?;
-        LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
+        let slice = self.cast_ptr_to_slice_mut(self.memory_ptr, addr as usize, 8);
+        LittleEndian::write_u64(slice, *value as u64);
         Ok(())
     }
 

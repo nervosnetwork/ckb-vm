@@ -1,5 +1,5 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
-use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
+use super::super::{Error, Register, DEFAULT_MEMORY_SIZE, RISCV_PAGESIZE};
+use super::{check_no_overflow, fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
@@ -32,7 +32,6 @@ impl<R> DerefMut for FlatMemory<R> {
 
 impl<R: Register> FlatMemory<R> {
     pub fn new_with_memory(memory_size: usize) -> Self {
-        assert!(memory_size <= RISCV_MAX_MEMORY);
         assert!(memory_size % RISCV_PAGESIZE == 0);
         Self {
             data: vec![0; memory_size],
@@ -47,7 +46,7 @@ impl<R: Register> FlatMemory<R> {
 
 impl<R: Register> Default for FlatMemory<R> {
     fn default() -> Self {
-        Self::new_with_memory(RISCV_MAX_MEMORY)
+        Self::new_with_memory(DEFAULT_MEMORY_SIZE)
     }
 }
 
@@ -161,7 +160,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn store8(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let page_indices = get_page_indices(addr.to_u64(), 1)?;
+        check_no_overflow(addr, 1, self.memory_size as u64)?;
+        let page_indices = get_page_indices(addr, 1);
         set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
@@ -171,7 +171,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn store16(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let page_indices = get_page_indices(addr.to_u64(), 2)?;
+        check_no_overflow(addr, 2, self.memory_size as u64)?;
+        let page_indices = get_page_indices(addr, 2);
         set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
@@ -181,7 +182,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn store32(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let page_indices = get_page_indices(addr.to_u64(), 4)?;
+        check_no_overflow(addr, 4, self.memory_size as u64)?;
+        let page_indices = get_page_indices(addr, 4);
         set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
@@ -191,7 +193,8 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn store64(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
         let addr = addr.to_u64();
-        let page_indices = get_page_indices(addr.to_u64(), 8)?;
+        check_no_overflow(addr, 8, self.memory_size as u64)?;
+        let page_indices = get_page_indices(addr, 8);
         set_dirty(self, &page_indices)?;
         let mut writer = Cursor::new(&mut self.data);
         writer.seek(SeekFrom::Start(addr as u64))?;
@@ -204,7 +207,8 @@ impl<R: Register> Memory for FlatMemory<R> {
         if size == 0 {
             return Ok(());
         }
-        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        check_no_overflow(addr, size, self.memory_size as u64)?;
+        let page_indices = get_page_indices(addr, size);
         set_dirty(self, &page_indices)?;
         let slice = &mut self[addr as usize..(addr + size) as usize];
         slice.copy_from_slice(value);
@@ -215,7 +219,8 @@ impl<R: Register> Memory for FlatMemory<R> {
         if size == 0 {
             return Ok(());
         }
-        let page_indices = get_page_indices(addr.to_u64(), size)?;
+        check_no_overflow(addr, size, self.memory_size as u64)?;
+        let page_indices = get_page_indices(addr, size);
         set_dirty(self, &page_indices)?;
         memset(&mut self[addr as usize..(addr + size) as usize], value);
         Ok(())

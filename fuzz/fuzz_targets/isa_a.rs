@@ -43,7 +43,6 @@ fuzz_target!(|data: [u8; 512]| {
         ckb_vm::machine::asm::AsmCoreMachine::new(ckb_vm_isa, ckb_vm_version, u64::MAX),
     )
     .build();
-
     let insts: [u32; 18] = [
         0b00001_00_00000_00000_010_00000_0101111, // AMOSWAP.W
         0b00000_00_00000_00000_010_00000_0101111, // AMOADD.W

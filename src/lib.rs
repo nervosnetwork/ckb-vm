@@ -30,9 +30,8 @@ pub use crate::{
 pub use bytes::Bytes;
 
 pub use ckb_vm_definitions::{
-    registers, DEFAULT_STACK_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE,
-    MEMORY_FRAME_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
-    RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    registers, DEFAULT_MEMORY_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAMESIZE,
+    MEMORY_FRAME_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
 
 pub use error::Error;
@@ -74,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_max_memory_must_be_multiple_of_pages() {
-        assert_eq!(RISCV_MAX_MEMORY % RISCV_PAGESIZE, 0);
+        assert_eq!(DEFAULT_MEMORY_SIZE % RISCV_PAGESIZE, 0);
     }
 
     #[test]

@@ -5,7 +5,7 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachineBuilder, VERSION1};
 use ckb_vm::{
     registers::A7, Error, Register, SparseMemory, SupportMachine, Syscalls, TraceMachine,
-    WXorXMemory, DEFAULT_STACK_SIZE, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY,
+    WXorXMemory, DEFAULT_MEMORY_SIZE, ISA_IMC, ISA_MOP,
 };
 
 #[allow(dead_code)]
@@ -31,8 +31,8 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
         machine.load_elf(&code, true).unwrap();
         machine.initialize_stack(
             &[],
-            (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
-            DEFAULT_STACK_SIZE as u64,
+            (DEFAULT_MEMORY_SIZE - DEFAULT_MEMORY_SIZE / 4) as u64,
+            (DEFAULT_MEMORY_SIZE / 4) as u64,
         )?;
         Ok(true)
     }

@@ -28,7 +28,8 @@ clippy_rule = -D warnings \
 	-A clippy::inconsistent_digit_grouping \
 	-A clippy::large_digit_groups \
 	-A clippy::suspicious_operation_groupings \
-	-A clippy::unnecessary_cast
+	-A clippy::unnecessary_cast \
+	-A clippy::mut_from_ref
 clippy:
 	cargo clippy --all --features=asm -- $(clippy_rule)
 	cd definitions && cargo clippy --all -- $(clippy_rule)

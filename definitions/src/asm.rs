@@ -1,8 +1,8 @@
 use crate::{
-    instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
+    instructions::Instruction, DEFAULT_MEMORY_SIZE, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
 };
-use std::alloc::{alloc, Layout};
+use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -101,15 +101,25 @@ pub struct AsmCoreMachine {
     pub last_read_frame: u64,
     pub last_write_page: u64,
 
-    pub flags: [u8; RISCV_PAGES],
-    pub frames: [u8; MEMORY_FRAMES],
+    pub memory_ptr: u64,
+    pub flags_ptr: u64,
+    pub frames_ptr: u64,
+}
 
-    pub memory: [u8; RISCV_MAX_MEMORY],
+impl Drop for AsmCoreMachine {
+    fn drop(&mut self) {
+        let memory_layout = Layout::array::<u8>(self.memory_size as usize).unwrap();
+        unsafe { dealloc(self.memory_ptr as *mut u8, memory_layout) };
+        let flags_layout = Layout::array::<u8>(self.flags_size as usize).unwrap();
+        unsafe { dealloc(self.flags_ptr as *mut u8, flags_layout) };
+        let frames_layout = Layout::array::<u8>(self.frames_size as usize).unwrap();
+        unsafe { dealloc(self.frames_ptr as *mut u8, frames_layout) };
+    }
 }
 
 impl AsmCoreMachine {
     pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
-        Self::new_with_memory(isa, version, max_cycles, RISCV_MAX_MEMORY)
+        Self::new_with_memory(isa, version, max_cycles, DEFAULT_MEMORY_SIZE)
     }
 
     pub fn new_with_memory(
@@ -119,15 +129,10 @@ impl AsmCoreMachine {
         memory_size: usize,
     ) -> Box<AsmCoreMachine> {
         assert_ne!(memory_size, 0);
-        assert!(memory_size <= RISCV_MAX_MEMORY);
         assert_eq!(memory_size % RISCV_PAGESIZE, 0);
         assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
-
         let mut machine = unsafe {
-            let machine_size =
-                std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
-
-            let layout = Layout::array::<u8>(machine_size).unwrap();
+            let layout = Layout::new::<AsmCoreMachine>();
             let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };
@@ -146,8 +151,6 @@ impl AsmCoreMachine {
         machine.reset_signal = 0;
         machine.version = version;
         machine.isa = isa;
-        machine.flags = [0; RISCV_PAGES];
-        machine.frames = [0; MEMORY_FRAMES];
 
         machine.memory_size = memory_size as u64;
         machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
@@ -156,10 +159,35 @@ impl AsmCoreMachine {
         machine.last_read_frame = u64::max_value();
         machine.last_write_page = u64::max_value();
 
+        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
+        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
+        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
+
         machine
     }
 
     pub fn set_max_cycles(&mut self, cycles: u64) {
         self.max_cycles = cycles;
+    }
+}
+
+impl AsmCoreMachine {
+    pub fn cast_ptr_to_slice(&self, ptr: u64, offset: usize, size: usize) -> &[u8] {
+        unsafe {
+            let ptr = ptr as *mut u8;
+            let ptr = ptr.add(offset);
+            std::slice::from_raw_parts(ptr, size)
+        }
+    }
+
+    pub fn cast_ptr_to_slice_mut(&self, ptr: u64, offset: usize, size: usize) -> &mut [u8] {
+        unsafe {
+            let ptr = ptr as *mut u8;
+            let ptr = ptr.add(offset);
+            std::slice::from_raw_parts_mut(ptr, size)
+        }
     }
 }

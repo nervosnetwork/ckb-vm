@@ -3,8 +3,8 @@ use ckb_vm::machine::VERSION0;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
     run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
-    RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, DEFAULT_MEMORY_SIZE,
+    ISA_IMC, RISCV_PAGESIZE,
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -215,10 +215,10 @@ fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
 pub fn test_memory_load_bytes() {
     let mut rng = thread_rng();
 
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 5, 0);
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 5, 2);
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 1024 * 5, 1024 * 6);
-    assert_memory_load_bytes_all(&mut rng, RISCV_MAX_MEMORY, 0, 0);
+    assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 1024 * 5, 0);
+    assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 1024 * 5, 2);
+    assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 1024 * 5, 1024 * 6);
+    assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 0, 0);
 }
 
 fn assert_memory_load_bytes_all<R: Rng>(
