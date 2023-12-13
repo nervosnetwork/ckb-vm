@@ -7,12 +7,10 @@ use ckb_vm::{Bytes, ISA_A, ISA_B, ISA_IMC, ISA_MOP};
 use libfuzzer_sys::fuzz_target;
 
 fn run(data: &[u8]) {
-    let machine_memory = WXorXMemory::new(SparseMemory::<u64>::default());
-    let machine_core = DefaultCoreMachine::new_with_memory(
+    let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_A | ISA_B | ISA_MOP,
         VERSION2,
         200_000,
-        machine_memory,
     );
     let mut machine = DefaultMachineBuilder::new(machine_core)
         .instruction_cycle_func(Box::new(constant_cycles))
