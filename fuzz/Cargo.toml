@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-spike-sys = "0.1.1"
+spike-sys = "0.1.2"
 
 [dependencies.ckb-vm]
 path = ".."
@@ -23,6 +23,12 @@ members = ["."]
 [[bin]]
 name = "asm"
 path = "fuzz_targets/asm.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "interpreter"
+path = "fuzz_targets/interpreter.rs"
 test = false
 doc = false
 
