@@ -212,13 +212,16 @@ impl<'a> FastMemory<'a> {
             check_memory(self.0, addr >> RISCV_PAGE_SHIFTS);
         }
         let end = addr.wrapping_add(size);
-        let aligned_end = round_page_down(end);
-        let frame_next_start = ((end >> MEMORY_FRAME_SHIFTS) + 1) << MEMORY_FRAME_SHIFTS;
-        // There is some memory space between the ending address of memory to be
-        // written, and the end of the last memory frame touched, we will need to
-        // initialize the last memory frame.
-        if (aligned_end + RISCV_PAGESIZE as u64) < frame_next_start {
-            check_memory(self.0, aligned_end >> RISCV_PAGE_SHIFTS);
+        if end > 0 {
+            let aligned_end = round_page_down(end);
+            // Note that end is exclusive
+            let frame_next_start = (((end - 1) >> MEMORY_FRAME_SHIFTS) + 1) << MEMORY_FRAME_SHIFTS;
+            // There is some memory space between the ending address of memory to be
+            // written, and the end of the last memory frame touched, we will need to
+            // initialize the last memory frame.
+            if (aligned_end + RISCV_PAGESIZE as u64) < frame_next_start {
+                check_memory(self.0, aligned_end >> RISCV_PAGE_SHIFTS);
+            }
         }
         let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {

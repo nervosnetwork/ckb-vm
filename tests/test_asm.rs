@@ -503,3 +503,13 @@ fn test_fast_memory_initialization_bug() {
     machine.load_program(&buffer, &[]).unwrap();
     assert_eq!(machine.machine.memory_mut().load8(&0).unwrap(), 0);
 }
+
+#[test]
+pub fn test_memory_load_crash() {
+    let buffer = fs::read("tests/programs/memory_crash").unwrap().into();
+    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::max_value());
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    let result = machine.load_program(&buffer, &vec!["memory_crash".into()]);
+    assert_eq!(result.unwrap_err(), Error::MemWriteOnExecutablePage);
+}
