@@ -17,6 +17,7 @@ use std::os::raw::c_uchar;
 use crate::{
     decoder::{build_decoder, InstDecoder},
     elf::ProgramMetadata,
+    error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
         asm::traces::{decode_fixed_trace, SimpleFixedTraceDecoder, TraceDecoder},
@@ -107,7 +108,7 @@ fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
 fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<(), Error> {
     let page_flag = memory.fetch_flag(page)?;
     if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
-        return Err(Error::MemWriteOnExecutablePage);
+        return Err(Error::MemWriteOnExecutablePage(page));
     }
     Ok(())
 }
@@ -121,7 +122,7 @@ fn check_memory_writable(
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= machine.memory_pages() {
-        return Err(Error::MemOutOfBound);
+        return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
     }
     check_permission(machine, page, FLAG_WRITABLE)?;
     check_memory(machine, page);
@@ -132,7 +133,10 @@ fn check_memory_writable(
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
         if page as usize >= machine.memory_pages() {
-            return Err(Error::MemOutOfBound);
+            return Err(Error::MemOutOfBound(
+                addr + size as u64,
+                OutOfBoundKind::Memory,
+            ));
         } else {
             check_permission(machine, page, FLAG_WRITABLE)?;
             check_memory(machine, page);
@@ -152,7 +156,7 @@ fn check_memory_executable(
 
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= machine.memory_pages() {
-        return Err(Error::MemOutOfBound);
+        return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
     }
     check_permission(machine, page, FLAG_EXECUTABLE)?;
     check_memory(machine, page);
@@ -162,7 +166,10 @@ fn check_memory_executable(
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
         if page as usize >= machine.memory_pages() {
-            return Err(Error::MemOutOfBound);
+            return Err(Error::MemOutOfBound(
+                addr + size as u64,
+                OutOfBoundKind::Memory,
+            ));
         } else {
             check_permission(machine, page, FLAG_EXECUTABLE)?;
             check_memory(machine, page);
@@ -180,7 +187,7 @@ fn check_memory_inited(
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= machine.memory_pages() {
-        return Err(Error::MemOutOfBound);
+        return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
     }
     check_memory(machine, page);
 
@@ -189,7 +196,10 @@ fn check_memory_inited(
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
         if page as usize >= machine.memory_pages() {
-            return Err(Error::MemOutOfBound);
+            return Err(Error::MemOutOfBound(
+                addr + size as u64,
+                OutOfBoundKind::Memory,
+            ));
         } else {
             check_memory(machine, page);
         }
@@ -369,17 +379,26 @@ impl Memory for Box<AsmCoreMachine> {
         source: Option<Bytes>,
         offset_from_addr: u64,
     ) -> Result<(), Error> {
-        if round_page_down(addr) != addr || round_page_up(size) != size {
-            return Err(Error::MemPageUnalignedAccess);
+        if round_page_down(addr) != addr {
+            return Err(Error::MemPageUnalignedAccess(addr));
         }
-        let memory_size = self.memory_size() as u64;
-        if addr > memory_size
-            || size > memory_size as u64
-            || addr + size > memory_size as u64
-            || offset_from_addr > size
-        {
-            return Err(Error::MemOutOfBound);
+        if round_page_up(size) != size {
+            return Err(Error::MemPageUnalignedAccess(addr + size));
         }
+
+        if addr > self.memory_size() as u64 {
+            return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
+        }
+        if size > self.memory_size() as u64 || addr + size > self.memory_size() as u64 {
+            return Err(Error::MemOutOfBound(addr + size, OutOfBoundKind::Memory));
+        }
+        if offset_from_addr > size {
+            return Err(Error::MemOutOfBound(
+                offset_from_addr,
+                OutOfBoundKind::ExternalData,
+            ));
+        }
+
         // We benchmarked the code piece here, using while loop this way is
         // actually faster than a for..in solution. The difference is roughly
         // 3% so we are keeping this version.
@@ -387,7 +406,7 @@ impl Memory for Box<AsmCoreMachine> {
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE as u64;
             if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
-                return Err(Error::MemWriteOnFreezedPage);
+                return Err(Error::MemWriteOnFreezedPage(page));
             }
             current_addr += RISCV_PAGESIZE as u64;
         }
@@ -409,7 +428,10 @@ impl Memory for Box<AsmCoreMachine> {
             let slice = self.cast_ptr_to_slice(self.flags_ptr, page as usize, 1);
             Ok(slice[0])
         } else {
-            Err(Error::MemOutOfBound)
+            Err(Error::MemOutOfBound(
+                page << RISCV_PAGE_SHIFTS,
+                OutOfBoundKind::Memory,
+            ))
         }
     }
 
@@ -421,7 +443,10 @@ impl Memory for Box<AsmCoreMachine> {
             self.last_write_page = u64::max_value();
             Ok(())
         } else {
-            Err(Error::MemOutOfBound)
+            Err(Error::MemOutOfBound(
+                page << RISCV_PAGE_SHIFTS,
+                OutOfBoundKind::Memory,
+            ))
         }
     }
 
@@ -433,7 +458,10 @@ impl Memory for Box<AsmCoreMachine> {
             self.last_write_page = u64::max_value();
             Ok(())
         } else {
-            Err(Error::MemOutOfBound)
+            Err(Error::MemOutOfBound(
+                page << RISCV_PAGE_SHIFTS,
+                OutOfBoundKind::Memory,
+            ))
         }
     }
 
@@ -682,8 +710,17 @@ impl AsmMachine {
                 RET_DYNAMIC_JUMP => (),
                 RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
                 RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
-                RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
-                RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
+                RET_OUT_OF_BOUND => {
+                    return Err(Error::MemOutOfBound(
+                        self.machine.inner.error_arg0,
+                        OutOfBoundKind::Memory,
+                    ))
+                }
+                RET_INVALID_PERMISSION => {
+                    return Err(Error::MemWriteOnExecutablePage(
+                        self.machine.inner.error_arg0,
+                    ))
+                }
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
                     let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
@@ -716,8 +753,17 @@ impl AsmMachine {
             RET_ECALL => self.machine.ecall()?,
             RET_EBREAK => self.machine.ebreak()?,
             RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
-            RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
-            RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
+            RET_OUT_OF_BOUND => {
+                return Err(Error::MemOutOfBound(
+                    self.machine.inner.error_arg0,
+                    OutOfBoundKind::Memory,
+                ))
+            }
+            RET_INVALID_PERMISSION => {
+                return Err(Error::MemWriteOnExecutablePage(
+                    self.machine.inner.error_arg0,
+                ))
+            }
             RET_SLOWPATH => {
                 let pc = *self.machine.pc() - 4;
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;

@@ -1,6 +1,7 @@
 use ckb_vm_definitions::instructions::{self as insts};
 use ckb_vm_definitions::registers::{RA, ZERO};
 
+use crate::error::OutOfBoundKind;
 use crate::instructions::{
     a, b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
     InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype,
@@ -99,7 +100,7 @@ impl Decoder {
         // since we are using u64::MAX as the default key in the instruction cache, have to check out of bound
         // error first.
         if pc as usize >= memory.memory_size() {
-            return Err(Error::MemOutOfBound);
+            return Err(Error::MemOutOfBound(pc, OutOfBoundKind::Memory));
         }
         let instruction_cache_key = {
             // according to RISC-V instruction encoding, the lowest bit in PC will always be zero

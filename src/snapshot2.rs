@@ -66,11 +66,11 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         machine.set_max_cycles(snapshot.max_cycles);
         for (address, flag, id, offset, length) in &snapshot.pages_from_source {
             if address % PAGE_SIZE != 0 {
-                return Err(Error::MemPageUnalignedAccess);
+                return Err(Error::MemPageUnalignedAccess(*address));
             }
             let data = self.data_source().load_data(id, *offset, *length)?;
             if data.len() as u64 % PAGE_SIZE != 0 {
-                return Err(Error::MemPageUnalignedAccess);
+                return Err(Error::MemPageUnalignedAccess(address * data.len() as u64));
             }
             machine.memory_mut().store_bytes(*address, &data)?;
             for i in 0..(data.len() as u64 / PAGE_SIZE) {
@@ -81,10 +81,12 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         }
         for (address, flag, content) in &snapshot.dirty_pages {
             if address % PAGE_SIZE != 0 {
-                return Err(Error::MemPageUnalignedAccess);
+                return Err(Error::MemPageUnalignedAccess(*address));
             }
             if content.len() as u64 % PAGE_SIZE != 0 {
-                return Err(Error::MemPageUnalignedAccess);
+                return Err(Error::MemPageUnalignedAccess(
+                    address + content.len() as u64,
+                ));
             }
             machine.memory_mut().store_bytes(*address, content)?;
             for i in 0..(content.len() as u64 / PAGE_SIZE) {

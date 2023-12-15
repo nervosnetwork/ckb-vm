@@ -1,5 +1,6 @@
 use super::{
     bits::{rounddown, roundup},
+    error::OutOfBoundKind,
     Error, Register, RISCV_PAGESIZE,
 };
 use bytes::Bytes;
@@ -101,9 +102,12 @@ pub fn fill_page_data<M: Memory>(
 }
 
 pub fn check_no_overflow(addr: u64, size: u64, memory_size: u64) -> Result<(), Error> {
+    if addr >= memory_size {
+        return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
+    }
     let (addr_end, overflowed) = addr.overflowing_add(size);
     if overflowed || addr_end > memory_size {
-        Err(Error::MemOutOfBound)
+        Err(Error::MemOutOfBound(addr_end, OutOfBoundKind::Memory))
     } else {
         Ok(())
     }
@@ -125,7 +129,7 @@ pub fn check_permission<M: Memory>(
     for page in page_indices.0..=page_indices.1 {
         let page_flag = memory.fetch_flag(page)?;
         if (page_flag & FLAG_WXORX_BIT) != (flag & FLAG_WXORX_BIT) {
-            return Err(Error::MemWriteOnExecutablePage);
+            return Err(Error::MemWriteOnExecutablePage(page));
         }
     }
     Ok(())

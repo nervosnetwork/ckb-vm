@@ -231,11 +231,11 @@
   cmp TEMP2, TEMP1; \
   je 2f; \
 3: ; \
-  movq address_reg, TEMP1; \
-  cmp MEMORY_SIZE, TEMP1; \
+  movq address_reg, TEMP3; \
+  cmp MEMORY_SIZE, TEMP3; \
   jae .exit_out_of_bound; \
-  addq $length, TEMP1; \
-  cmp MEMORY_SIZE, TEMP1; \
+  addq $length, TEMP3; \
+  cmp MEMORY_SIZE, TEMP3; \
   jae .exit_out_of_bound; \
   _CHECK_READ_FRAMES(address_reg, length)
 
@@ -251,11 +251,11 @@
   cmp TEMP2, TEMP1; \
   je 2f; \
 3: ;\
-  movq address_reg, TEMP1; \
-  cmp MEMORY_SIZE, TEMP1; \
+  movq address_reg, TEMP3; \
+  cmp MEMORY_SIZE, TEMP3; \
   jae .exit_out_of_bound; \
-  addq $length, TEMP1; \
-  cmp MEMORY_SIZE, TEMP1; \
+  addq $length, TEMP3; \
+  cmp MEMORY_SIZE, TEMP3; \
   ja .exit_out_of_bound; \
   _CHECK_READ_FRAMES(address_reg, length)
 
@@ -271,6 +271,7 @@
   cmp TEMP2, TEMP1; \
   je 2f;\
 3:; \
+  movq address_reg, TEMP3; \
   movq TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_WRITE_PAGE(MACHINE); \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS_SIZE(MACHINE), TEMP2; \
   cmp TEMP2, TEMP1; \
@@ -299,9 +300,9 @@
   movq TEMP2, TEMP1; \
   addq $1, TEMP1; \
   shl $CKB_VM_ASM_RISCV_PAGE_SHIFTS, TEMP1; \
-  movq address_reg, TEMP2; \
-  addq $length, TEMP2; \
-  cmp TEMP1, TEMP2; \
+  movq address_reg, TEMP3; \
+  addq $length, TEMP3; \
+  cmp TEMP1, TEMP3; \
   jbe 2f; \
   shr $CKB_VM_ASM_RISCV_PAGE_SHIFTS, TEMP1; \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS_SIZE(MACHINE), TEMP2; \
@@ -2396,6 +2397,7 @@ ckb_vm_x64_execute:
   NEXT_INST
 .p2align 3
 .exit_out_of_bound:
+  mov TEMP3, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_OUT_OF_BOUND, ARG_RETd
   jmp .exit
 .p2align 3
@@ -2408,6 +2410,7 @@ ckb_vm_x64_execute:
   jmp .exit
 .p2align 3
 .exit_invalid_permission:
+  mov TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
   jmp .exit
 /*

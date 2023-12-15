@@ -179,12 +179,12 @@
   cmp TEMP1, TEMP2 SEP \
   beq 2f SEP \
 3: \
-  mov TEMP1, address_reg SEP \
+  mov TEMP3, address_reg SEP \
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE] SEP \
-  cmp TEMP1, TEMP2 SEP \
+  cmp TEMP3, TEMP2 SEP \
   bhs .exit_out_of_bound SEP \
-  add TEMP1, TEMP1, length SEP \
-  cmp TEMP1, TEMP2 SEP \
+  add TEMP3, TEMP3, length SEP \
+  cmp TEMP3, TEMP2 SEP \
   bhs .exit_out_of_bound SEP \
   _CHECK_READ_FRAMES(address_reg, length)
 
@@ -200,23 +200,22 @@
   cmp TEMP1, TEMP2 SEP \
   beq 2f SEP \
 3: \
-  mov TEMP1, address_reg SEP \
+  mov TEMP3, address_reg SEP \
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE] SEP \
-  cmp TEMP1, TEMP2 SEP \
+  cmp TEMP3, TEMP2 SEP \
   bhs .exit_out_of_bound SEP \
-  add TEMP1, TEMP1, length SEP \
-  cmp TEMP1, TEMP2 SEP \
+  add TEMP3, TEMP3, length SEP \
+  cmp TEMP3, TEMP2 SEP \
   bhi .exit_out_of_bound SEP \
   _CHECK_READ_FRAMES(address_reg, length)
 
 #define CHECK_WRITE(address_reg, length) \
-  mov TEMP1, address_reg SEP \
-  lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
+  mov TEMP3, address_reg SEP \
+  lsr TEMP1, TEMP3, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_WRITE_PAGE] SEP \
   cmp TEMP1, TEMP2 SEP \
   bne 3f SEP \
-  mov TEMP2, address_reg SEP \
-  add TEMP2, TEMP2, length SEP \
+  add TEMP2, TEMP3, length SEP \
   lsr TEMP2, TEMP2, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
   cmp TEMP1, TEMP2 SEP \
   beq 2f SEP \
@@ -248,12 +247,11 @@
   CALL_INITED_MEMORY SEP \
   POSTCALL SEP \
 1: \
-  mov TEMP1, TEMP2 SEP \
-  add TEMP1, TEMP1, 1 SEP \
+  add TEMP1, TEMP2, 1 SEP \
   lsl TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
-  mov TEMP2, address_reg SEP \
-  add TEMP2, TEMP2, length SEP \
-  cmp TEMP2, TEMP1 SEP \
+  mov TEMP3, address_reg SEP \
+  add TEMP3, TEMP3, length SEP \
+  cmp TEMP3, TEMP1 SEP \
   bls 2f SEP \
   lsr TEMP1, TEMP1, CKB_VM_ASM_RISCV_PAGE_SHIFTS SEP \
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FLAGS_SIZE] SEP \
@@ -1935,9 +1933,11 @@ ckb_vm_x64_execute:
   mov x0, CKB_VM_ASM_RET_CYCLES_OVERFLOW
   b .exit
 .exit_out_of_bound:
+  str TEMP3, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0]
   mov x0, CKB_VM_ASM_RET_OUT_OF_BOUND
   b .exit
 .exit_invalid_permission:
+  str TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0]
   mov x0, CKB_VM_ASM_RET_INVALID_PERMISSION
   b .exit
 .exit_pause:

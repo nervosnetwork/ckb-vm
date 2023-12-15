@@ -76,9 +76,6 @@ pub struct InvokeData {
     pub fixed_trace_mask: u64,
 }
 
-// Although the memory here is an array, but when it is created,
-//  its size is allocated through memory_size, and its maximum length RISCV_MAX_MEMORY
-//  is used in the structure declaration.
 #[repr(C)]
 pub struct AsmCoreMachine {
     pub registers: [u64; RISCV_GENERAL_REGISTER_NUMBER],
@@ -93,6 +90,8 @@ pub struct AsmCoreMachine {
     pub reset_signal: u8,
     pub isa: u8,
     pub version: u32,
+
+    pub error_arg0: u64,
 
     pub memory_size: u64,
     pub frames_size: u64,
@@ -149,6 +148,7 @@ impl AsmCoreMachine {
         }
         machine.chaos_seed = 0;
         machine.reset_signal = 0;
+        machine.error_arg0 = 0;
         machine.version = version;
         machine.isa = isa;
 

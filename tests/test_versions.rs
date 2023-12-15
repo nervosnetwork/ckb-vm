@@ -1,4 +1,5 @@
 #![cfg(has_asm)]
+use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{VERSION0, VERSION1};
 use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
@@ -74,7 +75,10 @@ pub fn test_rust_version0_read_at_boundary() {
     let mut machine = create_rust_machine("read_at_boundary64".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(0x400000, OutOfBoundKind::Memory))
+    );
 }
 
 #[test]
@@ -170,7 +174,10 @@ pub fn test_asm_version0_read_at_boundary() {
     let mut machine = create_asm_machine("read_at_boundary64".to_string(), VERSION0);
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(0x400000, OutOfBoundKind::Memory))
+    );
 }
 
 #[test]
@@ -240,7 +247,7 @@ pub fn test_rust_version0_unaligned64() {
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
 
 #[test]
@@ -262,7 +269,7 @@ pub fn test_asm_version0_unaligned64() {
     let mut machine = AsmMachine::new(core);
     let result = machine.load_program(&buffer, &vec![program.into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
 
 #[test]
