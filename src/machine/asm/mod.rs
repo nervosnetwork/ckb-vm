@@ -134,7 +134,7 @@ fn check_memory_writable(
         let page = page + 1;
         if page as usize >= machine.memory_pages() {
             return Err(Error::MemOutOfBound(
-                addr + size as u64,
+                addr.wrapping_add(size as u64),
                 OutOfBoundKind::Memory,
             ));
         } else {
@@ -167,7 +167,7 @@ fn check_memory_executable(
         let page = page + 1;
         if page as usize >= machine.memory_pages() {
             return Err(Error::MemOutOfBound(
-                addr + size as u64,
+                addr.wrapping_add(size as u64),
                 OutOfBoundKind::Memory,
             ));
         } else {
@@ -197,7 +197,7 @@ fn check_memory_inited(
         let page = page + 1;
         if page as usize >= machine.memory_pages() {
             return Err(Error::MemOutOfBound(
-                addr + size as u64,
+                addr.wrapping_add(size as u64),
                 OutOfBoundKind::Memory,
             ));
         } else {
@@ -383,14 +383,17 @@ impl Memory for Box<AsmCoreMachine> {
             return Err(Error::MemPageUnalignedAccess(addr));
         }
         if round_page_up(size) != size {
-            return Err(Error::MemPageUnalignedAccess(addr + size));
+            return Err(Error::MemPageUnalignedAccess(addr.wrapping_add(size)));
         }
 
         if addr > self.memory_size() as u64 {
             return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
         }
         if size > self.memory_size() as u64 || addr + size > self.memory_size() as u64 {
-            return Err(Error::MemOutOfBound(addr + size, OutOfBoundKind::Memory));
+            return Err(Error::MemOutOfBound(
+                addr.wrapping_add(size),
+                OutOfBoundKind::Memory,
+            ));
         }
         if offset_from_addr > size {
             return Err(Error::MemOutOfBound(

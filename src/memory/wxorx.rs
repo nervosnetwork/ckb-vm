@@ -45,14 +45,17 @@ impl<M: Memory> Memory for WXorXMemory<M> {
             return Err(Error::MemPageUnalignedAccess(addr));
         }
         if round_page_up(size) != size {
-            return Err(Error::MemPageUnalignedAccess(addr + size));
+            return Err(Error::MemPageUnalignedAccess(addr.wrapping_add(size)));
         }
 
         if addr > self.memory_size() as u64 {
             return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
         }
         if size > self.memory_size() as u64 || addr + size > self.memory_size() as u64 {
-            return Err(Error::MemOutOfBound(addr + size, OutOfBoundKind::Memory));
+            return Err(Error::MemOutOfBound(
+                addr.wrapping_add(size),
+                OutOfBoundKind::Memory,
+            ));
         }
         if offset_from_addr > size {
             return Err(Error::MemOutOfBound(

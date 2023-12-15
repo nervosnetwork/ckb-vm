@@ -70,7 +70,9 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             }
             let data = self.data_source().load_data(id, *offset, *length)?;
             if data.len() as u64 % PAGE_SIZE != 0 {
-                return Err(Error::MemPageUnalignedAccess(address * data.len() as u64));
+                return Err(Error::MemPageUnalignedAccess(
+                    address.wrapping_add(data.len() as u64),
+                ));
             }
             machine.memory_mut().store_bytes(*address, &data)?;
             for i in 0..(data.len() as u64 / PAGE_SIZE) {
@@ -85,7 +87,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             }
             if content.len() as u64 % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess(
-                    address + content.len() as u64,
+                    address.wrapping_add(content.len() as u64),
                 ));
             }
             machine.memory_mut().store_bytes(*address, content)?;
