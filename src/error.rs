@@ -10,12 +10,15 @@ pub enum Error {
     ElfBits,
     #[display(fmt = "elf error: {}", "_0")]
     ElfParseError(String),
-    #[display(fmt = "elf error: segment is unreadable")]
-    ElfSegmentUnreadable,
-    #[display(fmt = "elf error: segment is writable and executable")]
-    ElfSegmentWritableAndExecutable,
-    #[display(fmt = "elf error: segment addr or size is wrong")]
-    ElfSegmentAddrOrSizeError,
+    #[display(fmt = "elf error: segment is unreadable vaddr=0x{:x}", "_0")]
+    ElfSegmentUnreadable(u64),
+    #[display(
+        fmt = "elf error: segment is writable and executable vaddr=0x{:x}",
+        "_0"
+    )]
+    ElfSegmentWritableAndExecutable(u64),
+    #[display(fmt = "elf error: segment addr or size is wrong vaddr=0x{:x}", "_0")]
+    ElfSegmentAddrOrSizeError(u64),
     // External error type is for the debugging tool of CKB-VM, it should not be
     // used in this project.
     #[display(fmt = "external error: {}", "_0")]
@@ -37,22 +40,26 @@ pub enum Error {
         kind: std::io::ErrorKind,
         data: String,
     },
-    #[display(fmt = "memory error: out of bound")]
-    MemOutOfBound,
+    #[display(fmt = "memory error: out of bound addr=0x{:x}, kind={:?}", "_0", "_1")]
+    MemOutOfBound(u64, OutOfBoundKind),
     #[display(fmt = "memory error: out of stack")]
     MemOutOfStack,
-    #[display(fmt = "memory error: unaligned page access")]
-    MemPageUnalignedAccess,
-    #[display(fmt = "memory error: write on executable page")]
-    MemWriteOnExecutablePage,
-    #[display(fmt = "memory error: write on freezed page")]
-    MemWriteOnFreezedPage,
+    #[display(fmt = "memory error: unaligned page access addr=0x{:x}", "_0")]
+    MemPageUnalignedAccess(u64),
+    #[display(fmt = "memory error: write on executable page page_index={}", "_0")]
+    MemWriteOnExecutablePage(u64),
+    #[display(fmt = "memory error: write on freezed page page_index={}", "_0")]
+    MemWriteOnFreezedPage(u64),
     #[display(fmt = "pause")]
     Pause,
     #[display(fmt = "unexpected error")]
     Unexpected(String),
-    #[display(fmt = "unimplemented")]
-    Unimplemented,
+}
+
+#[derive(Debug, PartialEq, Clone, Eq, Display)]
+pub enum OutOfBoundKind {
+    Memory,
+    ExternalData,
 }
 
 impl std::error::Error for Error {}

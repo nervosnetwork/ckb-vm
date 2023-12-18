@@ -1,4 +1,5 @@
 use ckb_vm::cost_model::constant_cycles;
+use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::VERSION0;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
@@ -109,7 +110,7 @@ pub fn test_trace() {
     let buffer = fs::read("tests/programs/trace64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["trace64".into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
 
 #[test]
@@ -117,7 +118,7 @@ pub fn test_jump0() {
     let buffer = fs::read("tests/programs/jump0_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["jump0_64".into()]);
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(0)));
 }
 
 #[test]
@@ -140,7 +141,10 @@ pub fn test_invalid_file_offset64() {
         .unwrap()
         .into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["invalid_file_offset64".into()]);
-    assert_eq!(result.err(), Some(Error::ElfSegmentAddrOrSizeError));
+    assert_eq!(
+        result.err(),
+        Some(Error::ElfSegmentAddrOrSizeError(0x10000))
+    );
 }
 
 #[test]
@@ -150,7 +154,7 @@ pub fn test_op_rvc_srli_crash_32() {
         .unwrap()
         .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srli_crash_32".into()]);
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(0)));
 }
 
 #[test]
@@ -177,14 +181,20 @@ pub fn test_op_rvc_slli_crash_32() {
 pub fn test_load_elf_crash_64() {
     let buffer = fs::read("tests/programs/load_elf_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["load_elf_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
 
 #[test]
 pub fn test_wxorx_crash_64() {
     let buffer = fs::read("tests/programs/wxorx_crash_64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["wxorx_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(
+            0xffffffffffffffff,
+            OutOfBoundKind::Memory
+        ))
+    );
 }
 
 #[test]
@@ -194,7 +204,10 @@ pub fn test_flat_crash_64() {
         DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(0x1100000000, OutOfBoundKind::Memory))
+    );
 }
 
 #[test]
@@ -284,7 +297,13 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
     };
     let ret = memory.load_bytes(addr, outofbound_size as u64);
     assert!(ret.is_err());
-    assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+    // TODO: For randomized tests, the exact address violating memory out of bound
+    // error, is hard to derive(and will also heavily depend on implementation logic),
+    // do we really need to assert the exact value causing out-of-bound error here?
+    assert!(match ret.unwrap_err() {
+        Error::MemOutOfBound(_, kind) => kind == OutOfBoundKind::Memory,
+        _ => false,
+    });
 
     // address out of bound
     let ret = memory.load_bytes(
@@ -295,7 +314,10 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
         assert!(ret.is_ok())
     } else {
         assert!(ret.is_err());
-        assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+        assert!(match ret.unwrap_err() {
+            Error::MemOutOfBound(_, kind) => kind == OutOfBoundKind::Memory,
+            _ => false,
+        });
     }
 
     // addr + size is overflow
@@ -304,7 +326,10 @@ fn assert_memory_load_bytes<R: Rng, M: Memory>(
         assert!(ret.is_ok());
     } else {
         assert!(ret.is_err());
-        assert_eq!(ret.err().unwrap(), Error::MemOutOfBound);
+        assert!(match ret.unwrap_err() {
+            Error::MemOutOfBound(_, kind) => kind == OutOfBoundKind::Memory,
+            _ => false,
+        });
     }
 }
 

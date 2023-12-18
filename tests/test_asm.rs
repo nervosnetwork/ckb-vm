@@ -2,6 +2,7 @@
 use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::decoder::build_decoder;
+use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::asm::traces::{MemoizedDynamicTraceDecoder, MemoizedFixedTraceDecoder};
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1, VERSION2};
@@ -150,7 +151,7 @@ pub fn test_asm_trace() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
 
 #[test]
@@ -164,7 +165,7 @@ pub fn test_asm_jump0() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(0)));
 }
 
 #[test]
@@ -180,7 +181,10 @@ pub fn test_asm_write_large_address() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(0xffffff00, OutOfBoundKind::Memory))
+    );
 }
 
 #[test]
@@ -221,7 +225,13 @@ pub fn test_invalid_read64() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(
+            0xffffffffffffffff,
+            OutOfBoundKind::Memory
+        ))
+    );
 }
 
 #[test]
@@ -234,7 +244,7 @@ pub fn test_asm_load_elf_crash_64() {
         .load_program(&buffer, &vec!["load_elf_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage));
+    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
 
 #[test]
@@ -247,7 +257,13 @@ pub fn test_asm_wxorx_crash_64() {
         .load_program(&buffer, &vec!["wxorx_crash_64".into()])
         .unwrap();
     let result = machine.run();
-    assert_eq!(result.err(), Some(Error::MemOutOfBound));
+    assert_eq!(
+        result.err(),
+        Some(Error::MemOutOfBound(
+            0xffffffffffffffff,
+            OutOfBoundKind::Memory
+        ))
+    );
 }
 
 #[test]
@@ -384,7 +400,10 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::MemOutOfBound);
+    assert_eq!(
+        result.unwrap_err(),
+        Error::MemOutOfBound(0x400000, OutOfBoundKind::Memory)
+    );
 }
 
 #[test]
@@ -484,7 +503,10 @@ pub fn test_big_binary() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     let result = machine.load_program(&buffer, &vec!["simple".into()]);
-    assert_eq!(result, Err(Error::MemOutOfBound));
+    assert_eq!(
+        result,
+        Err(Error::MemOutOfBound(0x111000, OutOfBoundKind::Memory))
+    );
 }
 
 #[cfg(not(feature = "enable-chaos-mode-by-default"))]
@@ -511,5 +533,5 @@ pub fn test_memory_load_crash() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     let result = machine.load_program(&buffer, &vec!["memory_crash".into()]);
-    assert_eq!(result.unwrap_err(), Error::MemWriteOnExecutablePage);
+    assert_eq!(result.unwrap_err(), Error::MemWriteOnExecutablePage(1023));
 }

@@ -1,4 +1,4 @@
-use super::super::{Error, Register, RISCV_PAGESIZE};
+use super::super::{error::OutOfBoundKind, Error, Register, RISCV_PAGESIZE};
 use super::{
     check_no_overflow, check_permission, get_page_indices, round_page_down, round_page_up, Memory,
     FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
@@ -41,21 +41,32 @@ impl<M: Memory> Memory for WXorXMemory<M> {
         source: Option<Bytes>,
         offset_from_addr: u64,
     ) -> Result<(), Error> {
-        if round_page_down(addr) != addr || round_page_up(size) != size {
-            return Err(Error::MemPageUnalignedAccess);
+        if round_page_down(addr) != addr {
+            return Err(Error::MemPageUnalignedAccess(addr));
+        }
+        if round_page_up(size) != size {
+            return Err(Error::MemPageUnalignedAccess(addr.wrapping_add(size)));
         }
 
-        if addr > self.memory_size() as u64
-            || size > self.memory_size() as u64
-            || addr + size > self.memory_size() as u64
-            || offset_from_addr > size
-        {
-            return Err(Error::MemOutOfBound);
+        if addr > self.memory_size() as u64 {
+            return Err(Error::MemOutOfBound(addr, OutOfBoundKind::Memory));
+        }
+        if size > self.memory_size() as u64 || addr + size > self.memory_size() as u64 {
+            return Err(Error::MemOutOfBound(
+                addr.wrapping_add(size),
+                OutOfBoundKind::Memory,
+            ));
+        }
+        if offset_from_addr > size {
+            return Err(Error::MemOutOfBound(
+                offset_from_addr,
+                OutOfBoundKind::ExternalData,
+            ));
         }
         for page_addr in (addr..addr + size).step_by(RISCV_PAGESIZE) {
             let page = page_addr / RISCV_PAGESIZE as u64;
             if self.fetch_flag(page)? & FLAG_FREEZED != 0 {
-                return Err(Error::MemWriteOnFreezedPage);
+                return Err(Error::MemWriteOnFreezedPage(page));
             }
             self.set_flag(page, flags)?;
         }

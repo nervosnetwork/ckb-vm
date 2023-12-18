@@ -1,4 +1,6 @@
-use super::super::{Error, Register, DEFAULT_MEMORY_SIZE, RISCV_PAGESIZE};
+use super::super::{
+    error::OutOfBoundKind, Error, Register, DEFAULT_MEMORY_SIZE, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+};
 use super::{check_no_overflow, fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -77,7 +79,10 @@ impl<R: Register> Memory for FlatMemory<R> {
         if page < self.riscv_pages as u64 {
             Ok(self.flags[page as usize])
         } else {
-            Err(Error::MemOutOfBound)
+            Err(Error::MemOutOfBound(
+                page << RISCV_PAGE_SHIFTS,
+                OutOfBoundKind::Memory,
+            ))
         }
     }
 
@@ -86,7 +91,10 @@ impl<R: Register> Memory for FlatMemory<R> {
             self.flags[page as usize] |= flag;
             Ok(())
         } else {
-            Err(Error::MemOutOfBound)
+            Err(Error::MemOutOfBound(
+                page << RISCV_PAGE_SHIFTS,
+                OutOfBoundKind::Memory,
+            ))
         }
     }
 
@@ -95,7 +103,10 @@ impl<R: Register> Memory for FlatMemory<R> {
             self.flags[page as usize] &= !flag;
             Ok(())
         } else {
-            Err(Error::MemOutOfBound)
+            Err(Error::MemOutOfBound(
+                page << RISCV_PAGE_SHIFTS,
+                OutOfBoundKind::Memory,
+            ))
         }
     }
 
@@ -113,9 +124,7 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(1).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
-            return Err(Error::MemOutOfBound);
-        }
+        check_no_overflow(addr, 1, self.memory_size as u64)?;
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         let v = reader.read_u8()?;
@@ -124,9 +133,7 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(2).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
-            return Err(Error::MemOutOfBound);
-        }
+        check_no_overflow(addr, 2, self.memory_size as u64)?;
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
@@ -136,9 +143,7 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(4).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
-            return Err(Error::MemOutOfBound);
-        }
+        check_no_overflow(addr, 4, self.memory_size as u64)?;
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
@@ -148,9 +153,7 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
-        if addr.checked_add(8).ok_or(Error::MemOutOfBound)? > self.len() as u64 {
-            return Err(Error::MemOutOfBound);
-        }
+        check_no_overflow(addr, 8, self.memory_size as u64)?;
         let mut reader = Cursor::new(&self.data);
         reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
@@ -230,9 +233,7 @@ impl<R: Register> Memory for FlatMemory<R> {
         if size == 0 {
             return Ok(Bytes::new());
         }
-        if addr.checked_add(size).ok_or(Error::MemOutOfBound)? > self.memory_size() as u64 {
-            return Err(Error::MemOutOfBound);
-        }
+        check_no_overflow(addr, size, self.memory_size as u64)?;
         Ok(Bytes::from(
             self[addr as usize..(addr + size) as usize].to_vec(),
         ))

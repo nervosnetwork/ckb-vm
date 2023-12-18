@@ -1,12 +1,12 @@
+use ckb_vm::{error::OutOfBoundKind, run_with_memory, FlatMemory, SparseMemory};
 #[cfg(has_asm)]
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, VERSION0,
+        DefaultMachineBuilder, VERSION0, VERSION2,
     },
-    ISA_IMC,
+    ISA_A, ISA_B, ISA_IMC, ISA_MOP,
 };
-use ckb_vm::{run_with_memory, FlatMemory, SparseMemory};
 use std::fs;
 
 fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {
@@ -61,7 +61,10 @@ fn test_memory_out_of_bounds() {
         SparseMemory::new_with_memory(memory_size),
     );
     assert!(result.is_err());
-    assert_eq!(ckb_vm::Error::MemOutOfBound, result.err().unwrap());
+    assert_eq!(
+        ckb_vm::Error::MemOutOfBound(0xfffffffffff3ffb8, OutOfBoundKind::Memory),
+        result.err().unwrap()
+    );
 
     let result = run_with_memory::<u64, FlatMemory<u64>>(
         &buffer,
@@ -69,12 +72,19 @@ fn test_memory_out_of_bounds() {
         FlatMemory::new_with_memory(memory_size),
     );
     assert!(result.is_err());
-    assert_eq!(ckb_vm::Error::MemOutOfBound, result.err().unwrap());
+    assert_eq!(
+        ckb_vm::Error::MemOutOfBound(0xfffffffffff3ffb8, OutOfBoundKind::Memory),
+        result.err().unwrap()
+    );
 
     #[cfg(has_asm)]
     {
-        let asm_core =
-            AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::max_value(), memory_size);
+        let asm_core = AsmCoreMachine::new_with_memory(
+            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            VERSION2,
+            u64::max_value(),
+            memory_size,
+        );
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
@@ -82,7 +92,10 @@ fn test_memory_out_of_bounds() {
             .unwrap();
         let result = machine.run();
         assert!(result.is_err());
-        assert_eq!(ckb_vm::Error::MemOutOfBound, result.err().unwrap());
+        assert_eq!(
+            ckb_vm::Error::MemOutOfBound(0xfffffffffff3ffb8, OutOfBoundKind::Memory),
+            result.err().unwrap()
+        );
     }
 }
 
