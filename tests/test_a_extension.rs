@@ -36,6 +36,22 @@ pub fn test_sc_after_sc() {
 }
 
 #[test]
+pub fn test_sc_only() {
+    let mut machine = machine_build::int_v2_imacb("tests/programs/sc_only");
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v2_imacb("tests/programs/sc_only");
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+    }
+}
+
+#[test]
 pub fn test_amo_compare() {
     let mut machine = machine_build::int_v2_imacb("tests/programs/amo_compare");
     let ret = machine.run();
