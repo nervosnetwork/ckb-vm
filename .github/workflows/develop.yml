@@ -149,7 +149,7 @@ jobs:
           cd ckb-vm-test-suite
           cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd ..
           cd ..
-          docker run --rm -v `pwd`:/code -t arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
+          docker run --rm -v `pwd`:/code -t arm64v8/rust:1.71 bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
 
   macos-x86-ci-asm:
     runs-on: macos-latest
