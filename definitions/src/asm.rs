@@ -135,21 +135,11 @@ impl AsmCoreMachine {
             let raw_allocation = alloc_zeroed(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };
-        machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
-        machine.pc = 0;
-        machine.next_pc = 0;
-        machine.running = 0;
-        machine.cycles = 0;
         machine.max_cycles = max_cycles;
         if cfg!(feature = "enable-chaos-mode-by-default") {
             machine.chaos_mode = 1;
-        } else {
-            machine.chaos_mode = 0;
         }
-        machine.chaos_seed = 0;
         machine.load_reservation_address = u64::MAX;
-        machine.reset_signal = 0;
-        machine.error_arg0 = 0;
         machine.version = version;
         machine.isa = isa;
 
