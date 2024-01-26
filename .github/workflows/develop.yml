@@ -141,6 +141,7 @@ jobs:
           RISCV=`pwd`/../riscv ./test.sh --build-only
           cd ..
       - name: Run test suite
+        # It is also possible to use arm64v8/rust@sha256:cd7c932094e80f2f2471af1c2c8dba4e87221bc55318ee846d003f2f4e26970a
         run: |
           sudo apt install -y qemu binfmt-support qemu-user-static
           sudo apt install -y gcc-multilib
@@ -149,7 +150,6 @@ jobs:
           cd ckb-vm-test-suite
           cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd ..
           cd ..
-# It is also possible to use arm64v8/rust@sha256:cd7c932094e80f2f2471af1c2c8dba4e87221bc55318ee846d003f2f4e26970a
           docker run --rm -v `pwd`:/code -t arm64v8/rust:1.71.1-bookworm bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
 
   macos-x86-ci-asm:
