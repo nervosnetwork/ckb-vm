@@ -132,7 +132,7 @@ impl AsmCoreMachine {
         assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
         let mut machine = unsafe {
             let layout = Layout::new::<AsmCoreMachine>();
-            let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
+            let raw_allocation = alloc_zeroed(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };
         machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
@@ -147,6 +147,7 @@ impl AsmCoreMachine {
             machine.chaos_mode = 0;
         }
         machine.chaos_seed = 0;
+        machine.load_reservation_address = u64::MAX;
         machine.reset_signal = 0;
         machine.error_arg0 = 0;
         machine.version = version;
