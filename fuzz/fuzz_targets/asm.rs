@@ -19,5 +19,7 @@ fn run(data: &[u8]) -> Result<i8, Error> {
 fuzz_target!(|data: &[u8]| {
     let r0 = run(data);
     let r1 = run(data);
+    let r2 = run(data);
     assert_eq!(r0, r1);
+    assert_eq!(r1, r2);
 });
