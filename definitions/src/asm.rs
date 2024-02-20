@@ -2,7 +2,7 @@ use crate::{
     instructions::Instruction, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
     RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE,
 };
-use std::alloc::{alloc_zeroed, Layout};
+use std::alloc::{alloc, Layout};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -88,19 +88,30 @@ impl AsmCoreMachine {
                 std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
 
             let layout = Layout::array::<u8>(machine_size).unwrap();
-            let raw_allocation = alloc_zeroed(layout) as *mut AsmCoreMachine;
+            let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
             Box::from_raw(raw_allocation)
         };
+        machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+        machine.pc = 0;
+        machine.next_pc = 0;
+        machine.running = 0;
+        machine.cycles = 0;
         machine.max_cycles = max_cycles;
         if cfg!(feature = "enable-chaos-mode-by-default") {
             machine.chaos_mode = 1;
+        } else {
+            machine.chaos_mode = 0;
         }
+        machine.chaos_seed = 0;
         machine.load_reservation_address = u64::MAX;
+        machine.reset_signal = 0;
         machine.version = version;
         machine.isa = isa;
+        machine.flags = [0; RISCV_PAGES];
         for i in 0..TRACE_SIZE {
             machine.traces[i] = Trace::default();
         }
+        machine.frames = [0; MEMORY_FRAMES];
 
         machine.memory_size = memory_size as u64;
         machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
