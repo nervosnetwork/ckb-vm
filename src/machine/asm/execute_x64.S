@@ -2348,6 +2348,7 @@ ckb_vm_x64_execute:
   adc $0, TEMP1
   WRITE_RD(%rcx)
   WRITE_RS3(TEMP1)
+  movq $0, ZERO_ADDRESS
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SBBS:
@@ -2358,6 +2359,7 @@ ckb_vm_x64_execute:
   adc $0, TEMP1
   WRITE_RD(%rcx)
   WRITE_RS3(TEMP1)
+  movq $0, ZERO_ADDRESS
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADD3A:
@@ -2371,6 +2373,7 @@ ckb_vm_x64_execute:
   WRITE_RD(%rcx)
   WRITE_RS2r(TEMP2)
   WRITE_RS3(TEMP3)
+  movq $0, ZERO_ADDRESS
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADD3B:
@@ -2384,6 +2387,7 @@ ckb_vm_x64_execute:
   WRITE_RD(%rcx)
   WRITE_RS1(TEMP2)
   WRITE_RS3(TEMP3)
+  movq $0, ZERO_ADDRESS
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADD3C:
@@ -2394,6 +2398,7 @@ ckb_vm_x64_execute:
   adcq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
   WRITE_RD(%rcx)
   WRITE_RS3(TEMP3)
+  movq $0, ZERO_ADDRESS
   NEXT_INST
 .p2align 3
 .exit_out_of_bound:
