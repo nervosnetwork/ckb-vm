@@ -337,6 +337,9 @@
   movq v, REGISTER_ADDRESS(RD); \
   movq $0, ZERO_ADDRESS
 
+#define WRITE_RD_V2(v) \
+  movq v, REGISTER_ADDRESS(RD); \
+
 #define WRITE_RS1(v) \
   movq v, REGISTER_ADDRESS(RS1); \
 
@@ -363,6 +366,10 @@
   movq (INST_PC), TEMP1; \
   addq $8, INST_PC; \
   jmp *TEMP1
+
+#define NEXT_INST_V2 \
+  movq $0, ZERO_ADDRESS; \
+  NEXT_INST
 
 #define DECODE_R \
   movzbl %cl, RS1d; \
@@ -2281,9 +2288,9 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), %rcx
   addq REGISTER_ADDRESS(RS2r), %rcx
   adc $0, TEMP1
-  WRITE_RD(%rcx)
+  WRITE_RD_V2(%rcx)
   WRITE_RS3(TEMP1)
-  NEXT_INST
+  NEXT_INST_V2
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SBBS:
   DECODE_R4
@@ -2291,9 +2298,9 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), %rcx
   subq REGISTER_ADDRESS(RS2r), %rcx
   adc $0, TEMP1
-  WRITE_RD(%rcx)
+  WRITE_RD_V2(%rcx)
   WRITE_RS3(TEMP1)
-  NEXT_INST
+  NEXT_INST_V2
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADD3A:
   DECODE_R5
@@ -2303,10 +2310,10 @@ ckb_vm_x64_execute:
   adc $0, TEMP2
   movq TEMP2, TEMP3
   addq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
-  WRITE_RD(%rcx)
+  WRITE_RD_V2(%rcx)
   WRITE_RS2r(TEMP2)
   WRITE_RS3(TEMP3)
-  NEXT_INST
+  NEXT_INST_V2
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADD3B:
   DECODE_R5
@@ -2316,10 +2323,10 @@ ckb_vm_x64_execute:
   adc $0, TEMP2
   movq TEMP2, TEMP3
   addq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
-  WRITE_RD(%rcx)
+  WRITE_RD_V2(%rcx)
   WRITE_RS1(TEMP2)
   WRITE_RS3(TEMP3)
-  NEXT_INST
+  NEXT_INST_V2
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADD3C:
   DECODE_R5
@@ -2327,9 +2334,9 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), %rcx
   addq REGISTER_ADDRESS(RS2r), %rcx
   adcq REGISTER_ADDRESS(RS4_TEMP1), TEMP3
-  WRITE_RD(%rcx)
+  WRITE_RD_V2(%rcx)
   WRITE_RS3(TEMP3)
-  NEXT_INST
+  NEXT_INST_V2
 .p2align 3
 .exit_out_of_bound:
   mov $CKB_VM_ASM_RET_OUT_OF_BOUND, ARG_RETd
