@@ -300,7 +300,7 @@ impl Machine {
 #[test]
 pub fn test_sc_after_snapshot() {
     let mut machine = machine_build::int_v2_imacb("tests/programs/sc_after_snapshot");
-    machine.machine.set_max_cycles(5);
+    machine.machine.inner_mut().set_max_cycles(5);
     let ret = machine.run();
     assert!(ret.is_err());
     assert_eq!(ret.unwrap_err(), Error::CyclesExceeded);
@@ -318,7 +318,7 @@ pub fn test_sc_after_snapshot() {
         .build(),
     );
     resume(&mut machine_new, &snap).unwrap();
-    machine_new.machine.set_max_cycles(20);
+    machine_new.machine.inner_mut().set_max_cycles(20);
     let ret = machine_new.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
