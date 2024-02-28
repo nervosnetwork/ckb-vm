@@ -32,12 +32,14 @@ pub struct Snapshot {
     pub page_indices: Vec<u64>,
     pub page_flags: Vec<u8>,
     pub pages: Vec<Vec<u8>>,
+    pub load_reservation_address: u64,
 }
 
 pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error> {
     let mut snap = Snapshot {
         version: machine.version(),
         pc: machine.pc().to_u64(),
+        load_reservation_address: machine.memory().lr().to_u64(),
         ..Default::default()
     };
     for (i, v) in machine.registers().iter().enumerate() {
@@ -92,6 +94,8 @@ pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<()
         machine.memory_mut().store_bytes(addr_from, &page[..])?;
         machine.memory_mut().set_flag(page_index, page_flag)?;
     }
-
+    machine
+        .memory_mut()
+        .set_lr(&T::REG::from_u64(snapshot.load_reservation_address));
     Ok(())
 }
