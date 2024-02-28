@@ -53,6 +53,7 @@ riscv64-unknown-elf-as -o rorw_in_end_of_aot_block.o rorw_in_end_of_aot_block.S 
 sh rvc_pageend.sh
 # TODO: sbinvi_aot_load_imm_bug
 riscv64-unknown-elf-as -o sc_after_sc.o sc_after_sc.S && riscv64-unknown-elf-ld -T sc_after_sc.lds -o sc_after_sc sc_after_sc.o && rm sc_after_sc.o
+riscv64-unknown-elf-as -o sc_after_snapshot.o sc_after_snapshot.S && riscv64-unknown-elf-ld -T sc_after_snapshot.lds -o sc_after_snapshot sc_after_snapshot.o && rm sc_after_snapshot.o
 riscv64-unknown-elf-as -o sc_only.o sc_only.S && riscv64-unknown-elf-ld -T sc_only.lds -o sc_only sc_only.o && rm sc_only.o
 # SKIP: simple
 riscv64-unknown-elf-gcc -o simple64 simple.c
