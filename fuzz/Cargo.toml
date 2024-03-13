@@ -11,10 +11,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 spike-sys = "0.1.2"
-
-[dependencies.ckb-vm]
-path = ".."
-features = ["asm"]
+ckb-vm = { path = "..", features = ["asm"] }
+ckb-vm-definitions = { path = "../definitions" }
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -47,5 +45,11 @@ doc = false
 [[bin]]
 name = "snapshot"
 path = "fuzz_targets/snapshot.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "snapshot2"
+path = "fuzz_targets/snapshot2.rs"
 test = false
 doc = false
