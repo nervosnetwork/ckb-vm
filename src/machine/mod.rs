@@ -599,6 +599,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         self.pause.clone()
     }
 
+    pub fn set_pause(&mut self, pause: Pause) {
+        self.pause = pause;
+    }
+
     pub fn exit_code(&self) -> i8 {
         self.exit_code
     }
@@ -651,6 +655,7 @@ pub struct DefaultMachineBuilder<Inner> {
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
+    pause: Pause,
 }
 
 impl<Inner> DefaultMachineBuilder<Inner> {
@@ -660,6 +665,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             instruction_cycle_func: Box::new(|_| 0),
             debugger: None,
             syscalls: vec![],
+            pause: Pause::new(),
         }
     }
 
@@ -676,6 +682,11 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         self
     }
 
+    pub fn pause(mut self, pause: Pause) -> Self {
+        self.pause = pause;
+        self
+    }
+
     pub fn debugger(mut self, debugger: Box<dyn Debugger<Inner>>) -> Self {
         self.debugger = Some(debugger);
         self
@@ -684,7 +695,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
     pub fn build(self) -> DefaultMachine<Inner> {
         DefaultMachine {
             inner: self.inner,
-            pause: Pause::new(),
+            pause: self.pause,
             instruction_cycle_func: self.instruction_cycle_func,
             debugger: self.debugger,
             syscalls: self.syscalls,
