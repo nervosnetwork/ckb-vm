@@ -20,9 +20,11 @@ const PAGE_SIZE: u64 = RISCV_PAGESIZE as u64;
 /// we can leverage DataSource for snapshot optimizations: data that is already
 /// locatable in the DataSource will not need to be included in the snapshot
 /// again, all we need is an id to locate it, together with a pair of
-/// offset / length to cut in to the correct slices.
+/// offset / length to cut in to the correct slices. Just like CKB's syscall design,
+/// an extra u64 value is included here to return the remaining full length of data
+/// starting from offset, without considering `length` parameter
 pub trait DataSource<I: Clone + PartialEq> {
-    fn load_data(&self, id: &I, offset: u64, length: u64) -> Result<Bytes, Error>;
+    fn load_data(&self, id: &I, offset: u64, length: u64) -> Result<(Bytes, u64), Error>;
 }
 
 #[derive(Clone, Debug)]
@@ -68,7 +70,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             if address % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess(*address));
             }
-            let data = self.data_source().load_data(id, *offset, *length)?;
+            let (data, _) = self.data_source().load_data(id, *offset, *length)?;
             if data.len() as u64 % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess(
                     address.wrapping_add(data.len() as u64),
@@ -111,7 +113,9 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
     }
 
     /// Similar to Memory::store_bytes, but this method also tracks memory
-    /// pages whose entire content comes from DataSource
+    /// pages whose entire content comes from DataSource. It returns 2 values:
+    /// the actual written bytes, and the full length of data starting from offset,
+    /// but ignoring `length` parameter.
     pub fn store_bytes<M: SupportMachine>(
         &mut self,
         machine: &mut M,
@@ -119,10 +123,11 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         id: &I,
         offset: u64,
         length: u64,
-    ) -> Result<(), Error> {
-        let data = self.data_source.load_data(id, offset, length)?;
+    ) -> Result<(u64, u64), Error> {
+        let (data, full_length) = self.data_source.load_data(id, offset, length)?;
         machine.memory_mut().store_bytes(addr, &data)?;
-        self.track_pages(machine, addr, data.len() as u64, id, offset)
+        self.track_pages(machine, addr, data.len() as u64, id, offset)?;
+        Ok((data.len() as u64, full_length))
     }
 
     /// Due to the design of ckb-vm right now, load_program function does not
@@ -226,7 +231,9 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         self.track_pages(machine, start, length, id, offset + action.source.start)
     }
 
-    fn track_pages<M: SupportMachine>(
+    /// This is only made public for advanced usages, but make sure to exercise more
+    /// cautions when calling it!
+    pub fn track_pages<M: SupportMachine>(
         &mut self,
         machine: &mut M,
         start: u64,
