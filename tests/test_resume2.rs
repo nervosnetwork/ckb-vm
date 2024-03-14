@@ -324,15 +324,17 @@ const DATA_ID: u64 = 0x2000;
 struct TestSource(HashMap<u64, Bytes>);
 
 impl DataSource<u64> for TestSource {
-    fn load_data(&self, id: &u64, offset: u64, length: u64) -> Result<Bytes, Error> {
+    fn load_data(&self, id: &u64, offset: u64, length: u64) -> Result<(Bytes, u64), Error> {
         match self.0.get(id) {
-            Some(data) => Ok(data.slice(
-                offset as usize..(if length > 0 {
-                    (offset + length) as usize
+            Some(data) => {
+                let end = if length > 0 {
+                    offset + length
                 } else {
-                    data.len()
-                }),
-            )),
+                    data.len() as u64
+                };
+                let full_length = end - offset;
+                Ok((data.slice(offset as usize..end as usize), full_length))
+            }
             None => Err(Error::Unexpected(format!(
                 "Id {} is missing in source!",
                 id
@@ -443,7 +445,7 @@ impl Machine {
         use Machine::*;
         match self {
             Asm(inner, context) => {
-                let program = context
+                let (program, _) = context
                     .lock()
                     .unwrap()
                     .data_source()
@@ -460,7 +462,7 @@ impl Machine {
                 Ok(bytes)
             }
             Interpreter(inner, context) => {
-                let program = context
+                let (program, _) = context
                     .lock()
                     .unwrap()
                     .data_source()
@@ -477,7 +479,7 @@ impl Machine {
                 Ok(bytes)
             }
             InterpreterWithTrace(inner, context) => {
-                let program = context
+                let (program, _) = context
                     .lock()
                     .unwrap()
                     .data_source()
