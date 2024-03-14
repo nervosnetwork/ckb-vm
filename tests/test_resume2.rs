@@ -6,12 +6,12 @@ use ckb_vm::elf::parse_elf;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
-    CoreMachine, DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1, VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_A, ISA_IMC};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -379,7 +379,7 @@ impl MachineTy {
         match self {
             MachineTy::Asm => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, 0);
+                let asm_core1 = AsmCoreMachine::new(ISA_IMC | ISA_A, version, 0);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .syscall(Box::new(InsertDataSyscall(context.clone())))
@@ -389,7 +389,9 @@ impl MachineTy {
             MachineTy::Interpreter => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC, version, 0,
+                    ISA_IMC | ISA_A,
+                    version,
+                    0,
                 );
                 Machine::Interpreter(
                     DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
@@ -404,7 +406,9 @@ impl MachineTy {
             MachineTy::InterpreterWithTrace => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC, version, 0,
+                    ISA_IMC | ISA_A,
+                    version,
+                    0,
                 );
                 Machine::InterpreterWithTrace(
                     TraceMachine::new(
@@ -595,4 +599,24 @@ impl Machine {
         };
         Ok(())
     }
+}
+
+#[test]
+pub fn test_sc_after_snapshot2() {
+    let data_source = load_program("tests/programs/sc_after_snapshot");
+
+    let mut machine1 = MachineTy::Interpreter.build(data_source.clone(), VERSION2);
+    machine1.set_max_cycles(5);
+    machine1.load_program(&vec!["main".into()]).unwrap();
+    let result1 = machine1.run();
+    assert!(result1.is_err());
+    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
+    let snapshot = machine1.snapshot().unwrap();
+
+    let mut machine2 = MachineTy::Interpreter.build(data_source, VERSION2);
+    machine2.resume(snapshot).unwrap();
+    machine2.set_max_cycles(20);
+    let result2 = machine2.run();
+    assert!(result2.is_ok());
+    assert_eq!(result2.unwrap(), 0);
 }
