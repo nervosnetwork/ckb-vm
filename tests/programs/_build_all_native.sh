@@ -1,5 +1,6 @@
 set -ex
 
+riscv64-unknown-elf-gcc -o resume2_load_data resume2_load_data.c
 riscv64-unknown-elf-gcc -o alloc_many alloc_many.c
 riscv64-unknown-elf-as -o amo_check_write.o amo_check_write.S && riscv64-unknown-elf-ld -T amo_check_write.lds -o amo_check_write amo_check_write.o && rm amo_check_write.o
 riscv64-unknown-elf-as -o amo_compare.o amo_compare.S && riscv64-unknown-elf-ld -T amo_compare.lds -o amo_compare amo_compare.o && rm amo_compare.o
