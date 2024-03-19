@@ -115,6 +115,7 @@ pub fn check_no_overflow(addr: u64, size: u64, memory_size: u64) -> Result<(), E
 
 // `size` should be none zero u64
 pub fn get_page_indices(addr: u64, size: u64) -> (u64, u64) {
+    debug_assert!(size > 0);
     let addr_end = addr.wrapping_add(size);
     let page = addr >> RISCV_PAGE_SHIFTS;
     let page_end = (addr_end - 1) >> RISCV_PAGE_SHIFTS;
