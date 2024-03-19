@@ -649,13 +649,13 @@ pub fn test_store_bytes_twice() {
         }
         _ => unimplemented!(),
     }
-    let a = machine.full_memory().unwrap()[4096 * 2];
+    let mem1 = machine.full_memory().unwrap();
 
     let snapshot = machine.snapshot().unwrap();
     let mut machine2 = MachineTy::Asm.build(data_source.clone(), VERSION2);
     machine2.resume(snapshot).unwrap();
     machine2.set_max_cycles(u64::MAX);
-    let b = machine2.full_memory().unwrap()[4096 * 2];
+    let mem2 = machine2.full_memory().unwrap();
 
-    assert_eq!(a, b);
+    assert_eq!(mem1, mem2);
 }

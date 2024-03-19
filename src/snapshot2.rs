@@ -267,6 +267,9 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         start: u64,
         length: u64,
     ) -> Result<(), Error> {
+        if length == 0 {
+            return Ok(());
+        }
         let page_indices = get_page_indices(start, length);
         for page in page_indices.0..=page_indices.1 {
             machine.memory_mut().set_flag(page, FLAG_DIRTY)?;
