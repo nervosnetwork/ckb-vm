@@ -11,7 +11,7 @@ use ckb_vm::machine::{
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_A, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, Memory, Register, Syscalls, ISA_A, ISA_IMC};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -531,7 +531,7 @@ impl Machine {
 
     #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     fn full_memory(&mut self) -> Result<Bytes, Error> {
-        use ckb_vm::{Memory, DEFAULT_MEMORY_SIZE};
+        use ckb_vm::DEFAULT_MEMORY_SIZE;
         use Machine::*;
         match self {
             Asm(inner, _) => inner
@@ -649,6 +649,41 @@ pub fn test_store_bytes_twice() {
         }
         _ => unimplemented!(),
     }
+    let mem1 = machine.full_memory().unwrap();
+
+    let snapshot = machine.snapshot().unwrap();
+    let mut machine2 = MachineTy::Asm.build(data_source.clone(), VERSION2);
+    machine2.resume(snapshot).unwrap();
+    machine2.set_max_cycles(u64::MAX);
+    let mem2 = machine2.full_memory().unwrap();
+
+    assert_eq!(mem1, mem2);
+}
+
+#[cfg(not(feature = "enable-chaos-mode-by-default"))]
+#[test]
+pub fn test_mixing_snapshot2_writes_with_machine_raw_writes() {
+    let data_source = load_program("tests/programs/sc_after_snapshot");
+
+    let mut machine = MachineTy::Asm.build(data_source.clone(), VERSION2);
+    machine.set_max_cycles(u64::MAX);
+    machine.load_program(&vec!["main".into()]).unwrap();
+
+    match machine {
+        Machine::Asm(ref mut inner, ref ctx) => {
+            ctx.lock()
+                .unwrap()
+                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 29186)
+                .unwrap();
+            inner
+                .machine
+                .memory_mut()
+                .store_bytes(0, &vec![0x42; 29186])
+                .unwrap();
+        }
+        _ => unimplemented!(),
+    }
+
     let mem1 = machine.full_memory().unwrap();
 
     let snapshot = machine.snapshot().unwrap();
