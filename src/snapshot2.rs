@@ -2,7 +2,7 @@ use crate::{
     bits::roundup,
     elf::{LoadingAction, ProgramMetadata},
     machine::SupportMachine,
-    memory::{Memory, FLAG_DIRTY},
+    memory::{get_page_indices, Memory, FLAG_DIRTY},
     Error, Register, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
 };
 use bytes::Bytes;
@@ -125,6 +125,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         length: u64,
     ) -> Result<(u64, u64), Error> {
         let (data, full_length) = self.data_source.load_data(id, offset, length)?;
+        self.untrack_pages(machine, addr, data.len() as u64)?;
         machine.memory_mut().store_bytes(addr, &data)?;
         self.track_pages(machine, addr, data.len() as u64, id, offset)?;
         Ok((data.len() as u64, full_length))
@@ -231,7 +232,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         self.track_pages(machine, start, length, id, offset + action.source.start)
     }
 
-    /// This is only made public for advanced usages, but make sure to exercise more
+    /// The followings are only made public for advanced usages, but make sure to exercise more
     /// cautions when calling it!
     pub fn track_pages<M: SupportMachine>(
         &mut self,
@@ -256,6 +257,20 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             aligned_start += PAGE_SIZE;
             length -= PAGE_SIZE;
             offset += PAGE_SIZE;
+        }
+        Ok(())
+    }
+
+    pub fn untrack_pages<M: SupportMachine>(
+        &mut self,
+        machine: &mut M,
+        start: u64,
+        length: u64,
+    ) -> Result<(), Error> {
+        let page_indices = get_page_indices(start, length);
+        for page in page_indices.0..=page_indices.1 {
+            machine.memory_mut().set_flag(page, FLAG_DIRTY)?;
+            self.pages.remove(&page);
         }
         Ok(())
     }

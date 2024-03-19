@@ -309,7 +309,11 @@ fn load_program(name: &str) -> TestSource {
     file.read_to_end(&mut buffer).unwrap();
     let program = buffer.into();
 
-    let data = vec![7; 16 * 4096];
+    let mut data = vec![0; 16 * 4096];
+    for i in 0..data.len() {
+        data[i] = i as u8;
+    }
+
     let mut m = HashMap::default();
     m.insert(DATA_ID, data.into());
     m.insert(PROGRAM_ID, program);
@@ -621,4 +625,37 @@ pub fn test_sc_after_snapshot2() {
     let result2 = machine2.run();
     assert!(result2.is_ok());
     assert_eq!(result2.unwrap(), 0);
+}
+
+#[cfg(not(feature = "enable-chaos-mode-by-default"))]
+#[test]
+pub fn test_store_bytes_twice() {
+    let data_source = load_program("tests/programs/sc_after_snapshot");
+
+    let mut machine = MachineTy::Asm.build(data_source.clone(), VERSION2);
+    machine.set_max_cycles(u64::MAX);
+    machine.load_program(&vec!["main".into()]).unwrap();
+
+    match machine {
+        Machine::Asm(ref mut inner, ref ctx) => {
+            ctx.lock()
+                .unwrap()
+                .store_bytes(&mut inner.machine, 0, &DATA_ID, 2, 29186)
+                .unwrap();
+            ctx.lock()
+                .unwrap()
+                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 11008)
+                .unwrap();
+        }
+        _ => unimplemented!(),
+    }
+    let a = machine.full_memory().unwrap()[4096 * 2];
+
+    let snapshot = machine.snapshot().unwrap();
+    let mut machine2 = MachineTy::Asm.build(data_source.clone(), VERSION2);
+    machine2.resume(snapshot).unwrap();
+    machine2.set_max_cycles(u64::MAX);
+    let b = machine2.full_memory().unwrap()[4096 * 2];
+
+    assert_eq!(a, b);
 }
