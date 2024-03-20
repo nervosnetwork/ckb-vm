@@ -160,9 +160,6 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
     pub fn make_snapshot<M: SupportMachine>(&self, machine: &mut M) -> Result<Snapshot2<I>, Error> {
         let mut dirty_pages: Vec<(u64, u8, Vec<u8>)> = vec![];
         for i in 0..machine.memory().memory_pages() as u64 {
-            if self.pages.contains_key(&i) {
-                continue;
-            }
             let flag = machine.memory_mut().fetch_flag(i)?;
             if flag & FLAG_DIRTY == 0 {
                 continue;
@@ -182,6 +179,12 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         let mut pages: Vec<u64> = self.pages.keys().copied().collect();
         pages.sort_unstable();
         for page in pages {
+            // Some pages might be marked as cached pages from data source, but receives
+            // memory writes later(and marked as dirty). We are safely skipping those pages
+            // here as they will be gathered as dirty pages.
+            if machine.memory_mut().fetch_flag(page)? & FLAG_DIRTY != 0 {
+                continue;
+            }
             let address = page * PAGE_SIZE;
             let (id, offset, flag) = &self.pages[&page];
             let mut appended_to_last = false;
