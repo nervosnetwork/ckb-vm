@@ -102,6 +102,7 @@ pub fn fill_page_data<M: Memory>(
 
 // `size` should be none zero u64
 pub fn get_page_indices(addr: u64, size: u64) -> Result<(u64, u64), Error> {
+    debug_assert!(size > 0);
     let (addr_end, overflowed) = addr.overflowing_add(size);
     if overflowed {
         return Err(Error::MemOutOfBound);
