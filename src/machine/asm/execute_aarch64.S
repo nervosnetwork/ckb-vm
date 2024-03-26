@@ -87,6 +87,16 @@
 #define WRITE_RS3(v) \
   str v, REGISTER_ADDRESS(RS3)
 
+/*
+ * This is added to replicate a bug in x64 assembly VM
+ */
+#define LOAD_PC(reg1, reg1w, reg2, reg2w, temp_regw) \
+  ldr reg1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC] SEP \
+  ubfx reg2, reg1, 0, 32 SEP \
+  ldrb temp_regw, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION] SEP \
+  cmp temp_regw, 2 SEP \
+  csel reg2, reg2, reg1, lo
+
 #define NEXT_INST \
   ldr TEMP1, [INST_ARGS] SEP \
   add INST_ARGS, INST_ARGS, 8 SEP \
@@ -305,8 +315,7 @@ ckb_vm_x64_execute:
   add MEMORY_OFFSET_ADDRESS, MEMORY_OFFSET_ADDRESS, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_L
 
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
-  ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
-  mov TEMP3, TEMP2
+  LOAD_PC(TEMP2, TEMP2w, TEMP3, TEMP3w, TEMP4w)
   lsr TEMP2, TEMP2, 2
   and TEMP2, TEMP2, 8191
   mov TEMP1, CKB_VM_ASM_TRACE_STRUCT_SIZE
@@ -346,8 +355,7 @@ ckb_vm_x64_execute:
   ldarb TEMP2w, [PAUSE]
   cmp TEMP2, ZERO_VALUE
   bne .exit_pause
-  ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
-  mov TEMP3, TEMP2
+  LOAD_PC(TEMP2, TEMP2w, TEMP3, TEMP3w, TEMP4w)
   lsr TEMP2, TEMP2, 2
   and TEMP2, TEMP2, 8191
   mov TEMP1, CKB_VM_ASM_TRACE_STRUCT_SIZE
