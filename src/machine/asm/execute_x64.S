@@ -351,6 +351,19 @@
   movq v, REGISTER_ADDRESS(RS3); \
 
 /*
+ * This macro is added to cope with an implementation bug in the x64 assembly code,
+ * where address bigger than u32 limit will be truncated unexpectedly.
+ *
+ * Useful tip: https://stackoverflow.com/a/66416462
+ */
+#define LOAD_PC(reg1, reg1d, reg2, reg2d, temp_regd) \
+  movq PC_ADDRESS, reg1; \
+  mov reg1d, reg2d; \
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION(MACHINE), temp_regd; \
+  cmp $2, temp_regd; \
+  cmovae reg1, reg2
+
+/*
  * Notice we could replace the last 3 instructions with the following:
  *
  * addq $8, INST_PC
@@ -420,8 +433,7 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE(MACHINE), MEMORY_SIZE
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
-  movq PC_ADDRESS, %rax
-  mov %eax, %ecx
+  LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
   shr $2, %eax
   andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
@@ -442,7 +454,6 @@ ckb_vm_x64_execute:
   addq %rdx, PC_ADDRESS
   /* Prefetch trace info for the consecutive block */
   movq PC_ADDRESS, %rax
-  mov %eax, %ecx
   shr $2, %eax
   andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
@@ -476,8 +487,7 @@ ckb_vm_x64_execute:
   movzbl 0(%rax), %eax
   cmp $0, %rax
   jnz .exit_pause
-  movq PC_ADDRESS, %rax
-  mov %eax, %ecx
+  LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
   shr $2, %eax
   andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
