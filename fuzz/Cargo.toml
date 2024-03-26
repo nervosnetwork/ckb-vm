@@ -43,3 +43,9 @@ name = "isa_b"
 path = "fuzz_targets/isa_b.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "snapshot"
+path = "fuzz_targets/snapshot.rs"
+test = false
+doc = false
