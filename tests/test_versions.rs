@@ -1,11 +1,12 @@
 #![cfg(has_asm)]
+use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
-use ckb_vm::machine::{VERSION0, VERSION1};
+use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
 use ckb_vm::{
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
-    SparseMemory, WXorXMemory, ISA_IMC, RISCV_PAGESIZE,
+    SparseMemory, TraceMachine, WXorXMemory, ISA_A, ISA_B, ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
 };
 use std::fs;
 
@@ -337,4 +338,88 @@ pub fn test_asm_version1_cadd_hints() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_asm_version1_asm_trace_bug() {
+    let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
+
+    let mut machine = {
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION1, 2000);
+        let machine = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            .instruction_cycle_func(Box::new(constant_cycles))
+            .build();
+        AsmMachine::new(machine)
+    };
+    machine.load_program(&buffer, &[]).unwrap();
+    let result = machine.run();
+
+    assert_eq!(result, Err(Error::CyclesExceeded));
+}
+
+#[test]
+pub fn test_asm_version2_asm_trace_bug() {
+    let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
+
+    let mut machine = {
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, 2000);
+        let machine = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            .instruction_cycle_func(Box::new(constant_cycles))
+            .build();
+        AsmMachine::new(machine)
+    };
+    machine.load_program(&buffer, &[]).unwrap();
+    let result = machine.run();
+
+    assert_eq!(
+        result,
+        Err(Error::MemOutOfBound(21474836484, OutOfBoundKind::Memory))
+    );
+}
+
+#[test]
+pub fn test_trace_version1_asm_trace_bug() {
+    let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
+
+    let mut machine = {
+        let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            VERSION1,
+            2000,
+        );
+        TraceMachine::new(
+            DefaultMachineBuilder::new(core_machine)
+                .instruction_cycle_func(Box::new(constant_cycles))
+                .build(),
+        )
+    };
+    machine.load_program(&buffer, &[]).unwrap();
+    let result = machine.run();
+
+    assert_eq!(result, Err(Error::CyclesExceeded));
+}
+
+#[test]
+pub fn test_trace_version2_asm_trace_bug() {
+    let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
+
+    let mut machine = {
+        let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
+            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            VERSION2,
+            2000,
+        );
+        TraceMachine::new(
+            DefaultMachineBuilder::new(core_machine)
+                .instruction_cycle_func(Box::new(constant_cycles))
+                .build(),
+        )
+    };
+    machine.load_program(&buffer, &[]).unwrap();
+    let result = machine.run();
+
+    assert_eq!(
+        result,
+        Err(Error::MemOutOfBound(21474836484, OutOfBoundKind::Memory))
+    );
 }
