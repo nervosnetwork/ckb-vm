@@ -8,7 +8,7 @@ use super::{
         },
         Error,
     },
-    CoreMachine, DefaultMachine, Machine, SupportMachine,
+    CoreMachine, DefaultMachine, Machine, SupportMachine, VERSION2,
 };
 use bytes::Bytes;
 
@@ -147,7 +147,13 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             }
             let pc = self.machine.pc().to_u64();
             let slot = calculate_slot(pc);
-            if pc != self.traces[slot].address || self.traces[slot].instruction_count == 0 {
+            // This is to replicate a bug in x64 VM
+            let address_match = if self.machine.version() < VERSION2 {
+                (pc as u32 as u64) == self.traces[slot].address
+            } else {
+                pc == self.traces[slot].address
+            };
+            if (!address_match) || self.traces[slot].instruction_count == 0 {
                 self.traces[slot] = Trace::default();
                 let mut current_pc = pc;
                 let mut i = 0;
