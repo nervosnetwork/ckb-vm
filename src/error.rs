@@ -53,6 +53,8 @@ pub enum Error {
     Unexpected(String),
     #[display(fmt = "unimplemented")]
     Unimplemented,
+    #[display(fmt = "yield")]
+    Yield,
 }
 
 impl std::error::Error for Error {}
