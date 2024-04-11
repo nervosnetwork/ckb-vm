@@ -128,7 +128,7 @@ fn check_memory_writable(
     check_memory(machine, page);
     machine.set_flag(page, FLAG_DIRTY)?;
 
-    // check next page if neccessary
+    // check next page if necessary
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
@@ -161,7 +161,7 @@ fn check_memory_executable(
     check_permission(machine, page, FLAG_EXECUTABLE)?;
     check_memory(machine, page);
 
-    // check next page if neccessary
+    // check next page if necessary
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;
@@ -191,7 +191,7 @@ fn check_memory_inited(
     }
     check_memory(machine, page);
 
-    // check next page if neccessary
+    // check next page if necessary
     let page_offset = addr as usize % RISCV_PAGESIZE;
     if page_offset + size > RISCV_PAGESIZE {
         let page = page + 1;

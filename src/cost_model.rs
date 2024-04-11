@@ -3,14 +3,14 @@ use crate::{
     Instruction,
 };
 
-// Returns the spent cycles to execute the secific instruction.
+// Returns the spent cycles to execute the specific instruction.
 // This function is usually used to write test cases, which can visually
 // display how many instructions are executed.
 pub fn constant_cycles(_: Instruction) -> u64 {
     1
 }
 
-// Returns the spent cycles to execute the secific instruction.
+// Returns the spent cycles to execute the specific instruction.
 // These values come from estimates of hardware execution speed.
 pub fn estimate_cycles(i: Instruction) -> u64 {
     match extract_opcode(i) {
