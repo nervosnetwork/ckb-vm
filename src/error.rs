@@ -2,6 +2,8 @@
 pub enum Error {
     #[display(fmt = "asm error: {}", "_0")]
     Asm(u8),
+    #[display(fmt = "script error: index out of bound")]
+    CkbScriptIndexOutOfBound,
     #[display(fmt = "cycles error: max cycles exceeded")]
     CyclesExceeded,
     #[display(fmt = "cycles error: overflow")]
@@ -16,8 +18,8 @@ pub enum Error {
     ElfSegmentWritableAndExecutable,
     #[display(fmt = "elf error: segment addr or size is wrong")]
     ElfSegmentAddrOrSizeError,
-    // External error type is for the debugging tool of CKB-VM, it should not be
-    // used in this project.
+    // When users need to implement traits defined in CKB-VM, they can use
+    // this error type to wrap their own errors.
     #[display(fmt = "external error: {}", "_0")]
     External(String),
     #[display(fmt = "invalid syscall {}", "_0")]
