@@ -2,8 +2,6 @@
 pub enum Error {
     #[display(fmt = "asm error: {}", "_0")]
     Asm(u8),
-    #[display(fmt = "script error: index out of bound")]
-    CkbScriptIndexOutOfBound,
     #[display(fmt = "cycles error: max cycles exceeded")]
     CyclesExceeded,
     #[display(fmt = "cycles error: overflow")]
@@ -51,6 +49,8 @@ pub enum Error {
     MemWriteOnFreezedPage,
     #[display(fmt = "pause")]
     Pause,
+    #[display(fmt = "snapshot data load error")]
+    SnapshotDataLoadError,
     #[display(fmt = "unexpected error")]
     Unexpected(String),
     #[display(fmt = "unimplemented")]
