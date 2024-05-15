@@ -328,7 +328,7 @@ const DATA_ID: u64 = 0x2000;
 struct TestSource(HashMap<u64, Bytes>);
 
 impl DataSource<u64> for TestSource {
-    fn load_data(&self, id: &u64, offset: u64, length: u64) -> Result<(Bytes, u64), Error> {
+    fn load_data(&self, id: &u64, offset: u64, length: u64) -> Option<(Bytes, u64)> {
         match self.0.get(id) {
             Some(data) => {
                 let end = if length > 0 {
@@ -337,12 +337,9 @@ impl DataSource<u64> for TestSource {
                     data.len() as u64
                 };
                 let full_length = end - offset;
-                Ok((data.slice(offset as usize..end as usize), full_length))
+                Some((data.slice(offset as usize..end as usize), full_length))
             }
-            None => Err(Error::Unexpected(format!(
-                "Id {} is missing in source!",
-                id
-            ))),
+            None => None,
         }
     }
 }
@@ -452,7 +449,6 @@ impl Machine {
                 let (program, _) = context
                     .lock()
                     .unwrap()
-                    .data_source()
                     .load_data(&PROGRAM_ID, 0, 0)
                     .unwrap();
                 let metadata = parse_elf::<u64>(&program, inner.machine.version())?;
@@ -469,7 +465,6 @@ impl Machine {
                 let (program, _) = context
                     .lock()
                     .unwrap()
-                    .data_source()
                     .load_data(&PROGRAM_ID, 0, 0)
                     .unwrap();
                 let metadata = parse_elf::<u64>(&program, inner.version())?;
@@ -486,7 +481,6 @@ impl Machine {
                 let (program, _) = context
                     .lock()
                     .unwrap()
-                    .data_source()
                     .load_data(&PROGRAM_ID, 0, 0)
                     .unwrap();
                 let metadata = parse_elf::<u64>(&program, inner.machine.version())?;

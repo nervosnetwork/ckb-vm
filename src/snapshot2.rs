@@ -24,7 +24,7 @@ const PAGE_SIZE: u64 = RISCV_PAGESIZE as u64;
 /// an extra u64 value is included here to return the remaining full length of data
 /// starting from offset, without considering `length` parameter
 pub trait DataSource<I: Clone + PartialEq> {
-    fn load_data(&self, id: &I, offset: u64, length: u64) -> Result<(Bytes, u64), Error>;
+    fn load_data(&self, id: &I, offset: u64, length: u64) -> Option<(Bytes, u64)>;
 }
 
 #[derive(Clone, Debug)]
@@ -70,7 +70,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             if address % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess(*address));
             }
-            let (data, _) = self.data_source().load_data(id, *offset, *length)?;
+            let (data, _) = self.load_data(id, *offset, *length)?;
             if data.len() as u64 % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess(
                     address.wrapping_add(data.len() as u64),
@@ -104,12 +104,10 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         Ok(())
     }
 
-    pub fn data_source(&self) -> &D {
-        &self.data_source
-    }
-
-    pub fn data_source_mut(&mut self) -> &mut D {
-        &mut self.data_source
+    pub fn load_data(&mut self, id: &I, offset: u64, length: u64) -> Result<(Bytes, u64), Error> {
+        self.data_source
+            .load_data(id, offset, length)
+            .ok_or(Error::SnapshotDataLoadError)
     }
 
     /// Similar to Memory::store_bytes, but this method also tracks memory
@@ -124,7 +122,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         offset: u64,
         length: u64,
     ) -> Result<(u64, u64), Error> {
-        let (data, full_length) = self.data_source.load_data(id, offset, length)?;
+        let (data, full_length) = self.load_data(id, offset, length)?;
         self.untrack_pages(machine, addr, data.len() as u64)?;
         machine.memory_mut().store_bytes(addr, &data)?;
         self.track_pages(machine, addr, data.len() as u64, id, offset)?;

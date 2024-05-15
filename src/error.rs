@@ -19,8 +19,8 @@ pub enum Error {
     ElfSegmentWritableAndExecutable(u64),
     #[display(fmt = "elf error: segment addr or size is wrong vaddr=0x{:x}", "_0")]
     ElfSegmentAddrOrSizeError(u64),
-    // External error type is for the debugging tool of CKB-VM, it should not be
-    // used in this project.
+    // When users need to implement traits defined in CKB-VM, they can use
+    // this error type to wrap their own errors.
     #[display(fmt = "external error: {}", "_0")]
     External(String),
     #[display(fmt = "invalid syscall {}", "_0")]
@@ -52,8 +52,12 @@ pub enum Error {
     MemWriteOnFreezedPage(u64),
     #[display(fmt = "pause")]
     Pause,
+    #[display(fmt = "snapshot data load error")]
+    SnapshotDataLoadError,
     #[display(fmt = "unexpected error")]
     Unexpected(String),
+    #[display(fmt = "yield")]
+    Yield,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Display)]
