@@ -127,6 +127,10 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             .load_program_with_metadata(program, metadata, args)
     }
 
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner_mut().set_max_cycles(cycles)
+    }
+
     pub fn run(&mut self) -> Result<i8, Error> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.machine.set_running(true);
