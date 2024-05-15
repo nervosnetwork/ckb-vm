@@ -46,7 +46,7 @@ pub struct DummyData {
 }
 
 impl DataSource<u32> for DummyData {
-    fn load_data(&self, id: &u32, offset: u64, length: u64) -> Result<(Bytes, u64), Error> {
+    fn load_data(&self, id: &u32, offset: u64, length: u64) -> Option<(Bytes, u64)> {
         let data = match *id {
             DATA_SOURCE_PROGRAM => &self.program,
             DATA_SOURCE_CONTENT => &self.content,
@@ -59,7 +59,7 @@ impl DataSource<u32> for DummyData {
         } else {
             full_size
         };
-        Ok((data.slice(offset..offset + real_size), full_size as u64))
+        Some((data.slice(offset..offset + real_size), full_size as u64))
     }
 }
 
