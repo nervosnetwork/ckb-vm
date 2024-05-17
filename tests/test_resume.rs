@@ -1,4 +1,5 @@
 #![cfg(has_asm)]
+#![cfg(not(feature = "heap-stack-overlap-detect"))]
 pub mod machine_build;
 use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;

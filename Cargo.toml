@@ -21,6 +21,7 @@ enable-chaos-mode-by-default = ["ckb-vm-definitions/enable-chaos-mode-by-default
 # Disable slow tests to run miri on CI
 miri-ci = []
 pprof = []
+heap-stack-overlap-detect = []
 
 [dependencies]
 byteorder = "1"

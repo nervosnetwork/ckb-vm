@@ -42,6 +42,7 @@ fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {
     }
 }
 
+#[cfg(not(feature = "heap-stack-overlap-detect"))]
 #[test]
 fn test_dy_memory() {
     run_memory_suc(

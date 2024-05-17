@@ -175,6 +175,16 @@ pub trait SupportMachine: CoreMachine {
         stack_start: u64,
         stack_size: u64,
     ) -> Result<u64, Error> {
+        #[cfg(feature = "heap-stack-overlap-detect")]
+        {
+            use super::memory::FLAG_EXECUTABLE;
+            use super::RISCV_PAGESIZE;
+            // When the heap or stack attempts to write data to this area,
+            // ckb-vm will return an error due to wxorx rules.
+            self.memory_mut()
+                .set_flag(stack_start / RISCV_PAGESIZE as u64, FLAG_EXECUTABLE)?;
+        }
+
         // When we re-ordered the sections of a program, writing data in high memory
         // will cause unnecessary changes. At the same time, for ckb, argc is always 0
         // and the memory is initialized to 0, so memory writing can be safely skipped.

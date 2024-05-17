@@ -266,6 +266,7 @@ pub fn test_asm_wxorx_crash_64() {
     );
 }
 
+#[cfg(not(feature = "heap-stack-overlap-detect"))]
 #[test]
 pub fn test_asm_alloc_many() {
     let buffer = fs::read("tests/programs/alloc_many").unwrap().into();
