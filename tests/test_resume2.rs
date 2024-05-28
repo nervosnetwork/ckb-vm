@@ -362,7 +362,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for InsertDataSyscall {
         self.0
             .lock()
             .unwrap()
-            .store_bytes(machine, addr, &DATA_ID, 0, size)?;
+            .store_bytes(machine, addr, &DATA_ID, 0, size, 0)?;
 
         machine.add_cycles_no_checking(100000)?;
 
@@ -634,11 +634,11 @@ pub fn test_store_bytes_twice() {
         Machine::Asm(ref mut inner, ref ctx) => {
             ctx.lock()
                 .unwrap()
-                .store_bytes(&mut inner.machine, 0, &DATA_ID, 2, 29186)
+                .store_bytes(&mut inner.machine, 0, &DATA_ID, 2, 29186, 0)
                 .unwrap();
             ctx.lock()
                 .unwrap()
-                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 11008)
+                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 11008, 0)
                 .unwrap();
         }
         _ => unimplemented!(),
@@ -667,7 +667,7 @@ pub fn test_mixing_snapshot2_writes_with_machine_raw_writes() {
         Machine::Asm(ref mut inner, ref ctx) => {
             ctx.lock()
                 .unwrap()
-                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 29186)
+                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 29186, 0)
                 .unwrap();
             inner
                 .machine

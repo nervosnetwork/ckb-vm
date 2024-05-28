@@ -121,8 +121,12 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         id: &I,
         offset: u64,
         length: u64,
+        size_addr: u64,
     ) -> Result<(u64, u64), Error> {
         let (data, full_length) = self.load_data(id, offset, length)?;
+        machine
+            .memory_mut()
+            .store64(&M::REG::from_u64(size_addr), &M::REG::from_u64(full_length))?;
         self.untrack_pages(machine, addr, data.len() as u64)?;
         machine.memory_mut().store_bytes(addr, &data)?;
         self.track_pages(machine, addr, data.len() as u64, id, offset)?;
