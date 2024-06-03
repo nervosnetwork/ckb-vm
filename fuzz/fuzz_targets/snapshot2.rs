@@ -127,7 +127,7 @@ fuzz_target!(|data: [u8; 96]| {
         let length = deque.u32() as u64;
         let offset = deque.u32() as u64;
         let addr = deque.u32() as u64;
-        let result = ctx.store_bytes(&mut machine1, addr, &DATA_SOURCE_CONTENT, offset, length);
+        let result = ctx.store_bytes(&mut machine1, addr, &DATA_SOURCE_CONTENT, offset, length, 0);
         if result.is_err() {
             return;
         }
