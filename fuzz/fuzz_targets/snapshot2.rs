@@ -4,8 +4,8 @@ use ckb_vm::{
     machine::VERSION2,
     memory::{round_page_down, round_page_up, FLAG_EXECUTABLE, FLAG_FREEZED},
     snapshot2::{DataSource, Snapshot2Context},
-    Bytes, CoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory, DEFAULT_MEMORY_SIZE,
-    ISA_A, ISA_B, ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
+    Bytes, CoreMachine, DefaultMachine, DefaultMachineBuilder, Memory, DEFAULT_MEMORY_SIZE, ISA_A,
+    ISA_B, ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
 };
 use ckb_vm_definitions::asm::AsmCoreMachine;
 use libfuzzer_sys::fuzz_target;
@@ -127,7 +127,7 @@ fuzz_target!(|data: [u8; 96]| {
         let length = deque.u32() as u64;
         let offset = deque.u32() as u64;
         let addr = deque.u32() as u64;
-        let result = ctx.store_bytes(&mut machine1, addr, &DATA_SOURCE_CONTENT, offset, length);
+        let result = ctx.store_bytes(&mut machine1, addr, &DATA_SOURCE_CONTENT, offset, length, 0);
         if result.is_err() {
             return;
         }
