@@ -354,6 +354,19 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.running = running;
     }
 
+    fn load_binary(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        update_pc: bool,
+    ) -> Result<u64, Error> {
+        #[cfg(feature = "pprof")]
+        {
+            self.code = program.clone();
+        }
+        self.load_binary_inner(program, metadata, update_pc)
+    }
+
     fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
         #[cfg(feature = "pprof")]
         {
@@ -489,6 +502,19 @@ impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
 
     fn set_running(&mut self, running: bool) {
         self.inner.set_running(running);
+    }
+
+    fn load_binary(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        update_pc: bool,
+    ) -> Result<u64, Error> {
+        self.inner.load_binary(program, metadata, update_pc)
+    }
+
+    fn load_elf(&mut self, program: &Bytes, update_pc: bool) -> Result<u64, Error> {
+        self.inner.load_elf(program, update_pc)
     }
 
     #[cfg(feature = "pprof")]
