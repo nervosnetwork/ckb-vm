@@ -13,6 +13,7 @@ use rand::{thread_rng, Rng};
 use std::fs;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+pub mod machine_build;
 
 #[test]
 pub fn test_andi() {
@@ -430,4 +431,33 @@ pub fn test_outofcycles_in_syscall() {
     assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
     assert_eq!(machine.cycles(), 108);
     assert_eq!(machine.registers()[A0], 39);
+}
+
+#[test]
+pub fn test_clang() {
+    {
+        let mut machine = machine_build::int_v1_imcb("tests/programs/clang_sample");
+        let ret = machine.run();
+        assert!(ret.is_ok());
+    }
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v1_imcb("tests/programs/clang_sample");
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+    }
+
+    {
+        let mut machine = machine_build::int_v2_imacb("tests/programs/clang_sample");
+        let ret = machine.run();
+        assert!(ret.is_ok());
+    }
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm_v2_imacb("tests/programs/clang_sample");
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+    }
 }
