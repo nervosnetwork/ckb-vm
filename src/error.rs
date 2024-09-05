@@ -1,62 +1,55 @@
 #[derive(Debug, PartialEq, Clone, Eq, Display)]
 pub enum Error {
-    #[display(fmt = "asm error: {}", "_0")]
+    #[display("asm error: {_0}")]
     Asm(u8),
-    #[display(fmt = "cycles error: max cycles exceeded")]
+    #[display("cycles error: max cycles exceeded")]
     CyclesExceeded,
-    #[display(fmt = "cycles error: overflow")]
+    #[display("cycles error: overflow")]
     CyclesOverflow,
-    #[display(fmt = "elf error: bits")]
+    #[display("elf error: bits")]
     ElfBits,
-    #[display(fmt = "elf error: {}", "_0")]
+    #[display("elf error: {_0}")]
     ElfParseError(String),
-    #[display(fmt = "elf error: segment is unreadable vaddr=0x{:x}", "_0")]
+    #[display("elf error: segment is unreadable vaddr=0x{_0:x}")]
     ElfSegmentUnreadable(u64),
-    #[display(
-        fmt = "elf error: segment is writable and executable vaddr=0x{:x}",
-        "_0"
-    )]
+    #[display("elf error: segment is writable and executable vaddr=0x{_0:x}")]
     ElfSegmentWritableAndExecutable(u64),
-    #[display(fmt = "elf error: segment addr or size is wrong vaddr=0x{:x}", "_0")]
+    #[display("elf error: segment addr or size is wrong vaddr=0x{_0:x}")]
     ElfSegmentAddrOrSizeError(u64),
     // When users need to implement traits defined in CKB-VM, they can use
     // this error type to wrap their own errors.
-    #[display(fmt = "external error: {}", "_0")]
+    #[display("external error: {_0}")]
     External(String),
-    #[display(fmt = "invalid syscall {}", "_0")]
+    #[display("invalid syscall {_0}")]
     InvalidEcall(u64),
-    #[display(
-        fmt = "invalid instruction pc=0x{:x} instruction=0x{:x}",
-        "pc",
-        "instruction"
-    )]
+    #[display("invalid instruction pc=0x{pc:x} instruction=0x{instruction:x}")]
     InvalidInstruction { pc: u64, instruction: u32 },
-    #[display(fmt = "invalid operand {}", "_0")]
+    #[display("invalid operand {_0}")]
     InvalidOp(u16),
-    #[display(fmt = "invalid version")]
+    #[display("invalid version")]
     InvalidVersion,
-    #[display(fmt = "I/O error: {:?} {}", "kind", "data")]
+    #[display("I/O error: {kind:?} {data}")]
     IO {
         kind: std::io::ErrorKind,
         data: String,
     },
-    #[display(fmt = "memory error: out of bound addr=0x{:x}, kind={:?}", "_0", "_1")]
+    #[display("memory error: out of bound addr=0x{_0:x}, kind={_1:?}")]
     MemOutOfBound(u64, OutOfBoundKind),
-    #[display(fmt = "memory error: out of stack")]
+    #[display("memory error: out of stack")]
     MemOutOfStack,
-    #[display(fmt = "memory error: unaligned page access addr=0x{:x}", "_0")]
+    #[display("memory error: unaligned page access addr=0x{_0:x}")]
     MemPageUnalignedAccess(u64),
-    #[display(fmt = "memory error: write on executable page page_index={}", "_0")]
+    #[display("memory error: write on executable page page_index={_0}")]
     MemWriteOnExecutablePage(u64),
-    #[display(fmt = "memory error: write on freezed page page_index={}", "_0")]
+    #[display("memory error: write on freezed page page_index={_0}")]
     MemWriteOnFreezedPage(u64),
-    #[display(fmt = "pause")]
+    #[display("pause")]
     Pause,
-    #[display(fmt = "snapshot data load error")]
+    #[display("snapshot data load error")]
     SnapshotDataLoadError,
-    #[display(fmt = "unexpected error")]
+    #[display("unexpected error")]
     Unexpected(String),
-    #[display(fmt = "yield")]
+    #[display("yield")]
     Yield,
 }
 
