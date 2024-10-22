@@ -82,7 +82,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for IntSpawnSyscall {
         let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
             ISA_IMC | ISA_A | ISA_B | ISA_MOP,
             VERSION2,
-            u64::max_value(),
+            u64::MAX,
         );
         let mut machine_child = TraceMachine::new(
             DefaultMachineBuilder::new(machine_core)
@@ -141,11 +141,8 @@ impl<Mac: SupportMachine> Syscalls<Mac> for AsmSpawnSyscall {
             addr += 8;
         }
         let buffer: Bytes = std::fs::read(path).unwrap().into();
-        let machine_core_asm = AsmCoreMachine::new(
-            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
-            VERSION2,
-            u64::max_value(),
-        );
+        let machine_core_asm =
+            AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, u64::MAX);
         let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
             .instruction_cycle_func(Box::new(constant_cycles))
             .syscall(Box::new(AsmSpawnSyscall {
@@ -168,7 +165,7 @@ pub fn test_spawn_int() {
     let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_A | ISA_B | ISA_MOP,
         VERSION2,
-        u64::max_value(),
+        u64::MAX,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(machine_core)
@@ -193,11 +190,8 @@ pub fn test_spawn_asm() {
     let buffer = std::fs::read("tests/programs/spawn").unwrap().into();
     let cur_sp = stack_depth();
     let min_sp = Arc::new(Mutex::new(u64::MAX));
-    let machine_core_asm = AsmCoreMachine::new(
-        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
-        VERSION2,
-        u64::max_value(),
-    );
+    let machine_core_asm =
+        AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, u64::MAX);
     let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(AsmSpawnSyscall {

@@ -138,11 +138,11 @@ impl Register for u32 {
     }
 
     fn min_value() -> u32 {
-        u32::min_value()
+        u32::MIN
     }
 
     fn max_value() -> u32 {
-        u32::max_value()
+        u32::MAX
     }
 
     fn eq(&self, other: &u32) -> u32 {
@@ -183,7 +183,7 @@ impl Register for u32 {
 
     fn overflowing_div(&self, rhs: &u32) -> u32 {
         if *rhs == 0 {
-            Self::max_value()
+            Self::MAX
         } else {
             (*self).overflowing_div(*rhs).0
         }
@@ -423,11 +423,11 @@ impl Register for u64 {
     }
 
     fn min_value() -> u64 {
-        u64::min_value()
+        u64::MIN
     }
 
     fn max_value() -> u64 {
-        u64::max_value()
+        u64::MAX
     }
 
     fn eq(&self, other: &u64) -> u64 {
@@ -468,7 +468,7 @@ impl Register for u64 {
 
     fn overflowing_div(&self, rhs: &u64) -> u64 {
         if *rhs == 0 {
-            Self::max_value()
+            Self::MAX
         } else {
             (*self).overflowing_div(*rhs).0
         }

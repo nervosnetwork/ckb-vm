@@ -80,7 +80,7 @@ pub fn test_simple_invalid_bits() {
 pub fn test_simple_loaded_bytes() {
     let buffer = fs::read("tests/programs/simple64").unwrap().into();
     let core_machine =
-        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let bytes = machine
         .load_program(&buffer, &vec!["simple".into()])
