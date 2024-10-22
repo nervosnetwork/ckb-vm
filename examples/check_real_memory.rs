@@ -69,7 +69,7 @@ fn get_current_memory_linux() -> usize {
 }
 
 fn get_current_memory() -> usize {
-    if !cfg!(linux) {
+    if !cfg!(target_os = "linux") {
         get_current_memory_linux()
     } else {
         let pid = format!("{}", id());
