@@ -293,7 +293,7 @@ macro_rules! __for_each_inst_inner {
 /// a callback macro that takes (at least) 3 arguments:
 ///
 /// 1. $name: an identifier containing the full defined opcode name,
-/// e.g., OP_ADD
+///     e.g., OP_ADD
 /// 2. $real_name: an identifier containing just the opcode part, e.g., ADD
 /// 3. $code: an expr containing the actual opcode number
 ///
@@ -324,10 +324,10 @@ macro_rules! for_each_inst2 {
 /// arguments:
 ///
 /// * A callback macro that takes the exact same arguments as callback
-/// macro in +for_each_inst+
+///     macro in +for_each_inst+
 /// * A value expression containing the actual value to match against.
 /// * An expression used as wildcard matches when the passed value does
-/// not match any opcode
+///     not match any opcode
 ///
 /// * Free variables are attached to the variants ending with match1, match2, etc.
 #[macro_export]
@@ -357,7 +357,7 @@ macro_rules! for_each_inst_match2 {
 /// Generates an array on all instructions
 ///
 /// * A callback macro that takes the exact same arguments as callback
-/// macro in +for_each_inst+
+///     macro in +for_each_inst+
 ///
 /// * Free variables are attached to the variants ending with fold1, fold2, etc.
 #[macro_export]

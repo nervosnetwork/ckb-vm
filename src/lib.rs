@@ -43,7 +43,7 @@ pub fn run<R: Register, M: Memory<REG = R> + Default>(
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
         ISA_IMC | ISA_A | ISA_B | ISA_MOP,
         machine::VERSION2,
-        u64::max_value(),
+        u64::MAX,
         WXorXMemory::new(M::default()),
     );
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
@@ -59,7 +59,7 @@ pub fn run_with_memory<R: Register, M: Memory<REG = R>>(
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
         ISA_IMC | ISA_A | ISA_B | ISA_MOP,
         machine::VERSION2,
-        u64::max_value(),
+        u64::MAX,
         WXorXMemory::new(memory),
     );
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());

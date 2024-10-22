@@ -5,7 +5,7 @@ version = "0.24.0"
 license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.81.0"
 build = "build.rs"
 exclude = ["/benches", "/tests"]
 homepage = "https://github.com/nervosnetwork/ckb-vm"
@@ -54,3 +54,6 @@ harness = false
 name = "vm_benchmark"
 path = "benches/vm_benchmark.rs"
 harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(has_asm)'] }

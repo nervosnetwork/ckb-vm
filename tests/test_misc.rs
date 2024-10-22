@@ -58,7 +58,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
 pub fn test_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine =
-        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .syscall(Box::new(CustomSyscall {}))
         .build();
@@ -91,7 +91,7 @@ pub fn test_ebreak() {
     let buffer = fs::read("tests/programs/ebreak64").unwrap().into();
     let value = Arc::new(AtomicU8::new(0));
     let core_machine =
-        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
@@ -201,8 +201,7 @@ pub fn test_wxorx_crash_64() {
 #[test]
 pub fn test_flat_crash_64() {
     let buffer = fs::read("tests/programs/flat_crash_64").unwrap().into();
-    let core_machine =
-        DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+    let core_machine = DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
     assert_eq!(
@@ -367,7 +366,7 @@ pub fn test_rvc_pageend() {
     // The last instruction of a executable memory page is an RVC instruction.
     let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
     let core_machine =
-        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::max_value());
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
         .load_program(&buffer, &vec!["rvc_end".into()])

@@ -149,11 +149,11 @@ impl Register for Value {
     }
 
     fn min_value() -> Value {
-        Value::Imm(u64::min_value())
+        Value::Imm(u64::MIN)
     }
 
     fn max_value() -> Value {
-        Value::Imm(u64::max_value())
+        Value::Imm(u64::MAX)
     }
 
     fn eq(&self, other: &Value) -> Value {

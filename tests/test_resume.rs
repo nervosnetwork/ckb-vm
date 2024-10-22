@@ -311,7 +311,7 @@ pub fn test_sc_after_snapshot() {
             DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
                 ISA_IMC | ISA_A,
                 VERSION2,
-                u64::max_value(),
+                u64::MAX,
             ),
         )
         .instruction_cycle_func(Box::new(constant_cycles))

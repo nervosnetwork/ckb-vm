@@ -32,7 +32,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for SleepSyscall {
 #[cfg(has_asm)]
 pub fn asm_v1_imcb(path: &str) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))
@@ -51,7 +51,7 @@ pub fn int_v1_imcb(
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_B,
         VERSION1,
-        u64::max_value(),
+        u64::MAX,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
@@ -73,7 +73,7 @@ pub fn asm_v1_mop(path: &str, args: Vec<Bytes>) -> AsmMachine {
 #[cfg(has_asm)]
 pub fn asm_mop(path: &str, args: Vec<Bytes>, version: u32) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, version, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, version, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))
@@ -101,7 +101,7 @@ pub fn int_mop(
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_B | ISA_MOP,
         version,
-        u64::max_value(),
+        u64::MAX,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)
@@ -118,7 +118,7 @@ pub fn int_mop(
 #[cfg(has_asm)]
 pub fn asm_v2_imacb(path: &str) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::max_value());
+    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))
@@ -137,7 +137,7 @@ pub fn int_v2_imacb(
     let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
         ISA_IMC | ISA_A | ISA_B,
         VERSION2,
-        u64::max_value(),
+        u64::MAX,
     );
     let mut machine = TraceMachine::new(
         DefaultMachineBuilder::new(core_machine)

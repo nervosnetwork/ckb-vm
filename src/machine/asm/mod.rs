@@ -366,8 +366,8 @@ impl Memory for Box<AsmCoreMachine> {
         let slice = self.cast_ptr_to_slice_mut(self.frames_ptr, 0, self.frames_size as usize);
         memset(slice, 0);
         self.load_reservation_address = u64::MAX;
-        self.last_read_frame = u64::max_value();
-        self.last_write_page = u64::max_value();
+        self.last_read_frame = u64::MAX;
+        self.last_write_page = u64::MAX;
         Ok(())
     }
 
@@ -421,8 +421,8 @@ impl Memory for Box<AsmCoreMachine> {
             current_addr += RISCV_PAGESIZE as u64;
         }
         // Clear last read/write page cache
-        self.last_read_frame = u64::max_value();
-        self.last_write_page = u64::max_value();
+        self.last_read_frame = u64::MAX;
+        self.last_write_page = u64::MAX;
         Ok(())
     }
 
@@ -443,7 +443,7 @@ impl Memory for Box<AsmCoreMachine> {
             let slice = self.cast_ptr_to_slice_mut(self.flags_ptr, page as usize, 1);
             slice[0] |= flag;
             // Clear last write page cache
-            self.last_write_page = u64::max_value();
+            self.last_write_page = u64::MAX;
             Ok(())
         } else {
             Err(Error::MemOutOfBound(
@@ -458,7 +458,7 @@ impl Memory for Box<AsmCoreMachine> {
             let slice = self.cast_ptr_to_slice_mut(self.flags_ptr, page as usize, 1);
             slice[0] &= !flag;
             // Clear last write page cache
-            self.last_write_page = u64::max_value();
+            self.last_write_page = u64::MAX;
             Ok(())
         } else {
             Err(Error::MemOutOfBound(
