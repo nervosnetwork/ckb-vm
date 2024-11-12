@@ -1,4 +1,5 @@
-use ckb_vm::{Error, SupportMachine};
+use ckb_vm::machine::VERSION2;
+use ckb_vm::{Error, SupportMachine, ISA_B, ISA_IMC};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 pub mod machine_build;
@@ -6,13 +7,25 @@ pub mod machine_build;
 #[cfg(has_asm)]
 #[test]
 pub fn test_asm_pause() {
+    use ckb_vm::machine::VERSION2;
+
     let expect_cycles = {
-        let mut machine = machine_build::asm_v2_imacb("tests/programs/pause_resume");
+        let mut machine = machine_build::asm(
+            "tests/programs/pause_resume",
+            vec![],
+            VERSION2,
+            ISA_IMC | ISA_B,
+        );
         machine.run().unwrap();
         machine.machine.cycles()
     };
 
-    let mut machine = machine_build::asm_v2_imacb("tests/programs/pause_resume");
+    let mut machine = machine_build::asm(
+        "tests/programs/pause_resume",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_B,
+    );
     let branch_pause_cnt = Arc::new(AtomicU32::new(0));
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
 
@@ -40,12 +53,22 @@ pub fn test_asm_pause() {
 #[test]
 pub fn test_int_pause() {
     let expect_cycles = {
-        let mut machine = machine_build::int_v2_imacb("tests/programs/pause_resume");
+        let mut machine = machine_build::int(
+            "tests/programs/pause_resume",
+            vec![],
+            VERSION2,
+            ISA_IMC | ISA_B,
+        );
         machine.run().unwrap();
         machine.machine.cycles()
     };
 
-    let mut machine = machine_build::int_v2_imacb("tests/programs/pause_resume");
+    let mut machine = machine_build::int(
+        "tests/programs/pause_resume",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_B,
+    );
     let branch_pause_cnt = Arc::new(AtomicU32::new(0));
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
     let signal = machine.machine.pause();

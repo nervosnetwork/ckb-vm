@@ -41,7 +41,7 @@ pub fn run<R: Register, M: Memory<REG = R> + Default>(
     args: &[Bytes],
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
-        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+        ISA_IMC | ISA_B | ISA_MOP,
         machine::VERSION2,
         u64::MAX,
         WXorXMemory::new(M::default()),
@@ -57,7 +57,7 @@ pub fn run_with_memory<R: Register, M: Memory<REG = R>>(
     memory: M,
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
-        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+        ISA_IMC | ISA_B | ISA_MOP,
         machine::VERSION2,
         u64::MAX,
         WXorXMemory::new(memory),

@@ -6,7 +6,7 @@ use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
 use ckb_vm::{
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
-    SparseMemory, TraceMachine, WXorXMemory, ISA_A, ISA_B, ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
+    SparseMemory, TraceMachine, WXorXMemory, ISA_B, ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
 };
 use std::fs;
 
@@ -345,7 +345,7 @@ pub fn test_asm_version1_asm_trace_bug() {
     let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
 
     let mut machine = {
-        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION1, 2000);
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION1, 2000);
         let machine = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();
@@ -362,7 +362,7 @@ pub fn test_asm_version2_asm_trace_bug() {
     let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
 
     let mut machine = {
-        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, 2000);
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, 2000);
         let machine = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();
@@ -383,7 +383,7 @@ pub fn test_trace_version1_asm_trace_bug() {
 
     let mut machine = {
         let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            ISA_IMC | ISA_B | ISA_MOP,
             VERSION1,
             2000,
         );
@@ -405,7 +405,7 @@ pub fn test_trace_version2_asm_trace_bug() {
 
     let mut machine = {
         let core_machine = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            ISA_IMC | ISA_B | ISA_MOP,
             VERSION2,
             2000,
         );

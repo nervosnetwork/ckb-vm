@@ -1,11 +1,11 @@
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::error::OutOfBoundKind;
-use ckb_vm::machine::VERSION0;
+use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
     run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
     Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, DEFAULT_MEMORY_SIZE,
-    ISA_IMC, RISCV_PAGESIZE,
+    ISA_B, ISA_IMC, RISCV_PAGESIZE,
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -435,27 +435,47 @@ pub fn test_outofcycles_in_syscall() {
 #[test]
 pub fn test_clang() {
     {
-        let mut machine = machine_build::int_v1_imcb("tests/programs/clang_sample");
+        let mut machine = machine_build::int(
+            "tests/programs/clang_sample",
+            vec![],
+            VERSION1,
+            ISA_IMC | ISA_B,
+        );
         let ret = machine.run();
         assert!(ret.is_ok());
     }
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_imcb("tests/programs/clang_sample");
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/clang_sample",
+            vec![],
+            VERSION1,
+            ISA_IMC | ISA_B,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
     }
 
     {
-        let mut machine = machine_build::int_v2_imacb("tests/programs/clang_sample");
+        let mut machine = machine_build::int(
+            "tests/programs/clang_sample",
+            vec![],
+            VERSION2,
+            ISA_IMC | ISA_B,
+        );
         let ret = machine.run();
         assert!(ret.is_ok());
     }
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v2_imacb("tests/programs/clang_sample");
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/clang_sample",
+            vec![],
+            VERSION2,
+            ISA_IMC | ISA_B,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
     }
