@@ -6,7 +6,7 @@ use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION2};
 use ckb_vm::registers::{A0, A1, A2, A7};
 use ckb_vm::{
     DefaultMachineBuilder, Error, Memory, Register, SparseMemory, SupportMachine, Syscalls,
-    WXorXMemory, ISA_A, ISA_B, ISA_IMC, ISA_MOP,
+    WXorXMemory, ISA_B, ISA_IMC, ISA_MOP,
 };
 use std::sync::{Arc, Mutex};
 
@@ -80,7 +80,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for IntSpawnSyscall {
         }
         let buffer: Bytes = std::fs::read(path).unwrap().into();
         let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            ISA_IMC | ISA_B | ISA_MOP,
             VERSION2,
             u64::MAX,
         );
@@ -141,8 +141,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for AsmSpawnSyscall {
             addr += 8;
         }
         let buffer: Bytes = std::fs::read(path).unwrap().into();
-        let machine_core_asm =
-            AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, u64::MAX);
+        let machine_core_asm = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
         let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
             .instruction_cycle_func(Box::new(constant_cycles))
             .syscall(Box::new(AsmSpawnSyscall {
@@ -163,7 +162,7 @@ pub fn test_spawn_int() {
     let cur_sp = stack_depth();
     let min_sp = Arc::new(Mutex::new(u64::MAX));
     let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+        ISA_IMC | ISA_B | ISA_MOP,
         VERSION2,
         u64::MAX,
     );
@@ -190,8 +189,7 @@ pub fn test_spawn_asm() {
     let buffer = std::fs::read("tests/programs/spawn").unwrap().into();
     let cur_sp = stack_depth();
     let min_sp = Arc::new(Mutex::new(u64::MAX));
-    let machine_core_asm =
-        AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, u64::MAX);
+    let machine_core_asm = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
     let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(AsmSpawnSyscall {

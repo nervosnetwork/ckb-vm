@@ -299,7 +299,12 @@ impl Machine {
 
 #[test]
 pub fn test_sc_after_snapshot() {
-    let mut machine = machine_build::int_v2_imacb("tests/programs/sc_after_snapshot");
+    let mut machine = machine_build::int(
+        "tests/programs/sc_after_snapshot",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_A,
+    );
     machine.machine.set_max_cycles(5);
     let ret = machine.run();
     assert!(ret.is_err());

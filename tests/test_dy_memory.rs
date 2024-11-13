@@ -5,7 +5,7 @@ use ckb_vm::{
         asm::{AsmCoreMachine, AsmMachine},
         DefaultMachineBuilder, VERSION0, VERSION2,
     },
-    ISA_A, ISA_B, ISA_IMC, ISA_MOP,
+    ISA_B, ISA_IMC, ISA_MOP,
 };
 use std::fs;
 
@@ -79,7 +79,7 @@ fn test_memory_out_of_bounds() {
     #[cfg(has_asm)]
     {
         let asm_core = AsmCoreMachine::new_with_memory(
-            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            ISA_IMC | ISA_B | ISA_MOP,
             VERSION2,
             u64::MAX,
             memory_size,
