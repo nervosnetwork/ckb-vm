@@ -183,6 +183,10 @@ impl AsmCoreMachine {
     }
 
     /// Provides similar functionality to `cast_ptr_to_slice` but returns mut slice.
+    ///
+    /// # Safety
+    ///
+    /// Same as `cast_ptr_to_slice`.
     pub unsafe fn cast_ptr_to_slice_mut(&self, ptr: u64, offset: usize, size: usize) -> &mut [u8] {
         let ptr = ptr as *mut u8;
         let ptr = ptr.add(offset);
