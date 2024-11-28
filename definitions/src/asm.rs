@@ -164,32 +164,3 @@ impl AsmCoreMachine {
         self.max_cycles = cycles;
     }
 }
-
-impl AsmCoreMachine {
-    /// Casts a raw pointer with an offset and size to a byte slice.
-    ///
-    /// # Safety
-    ///
-    /// - The `ptr` must be a valid memory address for reading `size` bytes.
-    /// - The `ptr + offset` must not overflow.
-    /// - The memory region specified by `ptr + offset` and `size` must remain
-    ///   valid for the lifetime of the returned slice.
-    ///
-    /// Failing to satisfy these conditions results in undefined behavior.
-    pub unsafe fn cast_ptr_to_slice(&self, ptr: u64, offset: usize, size: usize) -> &[u8] {
-        let ptr = ptr as *const u8;
-        let ptr = ptr.add(offset);
-        std::slice::from_raw_parts(ptr, size)
-    }
-
-    /// Provides similar functionality to `cast_ptr_to_slice` but returns mut slice.
-    ///
-    /// # Safety
-    ///
-    /// Same as `cast_ptr_to_slice`.
-    pub unsafe fn cast_ptr_to_slice_mut(&self, ptr: u64, offset: usize, size: usize) -> &mut [u8] {
-        let ptr = ptr as *mut u8;
-        let ptr = ptr.add(offset);
-        std::slice::from_raw_parts_mut(ptr, size)
-    }
-}
