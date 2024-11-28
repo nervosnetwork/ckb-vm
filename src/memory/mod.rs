@@ -145,7 +145,7 @@ pub fn set_dirty<M: Memory>(memory: &mut M, page_indices: &(u64, u64)) -> Result
 
 // Keep this in a central place to allow for future optimization
 #[inline(always)]
-pub fn memset(slice: &mut [u8], value: u8) {
+pub(crate) fn memset(slice: &mut [u8], value: u8) {
     let p = slice.as_mut_ptr();
     unsafe {
         ptr::write_bytes(p, value, slice.len());
