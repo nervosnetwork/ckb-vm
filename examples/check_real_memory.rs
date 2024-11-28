@@ -2,7 +2,6 @@
 // Under linux, we choose to use smem, which can monitor memory changes more accurately
 
 use ckb_vm::{run_with_memory, Bytes, FlatMemory, SparseMemory};
-use lazy_static::lazy_static;
 use std::process::{id, Command};
 
 #[cfg(has_asm)]
@@ -17,11 +16,8 @@ use ckb_vm::{
 #[cfg(has_asm)]
 use std::thread;
 
-lazy_static! {
-    pub static ref BIN_PATH_BUFFER: Bytes =
-        Bytes::from(&include_bytes!("../tests/programs/alloc_many")[..]);
-    pub static ref BIN_NAME: String = format!("alloc_many");
-}
+static BIN_PATH_BUFFER: &'static [u8] = include_bytes!("../tests/programs/alloc_many");
+static BIN_NAME: &str = "alloc_many";
 
 #[cfg(not(target_os = "windows"))]
 #[global_allocator]
@@ -128,8 +124,8 @@ fn check_interpreter(memory_size: usize) -> Result<(), ()> {
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
         let result = run_with_memory::<u64, SparseMemory<u64>>(
-            &BIN_PATH_BUFFER,
-            &vec![BIN_NAME.clone().into()],
+            &Bytes::from(BIN_PATH_BUFFER),
+            &vec![Bytes::from(BIN_NAME)],
             SparseMemory::new_with_memory(memory_size),
         );
         assert!(result.is_ok());
@@ -148,8 +144,8 @@ fn check_falt(memory_size: usize) -> Result<(), ()> {
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
         let result = run_with_memory::<u64, FlatMemory<u64>>(
-            &BIN_PATH_BUFFER,
-            &vec![BIN_NAME.clone().into()],
+            &Bytes::from(BIN_PATH_BUFFER),
+            &vec![Bytes::from(BIN_NAME)],
             FlatMemory::new_with_memory(memory_size),
         );
         assert!(result.is_ok());
@@ -172,7 +168,7 @@ fn check_asm(memory_size: usize) -> Result<(), ()> {
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
-            .load_program(&BIN_PATH_BUFFER, &vec![BIN_NAME.clone().into()])
+            .load_program(&Bytes::from(BIN_PATH_BUFFER), &vec![Bytes::from(BIN_NAME)])
             .unwrap();
         let result = machine.run();
         assert!(result.is_ok());
@@ -196,7 +192,7 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
-            .load_program(&BIN_PATH_BUFFER, &vec![BIN_NAME.clone().into()])
+            .load_program(&Bytes::from(BIN_PATH_BUFFER), &vec![Bytes::from(BIN_NAME)])
             .unwrap();
         let thread_join_handle = thread::spawn(move || {
             let result = machine.run();
