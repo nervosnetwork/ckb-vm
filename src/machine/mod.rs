@@ -15,6 +15,7 @@ use super::instructions::{execute, Instruction, Register};
 use super::memory::Memory;
 use super::syscalls::Syscalls;
 use super::{
+    error::OutOfBoundKind,
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
 };
@@ -250,6 +251,43 @@ pub trait SupportMachine: CoreMachine {
             return Err(Error::MemOutOfStack);
         }
         Ok(stack_start + stack_size - self.registers()[SP].to_u64())
+    }
+
+    // Dry run initialize_stack to see whether it will cause memorh errors.
+    //
+    // Returns `Ok(())` when the stack is enough. Returns `Err` when `initialize_stack` will fail because of
+    // `MemOutOfStack` or `MemOutOfBound`.
+    fn check_initializing_stack(
+        &mut self,
+        args_lens: &[u64],
+        stack_start: u64,
+        stack_size: u64,
+    ) -> Result<(), Error> {
+        if self.version() >= VERSION1 && args_lens.is_empty() {
+            return Ok(());
+        }
+
+        let mut sp = stack_start + stack_size;
+        let mut values_len = args_lens.len() as u64 + 1;
+        for arg_len in args_lens {
+            sp = checking_sub_address_or_mem_out_of_bound(sp, arg_len + 1)?;
+        }
+        if self.version() >= VERSION1 {
+            values_len += 1;
+            let values_bytes = Self::REG::BITS as u64 / 8 * values_len;
+            let unaligned_sp_address = checking_sub_address_or_mem_out_of_bound(sp, values_bytes)?;
+            let aligned_sp_address = unaligned_sp_address & (!15);
+            let aligned_bytes = unaligned_sp_address - aligned_sp_address;
+            sp = checking_sub_address_or_mem_out_of_bound(sp, aligned_bytes)?;
+        }
+
+        sp = checking_sub_address_or_mem_out_of_bound(sp, Self::REG::BITS as u64 / 8 * values_len)?;
+        if sp >= stack_start {
+            Ok(())
+        } else {
+            // args exceed stack size
+            Err(Error::MemOutOfStack)
+        }
     }
 
     #[cfg(feature = "pprof")]
@@ -763,6 +801,13 @@ impl Pause {
 
     pub fn free(&mut self) {
         self.s.store(0, Ordering::SeqCst);
+    }
+}
+
+fn checking_sub_address_or_mem_out_of_bound(lhs: u64, rhs: u64) -> Result<u64, Error> {
+    match lhs.overflowing_sub(rhs) {
+        (result, false) => Ok(result),
+        (result, true) => Err(Error::MemOutOfBound(result, OutOfBoundKind::Memory)),
     }
 }
 
