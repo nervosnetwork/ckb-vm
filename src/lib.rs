@@ -22,7 +22,7 @@ pub use crate::{
     instructions::{Instruction, Register},
     machine::{
         trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
-        DefaultMachineBuilder, InstructionCycleFunc, Machine, SupportMachine,
+        DefaultMachineBuilder, FlattenedArgsReader, InstructionCycleFunc, Machine, SupportMachine,
     },
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,
@@ -47,7 +47,7 @@ pub fn run<R: Register, M: Memory<REG = R> + Default>(
         WXorXMemory::new(M::default()),
     );
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
-    machine.load_program(program, args)?;
+    machine.load_program(program, args.iter().map(|e| Ok(e.clone())))?;
     machine.run()
 }
 
@@ -63,7 +63,7 @@ pub fn run_with_memory<R: Register, M: Memory<REG = R>>(
         WXorXMemory::new(memory),
     );
     let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
-    machine.load_program(program, args)?;
+    machine.load_program(program, args.iter().map(|e| Ok(e.clone())))?;
     machine.run()
 }
 

@@ -58,7 +58,7 @@ pub fn test_rust_auipc_fusion() {
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
-        .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
+        .load_program(&buffer, [Ok("auipc_no_sign_extend".into())].into_iter())
         .unwrap();
 
     let mut decoder = AuxDecoder::new(build_decoder::<u64>(machine.isa(), machine.version()));
@@ -77,7 +77,7 @@ pub fn test_asm_auipc_fusion() {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["auipc_no_sign_extend".into()])
+        .load_program(&buffer, [Ok("auipc_no_sign_extend".into())].into_iter())
         .unwrap();
 
     let decoder = AuxDecoder::new(build_decoder::<u64>(

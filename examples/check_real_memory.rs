@@ -168,7 +168,10 @@ fn check_asm(memory_size: usize) -> Result<(), ()> {
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
-            .load_program(&Bytes::from(BIN_PATH_BUFFER), &vec![Bytes::from(BIN_NAME)])
+            .load_program(
+                &Bytes::from(BIN_PATH_BUFFER),
+                [Ok(Bytes::from(BIN_NAME))].into_iter(),
+            )
             .unwrap();
         let result = machine.run();
         assert!(result.is_ok());
@@ -192,7 +195,10 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
-            .load_program(&Bytes::from(BIN_PATH_BUFFER), &vec![Bytes::from(BIN_NAME)])
+            .load_program(
+                &Bytes::from(BIN_PATH_BUFFER),
+                [Ok(Bytes::from(BIN_NAME))].into_iter(),
+            )
             .unwrap();
         let thread_join_handle = thread::spawn(move || {
             let result = machine.run();

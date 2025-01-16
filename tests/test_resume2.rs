@@ -64,15 +64,13 @@ fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
 
     let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
     machine1.set_max_cycles(100000);
-    machine1
-        .load_program(&vec![
-            "secp256k1_bench".into(),
-            "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into(),
-            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into(),
-            "foo".into(),
-            "bar".into(),
-        ])
-        .unwrap();
+    machine1.load_program([
+        Ok("secp256k1_bench".into()),
+        Ok("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into()),
+        Ok("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into()),
+        Ok("foo".into()),
+        Ok("bar".into()),
+    ].into_iter()).unwrap();
     let result1 = machine1.run();
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot1 = machine1.snapshot().unwrap();
@@ -117,7 +115,7 @@ fn test_resume2_load_data_asm_2_interpreter() {
     let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
     machine1.set_max_cycles(300000);
     machine1
-        .load_program(&vec!["resume2_load_data".into()])
+        .load_program([Ok("resume2_load_data".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
@@ -151,7 +149,7 @@ fn test_resume2_load_data_interpreter_2_asm() {
     let mut machine1 = MachineTy::Interpreter.build(data_source.clone(), version);
     machine1.set_max_cycles(300000);
     machine1
-        .load_program(&vec!["resume2_load_data".into()])
+        .load_program([Ok("resume2_load_data".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
@@ -181,7 +179,9 @@ pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
     // The cycles required for complete execution is 4194622
     let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
     machine1.set_max_cycles(except_cycles - 30);
-    machine1.load_program(&vec!["alloc_many".into()]).unwrap();
+    machine1
+        .load_program([Ok("alloc_many".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -201,7 +201,9 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
     machine1.set_max_cycles(1000000);
-    machine1.load_program(&vec!["alloc_many".into()]).unwrap();
+    machine1
+        .load_program([Ok("alloc_many".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -229,7 +231,9 @@ pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
     machine1.set_max_cycles(except_cycles - 30);
-    machine1.load_program(&vec!["alloc_many".into()]).unwrap();
+    machine1
+        .load_program([Ok("alloc_many".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -250,7 +254,9 @@ pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Interpreter.build(data_source.clone(), version);
     machine1.set_max_cycles(except_cycles - 30);
-    machine1.load_program(&vec!["alloc_many".into()]).unwrap();
+    machine1
+        .load_program([Ok("alloc_many".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -270,7 +276,9 @@ pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Interpreter.build(data_source.clone(), version);
     machine1.set_max_cycles(except_cycles - 30);
-    machine1.load_program(&vec!["alloc_many".into()]).unwrap();
+    machine1
+        .load_program([Ok("alloc_many".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -290,7 +298,9 @@ pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u6
 
     let mut machine1 = MachineTy::InterpreterWithTrace.build(data_source.clone(), version);
     machine1.set_max_cycles(except_cycles - 30);
-    machine1.load_program(&vec!["alloc_many".into()]).unwrap();
+    machine1
+        .load_program([Ok("alloc_many".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -444,7 +454,10 @@ enum Machine {
 }
 
 impl Machine {
-    fn load_program(&mut self, args: &[Bytes]) -> Result<u64, Error> {
+    fn load_program(
+        &mut self,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
         use Machine::*;
         match self {
             Asm(inner, context) => {
@@ -609,7 +622,9 @@ pub fn test_sc_after_snapshot2() {
 
     let mut machine1 = MachineTy::Interpreter.build(data_source.clone(), VERSION2);
     machine1.set_max_cycles(5);
-    machine1.load_program(&vec!["main".into()]).unwrap();
+    machine1
+        .load_program([Ok("main".into())].into_iter())
+        .unwrap();
     let result1 = machine1.run();
     assert!(result1.is_err());
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
@@ -630,7 +645,9 @@ pub fn test_store_bytes_twice() {
 
     let mut machine = MachineTy::Asm.build(data_source.clone(), VERSION2);
     machine.set_max_cycles(u64::MAX);
-    machine.load_program(&vec!["main".into()]).unwrap();
+    machine
+        .load_program([Ok("main".into())].into_iter())
+        .unwrap();
 
     match machine {
         Machine::Asm(ref mut inner, ref ctx) => {
@@ -663,7 +680,9 @@ pub fn test_mixing_snapshot2_writes_with_machine_raw_writes() {
 
     let mut machine = MachineTy::Asm.build(data_source.clone(), VERSION2);
     machine.set_max_cycles(u64::MAX);
-    machine.load_program(&vec!["main".into()]).unwrap();
+    machine
+        .load_program([Ok("main".into())].into_iter())
+        .unwrap();
 
     match machine {
         Machine::Asm(ref mut inner, ref ctx) => {

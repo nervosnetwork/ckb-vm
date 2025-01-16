@@ -42,7 +42,7 @@ pub fn test_simple_cycles() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, [Ok("simple".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -61,7 +61,7 @@ pub fn test_simple_max_cycles_reached() {
             .instruction_cycle_func(Box::new(dummy_cycle_func))
             .build();
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, [Ok("simple".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -83,7 +83,7 @@ pub fn test_simple_loaded_bytes() {
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     let bytes = machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, [Ok("simple".into())].into_iter())
         .unwrap();
     assert_eq!(bytes, 3831);
 }
@@ -99,7 +99,7 @@ pub fn test_simple_cycles_overflow() {
             .build();
     machine.set_cycles(u64::MAX - 10);
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, [Ok("simple".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());

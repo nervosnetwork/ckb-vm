@@ -21,12 +21,13 @@ use std::fs;
 fn interpret_benchmark(c: &mut Criterion) {
     c.bench_function("interpret secp256k1_bench", |b| {
         let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-        let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
-
+        let args: Vec<Bytes> = vec![
+            "secp256k1_bench",
+            "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+            "foo",
+            "bar"
+        ].into_iter().map(|a| a.into()).collect();
         b.iter(|| run::<u64, SparseMemory<u64>>(&buffer, &args[..]).unwrap());
     });
 }
@@ -35,17 +36,18 @@ fn interpret_benchmark(c: &mut Criterion) {
 fn asm_benchmark(c: &mut Criterion) {
     c.bench_function("interpret secp256k1_bench via assembly", |b| {
         let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-        let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
-
+        let args = [
+            Ok("secp256k1_bench".into()),
+            Ok("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into()),
+            Ok("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into()),
+            Ok("foo".into()),
+            Ok("bar".into()),
+        ].into_iter();
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
             let core = DefaultMachineBuilder::new(asm_core).build();
             let mut machine = AsmMachine::new(core);
-            machine.load_program(&buffer, &args[..]).unwrap();
+            machine.load_program(&buffer, args.clone()).unwrap();
             machine.run().unwrap()
         });
     });
@@ -55,17 +57,19 @@ fn asm_benchmark(c: &mut Criterion) {
 fn mop_benchmark(c: &mut Criterion) {
     c.bench_function("interpret secp256k1_bench via assembly mop", |b| {
         let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-        let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
+        let args = [
+            Ok("secp256k1_bench".into()),
+            Ok("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into()),
+            Ok("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into()),
+            Ok("foo".into()),
+            Ok("bar".into()),
+        ].into_iter();
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);
-            machine.load_program(&buffer, &args).unwrap();
+            machine.load_program(&buffer, args.clone()).unwrap();
             machine.run().unwrap()
         });
     });
@@ -77,17 +81,19 @@ fn mop_memoized_benchmark(c: &mut Criterion) {
         let isa = ISA_IMC | ISA_B | ISA_MOP;
         let version = VERSION2;
         let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-        let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
+        let args = [
+            Ok("secp256k1_bench".into()),
+            Ok("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into()),
+            Ok("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into()),
+            Ok("foo".into()),
+            Ok("bar".into()),
+        ].into_iter();
         let mut decoder = MemoizedFixedTraceDecoder::new(build_decoder::<u64>(isa, version));
         let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
         let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
             .build();
         let mut machine = AsmMachine::new(core);
-        machine.load_program(&buffer, &args).unwrap();
+        machine.load_program(&buffer, args.clone()).unwrap();
         machine.run_with_decoder(&mut decoder).unwrap();
 
         b.iter(|| {
@@ -95,7 +101,7 @@ fn mop_memoized_benchmark(c: &mut Criterion) {
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);
-            machine.load_program(&buffer, &args).unwrap();
+            machine.load_program(&buffer, args.clone()).unwrap();
             decoder.clear_traces();
             machine.run_with_decoder(&mut decoder).unwrap()
         });
@@ -108,17 +114,19 @@ fn mop_memoized_dynamic_benchmark(c: &mut Criterion) {
         let isa = ISA_IMC | ISA_B | ISA_MOP;
         let version = VERSION2;
         let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-        let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
+        let args = [
+            Ok("secp256k1_bench".into()),
+            Ok("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into()),
+            Ok("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into()),
+            Ok("foo".into()),
+            Ok("bar".into()),
+        ].into_iter();
         let mut decoder = MemoizedDynamicTraceDecoder::new(build_decoder::<u64>(isa, version));
         let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
         let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
             .build();
         let mut machine = AsmMachine::new(core);
-        machine.load_program(&buffer, &args).unwrap();
+        machine.load_program(&buffer, args.clone()).unwrap();
         machine.run_with_decoder(&mut decoder).unwrap();
 
         b.iter(|| {
@@ -126,7 +134,7 @@ fn mop_memoized_dynamic_benchmark(c: &mut Criterion) {
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);
-            machine.load_program(&buffer, &args).unwrap();
+            machine.load_program(&buffer, args.clone()).unwrap();
             decoder.clear_traces();
             machine.run_with_decoder(&mut decoder).unwrap()
         });

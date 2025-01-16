@@ -37,9 +37,9 @@ pub fn asm(path: &str, args: Vec<Bytes>, version: u32, isa: u8) -> AsmMachine {
         .syscall(Box::new(SleepSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core);
-    let mut argv = vec![Bytes::from("main")];
-    argv.extend_from_slice(&args);
-    machine.load_program(&buffer, &argv).unwrap();
+    let mut argv = vec![Ok(Bytes::from("main"))];
+    argv.extend(args.into_iter().map(Ok));
+    machine.load_program(&buffer, argv.into_iter()).unwrap();
     machine
 }
 
@@ -58,8 +58,8 @@ pub fn int(
             .syscall(Box::new(SleepSyscall {}))
             .build(),
     );
-    let mut argv = vec![Bytes::from("main")];
-    argv.extend_from_slice(&args);
-    machine.load_program(&buffer, &argv).unwrap();
+    let mut argv = vec![Ok(Bytes::from("main"))];
+    argv.extend(args.into_iter().map(Ok));
+    machine.load_program(&buffer, argv.into_iter()).unwrap();
     machine
 }

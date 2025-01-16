@@ -151,3 +151,17 @@ pub(crate) fn memset(slice: &mut [u8], value: u8) {
         ptr::write_bytes(p, value, slice.len());
     }
 }
+
+pub fn load_c_string<M: Memory>(memory: &mut M, addr: &M::REG) -> Result<Bytes, Error> {
+    let mut buffer = Vec::new();
+    let mut addr = addr.clone();
+    loop {
+        let byte = memory.load8(&addr)?.to_u8();
+        if byte == 0 {
+            break;
+        }
+        buffer.push(byte);
+        addr = addr.overflowing_add(&M::REG::from_u8(1));
+    }
+    Ok(Bytes::from(buffer))
+}

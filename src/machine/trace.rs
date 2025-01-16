@@ -113,7 +113,11 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
         }
     }
 
-    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
         self.machine.load_program(program, args)
     }
 
@@ -121,7 +125,7 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
         &mut self,
         program: &Bytes,
         metadata: &ProgramMetadata,
-        args: &[Bytes],
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
     ) -> Result<u64, Error> {
         self.machine
             .load_program_with_metadata(program, metadata, args)
