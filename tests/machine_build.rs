@@ -39,7 +39,7 @@ pub fn asm_v1_imcb(path: &str) -> AsmMachine {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec![Bytes::from("main")])
+        .load_program(&buffer, [Ok(Bytes::from("main"))].into_iter())
         .unwrap();
     machine
 }
@@ -60,7 +60,7 @@ pub fn int_v1_imcb(
             .build(),
     );
     machine
-        .load_program(&buffer, &vec![Bytes::from("main")])
+        .load_program(&buffer, [Ok(Bytes::from("main"))].into_iter())
         .unwrap();
     machine
 }
@@ -81,7 +81,9 @@ pub fn asm_mop(path: &str, args: Vec<Bytes>, version: u32) -> AsmMachine {
     let mut machine = AsmMachine::new(core);
     let mut argv = vec![Bytes::from("main")];
     argv.extend_from_slice(&args);
-    machine.load_program(&buffer, &argv).unwrap();
+    machine
+        .load_program(&buffer, argv.into_iter().map(Ok))
+        .unwrap();
     machine
 }
 
@@ -111,7 +113,9 @@ pub fn int_mop(
     );
     let mut argv = vec![Bytes::from("main")];
     argv.extend_from_slice(&args);
-    machine.load_program(&buffer, &argv).unwrap();
+    machine
+        .load_program(&buffer, argv.into_iter().map(Ok))
+        .unwrap();
     machine
 }
 
@@ -125,7 +129,7 @@ pub fn asm_v2_imacb(path: &str) -> AsmMachine {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec![Bytes::from("main")])
+        .load_program(&buffer, [Ok(Bytes::from("main"))].into_iter())
         .unwrap();
     machine
 }
@@ -146,7 +150,7 @@ pub fn int_v2_imacb(
             .build(),
     );
     machine
-        .load_program(&buffer, &vec![Bytes::from("main")])
+        .load_program(&buffer, [Ok(Bytes::from("main"))].into_iter())
         .unwrap();
     machine
 }

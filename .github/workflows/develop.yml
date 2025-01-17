@@ -69,7 +69,7 @@ jobs:
           ln -snf .. ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
           cd ckb-vm-test-suite
-          git checkout 441e0f2149c097ccad133b040544dca13caeb01e
+          git checkout 898edc351eeb4de974ca4f0ff8d1e4943a95aecb
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh
 
@@ -136,13 +136,13 @@ jobs:
           ln -snf .. ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
           cd ckb-vm-test-suite
-          git checkout 441e0f2149c097ccad133b040544dca13caeb01e
+          git checkout 898edc351eeb4de974ca4f0ff8d1e4943a95aecb
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh --build-only
           cd ..
       - name: Run test suite
         run: |
-          sudo apt install -y qemu binfmt-support qemu-user-static
+          sudo apt install -y qemu-system binfmt-support qemu-user-static
           sudo apt install -y gcc-multilib
           sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes

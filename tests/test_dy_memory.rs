@@ -27,7 +27,7 @@ fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
-            .load_program(&buffer, &vec![bin_name.into()])
+            .load_program(&buffer, [Ok(bin_name.into())].into_iter())
             .unwrap();
         let result = machine.run();
         assert!(result.is_ok());
@@ -63,7 +63,7 @@ fn test_memory_out_of_bounds() {
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
-            .load_program(&buffer, &vec!["alloc_many".into()])
+            .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
             .unwrap();
         let result = machine.run();
         assert!(result.is_err());
