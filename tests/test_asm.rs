@@ -1,5 +1,4 @@
 #![cfg(has_asm)]
-use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::decoder::build_decoder;
 use ckb_vm::error::OutOfBoundKind;
@@ -22,7 +21,7 @@ pub fn test_asm_simple64() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, [Ok("simple".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -61,7 +60,7 @@ pub fn test_asm_with_custom_syscall() {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, [Ok("syscall".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -97,7 +96,7 @@ pub fn test_asm_ebreak() {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["ebreak".into()])
+        .load_program(&buffer, [Ok("ebreak".into())].into_iter())
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -114,7 +113,7 @@ pub fn test_asm_simple_cycles() {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, [Ok("syscall".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -133,7 +132,7 @@ pub fn test_asm_simple_max_cycles_reached() {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, [Ok("syscall".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -147,7 +146,7 @@ pub fn test_asm_trace() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["simple".into()])
+        .load_program(&buffer, [Ok("simple".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -161,7 +160,7 @@ pub fn test_asm_jump0() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["jump0_64".into()])
+        .load_program(&buffer, [Ok("jump0_64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -177,7 +176,7 @@ pub fn test_asm_write_large_address() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["write_large_address64".into()])
+        .load_program(&buffer, [Ok("write_large_address64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -194,7 +193,7 @@ pub fn test_misaligned_jump64() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["misaligned_jump64".into()])
+        .load_program(&buffer, [Ok("misaligned_jump64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -207,7 +206,7 @@ pub fn test_mulw64() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["mulw64".into()])
+        .load_program(&buffer, [Ok("mulw64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -221,7 +220,7 @@ pub fn test_invalid_read64() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["invalid_read64".into()])
+        .load_program(&buffer, [Ok("invalid_read64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -241,7 +240,7 @@ pub fn test_asm_load_elf_crash_64() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["load_elf_crash_64".into()])
+        .load_program(&buffer, [Ok("load_elf_crash_64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
@@ -254,7 +253,7 @@ pub fn test_asm_wxorx_crash_64() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["wxorx_crash_64".into()])
+        .load_program(&buffer, [Ok("wxorx_crash_64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert_eq!(
@@ -273,7 +272,7 @@ pub fn test_asm_alloc_many() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert_eq!(result.unwrap(), 0);
@@ -288,7 +287,7 @@ pub fn test_asm_chaos_seed() {
     let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1).build();
     let mut machine1 = AsmMachine::new(core1);
     machine1
-        .load_program(&buffer, &vec!["read_memory".into()])
+        .load_program(&buffer, [Ok("read_memory".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let exit1 = result1.unwrap();
@@ -299,7 +298,7 @@ pub fn test_asm_chaos_seed() {
     let core2 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core2).build();
     let mut machine2 = AsmMachine::new(core2);
     machine2
-        .load_program(&buffer, &vec!["read_memory".into()])
+        .load_program(&buffer, [Ok("read_memory".into())].into_iter())
         .unwrap();
     let result2 = machine2.run();
     let exit2 = result2.unwrap();
@@ -317,7 +316,7 @@ pub fn test_asm_rvc_pageend() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["rvc_pageend".into()])
+        .load_program(&buffer, [Ok("rvc_pageend".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -358,7 +357,7 @@ pub fn test_asm_outofcycles_in_syscall() {
         .build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, [Ok("syscall".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -377,7 +376,7 @@ pub fn test_asm_cycles_overflow() {
     let mut machine = AsmMachine::new(core);
     machine.machine.set_cycles(u64::MAX - 10);
     machine
-        .load_program(&buffer, &vec!["simple64".into()])
+        .load_program(&buffer, [Ok("simple64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -396,7 +395,7 @@ pub fn test_decoder_instructions_cache_pc_out_of_bound_timeout() {
     let mut machine = AsmMachine::new(core);
     machine.machine.set_cycles(u64::MAX - 10);
     machine
-        .load_program(&buffer, &vec!["simple64".into()])
+        .load_program(&buffer, [Ok("simple64".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());
@@ -413,7 +412,7 @@ fn test_asm_step() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["simple64".into()])
+        .load_program(&buffer, [Ok("simple64".into())].into_iter())
         .unwrap();
 
     let result = || -> Result<i8, Error> {
@@ -436,7 +435,7 @@ fn test_asm_thread_safe() {
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec!["mulw64".into()])
+        .load_program(&buffer, [Ok("mulw64".into())].into_iter())
         .unwrap();
     let thread_join_handle = thread::spawn(move || {
         let result = machine.run();
@@ -452,7 +451,9 @@ fn test_zero_address() {
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::MAX);
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
-    machine.load_program(&buffer, &vec!["zero".into()]).unwrap();
+    machine
+        .load_program(&buffer, [Ok("zero".into())].into_iter())
+        .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
@@ -466,12 +467,14 @@ fn test_memoized_secp256k1() {
     let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
-    let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
-    machine.load_program(&buffer, &args).unwrap();
+    let args = [
+            "secp256k1_bench",
+            "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+            "foo",
+            "bar",
+        ].into_iter().map(|a| Ok(a.into()));
+    machine.load_program(&buffer, args).unwrap();
     let mut decoder = MemoizedFixedTraceDecoder::new(build_decoder::<u64>(isa, version));
     let result = machine.run_with_decoder(&mut decoder);
     assert_eq!(result.unwrap(), 0);
@@ -485,12 +488,14 @@ fn test_memoized_dynamic_secp256k1() {
     let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
-    let args: Vec<Bytes> = vec!["secp256k1_bench",
-                                      "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-                                      "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-                                      "foo",
-                                      "bar"].into_iter().map(|a| a.into()).collect();
-    machine.load_program(&buffer, &args).unwrap();
+    let args = [
+            "secp256k1_bench",
+            "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+            "foo",
+            "bar",
+        ].into_iter().map(|a| Ok(a.into()));
+    machine.load_program(&buffer, args).unwrap();
     let mut decoder = MemoizedDynamicTraceDecoder::new(build_decoder::<u64>(isa, version));
     let result = machine.run_with_decoder(&mut decoder);
     assert_eq!(result.unwrap(), 0);
@@ -502,7 +507,7 @@ pub fn test_big_binary() {
     let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION2, u64::MAX, 1024 * 512);
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
-    let result = machine.load_program(&buffer, &vec!["simple".into()]);
+    let result = machine.load_program(&buffer, [Ok("simple".into())].into_iter());
     assert_eq!(
         result,
         Err(Error::MemOutOfBound(0x111000, OutOfBoundKind::Memory))
@@ -522,7 +527,7 @@ fn test_fast_memory_initialization_bug() {
         let memory = machine.machine.inner_mut().memory_ptr as *mut u8;
         memory.write(0x01);
     }
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, [].into_iter()).unwrap();
     assert_eq!(machine.machine.memory_mut().load8(&0).unwrap(), 0);
 }
 
@@ -532,6 +537,6 @@ pub fn test_memory_load_crash() {
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
-    let result = machine.load_program(&buffer, &vec!["memory_crash".into()]);
+    let result = machine.load_program(&buffer, [Ok("memory_crash".into())].into_iter());
     assert_eq!(result.unwrap_err(), Error::MemWriteOnExecutablePage(1023));
 }

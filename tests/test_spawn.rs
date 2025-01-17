@@ -3,33 +3,15 @@ use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION2};
+use ckb_vm::memory::load_c_string_byte_by_byte;
 use ckb_vm::registers::{A0, A1, A2, A7};
 use ckb_vm::{
-    DefaultMachineBuilder, Error, Memory, Register, SparseMemory, SupportMachine, Syscalls,
-    WXorXMemory, ISA_B, ISA_IMC, ISA_MOP,
+    DefaultMachineBuilder, Error, FlattenedArgsReader, Register, SparseMemory, SupportMachine,
+    Syscalls, WXorXMemory, ISA_B, ISA_IMC, ISA_MOP,
 };
 use std::sync::{Arc, Mutex};
 
 // There is a spawn system call in ckb, we must ensure that in the worst case, ckb will not crashed by stack overflow.
-
-pub fn load_c_string<Mac: SupportMachine>(machine: &mut Mac, addr: u64) -> Result<Bytes, Error> {
-    let mut buffer = Vec::new();
-    let mut addr = addr;
-
-    loop {
-        let byte = machine
-            .memory_mut()
-            .load8(&Mac::REG::from_u64(addr))?
-            .to_u8();
-        if byte == 0 {
-            break;
-        }
-        buffer.push(byte);
-        addr += 1;
-    }
-
-    Ok(Bytes::from(buffer))
-}
 
 fn stack_depth() -> u64 {
     let x = 0;
@@ -62,22 +44,12 @@ impl<Mac: SupportMachine> Syscalls<Mac> for IntSpawnSyscall {
             }
         }
 
-        let addr = &machine.registers()[A0];
-        let path_byte = load_c_string(machine, addr.to_u64()).unwrap();
+        let addr = machine.registers()[A0].clone();
+        let path_byte = load_c_string_byte_by_byte(machine.memory_mut(), &addr).unwrap();
         let path = std::str::from_utf8(&path_byte).unwrap();
-        let argc = &machine.registers()[A1];
-        let argv = &machine.registers()[A2];
-        let mut addr = argv.to_u64();
-        let mut argv_vec = Vec::new();
-        for _ in 0..argc.to_u64() {
-            let target_addr = machine
-                .memory_mut()
-                .load64(&Mac::REG::from_u64(addr))?
-                .to_u64();
-            let cstr = load_c_string(machine, target_addr)?;
-            argv_vec.push(cstr);
-            addr += 8;
-        }
+        let argc = machine.registers()[A1].clone();
+        let argv = machine.registers()[A2].clone();
+        let args_iter = FlattenedArgsReader::new(machine.memory_mut(), argc.clone(), argv);
         let buffer: Bytes = std::fs::read(path).unwrap().into();
         let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
             ISA_IMC | ISA_B | ISA_MOP,
@@ -92,7 +64,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for IntSpawnSyscall {
                 }))
                 .build(),
         );
-        machine_child.load_program(&buffer, &argv_vec).unwrap();
+        machine_child.load_program(&buffer, args_iter).unwrap();
         let exit = machine_child.run().unwrap();
         machine.set_register(A0, Mac::REG::from_i8(exit));
         Ok(true)
@@ -124,22 +96,12 @@ impl<Mac: SupportMachine> Syscalls<Mac> for AsmSpawnSyscall {
             }
         }
 
-        let addr = &machine.registers()[A0];
-        let path_byte = load_c_string(machine, addr.to_u64()).unwrap();
+        let addr = machine.registers()[A0].clone();
+        let path_byte = load_c_string_byte_by_byte(machine.memory_mut(), &addr).unwrap();
         let path = std::str::from_utf8(&path_byte).unwrap();
-        let argc = &machine.registers()[A1];
-        let argv = &machine.registers()[A2];
-        let mut addr = argv.to_u64();
-        let mut argv_vec = Vec::new();
-        for _ in 0..argc.to_u64() {
-            let target_addr = machine
-                .memory_mut()
-                .load64(&Mac::REG::from_u64(addr))?
-                .to_u64();
-            let cstr = load_c_string(machine, target_addr)?;
-            argv_vec.push(cstr);
-            addr += 8;
-        }
+        let argc = machine.registers()[A1].clone();
+        let argv = machine.registers()[A2].clone();
+        let args_iter = FlattenedArgsReader::new(machine.memory_mut(), argc.clone(), argv);
         let buffer: Bytes = std::fs::read(path).unwrap().into();
         let machine_core_asm = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
         let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
@@ -149,7 +111,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for AsmSpawnSyscall {
             }))
             .build();
         let mut machine_child = AsmMachine::new(machine_core);
-        machine_child.load_program(&buffer, &argv_vec).unwrap();
+        machine_child.load_program(&buffer, args_iter).unwrap();
         let exit = machine_child.run().unwrap();
         machine.set_register(A0, Mac::REG::from_i8(exit));
         Ok(true)
@@ -174,7 +136,9 @@ pub fn test_spawn_int() {
             }))
             .build(),
     );
-    machine.load_program(&buffer, &["main".into()]).unwrap();
+    machine
+        .load_program(&buffer, [Ok("main".into())].into_iter())
+        .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
     assert!(result.unwrap() == 0);
@@ -197,7 +161,9 @@ pub fn test_spawn_asm() {
         }))
         .build();
     let mut machine = AsmMachine::new(machine_core);
-    machine.load_program(&buffer, &["main".into()]).unwrap();
+    machine
+        .load_program(&buffer, [Ok("main".into())].into_iter())
+        .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
     assert!(result.unwrap() == 0);

@@ -49,7 +49,7 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
         .syscall(Box::new(DebugSyscall {}))
         .build();
     let mut machine = ckb_vm::machine::asm::AsmMachine::new(core);
-    machine.load_program(&code, &args)?;
+    machine.load_program(&code, args.into_iter().map(Ok))?;
     let exit = machine.run();
     let cycles = machine.machine.cycles();
     println!(
@@ -71,7 +71,7 @@ fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
     let machine_builder = ckb_vm::DefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(Box::new(estimate_cycles));
     let mut machine = machine_builder.syscall(Box::new(DebugSyscall {})).build();
-    machine.load_program(&code, &args)?;
+    machine.load_program(&code, args.into_iter().map(Ok))?;
     let exit = machine.run();
     let cycles = machine.cycles();
     println!(

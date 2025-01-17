@@ -63,7 +63,7 @@ pub fn test_custom_syscall() {
         .syscall(Box::new(CustomSyscall {}))
         .build();
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, [Ok("syscall".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_ok());
@@ -98,7 +98,7 @@ pub fn test_ebreak() {
         }))
         .build();
     machine
-        .load_program(&buffer, &vec!["ebreak".into()])
+        .load_program(&buffer, [Ok("ebreak".into())].into_iter())
         .unwrap();
     assert_eq!(value.load(Ordering::Relaxed), 1);
     let result = machine.run();
@@ -203,7 +203,7 @@ pub fn test_flat_crash_64() {
     let buffer = fs::read("tests/programs/flat_crash_64").unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
-    let result = machine.load_program(&buffer, &vec!["flat_crash_64".into()]);
+    let result = machine.load_program(&buffer, [Ok("flat_crash_64".into())].into_iter());
     assert_eq!(
         result.err(),
         Some(Error::MemOutOfBound(0x1100000000, OutOfBoundKind::Memory))
@@ -369,7 +369,7 @@ pub fn test_rvc_pageend() {
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine = DefaultMachineBuilder::new(core_machine).build();
     machine
-        .load_program(&buffer, &vec!["rvc_end".into()])
+        .load_program(&buffer, [Ok("rvc_end".into())].into_iter())
         .unwrap();
 
     let anchor_pc: u64 = 69630;
@@ -423,7 +423,7 @@ pub fn test_outofcycles_in_syscall() {
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();
     machine
-        .load_program(&buffer, &vec!["syscall".into()])
+        .load_program(&buffer, [Ok("syscall".into())].into_iter())
         .unwrap();
     let result = machine.run();
     assert!(result.is_err());

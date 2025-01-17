@@ -22,7 +22,7 @@ fn create_rust_machine(
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
     machine
-        .load_program(&buffer, &vec![program.into()])
+        .load_program(&buffer, [Ok(program.into())].into_iter())
         .unwrap();
     machine
 }
@@ -34,7 +34,7 @@ fn create_asm_machine(program: String, version: u32) -> AsmMachine {
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
-        .load_program(&buffer, &vec![program.into()])
+        .load_program(&buffer, [Ok(program.into())].into_iter())
         .unwrap();
     machine
 }
@@ -246,7 +246,7 @@ pub fn test_rust_version0_unaligned64() {
     let core_machine = DefaultCoreMachine::<u64, Mem>::new(ISA_IMC, VERSION0, u64::MAX);
     let mut machine =
         DefaultMachineBuilder::<DefaultCoreMachine<u64, Mem>>::new(core_machine).build();
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let result = machine.load_program(&buffer, [Ok(program.into())].into_iter());
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
@@ -268,7 +268,7 @@ pub fn test_asm_version0_unaligned64() {
     let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
-    let result = machine.load_program(&buffer, &vec![program.into()]);
+    let result = machine.load_program(&buffer, [Ok(program.into())].into_iter());
     assert!(result.is_err());
     assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(16)));
 }
@@ -351,7 +351,7 @@ pub fn test_asm_version1_asm_trace_bug() {
             .build();
         AsmMachine::new(machine)
     };
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, [].into_iter()).unwrap();
     let result = machine.run();
 
     assert_eq!(result, Err(Error::CyclesExceeded));
@@ -368,7 +368,7 @@ pub fn test_asm_version2_asm_trace_bug() {
             .build();
         AsmMachine::new(machine)
     };
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, [].into_iter()).unwrap();
     let result = machine.run();
 
     assert_eq!(
@@ -393,7 +393,7 @@ pub fn test_trace_version1_asm_trace_bug() {
                 .build(),
         )
     };
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, [].into_iter()).unwrap();
     let result = machine.run();
 
     assert_eq!(result, Err(Error::CyclesExceeded));
@@ -415,7 +415,7 @@ pub fn test_trace_version2_asm_trace_bug() {
                 .build(),
         )
     };
-    machine.load_program(&buffer, &[]).unwrap();
+    machine.load_program(&buffer, [].into_iter()).unwrap();
     let result = machine.run();
 
     assert_eq!(

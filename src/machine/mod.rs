@@ -12,7 +12,7 @@ use super::debugger::Debugger;
 use super::decoder::{build_decoder, InstDecoder};
 use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
 use super::instructions::{execute, Instruction, Register};
-use super::memory::Memory;
+use super::memory::{load_c_string_byte_by_byte, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
@@ -171,7 +171,7 @@ pub trait SupportMachine: CoreMachine {
 
     fn initialize_stack(
         &mut self,
-        args: &[Bytes],
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
         stack_start: u64,
         stack_size: u64,
     ) -> Result<u64, Error> {
@@ -183,7 +183,7 @@ pub trait SupportMachine: CoreMachine {
         // reading "argc" will return an unexpected data. This situation is not very common.
         //
         // See https://github.com/nervosnetwork/ckb-vm/issues/106 for more details.
-        if self.version() >= VERSION1 && args.is_empty() {
+        if self.version() >= VERSION1 && args.len() == 0 {
             let argc_size = u64::from(Self::REG::BITS / 8);
             let origin_sp = stack_start + stack_size;
             let unaligned_sp_address = origin_sp - argc_size;
@@ -200,15 +200,21 @@ pub trait SupportMachine: CoreMachine {
         // of each argv object.
         let mut values = vec![Self::REG::from_u64(args.len() as u64)];
         for arg in args {
+            let arg = arg?;
             let len = Self::REG::from_u64(arg.len() as u64 + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
-            self.memory_mut().store_bytes(address.to_u64(), arg)?;
+            self.memory_mut().store_bytes(address.to_u64(), &arg)?;
             self.memory_mut()
                 .store_byte(address.to_u64() + arg.len() as u64, 1, 0)?;
 
             values.push(address.clone());
-            self.set_register(SP, address);
+            self.set_register(SP, address.clone());
+
+            if self.version() >= VERSION2 && address.to_u64() < stack_start {
+                // Provides an early exit to large argv array.
+                return Err(Error::MemOutOfStack);
+            }
         }
         if self.version() >= VERSION1 {
             // There are 2 standard requirements of the initialized stack:
@@ -246,7 +252,7 @@ pub trait SupportMachine: CoreMachine {
             self.set_register(SP, address);
         }
         if self.registers()[SP].to_u64() < stack_start {
-            // args exceed stack size
+            // Args exceed stack size.
             return Err(Error::MemOutOfStack);
         }
         Ok(stack_start + stack_size - self.registers()[SP].to_u64())
@@ -575,7 +581,11 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
 }
 
 impl<Inner: SupportMachine> DefaultMachine<Inner> {
-    pub fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
         let elf_bytes = self.load_elf(program, true)?;
         let stack_bytes = self.initialize(args)?;
         let bytes = elf_bytes.checked_add(stack_bytes).ok_or_else(|| {
@@ -590,7 +600,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         &mut self,
         program: &Bytes,
         metadata: &ProgramMetadata,
-        args: &[Bytes],
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
     ) -> Result<u64, Error> {
         let elf_bytes = self.load_binary(program, metadata, true)?;
         let stack_bytes = self.initialize(args)?;
@@ -602,7 +612,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         Ok(bytes)
     }
 
-    fn initialize(&mut self, args: &[Bytes]) -> Result<u64, Error> {
+    fn initialize(
+        &mut self,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
         for syscall in &mut self.syscalls {
             syscall.initialize(&mut self.inner)?;
         }
@@ -763,6 +776,59 @@ impl Pause {
 
     pub fn free(&mut self) {
         self.s.store(0, Ordering::SeqCst);
+    }
+}
+
+pub struct FlattenedArgsReader<'a, M: Memory> {
+    memory: &'a mut M,
+    argc: M::REG,
+    argv: M::REG,
+    cidx: M::REG,
+}
+
+impl<'a, M: Memory> FlattenedArgsReader<'a, M> {
+    pub fn new(memory: &'a mut M, argc: M::REG, argv: M::REG) -> Self {
+        Self {
+            memory,
+            argc,
+            argv,
+            cidx: M::REG::zero(),
+        }
+    }
+}
+
+impl<'a, M: Memory> Iterator for FlattenedArgsReader<'a, M> {
+    type Item = Result<Bytes, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cidx.ge(&self.argc).to_u8() == 1 {
+            return None;
+        }
+        let addr = match M::REG::BITS {
+            32 => self.memory.load32(&self.argv),
+            64 => self.memory.load64(&self.argv),
+            _ => unreachable!(),
+        };
+        if let Err(err) = addr {
+            return Some(Err(err));
+        };
+        let addr = addr.unwrap();
+        let cstr = load_c_string_byte_by_byte(self.memory, &addr);
+        if let Err(err) = cstr {
+            return Some(Err(err));
+        };
+        let cstr = cstr.unwrap();
+        self.cidx = self.cidx.overflowing_add(&M::REG::from_u8(1));
+        self.argv = self
+            .argv
+            .overflowing_add(&M::REG::from_u8(M::REG::BITS / 8));
+        Some(Ok(cstr))
+    }
+}
+
+impl<'a, M: Memory> ExactSizeIterator for FlattenedArgsReader<'a, M> {
+    fn len(&self) -> usize {
+        self.argc.to_u64() as usize
     }
 }
 
