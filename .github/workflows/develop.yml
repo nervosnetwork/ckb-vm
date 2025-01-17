@@ -142,7 +142,7 @@ jobs:
           cd ..
       - name: Run test suite
         run: |
-          sudo apt install -y qemu binfmt-support qemu-user-static
+          sudo apt install -y qemu-system binfmt-support qemu-user-static
           sudo apt install -y gcc-multilib
           sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
