@@ -457,14 +457,14 @@ mod tests {
     fn test_stype_display() {
         // This is "sd	a5,568(sp)"
         let sd_inst = 0x22f13c23;
-        let decoded = factory::<u64>(sd_inst, u32::max_value()).expect("decoding");
+        let decoded = factory::<u64>(sd_inst, u32::MAX).expect("decoding");
         let stype = Stype(decoded);
 
         assert_eq!("sd a5,568(sp)", format!("{}", stype));
 
         // This is "beq	a0,a5,1012e"
         let sd_inst = 0xf4f500e3;
-        let decoded = factory::<u64>(sd_inst, u32::max_value()).expect("decoding");
+        let decoded = factory::<u64>(sd_inst, u32::MAX).expect("decoding");
         let stype = Stype(decoded);
 
         assert_eq!("beq a0,a5,-192", format!("{}", stype));

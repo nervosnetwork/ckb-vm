@@ -69,7 +69,7 @@ fn get_current_memory_linux() -> usize {
 }
 
 fn get_current_memory() -> usize {
-    if !cfg!(linux) {
+    if !cfg!(target_os = "linux") {
         get_current_memory_linux()
     } else {
         let pid = format!("{}", id());
@@ -168,8 +168,7 @@ fn check_asm(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let asm_core =
-            AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::max_value(), memory_size);
+        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
@@ -193,8 +192,7 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let asm_core =
-            AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::max_value(), memory_size);
+        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine

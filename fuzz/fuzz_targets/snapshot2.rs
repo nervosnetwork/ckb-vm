@@ -65,7 +65,7 @@ impl DataSource<u32> for DummyData {
 
 fn build_machine() -> DefaultMachine<Box<AsmCoreMachine>> {
     let isa = ISA_IMC | ISA_A | ISA_B | ISA_MOP;
-    let core_machine = AsmCoreMachine::new(isa, VERSION2, u64::max_value());
+    let core_machine = AsmCoreMachine::new(isa, VERSION2, u64::MAX);
     DefaultMachineBuilder::new(core_machine).build()
 }
 

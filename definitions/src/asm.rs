@@ -117,8 +117,8 @@ impl AsmCoreMachine {
         machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
         machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
 
-        machine.last_read_frame = u64::max_value();
-        machine.last_write_page = u64::max_value();
+        machine.last_read_frame = u64::MAX;
+        machine.last_write_page = u64::MAX;
 
         machine
     }
