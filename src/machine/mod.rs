@@ -12,7 +12,7 @@ use super::debugger::Debugger;
 use super::decoder::{build_decoder, InstDecoder};
 use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
 use super::instructions::{execute, Instruction, Register};
-use super::memory::{load_c_string, Memory};
+use super::memory::{load_c_string_byte_by_byte, Memory};
 use super::syscalls::Syscalls;
 use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
@@ -813,7 +813,7 @@ impl<'a, M: Memory> Iterator for FlattenedArgsReader<'a, M> {
             return Some(Err(err));
         };
         let addr = addr.unwrap();
-        let cstr = load_c_string(self.memory, &addr);
+        let cstr = load_c_string_byte_by_byte(self.memory, &addr);
         if let Err(err) = cstr {
             return Some(Err(err));
         };

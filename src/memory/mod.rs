@@ -152,7 +152,10 @@ pub(crate) fn memset(slice: &mut [u8], value: u8) {
     }
 }
 
-pub fn load_c_string<M: Memory>(memory: &mut M, addr: &M::REG) -> Result<Bytes, Error> {
+pub fn load_c_string_byte_by_byte<M: Memory>(
+    memory: &mut M,
+    addr: &M::REG,
+) -> Result<Bytes, Error> {
     let mut buffer = Vec::new();
     let mut addr = addr.clone();
     loop {

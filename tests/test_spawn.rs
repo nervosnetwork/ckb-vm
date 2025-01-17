@@ -3,7 +3,7 @@ use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION2};
-use ckb_vm::memory::load_c_string;
+use ckb_vm::memory::load_c_string_byte_by_byte;
 use ckb_vm::registers::{A0, A1, A2, A7};
 use ckb_vm::{
     DefaultMachineBuilder, Error, FlattenedArgsReader, Register, SparseMemory, SupportMachine,
@@ -45,7 +45,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for IntSpawnSyscall {
         }
 
         let addr = machine.registers()[A0].clone();
-        let path_byte = load_c_string(machine.memory_mut(), &addr).unwrap();
+        let path_byte = load_c_string_byte_by_byte(machine.memory_mut(), &addr).unwrap();
         let path = std::str::from_utf8(&path_byte).unwrap();
         let argc = machine.registers()[A1].clone();
         let argv = machine.registers()[A2].clone();
@@ -97,7 +97,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for AsmSpawnSyscall {
         }
 
         let addr = machine.registers()[A0].clone();
-        let path_byte = load_c_string(machine.memory_mut(), &addr).unwrap();
+        let path_byte = load_c_string_byte_by_byte(machine.memory_mut(), &addr).unwrap();
         let path = std::str::from_utf8(&path_byte).unwrap();
         let argc = machine.registers()[A1].clone();
         let argv = machine.registers()[A2].clone();

@@ -65,12 +65,12 @@ fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
     let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
     machine1.set_max_cycles(100000);
     machine1.load_program([
-        Ok("secp256k1_bench".into()),
-        Ok("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f".into()),
-        Ok("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3".into()),
-        Ok("foo".into()),
-        Ok("bar".into()),
-    ].into_iter()).unwrap();
+        "secp256k1_bench",
+        "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
+        "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+        "foo",
+        "bar",
+    ].into_iter().map(|e| Ok(e.into()))).unwrap();
     let result1 = machine1.run();
     assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
     let snapshot1 = machine1.snapshot().unwrap();
