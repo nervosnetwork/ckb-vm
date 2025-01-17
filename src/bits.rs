@@ -24,8 +24,8 @@ mod tests {
         assert_eq!(16, roundup(15, 16));
         assert_eq!(16, roundup(16, 16));
         assert_eq!(32, roundup(17, 16));
-        assert_eq!(u64::max_value() - 15, roundup(u64::max_value() - 15, 16));
-        assert_eq!(0, roundup(u64::max_value(), 16));
+        assert_eq!(u64::MAX - 15, roundup(u64::MAX - 15, 16));
+        assert_eq!(0, roundup(u64::MAX, 16));
     }
 
     #[test]
@@ -35,7 +35,7 @@ mod tests {
         assert_eq!(0, rounddown(15, 16));
         assert_eq!(16, rounddown(16, 16));
         assert_eq!(16, rounddown(17, 16));
-        assert_eq!(u64::max_value() - 15, rounddown(u64::max_value(), 16));
+        assert_eq!(u64::MAX - 15, rounddown(u64::MAX, 16));
     }
 
     proptest! {

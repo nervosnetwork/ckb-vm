@@ -11,7 +11,9 @@ use ckb_vm::machine::{
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{DefaultMachineBuilder, Error, Memory, Register, Syscalls, ISA_A, ISA_IMC};
+#[allow(unused_imports)]
+use ckb_vm::Memory;
+use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_A, ISA_IMC};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
