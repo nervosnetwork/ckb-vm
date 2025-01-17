@@ -30,7 +30,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for CustomSyscall {
         let code = Bytes::from(code_data);
         machine.load_elf(&code, true).unwrap();
         machine.initialize_stack(
-            &[],
+            [].into_iter(),
             (RISCV_MAX_MEMORY - DEFAULT_STACK_SIZE) as u64,
             DEFAULT_STACK_SIZE as u64,
         )?;
@@ -52,7 +52,7 @@ fn test_reset_int() {
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(CustomSyscall {}))
         .build();
-    machine.load_program(&code, &vec![]).unwrap();
+    machine.load_program(&code, [].into_iter()).unwrap();
     let result = machine.run();
     let cycles = machine.cycles();
     assert!(result.is_ok());
@@ -76,7 +76,7 @@ fn test_reset_int_with_trace() {
             .syscall(Box::new(CustomSyscall {}))
             .build(),
     );
-    machine.load_program(&code, &vec![]).unwrap();
+    machine.load_program(&code, [].into_iter()).unwrap();
     let result = machine.run();
     let cycles = machine.machine.cycles();
     assert!(result.is_ok());
@@ -96,7 +96,7 @@ fn test_reset_asm() {
         .syscall(Box::new(CustomSyscall {}))
         .build();
     let mut machine = AsmMachine::new(core);
-    machine.load_program(&code, &vec![]).unwrap();
+    machine.load_program(&code, [].into_iter()).unwrap();
 
     let result = machine.run();
     let cycles = machine.machine.cycles();

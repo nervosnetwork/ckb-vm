@@ -55,7 +55,7 @@ pub fn resume_asm_2_asm(version: u32, except_cycles: u64) {
     // The cycles required for complete execution is 4194622
     let mut machine1 = MachineTy::Asm.build(version, except_cycles - 30);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -77,7 +77,7 @@ pub fn resume_asm_2_asm_2_asm(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Asm.build(version, 1000000);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -107,7 +107,7 @@ pub fn resume_asm_2_interpreter(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Asm.build(version, except_cycles - 30);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -130,7 +130,7 @@ pub fn resume_interpreter_2_interpreter(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Interpreter.build(version, except_cycles - 30);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -152,7 +152,7 @@ pub fn resume_interpreter_2_asm(version: u32, except_cycles: u64) {
 
     let mut machine1 = MachineTy::Interpreter.build(version, except_cycles - 30);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -174,7 +174,7 @@ pub fn resume_interpreter_with_trace_2_asm_inner(version: u32, except_cycles: u6
 
     let mut machine1 = MachineTy::InterpreterWithTrace.build(version, except_cycles - 30);
     machine1
-        .load_program(&buffer, &vec!["alloc_many".into()])
+        .load_program(&buffer, [Ok("alloc_many".into())].into_iter())
         .unwrap();
     let result1 = machine1.run();
     let cycles1 = machine1.cycles();
@@ -251,7 +251,11 @@ enum Machine {
 }
 
 impl Machine {
-    fn load_program(&mut self, program: &Bytes, args: &[Bytes]) -> Result<u64, Error> {
+    fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
         use Machine::*;
         match self {
             Asm(inner) => inner.load_program(program, args),
