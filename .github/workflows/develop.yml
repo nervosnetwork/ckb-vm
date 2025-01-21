@@ -24,30 +24,50 @@ jobs:
         run: make ci-generated
 
   linux-x86-ci:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Run ci
         run: rustup component add clippy rustfmt && make ci
 
-  linux-x86-ci-asm:
-    runs-on: ubuntu-latest
+  linux-native-ci-asm:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Run ci-asm
         run: make ci-asm
 
-  linux-x86-ci-asm-chaos:
-    runs-on: ubuntu-latest
+  linux-native-ci-asm-chaos:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Run ci-asm-chaos
         run: make ci-asm-chaos
 
-  linux-x86-test-suite:
-    runs-on: ubuntu-latest
+  linux-native-test-suite:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install dependencies
         run: |
           sudo apt install -y git \
@@ -73,10 +93,15 @@ jobs:
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh
 
-  linux-x86-test-spawn:
-    runs-on: ubuntu-latest
+  linux-native-test-spawn:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Run spawn tests in release
         run: cargo test test_spawn --release --features=asm -- --nocapture
 
