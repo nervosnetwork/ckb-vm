@@ -100,7 +100,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         Ok(())
     }
 
-    pub fn load_data(&mut self, id: &I, offset: u64, length: u64) -> Result<(Bytes, u64), Error> {
+    pub fn load_data(&self, id: &I, offset: u64, length: u64) -> Result<(Bytes, u64), Error> {
         self.data_source
             .load_data(id, offset, length)
             .ok_or(Error::SnapshotDataLoadError)
