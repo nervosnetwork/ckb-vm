@@ -21,7 +21,7 @@ fn run(data: &[u8]) -> Result<(i8, u64), Error> {
             .build(),
     );
     let program = Bytes::copy_from_slice(data);
-    machine.load_program(&program, &[])?;
+    machine.load_program(&program, vec![].into_iter())?;
     let exit_code = machine.run()?;
     let cycles = machine.machine.cycles();
     Ok((exit_code, cycles))

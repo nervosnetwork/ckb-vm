@@ -15,7 +15,7 @@ fuzz_target!(|data: &[u8]| {
         AsmMachine::new(machine)
     };
     let program = Bytes::copy_from_slice(data);
-    if machine1.load_program(&program, &[]).is_err() {
+    if machine1.load_program(&program, vec![].into_iter()).is_err() {
         return;
     };
     let result1 = machine1.run();
@@ -32,7 +32,7 @@ fuzz_target!(|data: &[u8]| {
             .build();
         AsmMachine::new(machine)
     };
-    machine2.load_program(&program, &[]).unwrap();
+    machine2.load_program(&program, vec![].into_iter()).unwrap();
     let result2 = machine2.run();
     assert_eq!(result2.unwrap_err(), Error::CyclesExceeded);
     let snap = snapshot::make_snapshot(&mut machine2.machine).unwrap();
