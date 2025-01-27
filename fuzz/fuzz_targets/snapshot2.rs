@@ -115,7 +115,8 @@ fuzz_target!(|data: [u8; 96]| {
 
     let mut machine1 = build_machine();
     let mut machine2 = build_machine();
-    let result = machine1.load_program_with_metadata(&dummy_data.program, &metadata, &vec![]);
+    let result =
+        machine1.load_program_with_metadata(&dummy_data.program, &metadata, vec![].into_iter());
     if result.is_err() {
         return;
     }
