@@ -16,7 +16,7 @@ fn run(data: &[u8]) -> Result<i8, Error> {
         .instruction_cycle_func(Box::new(constant_cycles))
         .build();
     let program = Bytes::copy_from_slice(data);
-    machine.load_program(&program, &[])?;
+    machine.load_program(&program, vec![].into_iter())?;
     machine.run()
 }
 
