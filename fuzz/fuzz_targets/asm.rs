@@ -15,7 +15,7 @@ fn run_asm(data: &[u8]) -> Result<(i8, u64), Error> {
         .build();
     let mut machine = AsmMachine::new(core);
     let program = Bytes::copy_from_slice(data);
-    machine.load_program(&program, &[])?;
+    machine.load_program(&program, vec![].into_iter())?;
     let exit_code = machine.run()?;
     let cycles = machine.machine.cycles();
     Ok((exit_code, cycles))
@@ -35,7 +35,7 @@ fn run_int(data: &[u8]) -> Result<(i8, u64), Error> {
             .build(),
     );
     let program = Bytes::copy_from_slice(data);
-    machine.load_program(&program, &[])?;
+    machine.load_program(&program, vec![].into_iter())?;
     let exit_code = machine.run()?;
     let cycles = machine.machine.cycles();
     Ok((exit_code, cycles))
