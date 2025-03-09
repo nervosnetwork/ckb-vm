@@ -194,7 +194,7 @@
   movq TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LAST_READ_FRAME(MACHINE); \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR(MACHINE), TEMP3; \
   movzbl (TEMP3, TEMP1), TEMP2d; \
-  cmp $0, TEMP2d; \
+  test TEMP2d, TEMP2d; \
   jne 1f; \
   movb $1, (TEMP3, TEMP1); \
   PREPCALL; \
@@ -209,7 +209,7 @@
   shr $CKB_VM_ASM_MEMORY_FRAME_SHIFTS, TEMP1; \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR(MACHINE), TEMP3; \
   movzbl (TEMP3, TEMP1), TEMP2d; \
-  cmp $0, TEMP2d; \
+  test TEMP2d, TEMP2d; \
   jne 2f; \
   movb $1, (TEMP3, TEMP1);\
   PREPCALL; \
@@ -288,7 +288,7 @@
   shr $CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS, TEMP1; \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR(MACHINE), TEMP3; \
   movzbl (TEMP3, TEMP1), temp_regd; \
-  cmp $0, temp_regd; \
+  test temp_regd, temp_regd; \
   jne 1f; \
   movb $1, (TEMP3, TEMP1); \
   PREPCALL; \
@@ -319,7 +319,7 @@
   shr $CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS, TEMP1; \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR(MACHINE), TEMP3; \
   movzbl (TEMP3, TEMP1), temp_regd; \
-  cmp $0, temp_regd; \
+  test temp_regd, temp_regd; \
   jne 2f; \
   movb $1, (TEMP3, TEMP1); \
   PREPCALL; \
@@ -443,7 +443,7 @@ ckb_vm_x64_execute:
   cmp %rcx, %rdx
   jne .exit_trace
   mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
-  cmp $0, %rdx
+  test %rdx, %rdx
   je .exit_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
@@ -485,7 +485,7 @@ ckb_vm_x64_execute:
 .prepare_trace:
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_PAUSE(INVOKE_DATA), %rax
   movzbl 0(%rax), %eax
-  cmp $0, %rax
+  test %rax, %rax
   jnz .exit_pause
   LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
   shr $2, %eax
@@ -497,7 +497,7 @@ ckb_vm_x64_execute:
   cmp %rcx, %rdx
   jne .exit_trace
   mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
-  cmp $0, %rdx
+  test %rdx, %rdx
   je .exit_trace
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
@@ -634,7 +634,7 @@ ckb_vm_x64_execute:
   jne .div_branch1
   jmp .div_branch3
 .div_branch1:
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .div_branch2
   movq $UINT64_MAX, RS1
   jmp .div_branch3
@@ -651,7 +651,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_DIVU:
   DECODE_R
   movq REGISTER_ADDRESS(RS2r), RS2r
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .divu_branch1
   WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
@@ -671,7 +671,7 @@ ckb_vm_x64_execute:
   DECODE_R
   movq REGISTER_ADDRESS(RS2r), RS2r
   mov RS2rd, RS2rd
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .divuw_branch1
   WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
@@ -703,7 +703,7 @@ ckb_vm_x64_execute:
   jne .divw_branch1
   jmp .divw_branch3
 .divw_branch1:
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .divw_branch2
   movq $UINT64_MAX, RS1
   jmp .divw_branch3
@@ -1022,7 +1022,7 @@ ckb_vm_x64_execute:
   xorq RS1, RS1
   jmp .rem_branch3
 .rem_branch1:
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .rem_branch2
   jmp .rem_branch3
 .rem_branch2:
@@ -1038,7 +1038,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_REMU:
   DECODE_R
   movq REGISTER_ADDRESS(RS2r), RS2r
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .remu_branch2
   movq REGISTER_ADDRESS(RS1), RS1
   WRITE_RD(RS1)
@@ -1059,7 +1059,7 @@ ckb_vm_x64_execute:
   DECODE_R
   movq REGISTER_ADDRESS(RS2r), RS2r
   mov RS2rd, RS2rd
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .remuw_branch2
   movq REGISTER_ADDRESS(RS1), RS1
   movslq RS1d, RS1
@@ -1094,7 +1094,7 @@ ckb_vm_x64_execute:
   xorq RS1, RS1
   jmp .remw_branch3
 .remw_branch1:
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .remw_branch2
   jmp .remw_branch3
 .remw_branch2:
@@ -1761,7 +1761,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_CLZ:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
-  cmp $0, RS1
+  test RS1, RS1
   je .clz_branch
   bsr RS1, RS1
   neg RS1
@@ -1775,7 +1775,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_CLZW:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
-  cmp $0, RS1d
+  test RS1d, RS1d
   je .clzw_branch
   bsr RS1d, RS1d
   neg RS1
@@ -1872,7 +1872,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_CTZ:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
-  cmp $0, RS1
+  test RS1, RS1
   je .ctz_branch
   bsf RS1, RS1
   WRITE_RD(RS1)
@@ -1884,7 +1884,7 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_CTZW:
   DECODE_R
   movq REGISTER_ADDRESS(RS1), RS1
-  cmp $0, RS1d
+  test RS1d, RS1d
   je .ctzw_branch
   bsf RS1d, RS1d
   WRITE_RD(RS1)
@@ -2286,7 +2286,7 @@ ckb_vm_x64_execute:
   xorq TEMP1, TEMP1
   jmp .wide_div_branch3
 .wide_div_branch1:
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .wide_div_branch2
   movq RS1, TEMP1
   movq $UINT64_MAX, RS1
@@ -2307,7 +2307,7 @@ ckb_vm_x64_execute:
   DECODE_R4
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
-  cmp $0, RS2r
+  test RS2r, RS2r
   jne .wide_divu_branch1
   WRITE_RS3(RS1)
   WRITE_RD_VALUE($UINT64_MAX, RS2r)
