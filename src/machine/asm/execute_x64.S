@@ -458,7 +458,7 @@ ckb_vm_x64_execute:
   andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), %rdx
-  prefetcht2 0(%rdx, %rax)
+  prefetchnta 0(%rdx, %rax)
   lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
   mov INST_PC, INST_ARGS
   add $8, INST_ARGS
@@ -468,7 +468,7 @@ ckb_vm_x64_execute:
   /* Load current instruction as the full trace address */
   movq -16(INST_ARGS), TRACE
   /* Prefetch trace info for the consecutive block */
-  prefetcht2 CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE)
+  prefetchnta CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE)
   mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
   addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
