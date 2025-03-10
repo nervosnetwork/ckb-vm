@@ -11,7 +11,7 @@ use crate::memory::Memory;
 use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_PAGESIZE};
 
 const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
-const INSTRUCTION_CACHE_SIZE: usize = 2048;
+const INSTRUCTION_CACHE_SIZE: usize = 4096;
 
 pub trait InstDecoder {
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error>;
@@ -105,14 +105,14 @@ impl Decoder {
         let instruction_cache_key = {
             // according to RISC-V instruction encoding, the lowest bit in PC will always be zero
             let pc = pc >> 1;
-            // This indexing strategy optimizes instruction cache utilization by improving the distribution of addresses.
-            // - `pc >> 5`: Incorporates higher bits to ensure a more even spread across cache indices.
-            // - `pc << 1`: Spreads lower-bit information into higher positions, enhancing variability.
-            // - `^` (XOR): Further randomizes index distribution, reducing cache conflicts and improving hit rates.
-            //
-            // This approach helps balance cache efficiency between local execution and remote function calls,
-            // reducing hotspots and improving overall performance.
-            ((pc >> 5) ^ (pc << 1)) as usize % INSTRUCTION_CACHE_SIZE
+            // Here we try to balance between local code and remote code. At times,
+            // we can find the code jumping to a remote function(e.g., memcpy or
+            // alloc), then resumes execution at a local location. Previous cache
+            // key only optimizes for local operations, while this new cache key
+            // balances the code between a 8192-byte local region, and certain remote
+            // code region. Notice the value 12 and 8 here are chosen by empirical
+            // evidence.
+            ((pc & 0xFF) | (pc >> 12 << 8)) as usize % INSTRUCTION_CACHE_SIZE
         };
         let cached_instruction = self.instructions_cache[instruction_cache_key];
         if cached_instruction.0 == pc {
