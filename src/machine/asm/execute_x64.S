@@ -373,11 +373,11 @@
  */
 #define NEXT_INST \
   movq (INST_ARGS), %rcx; \
+  movq (INST_PC), TEMP1; \
   addq $8, INST_ARGS; \
+  addq $8, INST_PC; \
   movzbl %ch, RDd_RS2sd; \
   sar $32, %rcx; \
-  movq (INST_PC), TEMP1; \
-  addq $8, INST_PC; \
   jmp *TEMP1
 
 #define NEXT_INST_V2 \
