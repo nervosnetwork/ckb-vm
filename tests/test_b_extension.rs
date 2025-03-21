@@ -1,5 +1,7 @@
 pub mod machine_build;
 
+use ckb_vm::DefaultMachineRunner;
+
 #[test]
 pub fn test_clzw_bug() {
     let mut machine = machine_build::int_v1_imcb("tests/programs/clzw_bug");

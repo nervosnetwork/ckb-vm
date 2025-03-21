@@ -1,4 +1,4 @@
-use ckb_vm::{Error, SupportMachine};
+use ckb_vm::{DefaultMachineRunner, Error, SupportMachine};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 pub mod machine_build;

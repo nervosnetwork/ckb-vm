@@ -1,6 +1,6 @@
-use ckb_vm::Error;
 #[cfg(has_asm)]
 use ckb_vm::{CoreMachine, Memory};
+use ckb_vm::{DefaultMachineRunner, Error};
 pub mod machine_build;
 
 #[test]

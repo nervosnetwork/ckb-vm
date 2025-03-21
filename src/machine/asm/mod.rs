@@ -8,10 +8,11 @@ use ckb_vm_definitions::{
         RET_SLOWPATH, TRACE_ITEM_LENGTH, TRACE_SIZE,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
+    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS,
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
 };
 use rand::{prelude::RngCore, SeedableRng};
+use std::alloc::{alloc, Layout};
 use std::os::raw::c_uchar;
 
 use crate::{
@@ -26,8 +27,8 @@ use crate::{
         fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
         FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_PAGES, RISCV_PAGESIZE,
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, Machine, Memory, SupportMachine,
+    MEMORY_FRAME_SHIFTS, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
 impl CoreMachine for Box<AsmCoreMachine> {
@@ -412,6 +413,56 @@ impl Memory for Box<AsmCoreMachine> {
 }
 
 impl SupportMachine for Box<AsmCoreMachine> {
+    fn new_with_memory(
+        isa: u8,
+        version: u32,
+        max_cycles: u64,
+        memory_size: usize,
+    ) -> Box<AsmCoreMachine> {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
+
+        let mut machine = unsafe {
+            let machine_size =
+                std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
+
+            let layout = Layout::array::<u8>(machine_size).unwrap();
+            let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
+            Box::from_raw(raw_allocation)
+        };
+        machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+        machine.pc = 0;
+        machine.next_pc = 0;
+        machine.running = 0;
+        machine.cycles = 0;
+        machine.max_cycles = max_cycles;
+        if cfg!(feature = "enable-chaos-mode-by-default") {
+            machine.chaos_mode = 1;
+        } else {
+            machine.chaos_mode = 0;
+        }
+        machine.chaos_seed = 0;
+        machine.load_reservation_address = u64::MAX;
+        machine.reset_signal = 0;
+        machine.version = version;
+        machine.isa = isa;
+        machine.flags = [0; RISCV_PAGES];
+        for i in 0..TRACE_SIZE {
+            machine.traces[i] = Trace::default();
+        }
+        machine.frames = [0; MEMORY_FRAMES];
+
+        machine.memory_size = memory_size as u64;
+        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
+        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
+
+        machine.last_read_frame = u64::MAX;
+        machine.last_write_page = u64::MAX;
+
+        machine
+    }
+
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -473,34 +524,22 @@ pub struct AsmMachine {
     pub machine: DefaultMachine<Box<AsmCoreMachine>>,
 }
 
-impl AsmMachine {
-    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
+impl DefaultMachineRunner for AsmMachine {
+    type Inner = Box<AsmCoreMachine>;
+
+    fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
         Self { machine }
     }
 
-    pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner.max_cycles = cycles;
+    fn machine(&self) -> &DefaultMachine<Box<AsmCoreMachine>> {
+        &self.machine
     }
 
-    pub fn load_program(
-        &mut self,
-        program: &Bytes,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine.load_program(program, args)
+    fn machine_mut(&mut self) -> &mut DefaultMachine<Box<AsmCoreMachine>> {
+        &mut self.machine
     }
 
-    pub fn load_program_with_metadata(
-        &mut self,
-        program: &Bytes,
-        metadata: &ProgramMetadata,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine
-            .load_program_with_metadata(program, metadata, args)
-    }
-
-    pub fn run(&mut self) -> Result<i8, Error> {
+    fn run(&mut self) -> Result<i8, Error> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
@@ -572,6 +611,30 @@ impl AsmMachine {
             }
         }
         Ok(self.machine.exit_code())
+    }
+}
+
+impl AsmMachine {
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner.max_cycles = cycles;
+    }
+
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine
+            .load_program_with_metadata(program, metadata, args)
     }
 
     pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {

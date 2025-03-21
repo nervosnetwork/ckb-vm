@@ -39,7 +39,9 @@ impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
 
 #[cfg(has_asm)]
 fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
-    let asm_core = ckb_vm::machine::asm::AsmCoreMachine::new(
+    use ckb_vm::DefaultMachineRunner;
+
+    let asm_core = <Box<ckb_vm::machine::asm::AsmCoreMachine> as SupportMachine>::new(
         ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP | ckb_vm::ISA_A,
         ckb_vm::machine::VERSION2,
         u64::MAX,

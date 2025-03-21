@@ -5,8 +5,8 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1, VERSION2};
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{
-    DefaultMachineBuilder, Error, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
-    ISA_A, ISA_B, ISA_IMC, ISA_MOP,
+    DefaultMachineBuilder, DefaultMachineRunner, Error, Register, SparseMemory, SupportMachine,
+    Syscalls, WXorXMemory, ISA_A, ISA_B, ISA_IMC, ISA_MOP,
 };
 
 pub struct SleepSyscall {}
@@ -32,7 +32,8 @@ impl<Mac: SupportMachine> Syscalls<Mac> for SleepSyscall {
 #[cfg(has_asm)]
 pub fn asm_v1_imcb(path: &str) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B, VERSION1, u64::MAX);
+    let asm_core =
+        <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC | ISA_B, VERSION1, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))
@@ -73,7 +74,8 @@ pub fn asm_v1_mop(path: &str, args: Vec<Bytes>) -> AsmMachine {
 #[cfg(has_asm)]
 pub fn asm_mop(path: &str, args: Vec<Bytes>, version: u32) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, version, u64::MAX);
+    let asm_core =
+        <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC | ISA_B | ISA_MOP, version, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))
@@ -122,7 +124,8 @@ pub fn int_mop(
 #[cfg(has_asm)]
 pub fn asm_v2_imacb(path: &str) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::MAX);
+    let asm_core =
+        <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC | ISA_A | ISA_B, VERSION2, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))

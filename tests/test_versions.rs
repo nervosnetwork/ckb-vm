@@ -4,8 +4,9 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
 use ckb_vm::{
-    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, Error, Memory,
-    SparseMemory, TraceMachine, WXorXMemory, ISA_A, ISA_B, ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, DefaultMachineRunner,
+    Error, Memory, SparseMemory, SupportMachine, TraceMachine, WXorXMemory, ISA_A, ISA_B, ISA_IMC,
+    ISA_MOP, RISCV_PAGESIZE,
 };
 use std::fs;
 
@@ -29,7 +30,7 @@ fn create_rust_machine(
 fn create_asm_machine(program: String, version: u32) -> AsmMachine {
     let path = format!("tests/programs/{}", program);
     let buffer = fs::read(path).unwrap().into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC, version, u64::MAX);
+    let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, version, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine
@@ -258,7 +259,7 @@ pub fn test_asm_version0_unaligned64() {
     let buffer = fs::read(format!("tests/programs/{}", program))
         .unwrap()
         .into();
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
+    let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, VERSION0, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     let result = machine.load_program(&buffer, [Ok(program.into())].into_iter());
@@ -338,7 +339,11 @@ pub fn test_asm_version1_asm_trace_bug() {
     let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
 
     let mut machine = {
-        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION1, 2000);
+        let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(
+            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            VERSION1,
+            2000,
+        );
         let machine = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();
@@ -355,7 +360,11 @@ pub fn test_asm_version2_asm_trace_bug() {
     let buffer = fs::read("tests/programs/asm_trace_bug").unwrap().into();
 
     let mut machine = {
-        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, 2000);
+        let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(
+            ISA_IMC | ISA_A | ISA_B | ISA_MOP,
+            VERSION2,
+            2000,
+        );
         let machine = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();

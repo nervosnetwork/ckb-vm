@@ -8,7 +8,7 @@ use super::{
         },
         Error,
     },
-    CoreMachine, DefaultMachine, Machine, SupportMachine, VERSION2,
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
 };
 use bytes::Bytes;
 
@@ -104,8 +104,10 @@ impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> TraceMachine<Inner> {
-    pub fn new(machine: DefaultMachine<Inner>) -> Self {
+impl<Inner: SupportMachine> DefaultMachineRunner for TraceMachine<Inner> {
+    type Inner = Inner;
+
+    fn new(machine: DefaultMachine<Inner>) -> Self {
         Self {
             machine,
             factory: ThreadFactory::create(),
@@ -113,29 +115,15 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
         }
     }
 
-    pub fn load_program(
-        &mut self,
-        program: &Bytes,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine.load_program(program, args)
+    fn machine(&self) -> &DefaultMachine<Inner> {
+        &self.machine
     }
 
-    pub fn load_program_with_metadata(
-        &mut self,
-        program: &Bytes,
-        metadata: &ProgramMetadata,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine
-            .load_program_with_metadata(program, metadata, args)
+    fn machine_mut(&mut self) -> &mut DefaultMachine<Inner> {
+        &mut self.machine
     }
 
-    pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner_mut().set_max_cycles(cycles)
-    }
-
-    pub fn run(&mut self) -> Result<i8, Error> {
+    fn run(&mut self) -> Result<i8, Error> {
         let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
@@ -192,6 +180,30 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             }
         }
         Ok(self.machine.exit_code())
+    }
+}
+
+impl<Inner: SupportMachine> TraceMachine<Inner> {
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine
+            .load_program_with_metadata(program, metadata, args)
+    }
+
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner_mut().set_max_cycles(cycles)
     }
 }
 

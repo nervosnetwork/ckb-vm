@@ -22,7 +22,8 @@ pub use crate::{
     instructions::{Instruction, Register},
     machine::{
         trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
-        DefaultMachineBuilder, FlattenedArgsReader, InstructionCycleFunc, Machine, SupportMachine,
+        DefaultMachineBuilder, DefaultMachineRunner, FlattenedArgsReader, InstructionCycleFunc,
+        Machine, SupportMachine,
     },
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,

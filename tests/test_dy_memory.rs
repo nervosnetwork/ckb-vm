@@ -2,9 +2,9 @@
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, VERSION0,
+        DefaultMachineBuilder, SupportMachine, VERSION0,
     },
-    ISA_IMC,
+    DefaultMachineRunner, ISA_IMC,
 };
 use ckb_vm::{run, FlatMemory, SparseMemory};
 use std::fs;
@@ -22,7 +22,12 @@ fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {
 
     #[cfg(has_asm)]
     {
-        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
+        let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new_with_memory(
+            ISA_IMC,
+            VERSION0,
+            u64::MAX,
+            memory_size,
+        );
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
@@ -57,7 +62,12 @@ fn test_memory_out_of_bounds() {
 
     #[cfg(has_asm)]
     {
-        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
+        let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new_with_memory(
+            ISA_IMC,
+            VERSION0,
+            u64::MAX,
+            memory_size,
+        );
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
