@@ -1,5 +1,5 @@
 use ckb_vm::machine::VERSION2;
-use ckb_vm::{Error, SupportMachine, ISA_B, ISA_IMC};
+use ckb_vm::{DefaultMachineRunner, Error, SupportMachine, ISA_B, ISA_IMC};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 pub mod machine_build;

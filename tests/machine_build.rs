@@ -1,11 +1,12 @@
 use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
-use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine};
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{
-    DefaultMachineBuilder, Error, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
+    DefaultMachineRunner, Error, Register, RustDefaultMachineBuilder, SparseMemory, SupportMachine,
+    Syscalls, WXorXMemory,
 };
 
 pub struct SleepSyscall {}
@@ -32,7 +33,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for SleepSyscall {
 pub fn asm(path: &str, args: Vec<Bytes>, version: u32, isa: u8) -> AsmMachine {
     let buffer: Bytes = std::fs::read(path).unwrap().into();
     let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
-    let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+    let core = AsmDefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(SleepSyscall {}))
         .build();
@@ -53,7 +54,7 @@ pub fn int(
     let core_machine =
         DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(isa, version, u64::MAX);
     let mut machine = TraceMachine::new(
-        DefaultMachineBuilder::new(core_machine)
+        RustDefaultMachineBuilder::new(core_machine)
             .instruction_cycle_func(Box::new(constant_cycles))
             .syscall(Box::new(SleepSyscall {}))
             .build(),

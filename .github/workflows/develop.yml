@@ -89,7 +89,7 @@ jobs:
           ln -snf .. ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
           cd ckb-vm-test-suite
-          git checkout 898edc351eeb4de974ca4f0ff8d1e4943a95aecb
+          git checkout 2be7dcb0fda7ab41932813632fd1904e8cecf1f0
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh
 
@@ -161,7 +161,7 @@ jobs:
           ln -snf .. ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
           cd ckb-vm-test-suite
-          git checkout 898edc351eeb4de974ca4f0ff8d1e4943a95aecb
+          git checkout 2be7dcb0fda7ab41932813632fd1904e8cecf1f0
           git submodule update --init --recursive
           RISCV=`pwd`/../riscv ./test.sh --build-only
           cd ..

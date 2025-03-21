@@ -1,6 +1,4 @@
-use super::super::{
-    error::OutOfBoundKind, Error, Register, DEFAULT_MEMORY_SIZE, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
-};
+use super::super::{error::OutOfBoundKind, Error, Register, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
 use super::{check_no_overflow, fill_page_data, memset, round_page_down, Memory, Page, FLAG_DIRTY};
 
 use bytes::Bytes;
@@ -67,8 +65,12 @@ impl<R: Register> SparseMemory<R> {
         }
         Ok(value)
     }
+}
 
-    pub fn new_with_memory(memory_size: usize) -> Self {
+impl<R: Register> Memory for SparseMemory<R> {
+    type REG = R;
+
+    fn new(memory_size: usize) -> Self {
         assert!(memory_size % RISCV_PAGESIZE == 0);
         Self {
             indices: vec![INVALID_PAGE_INDEX; memory_size / RISCV_PAGESIZE],
@@ -79,24 +81,6 @@ impl<R: Register> SparseMemory<R> {
             load_reservation_address: R::from_u64(u64::MAX),
             _inner: PhantomData,
         }
-    }
-}
-
-impl<R: Register> Default for SparseMemory<R> {
-    fn default() -> Self {
-        Self::new_with_memory(DEFAULT_MEMORY_SIZE)
-    }
-}
-
-impl<R: Register> Memory for SparseMemory<R> {
-    type REG = R;
-
-    fn reset_memory(&mut self) -> Result<(), Error> {
-        self.indices = vec![INVALID_PAGE_INDEX; self.indices.len()];
-        memset(&mut self.flags, 0);
-        self.pages.clear();
-        self.load_reservation_address = R::from_u64(u64::MAX);
-        Ok(())
     }
 
     fn init_pages(

@@ -2,7 +2,10 @@ pub mod machine_build;
 use bytes::Bytes;
 use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::{VERSION1, VERSION2};
-use ckb_vm::{registers::A0, CoreMachine, Error, SupportMachine, ISA_B, ISA_IMC, ISA_MOP};
+use ckb_vm::{
+    registers::A0, CoreMachine, DefaultMachineRunner, Error, SupportMachine, ISA_B, ISA_IMC,
+    ISA_MOP,
+};
 
 #[test]
 #[cfg_attr(miri, ignore)]

@@ -2,6 +2,8 @@ use ckb_vm::{machine::VERSION1, ISA_B, ISA_IMC};
 
 pub mod machine_build;
 
+use ckb_vm::DefaultMachineRunner;
+
 #[test]
 pub fn test_clzw_bug() {
     let mut machine =

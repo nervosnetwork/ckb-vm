@@ -9,29 +9,32 @@ use ckb_vm_definitions::{
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
         RET_PAUSE, RET_SLOWPATH,
     },
-    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS,
+    ISA_MOP, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS,
 };
 use rand::{prelude::RngCore, SeedableRng};
+use std::alloc::{alloc, alloc_zeroed, Layout};
+use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
 
 use crate::{
-    decoder::{build_decoder, InstDecoder},
     elf::ProgramMetadata,
     error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
         asm::traces::{decode_fixed_trace, SimpleFixedTraceDecoder, TraceDecoder},
-        VERSION0,
+        AbstractDefaultMachineBuilder, VERSION0,
     },
     memory::{
         check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
         round_page_up, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
     },
-    CoreMachine, DefaultMachine, Error, Machine, Memory, SupportMachine, MEMORY_FRAME_SHIFTS,
-    RISCV_PAGESIZE,
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, Machine, Memory, SupportMachine,
+    MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
 };
 
-impl CoreMachine for Box<AsmCoreMachine> {
+impl CoreMachine for AsmCoreMachine {
     type REG = u64;
     type MEM = Self;
 
@@ -119,7 +122,7 @@ fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<()
 
 // check whether a memory address is writable or not and mark it as dirty, `size` should be 1, 2, 4 or 8
 fn check_memory_writable(
-    machine: &mut Box<AsmCoreMachine>,
+    machine: &mut AsmCoreMachine,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -152,7 +155,7 @@ fn check_memory_writable(
 
 // check whether a memory address is executable, `size` should be 2 or 4
 fn check_memory_executable(
-    machine: &mut Box<AsmCoreMachine>,
+    machine: &mut AsmCoreMachine,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -183,11 +186,7 @@ fn check_memory_executable(
 }
 
 // check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
-fn check_memory_inited(
-    machine: &mut Box<AsmCoreMachine>,
-    addr: u64,
-    size: usize,
-) -> Result<(), Error> {
+fn check_memory_inited(machine: &mut AsmCoreMachine, addr: u64, size: usize) -> Result<(), Error> {
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= machine.memory_pages() {
@@ -213,7 +212,7 @@ fn check_memory_inited(
 
 // A newtype supporting fast store_byte / store_bytes without memory
 // permission checking
-struct FastMemory<'a>(&'a mut Box<AsmCoreMachine>);
+struct FastMemory<'a>(&'a mut AsmCoreMachine);
 
 impl<'a> FastMemory<'a> {
     fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
@@ -251,6 +250,10 @@ impl<'a> FastMemory<'a> {
 impl<'a> Memory for FastMemory<'a> {
     type REG = u64;
 
+    fn new(_memory_size: usize) -> Self {
+        unreachable!()
+    }
+
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         if value.is_empty() {
             return Ok(());
@@ -269,10 +272,6 @@ impl<'a> Memory for FastMemory<'a> {
         let slice = cast_ptr_to_slice_mut(self.0, self.0.memory_ptr, addr as usize, size as usize);
         memset(slice, value);
         Ok(())
-    }
-
-    fn reset_memory(&mut self) -> Result<(), Error> {
-        unreachable!()
     }
 
     fn init_pages(
@@ -355,18 +354,11 @@ impl<'a> Memory for FastMemory<'a> {
     }
 }
 
-impl Memory for Box<AsmCoreMachine> {
+impl Memory for AsmCoreMachine {
     type REG = u64;
 
-    fn reset_memory(&mut self) -> Result<(), Error> {
-        let slice = cast_ptr_to_slice_mut(self, self.flags_ptr, 0, self.flags_size as usize);
-        memset(slice, 0);
-        let slice = cast_ptr_to_slice_mut(self, self.frames_ptr, 0, self.frames_size as usize);
-        memset(slice, 0);
-        self.load_reservation_address = u64::MAX;
-        self.last_read_frame = u64::MAX;
-        self.last_write_page = u64::MAX;
-        Ok(())
+    fn new(_memory_size: usize) -> Self {
+        unreachable!()
     }
 
     fn init_pages(
@@ -600,7 +592,44 @@ impl Memory for Box<AsmCoreMachine> {
     }
 }
 
-impl SupportMachine for Box<AsmCoreMachine> {
+impl SupportMachine for AsmCoreMachine {
+    fn new_with_memory(
+        isa: u8,
+        version: u32,
+        max_cycles: u64,
+        memory_size: usize,
+    ) -> AsmCoreMachine {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
+
+        let mut machine: AsmCoreMachine = unsafe { MaybeUninit::zeroed().assume_init() };
+
+        machine.max_cycles = max_cycles;
+        if cfg!(feature = "enable-chaos-mode-by-default") {
+            machine.chaos_mode = 1;
+        }
+        machine.load_reservation_address = u64::MAX;
+        machine.version = version;
+        machine.isa = isa;
+
+        machine.memory_size = memory_size as u64;
+        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
+        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
+
+        machine.last_read_frame = u64::MAX;
+        machine.last_write_page = u64::MAX;
+
+        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
+        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
+        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
+
+        machine
+    }
+
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -623,7 +652,17 @@ impl SupportMachine for Box<AsmCoreMachine> {
         self.cycles = 0;
         self.max_cycles = max_cycles;
         self.reset_signal = 1;
-        self.reset_memory()
+
+        // Reset memory
+        let slice = cast_ptr_to_slice_mut(self, self.flags_ptr, 0, self.flags_size as usize);
+        memset(slice, 0);
+        let slice = cast_ptr_to_slice_mut(self, self.frames_ptr, 0, self.frames_size as usize);
+        memset(slice, 0);
+        self.load_reservation_address = u64::MAX;
+        self.last_read_frame = u64::MAX;
+        self.last_write_page = u64::MAX;
+
+        Ok(())
     }
 
     fn reset_signal(&mut self) -> bool {
@@ -653,44 +692,38 @@ extern "C" {
     pub fn ckb_vm_asm_labels();
 }
 
-pub struct AsmMachine {
-    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+/// This builder only works with assembly VMs
+pub type AsmDefaultMachineBuilder =
+    AbstractDefaultMachineBuilder<AsmCoreMachine, SimpleFixedTraceDecoder>;
+pub type AsmDefaultMachine = DefaultMachine<AsmCoreMachine, SimpleFixedTraceDecoder>;
+
+pub type AsmMachine = AbstractAsmMachine<SimpleFixedTraceDecoder>;
+
+pub struct AbstractAsmMachine<Decoder: TraceDecoder> {
+    pub machine: DefaultMachine<AsmCoreMachine, Decoder>,
+    phantom: PhantomData<Decoder>,
 }
 
-impl AsmMachine {
-    pub fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
-        Self { machine }
+impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder> {
+    type Inner = AsmCoreMachine;
+    type Decoder = Decoder;
+
+    fn new(machine: DefaultMachine<AsmCoreMachine, Decoder>) -> Self {
+        Self {
+            machine,
+            phantom: PhantomData,
+        }
     }
 
-    pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner.max_cycles = cycles;
+    fn machine(&self) -> &DefaultMachine<AsmCoreMachine, Decoder> {
+        &self.machine
     }
 
-    pub fn load_program(
-        &mut self,
-        program: &Bytes,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine.load_program(program, args)
+    fn machine_mut(&mut self) -> &mut DefaultMachine<AsmCoreMachine, Decoder> {
+        &mut self.machine
     }
 
-    pub fn load_program_with_metadata(
-        &mut self,
-        program: &Bytes,
-        metadata: &ProgramMetadata,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine
-            .load_program_with_metadata(program, metadata, args)
-    }
-
-    pub fn run(&mut self) -> Result<i8, Error> {
-        let decoder = build_decoder::<u64>(self.machine.isa(), self.machine.version());
-        let mut decoder = SimpleFixedTraceDecoder::new(decoder);
-        self.run_with_decoder(&mut decoder)
-    }
-
-    pub fn run_with_decoder<D: TraceDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
+    fn run_with_decoder(&mut self, decoder: &mut Self::Decoder) -> Result<i8, Error> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
@@ -706,7 +739,7 @@ impl AsmMachine {
                     fixed_traces: decoder.fixed_traces(),
                     fixed_trace_mask: decoder.fixed_trace_size().wrapping_sub(1),
                 };
-                ckb_vm_x64_execute(&mut **self.machine.inner_mut(), &data as *const _)
+                ckb_vm_x64_execute(&mut *self.machine.inner_mut(), &data as *const _)
             };
             match result {
                 RET_DECODE_TRACE => decoder.prepare_traces(&mut self.machine)?,
@@ -740,8 +773,32 @@ impl AsmMachine {
         }
         Ok(self.machine.exit_code())
     }
+}
 
-    pub fn step<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<(), Error> {
+impl<Decoder: TraceDecoder> AbstractAsmMachine<Decoder> {
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner.max_cycles = cycles;
+    }
+
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine
+            .load_program_with_metadata(program, metadata, args)
+    }
+
+    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
         // Decode only one instruction into a trace
         let (trace, _) = decode_fixed_trace(decoder, &mut self.machine, Some(1))?;
 
@@ -751,7 +808,7 @@ impl AsmMachine {
                 fixed_traces: &trace as *const FixedTrace,
                 fixed_trace_mask: 0,
             };
-            ckb_vm_x64_execute(&mut **self.machine.inner_mut(), &data as *const _)
+            ckb_vm_x64_execute(&mut *self.machine.inner_mut(), &data as *const _)
         };
         match result {
             RET_DECODE_TRACE => (),

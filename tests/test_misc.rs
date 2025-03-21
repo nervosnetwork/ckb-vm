@@ -3,9 +3,9 @@ use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
-    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, DEFAULT_MEMORY_SIZE,
-    ISA_B, ISA_IMC, RISCV_PAGESIZE,
+    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineRunner, Error, FlatMemory,
+    Memory, Register, RustDefaultMachineBuilder, SparseMemory, SupportMachine, Syscalls,
+    WXorXMemory, DEFAULT_MEMORY_SIZE, ISA_B, ISA_IMC, RISCV_PAGESIZE,
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
@@ -59,7 +59,7 @@ pub fn test_custom_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine =
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
-    let mut machine = DefaultMachineBuilder::new(core_machine)
+    let mut machine = RustDefaultMachineBuilder::new(core_machine)
         .syscall(Box::new(CustomSyscall {}))
         .build();
     machine
@@ -92,7 +92,7 @@ pub fn test_ebreak() {
     let value = Arc::new(AtomicU8::new(0));
     let core_machine =
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
-    let mut machine = DefaultMachineBuilder::new(core_machine)
+    let mut machine = RustDefaultMachineBuilder::new(core_machine)
         .debugger(Box::new(CustomDebugger {
             value: Arc::clone(&value),
         }))
@@ -202,7 +202,7 @@ pub fn test_wxorx_crash_64() {
 pub fn test_flat_crash_64() {
     let buffer = fs::read("tests/programs/flat_crash_64").unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, FlatMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
-    let mut machine = DefaultMachineBuilder::new(core_machine).build();
+    let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
     let result = machine.load_program(&buffer, [Ok("flat_crash_64".into())].into_iter());
     assert_eq!(
         result.err(),
@@ -212,11 +212,15 @@ pub fn test_flat_crash_64() {
 
 #[test]
 pub fn test_memory_store_empty_bytes() {
-    assert_memory_store_empty_bytes(&mut FlatMemory::<u64>::default());
-    assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::default());
-    assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::default());
+    assert_memory_store_empty_bytes(&mut FlatMemory::<u64>::new(DEFAULT_MEMORY_SIZE));
+    assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::new(DEFAULT_MEMORY_SIZE));
+    assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::new(
+        DEFAULT_MEMORY_SIZE,
+    ));
     #[cfg(has_asm)]
-    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000));
+    assert_memory_store_empty_bytes(&mut <AsmCoreMachine as SupportMachine>::new(
+        ISA_IMC, VERSION0, 200_000,
+    ));
 }
 
 fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
@@ -242,19 +246,14 @@ fn assert_memory_load_bytes_all<R: Rng>(
 ) {
     assert_memory_load_bytes(
         rng,
-        &mut SparseMemory::<u64>::new_with_memory(max_memory),
+        &mut SparseMemory::<u64>::new(max_memory),
         buf_size,
         addr,
     );
+    assert_memory_load_bytes(rng, &mut FlatMemory::<u64>::new(max_memory), buf_size, addr);
     assert_memory_load_bytes(
         rng,
-        &mut FlatMemory::<u64>::new_with_memory(max_memory),
-        buf_size,
-        addr,
-    );
-    assert_memory_load_bytes(
-        rng,
-        &mut WXorXMemory::new(FlatMemory::<u64>::new_with_memory(max_memory)),
+        &mut WXorXMemory::<FlatMemory<u64>>::new(max_memory),
         buf_size,
         addr,
     );
@@ -262,7 +261,7 @@ fn assert_memory_load_bytes_all<R: Rng>(
     #[cfg(has_asm)]
     assert_memory_load_bytes(
         rng,
-        &mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000),
+        &mut <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION0, 200_000),
         buf_size,
         addr,
     );
@@ -367,7 +366,7 @@ pub fn test_rvc_pageend() {
     let buffer = fs::read("tests/programs/rvc_pageend").unwrap().into();
     let core_machine =
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
-    let mut machine = DefaultMachineBuilder::new(core_machine).build();
+    let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
     machine
         .load_program(&buffer, [Ok("rvc_end".into())].into_iter())
         .unwrap();
@@ -418,7 +417,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for OutOfCyclesSyscall {
 pub fn test_outofcycles_in_syscall() {
     let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, 20);
-    let mut machine = DefaultMachineBuilder::new(core_machine)
+    let mut machine = RustDefaultMachineBuilder::new(core_machine)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(OutOfCyclesSyscall {}))
         .build();

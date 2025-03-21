@@ -3,17 +3,18 @@ pub mod machine_build;
 use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::elf::parse_elf;
-use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
-    CoreMachine, DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1, VERSION2,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, SupportMachine,
+    VERSION0, VERSION1, VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
 #[allow(unused_imports)]
 use ckb_vm::Memory;
-use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_A, ISA_IMC};
+use ckb_vm::{Error, Register, RustDefaultMachineBuilder, Syscalls, ISA_A, ISA_IMC};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -394,8 +395,9 @@ impl MachineTy {
         match self {
             MachineTy::Asm => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC | ISA_A, version, 0);
-                let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
+                let asm_core1 =
+                    <AsmCoreMachine as SupportMachine>::new(ISA_IMC | ISA_A, version, 0);
+                let core1 = AsmDefaultMachineBuilder::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .syscall(Box::new(InsertDataSyscall(context.clone())))
                     .build();
@@ -409,9 +411,9 @@ impl MachineTy {
                     0,
                 );
                 Machine::Interpreter(
-                    DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
-                        core_machine1,
-                    )
+                    RustDefaultMachineBuilder::<
+                        DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
+                    >::new(core_machine1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .syscall(Box::new(InsertDataSyscall(context.clone())))
                     .build(),
@@ -427,7 +429,7 @@ impl MachineTy {
                 );
                 Machine::InterpreterWithTrace(
                     TraceMachine::new(
-                        DefaultMachineBuilder::<
+                        RustDefaultMachineBuilder::<
                             DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
                         >::new(core_machine1)
                         .instruction_cycle_func(Box::new(constant_cycles))

@@ -1,6 +1,6 @@
 use super::{
     super::{
-        decoder::{build_decoder, InstDecoder},
+        decoder::{DefaultDecoder, InstDecoder},
         elf::ProgramMetadata,
         instructions::{
             execute_with_thread, extract_opcode, handle_invalid_op, instruction_length,
@@ -8,9 +8,10 @@ use super::{
         },
         Error,
     },
-    CoreMachine, DefaultMachine, Machine, SupportMachine, VERSION2,
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
 };
 use bytes::Bytes;
+use std::marker::PhantomData;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -46,14 +47,17 @@ fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> TRACE_ADDRESS_SHIFTS) & TRACE_MASK
 }
 
-pub struct TraceMachine<Inner: SupportMachine> {
-    pub machine: DefaultMachine<Inner>,
+pub type TraceMachine<Inner> = AbstractTraceMachine<Inner, DefaultDecoder>;
 
-    factory: ThreadFactory<DefaultMachine<Inner>>,
-    traces: Vec<Trace<DefaultMachine<Inner>>>,
+pub struct AbstractTraceMachine<Inner: SupportMachine, Decoder> {
+    pub machine: DefaultMachine<Inner, Decoder>,
+
+    factory: ThreadFactory<DefaultMachine<Inner, Decoder>>,
+    traces: Vec<Trace<DefaultMachine<Inner, Decoder>>>,
+    phantom: PhantomData<Decoder>,
 }
 
-impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
+impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner, Decoder> {
     type REG = <Inner as CoreMachine>::REG;
     type MEM = <Inner as CoreMachine>::MEM;
 
@@ -94,7 +98,7 @@ impl<Inner: SupportMachine> CoreMachine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
+impl<Inner: SupportMachine, Decoder> Machine for AbstractTraceMachine<Inner, Decoder> {
     fn ecall(&mut self) -> Result<(), Error> {
         self.machine.ecall()
     }
@@ -104,43 +108,30 @@ impl<Inner: SupportMachine> Machine for TraceMachine<Inner> {
     }
 }
 
-impl<Inner: SupportMachine> TraceMachine<Inner> {
-    pub fn new(machine: DefaultMachine<Inner>) -> Self {
+impl<Inner: SupportMachine, Decoder: InstDecoder> DefaultMachineRunner
+    for AbstractTraceMachine<Inner, Decoder>
+{
+    type Inner = Inner;
+    type Decoder = Decoder;
+
+    fn new(machine: DefaultMachine<Inner, Decoder>) -> Self {
         Self {
             machine,
             factory: ThreadFactory::create(),
             traces: vec![],
+            phantom: PhantomData,
         }
     }
 
-    pub fn load_program(
-        &mut self,
-        program: &Bytes,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine.load_program(program, args)
+    fn machine(&self) -> &DefaultMachine<Inner, Decoder> {
+        &self.machine
     }
 
-    pub fn load_program_with_metadata(
-        &mut self,
-        program: &Bytes,
-        metadata: &ProgramMetadata,
-        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
-    ) -> Result<u64, Error> {
-        self.machine
-            .load_program_with_metadata(program, metadata, args)
+    fn machine_mut(&mut self) -> &mut DefaultMachine<Inner, Decoder> {
+        &mut self.machine
     }
 
-    pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner_mut().set_max_cycles(cycles)
-    }
-
-    pub fn run(&mut self) -> Result<i8, Error> {
-        let mut decoder = build_decoder::<Inner::REG>(self.isa(), self.version());
-        self.run_with_decoder(&mut decoder)
-    }
-
-    pub fn run_with_decoder<D: InstDecoder>(&mut self, decoder: &mut D) -> Result<i8, Error> {
+    fn run_with_decoder(&mut self, decoder: &mut Self::Decoder) -> Result<i8, Error> {
         self.machine.set_running(true);
         // For current trace size this is acceptable, however we might want
         // to tweak the code here if we choose to use a larger trace size or
@@ -196,6 +187,30 @@ impl<Inner: SupportMachine> TraceMachine<Inner> {
             }
         }
         Ok(self.machine.exit_code())
+    }
+}
+
+impl<Inner: SupportMachine, Decoder> AbstractTraceMachine<Inner, Decoder> {
+    pub fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine.load_program(program, args)
+    }
+
+    pub fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine
+            .load_program_with_metadata(program, metadata, args)
+    }
+
+    pub fn set_max_cycles(&mut self, cycles: u64) {
+        self.machine.inner_mut().set_max_cycles(cycles)
     }
 }
 

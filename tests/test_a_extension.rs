@@ -1,4 +1,4 @@
-use ckb_vm::{machine::VERSION2, Error, ISA_A, ISA_IMC};
+use ckb_vm::{machine::VERSION2, DefaultMachineRunner, Error, ISA_A, ISA_IMC};
 #[cfg(has_asm)]
 use ckb_vm::{CoreMachine, Memory};
 pub mod machine_build;
