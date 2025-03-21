@@ -6,7 +6,7 @@ use bytes::Bytes;
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, VERSION0, VERSION2,
+        DefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0, VERSION2,
     },
     ISA_B, ISA_IMC, ISA_MOP,
 };
@@ -40,7 +40,7 @@ fn asm_benchmark(c: &mut Criterion) {
             "bar",
         ].into_iter().map(|a| Ok(a.into()));
         b.iter(|| {
-            let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
+            let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, VERSION0, u64::MAX);
             let core = DefaultMachineBuilder::new(asm_core).build();
             let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, args.clone()).unwrap();
@@ -61,7 +61,7 @@ fn mop_benchmark(c: &mut Criterion) {
             "bar",
         ].into_iter().map(|a| Ok(a.into()));
         b.iter(|| {
-            let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
+            let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
             let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);
