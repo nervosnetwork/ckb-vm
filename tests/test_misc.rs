@@ -221,7 +221,9 @@ pub fn test_memory_store_empty_bytes() {
     assert_memory_store_empty_bytes(&mut SparseMemory::<u64>::new());
     assert_memory_store_empty_bytes(&mut WXorXMemory::<FlatMemory<u64>>::new());
     #[cfg(has_asm)]
-    assert_memory_store_empty_bytes(&mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000));
+    assert_memory_store_empty_bytes(&mut <Box<AsmCoreMachine> as SupportMachine>::new(
+        ISA_IMC, VERSION0, 200_000,
+    ));
 }
 
 fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
@@ -267,7 +269,7 @@ fn assert_memory_load_bytes_all<R: Rng>(
     #[cfg(has_asm)]
     assert_memory_load_bytes(
         rng,
-        &mut AsmCoreMachine::new(ISA_IMC, VERSION0, 200_000),
+        &mut <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, VERSION0, 200_000),
         buf_size,
         addr,
     );

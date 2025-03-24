@@ -5,7 +5,8 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
-    DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1, VERSION2,
+    DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, SupportMachine, VERSION0, VERSION1,
+    VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::snapshot::{make_snapshot, resume, Snapshot};
@@ -208,7 +209,8 @@ impl MachineTy {
     fn build(self, version: u32, max_cycles: u64) -> Machine {
         match self {
             MachineTy::Asm => {
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
+                let asm_core1 =
+                    <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, version, max_cycles);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .build();

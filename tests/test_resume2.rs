@@ -6,7 +6,8 @@ use ckb_vm::elf::parse_elf;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
-    CoreMachine, DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1, VERSION2,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, SupportMachine,
+    VERSION0, VERSION1, VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
@@ -394,7 +395,8 @@ impl MachineTy {
         match self {
             MachineTy::Asm => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC | ISA_A, version, 0);
+                let asm_core1 =
+                    <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC | ISA_A, version, 0);
                 let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .syscall(Box::new(InsertDataSyscall(context.clone())))

@@ -9,7 +9,7 @@ use std::process::{id, Command};
 use ckb_vm::{
     machine::{
         asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, VERSION0,
+        DefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0,
     },
     ISA_IMC,
 };
@@ -168,7 +168,12 @@ fn check_asm(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
+        let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new_with_memory(
+            ISA_IMC,
+            VERSION0,
+            u64::MAX,
+            memory_size,
+        );
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
@@ -192,7 +197,12 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
+        let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new_with_memory(
+            ISA_IMC,
+            VERSION0,
+            u64::MAX,
+            memory_size,
+        );
         let core = DefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine

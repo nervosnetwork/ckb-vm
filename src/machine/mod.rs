@@ -62,6 +62,19 @@ pub trait Machine: CoreMachine {
 /// such as ELF range, cycles which might be needed on Rust side of the logic,
 /// such as runner or syscall implementations.
 pub trait SupportMachine: CoreMachine {
+    /// Instantiate using default memory size
+    fn new(isa: u8, version: u32, max_cycles: u64) -> Self
+    where
+        Self: Sized,
+    {
+        Self::new_with_memory(isa, version, max_cycles, RISCV_MAX_MEMORY)
+    }
+
+    /// Instantiation function
+    fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self
+    where
+        Self: Sized;
+
     // Current execution cycles, it's up to the actual implementation to
     // call add_cycles for each instruction/operation to provide cycles.
     // The implementation might also choose not to do this to ignore this
@@ -262,6 +275,48 @@ pub trait SupportMachine: CoreMachine {
     fn code(&self) -> &Bytes;
 }
 
+/// A runner trait providing APIs to drive the included DefaultMachine
+pub trait DefaultMachineRunner {
+    type Inner: SupportMachine;
+
+    /// Creates a new runner
+    fn new(machine: DefaultMachine<Self::Inner>) -> Self;
+
+    /// Fetches DefaultMachine
+    fn machine(&self) -> &DefaultMachine<Self::Inner>;
+
+    /// Fetches mutable DefaultMachine
+    fn machine_mut(&mut self) -> &mut DefaultMachine<Self::Inner>;
+
+    /// Runs the VM till paused
+    fn run(&mut self) -> Result<i8, Error>;
+
+    /// Fetches the inner SupportMachine for more processing
+    fn inner_mut(&mut self) -> &mut Self::Inner {
+        self.machine_mut().inner_mut()
+    }
+
+    /// Loads program
+    fn load_program(
+        &mut self,
+        program: &Bytes,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine_mut().load_program(program, args)
+    }
+
+    /// Loads program with lazy loading metadata
+    fn load_program_with_metadata(
+        &mut self,
+        program: &Bytes,
+        metadata: &ProgramMetadata,
+        args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
+    ) -> Result<u64, Error> {
+        self.machine_mut()
+            .load_program_with_metadata(program, metadata, args)
+    }
+}
+
 #[derive(Default)]
 pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
@@ -319,6 +374,23 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
 }
 
 impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
+    fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
+        Self {
+            registers: Default::default(),
+            pc: Default::default(),
+            next_pc: Default::default(),
+            reset_signal: Default::default(),
+            memory: M::new_with_memory(memory_size),
+            cycles: Default::default(),
+            max_cycles,
+            running: Default::default(),
+            isa,
+            version,
+            #[cfg(feature = "pprof")]
+            code: Default::default(),
+        }
+    }
+
     fn cycles(&self) -> u64 {
         self.cycles
     }
@@ -387,27 +459,6 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
 }
 
 impl<R: Register, M: Memory> DefaultCoreMachine<R, M> {
-    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Self {
-        Self::new_with_memory(isa, version, max_cycles, RISCV_MAX_MEMORY)
-    }
-
-    pub fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
-        Self {
-            registers: Default::default(),
-            pc: Default::default(),
-            next_pc: Default::default(),
-            reset_signal: Default::default(),
-            memory: M::new_with_memory(memory_size),
-            cycles: Default::default(),
-            max_cycles,
-            running: Default::default(),
-            isa,
-            version,
-            #[cfg(feature = "pprof")]
-            code: Default::default(),
-        }
-    }
-
     pub fn set_max_cycles(&mut self, cycles: u64) {
         self.max_cycles = cycles;
     }
@@ -475,6 +526,10 @@ impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
 }
 
 impl<Inner: SupportMachine> SupportMachine for DefaultMachine<Inner> {
+    fn new_with_memory(_isa: u8, _version: u32, _max_cycles: u64, _memory_size: usize) -> Self {
+        panic!("Please instantiate DefaultMachine using DefaultMachineBuilder!");
+    }
+
     fn cycles(&self) -> u64 {
         self.inner.cycles()
     }
@@ -574,6 +629,26 @@ impl<Inner: CoreMachine> Display for DefaultMachine<Inner> {
             }
         }
         Ok(())
+    }
+}
+
+impl<Inner: SupportMachine> DefaultMachineRunner for DefaultMachine<Inner> {
+    type Inner = Inner;
+
+    fn new(machine: DefaultMachine<Inner>) -> Self {
+        machine
+    }
+
+    fn machine(&self) -> &DefaultMachine<Inner> {
+        self
+    }
+
+    fn machine_mut(&mut self) -> &mut DefaultMachine<Inner> {
+        self
+    }
+
+    fn run(&mut self) -> Result<i8, Error> {
+        self.run()
     }
 }
 

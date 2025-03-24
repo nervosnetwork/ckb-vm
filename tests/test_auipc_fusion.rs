@@ -7,6 +7,7 @@ use ckb_vm::machine::VERSION1;
 use ckb_vm::{
     instructions::{blank_instruction, is_basic_block_end_instruction},
     machine::asm::{AsmCoreMachine, AsmMachine},
+    DefaultMachineRunner,
 };
 use ckb_vm::{
     CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
@@ -85,7 +86,7 @@ pub fn test_asm_auipc_fusion() {
         .unwrap()
         .into();
 
-    let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION1, u64::MAX);
+    let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, VERSION1, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
     machine

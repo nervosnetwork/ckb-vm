@@ -4,8 +4,8 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachineBuilder, VERSION1};
 use ckb_vm::{
-    registers::A7, Error, Register, SparseMemory, SupportMachine, Syscalls, TraceMachine,
-    WXorXMemory, DEFAULT_STACK_SIZE, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY,
+    registers::A7, DefaultMachineRunner, Error, Register, SparseMemory, SupportMachine, Syscalls,
+    TraceMachine, WXorXMemory, DEFAULT_STACK_SIZE, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY,
 };
 
 #[allow(dead_code)]
@@ -90,7 +90,8 @@ fn test_reset_asm() {
     let code_data = std::fs::read("tests/programs/reset_caller").unwrap();
     let code = Bytes::from(code_data);
 
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_MOP, VERSION1, u64::MAX);
+    let asm_core =
+        <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC | ISA_MOP, VERSION1, u64::MAX);
     let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(CustomSyscall {}))
