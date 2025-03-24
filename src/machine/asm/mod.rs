@@ -14,7 +14,6 @@ use ckb_vm_definitions::{
 };
 use rand::{prelude::RngCore, SeedableRng};
 use std::alloc::{alloc, alloc_zeroed, Layout};
-use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
 
@@ -701,7 +700,6 @@ pub type AsmMachine = AbstractAsmMachine<SimpleFixedTraceDecoder>;
 
 pub struct AbstractAsmMachine<Decoder: TraceDecoder> {
     pub machine: DefaultMachine<AsmCoreMachine, Decoder>,
-    phantom: PhantomData<Decoder>,
 }
 
 impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder> {
@@ -709,10 +707,7 @@ impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder>
     type Decoder = Decoder;
 
     fn new(machine: DefaultMachine<AsmCoreMachine, Decoder>) -> Self {
-        Self {
-            machine,
-            phantom: PhantomData,
-        }
+        Self { machine }
     }
 
     fn machine(&self) -> &DefaultMachine<AsmCoreMachine, Decoder> {

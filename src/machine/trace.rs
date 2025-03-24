@@ -11,7 +11,6 @@ use super::{
     CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
 };
 use bytes::Bytes;
-use std::marker::PhantomData;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -54,7 +53,6 @@ pub struct AbstractTraceMachine<Inner: SupportMachine, Decoder> {
 
     factory: ThreadFactory<DefaultMachine<Inner, Decoder>>,
     traces: Vec<Trace<DefaultMachine<Inner, Decoder>>>,
-    phantom: PhantomData<Decoder>,
 }
 
 impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner, Decoder> {
@@ -119,7 +117,6 @@ impl<Inner: SupportMachine, Decoder: InstDecoder> DefaultMachineRunner
             machine,
             factory: ThreadFactory::create(),
             traces: vec![],
-            phantom: PhantomData,
         }
     }
 
