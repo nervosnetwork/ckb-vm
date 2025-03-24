@@ -1,8 +1,5 @@
-use crate::{
-    instructions::Instruction, DEFAULT_MEMORY_SIZE, MEMORY_FRAMESIZE, MEMORY_FRAME_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
-};
-use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
+use crate::{instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER};
+use std::alloc::{dealloc, Layout};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -117,49 +114,6 @@ impl Drop for AsmCoreMachine {
 }
 
 impl AsmCoreMachine {
-    pub fn new(isa: u8, version: u32, max_cycles: u64) -> Box<AsmCoreMachine> {
-        Self::new_with_memory(isa, version, max_cycles, DEFAULT_MEMORY_SIZE)
-    }
-
-    pub fn new_with_memory(
-        isa: u8,
-        version: u32,
-        max_cycles: u64,
-        memory_size: usize,
-    ) -> Box<AsmCoreMachine> {
-        assert_ne!(memory_size, 0);
-        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
-        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
-        let mut machine = unsafe {
-            let layout = Layout::new::<AsmCoreMachine>();
-            let raw_allocation = alloc_zeroed(layout) as *mut AsmCoreMachine;
-            Box::from_raw(raw_allocation)
-        };
-        machine.max_cycles = max_cycles;
-        if cfg!(feature = "enable-chaos-mode-by-default") {
-            machine.chaos_mode = 1;
-        }
-        machine.load_reservation_address = u64::MAX;
-        machine.version = version;
-        machine.isa = isa;
-
-        machine.memory_size = memory_size as u64;
-        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
-        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
-
-        machine.last_read_frame = u64::MAX;
-        machine.last_write_page = u64::MAX;
-
-        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
-        machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
-        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
-        machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
-        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
-        machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
-
-        machine
-    }
-
     pub fn set_max_cycles(&mut self, cycles: u64) {
         self.max_cycles = cycles;
     }

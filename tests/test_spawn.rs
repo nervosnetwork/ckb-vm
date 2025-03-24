@@ -1,13 +1,13 @@
 use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
-use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION2};
 use ckb_vm::memory::load_c_string_byte_by_byte;
 use ckb_vm::registers::{A0, A1, A2, A7};
 use ckb_vm::{
-    DefaultMachineBuilder, Error, FlattenedArgsReader, Register, SparseMemory, SupportMachine,
-    Syscalls, WXorXMemory, ISA_B, ISA_IMC, ISA_MOP,
+    DefaultMachineRunner, Error, FlattenedArgsReader, Register, RustDefaultMachineBuilder,
+    SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_B, ISA_IMC, ISA_MOP,
 };
 use std::sync::{Arc, Mutex};
 
@@ -57,7 +57,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for IntSpawnSyscall {
             u64::MAX,
         );
         let mut machine_child = TraceMachine::new(
-            DefaultMachineBuilder::new(machine_core)
+            RustDefaultMachineBuilder::new(machine_core)
                 .instruction_cycle_func(Box::new(constant_cycles))
                 .syscall(Box::new(IntSpawnSyscall {
                     min_sp: self.min_sp.clone(),
@@ -104,7 +104,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for AsmSpawnSyscall {
         let args_iter = FlattenedArgsReader::new(machine.memory_mut(), argc.clone(), argv);
         let buffer: Bytes = std::fs::read(path).unwrap().into();
         let machine_core_asm = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
-        let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
+        let machine_core = AsmDefaultMachineBuilder::new(machine_core_asm)
             .instruction_cycle_func(Box::new(constant_cycles))
             .syscall(Box::new(AsmSpawnSyscall {
                 min_sp: self.min_sp.clone(),
@@ -129,7 +129,7 @@ pub fn test_spawn_int() {
         u64::MAX,
     );
     let mut machine = TraceMachine::new(
-        DefaultMachineBuilder::new(machine_core)
+        RustDefaultMachineBuilder::new(machine_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .syscall(Box::new(IntSpawnSyscall {
                 min_sp: min_sp.clone(),
@@ -154,7 +154,7 @@ pub fn test_spawn_asm() {
     let cur_sp = stack_depth();
     let min_sp = Arc::new(Mutex::new(u64::MAX));
     let machine_core_asm = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
-    let machine_core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(machine_core_asm)
+    let machine_core = AsmDefaultMachineBuilder::new(machine_core_asm)
         .instruction_cycle_func(Box::new(constant_cycles))
         .syscall(Box::new(AsmSpawnSyscall {
             min_sp: min_sp.clone(),

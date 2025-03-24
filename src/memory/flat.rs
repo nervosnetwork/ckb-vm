@@ -1,6 +1,4 @@
-use super::super::{
-    error::OutOfBoundKind, Error, Register, DEFAULT_MEMORY_SIZE, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
-};
+use super::super::{error::OutOfBoundKind, Error, Register, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
 use super::{check_no_overflow, fill_page_data, get_page_indices, memset, set_dirty, Memory};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -32,8 +30,12 @@ impl<R> DerefMut for FlatMemory<R> {
     }
 }
 
-impl<R: Register> FlatMemory<R> {
-    pub fn new_with_memory(memory_size: usize) -> Self {
+/// A flat chunk of memory used for RISC-V machine, it lacks all the permission
+/// checking logic.
+impl<R: Register> Memory for FlatMemory<R> {
+    type REG = R;
+
+    fn new(memory_size: usize) -> Self {
         assert!(memory_size % RISCV_PAGESIZE == 0);
         Self {
             data: vec![0; memory_size],
@@ -43,25 +45,6 @@ impl<R: Register> FlatMemory<R> {
             load_reservation_address: R::from_u64(u64::MAX),
             _inner: PhantomData,
         }
-    }
-}
-
-impl<R: Register> Default for FlatMemory<R> {
-    fn default() -> Self {
-        Self::new_with_memory(DEFAULT_MEMORY_SIZE)
-    }
-}
-
-/// A flat chunk of memory used for RISC-V machine, it lacks all the permission
-/// checking logic.
-impl<R: Register> Memory for FlatMemory<R> {
-    type REG = R;
-
-    fn reset_memory(&mut self) -> Result<(), Error> {
-        memset(&mut self.data, 0);
-        memset(&mut self.flags, 0);
-        self.load_reservation_address = R::from_u64(u64::MAX);
-        Ok(())
     }
 
     fn init_pages(

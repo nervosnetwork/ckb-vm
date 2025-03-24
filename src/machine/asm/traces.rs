@@ -5,7 +5,7 @@ use crate::{
             Instruction, InstructionOpcode, OP_CUSTOM_ASM_TRACE_JUMP, OP_CUSTOM_TRACE_END,
         },
     },
-    decoder::InstDecoder,
+    decoder::{DefaultDecoder, InstDecoder},
     error::Error,
     instructions::{
         blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
@@ -16,6 +16,7 @@ use crate::{
         CoreMachine, DefaultMachine,
     },
     memory::Memory,
+    Register,
 };
 use std::alloc::{alloc, alloc_zeroed, Layout};
 use std::collections::HashMap;
@@ -25,8 +26,10 @@ pub trait TraceDecoder: InstDecoder {
     fn fixed_trace_size(&self) -> u64;
     fn prepare_traces(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
-    ) -> Result<(), Error>;
+        machine: &mut DefaultMachine<AsmCoreMachine, Self>,
+    ) -> Result<(), Error>
+    where
+        Self: Sized;
     fn reset(&mut self) -> Result<(), Error>;
 }
 
@@ -38,9 +41,9 @@ pub fn label_from_fastpath_opcode(opcode: InstructionOpcode) -> u64 {
     }
 }
 
-pub fn decode_fixed_trace<D: InstDecoder>(
+pub fn decode_fixed_trace<D: InstDecoder, F: InstDecoder>(
     decoder: &mut D,
-    machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+    machine: &mut DefaultMachine<AsmCoreMachine, F>,
     maximum_insts: Option<usize>,
 ) -> Result<(FixedTrace, usize), Error> {
     let pc = *machine.pc();
@@ -80,21 +83,12 @@ pub fn decode_fixed_trace<D: InstDecoder>(
 
 /// A simple and naive trace decoder that only works with 8192 fixed traces.
 /// It serves as the default implementation.
-pub struct SimpleFixedTraceDecoder<D: InstDecoder> {
+pub struct SimpleFixedTraceDecoder<D: InstDecoder = DefaultDecoder> {
     traces: Box<[FixedTrace; TRACE_SIZE]>,
     decoder: D,
 }
 
 impl<D: InstDecoder> SimpleFixedTraceDecoder<D> {
-    pub fn new(decoder: D) -> Self {
-        let traces = unsafe {
-            let layout = Layout::array::<FixedTrace>(TRACE_SIZE).unwrap();
-            let raw_allocation = alloc_zeroed(layout) as *mut _;
-            Box::from_raw(raw_allocation)
-        };
-        Self { decoder, traces }
-    }
-
     pub fn clear_traces(&mut self) {
         for i in 0..TRACE_SIZE {
             self.traces[i] = FixedTrace::default();
@@ -113,7 +107,7 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
 
     fn prepare_traces(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<AsmCoreMachine, Self>,
     ) -> Result<(), Error> {
         let (trace, _) = decode_fixed_trace(&mut self.decoder, machine, None)?;
         let slot = calculate_slot(*machine.pc());
@@ -128,6 +122,16 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
 }
 
 impl<D: InstDecoder> InstDecoder for SimpleFixedTraceDecoder<D> {
+    fn new<R: Register>(isa: u8, version: u32) -> Self {
+        let decoder = D::new::<R>(isa, version);
+        let traces = unsafe {
+            let layout = Layout::array::<FixedTrace>(TRACE_SIZE).unwrap();
+            let raw_allocation = alloc_zeroed(layout) as *mut _;
+            Box::from_raw(raw_allocation)
+        };
+        Self { decoder, traces }
+    }
+
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         self.decoder.decode(memory, pc)
     }
@@ -144,13 +148,6 @@ pub struct MemoizedFixedTraceDecoder<D: InstDecoder> {
 }
 
 impl<D: InstDecoder> MemoizedFixedTraceDecoder<D> {
-    pub fn new(decoder: D) -> Self {
-        Self {
-            inner: SimpleFixedTraceDecoder::new(decoder),
-            cache: HashMap::default(),
-        }
-    }
-
     pub fn clear_traces(&mut self) {
         self.inner.clear_traces();
     }
@@ -167,7 +164,7 @@ impl<D: InstDecoder> TraceDecoder for MemoizedFixedTraceDecoder<D> {
 
     fn prepare_traces(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<AsmCoreMachine, Self>,
     ) -> Result<(), Error> {
         let pc = *machine.pc();
         let slot = calculate_slot(pc);
@@ -190,6 +187,13 @@ impl<D: InstDecoder> TraceDecoder for MemoizedFixedTraceDecoder<D> {
 }
 
 impl<D: InstDecoder> InstDecoder for MemoizedFixedTraceDecoder<D> {
+    fn new<R: Register>(isa: u8, version: u32) -> Self {
+        Self {
+            inner: SimpleFixedTraceDecoder::new::<R>(isa, version),
+            cache: HashMap::default(),
+        }
+    }
+
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         self.inner.decode(memory, pc)
     }
@@ -286,14 +290,6 @@ pub struct MemoizedDynamicTraceDecoder<D: InstDecoder> {
 }
 
 impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
-    pub fn new(decoder: D) -> Self {
-        Self {
-            inner: SimpleFixedTraceDecoder::new(decoder),
-            fixed_cache: HashMap::default(),
-            dynamic_cache: HashMap::default(),
-        }
-    }
-
     pub fn clear_traces(&mut self) {
         self.inner.clear_traces();
     }
@@ -301,7 +297,7 @@ impl<D: InstDecoder> MemoizedDynamicTraceDecoder<D> {
     fn find_or_build_dynamic_trace(
         &mut self,
         pc: u64,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<AsmCoreMachine, Self>,
     ) -> Result<*const DynamicTrace, Error> {
         if let Some(trace) = self.dynamic_cache.get(&pc) {
             return Ok(trace.as_ref() as *const DynamicTrace);
@@ -334,7 +330,7 @@ impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
 
     fn prepare_traces(
         &mut self,
-        machine: &mut DefaultMachine<Box<AsmCoreMachine>>,
+        machine: &mut DefaultMachine<AsmCoreMachine, Self>,
     ) -> Result<(), Error> {
         let pc = *machine.pc();
         let slot = calculate_slot(pc);
@@ -374,6 +370,14 @@ impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
 }
 
 impl<D: InstDecoder> InstDecoder for MemoizedDynamicTraceDecoder<D> {
+    fn new<R: Register>(isa: u8, version: u32) -> Self {
+        Self {
+            inner: SimpleFixedTraceDecoder::new::<R>(isa, version),
+            fixed_cache: HashMap::default(),
+            dynamic_cache: HashMap::default(),
+        }
+    }
+
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         self.inner.decode(memory, pc)
     }

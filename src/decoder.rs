@@ -14,11 +14,12 @@ const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 const INSTRUCTION_CACHE_SIZE: usize = 4096;
 
 pub trait InstDecoder {
+    fn new<R: Register>(isa: u8, version: u32) -> Self;
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error>;
     fn reset_instructions_cache(&mut self) -> Result<(), Error>;
 }
 
-pub struct Decoder {
+pub struct DefaultDecoder {
     factories: Vec<InstructionFactory>,
     mop: bool,
     version: u32,
@@ -30,9 +31,10 @@ pub struct Decoder {
     instructions_cache: Vec<(u64, u64)>,
 }
 
-impl Decoder {
-    pub fn new(mop: bool, version: u32) -> Decoder {
-        Decoder {
+impl DefaultDecoder {
+    /// Creates an empty decoder with no instruction factory
+    pub fn empty(mop: bool, version: u32) -> Self {
+        Self {
             factories: vec![],
             mop,
             version,
@@ -860,7 +862,21 @@ impl Decoder {
     }
 }
 
-impl InstDecoder for Decoder {
+impl InstDecoder for DefaultDecoder {
+    fn new<R: Register>(isa: u8, version: u32) -> Self {
+        let mut decoder = Self::empty(isa & ISA_MOP != 0, version);
+        decoder.add_instruction_factory(rvc::factory::<R>);
+        decoder.add_instruction_factory(i::factory::<R>);
+        decoder.add_instruction_factory(m::factory::<R>);
+        if isa & ISA_B != 0 {
+            decoder.add_instruction_factory(b::factory::<R>);
+        }
+        if isa & ISA_A != 0 {
+            decoder.add_instruction_factory(a::factory::<R>);
+        }
+        decoder
+    }
+
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error> {
         if self.mop {
             self.decode_mop(memory, pc)
@@ -873,18 +889,4 @@ impl InstDecoder for Decoder {
         self.instructions_cache = vec![(u64::MAX, 0); INSTRUCTION_CACHE_SIZE];
         Ok(())
     }
-}
-
-pub fn build_decoder<R: Register>(isa: u8, version: u32) -> Decoder {
-    let mut decoder = Decoder::new(isa & ISA_MOP != 0, version);
-    decoder.add_instruction_factory(rvc::factory::<R>);
-    decoder.add_instruction_factory(i::factory::<R>);
-    decoder.add_instruction_factory(m::factory::<R>);
-    if isa & ISA_B != 0 {
-        decoder.add_instruction_factory(b::factory::<R>);
-    }
-    if isa & ISA_A != 0 {
-        decoder.add_instruction_factory(a::factory::<R>);
-    }
-    decoder
 }

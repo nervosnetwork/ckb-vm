@@ -21,8 +21,9 @@ pub use crate::{
     debugger::Debugger,
     instructions::{Instruction, Register},
     machine::{
-        trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
-        DefaultMachineBuilder, FlattenedArgsReader, InstructionCycleFunc, Machine, SupportMachine,
+        trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner,
+        FlattenedArgsReader, InstructionCycleFunc, Machine, RustDefaultMachineBuilder,
+        SupportMachine,
     },
     memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
     syscalls::Syscalls,
@@ -36,33 +37,22 @@ pub use ckb_vm_definitions::{
 
 pub use error::Error;
 
-pub fn run<R: Register, M: Memory<REG = R> + Default>(
-    program: &Bytes,
-    args: &[Bytes],
-) -> Result<i8, Error> {
-    let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
-        ISA_IMC | ISA_B | ISA_MOP,
-        machine::VERSION2,
-        u64::MAX,
-        WXorXMemory::new(M::default()),
-    );
-    let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
-    machine.load_program(program, args.iter().map(|e| Ok(e.clone())))?;
-    machine.run()
+pub fn run<R: Register, M: Memory<REG = R>>(program: &Bytes, args: &[Bytes]) -> Result<i8, Error> {
+    run_with_memory::<R, M>(program, args, DEFAULT_MEMORY_SIZE)
 }
 
 pub fn run_with_memory<R: Register, M: Memory<REG = R>>(
     program: &Bytes,
     args: &[Bytes],
-    memory: M,
+    memory_size: usize,
 ) -> Result<i8, Error> {
     let core_machine = DefaultCoreMachine::<R, WXorXMemory<M>>::new_with_memory(
         ISA_IMC | ISA_B | ISA_MOP,
         machine::VERSION2,
         u64::MAX,
-        WXorXMemory::new(memory),
+        memory_size,
     );
-    let mut machine = TraceMachine::new(DefaultMachineBuilder::new(core_machine).build());
+    let mut machine = TraceMachine::new(RustDefaultMachineBuilder::new(core_machine).build());
     machine.load_program(program, args.iter().map(|e| Ok(e.clone())))?;
     machine.run()
 }

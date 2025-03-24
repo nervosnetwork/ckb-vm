@@ -11,6 +11,7 @@ use ckb_vm_definitions::{
     MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
     RISCV_PAGE_SHIFTS,
 };
+use std::alloc::{alloc, Layout};
 use std::mem::{size_of, zeroed};
 
 macro_rules! print_inst_label {
@@ -129,7 +130,15 @@ fn main() {
     );
     println!();
 
-    let m: Box<AsmCoreMachine> = AsmCoreMachine::new(0, 0, 0);
+    // We don't need a fully initialized AsmCoreMachine, only a dummy
+    // structure here will do.
+    let m: Box<AsmCoreMachine> = unsafe {
+        let machine_size = std::mem::size_of::<AsmCoreMachine>();
+
+        let layout = Layout::array::<u8>(machine_size).unwrap();
+        let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
+        Box::from_raw(raw_allocation)
+    };
     let m_address = &*m as *const AsmCoreMachine as usize;
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS {}",

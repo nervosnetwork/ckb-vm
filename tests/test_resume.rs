@@ -2,14 +2,15 @@
 pub mod machine_build;
 use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
-use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
-    DefaultCoreMachine, DefaultMachine, SupportMachine, VERSION0, VERSION1, VERSION2,
+    DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, SupportMachine, VERSION0, VERSION1,
+    VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::snapshot::{make_snapshot, resume, Snapshot};
-use ckb_vm::{DefaultMachineBuilder, Error, ISA_A, ISA_IMC};
+use ckb_vm::{Error, RustDefaultMachineBuilder, ISA_A, ISA_IMC};
 use std::fs::File;
 use std::io::Read;
 
@@ -208,8 +209,9 @@ impl MachineTy {
     fn build(self, version: u32, max_cycles: u64) -> Machine {
         match self {
             MachineTy::Asm => {
-                let asm_core1 = AsmCoreMachine::new(ISA_IMC, version, max_cycles);
-                let core1 = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core1)
+                let asm_core1 =
+                    <AsmCoreMachine as SupportMachine>::new(ISA_IMC, version, max_cycles);
+                let core1 = AsmDefaultMachineBuilder::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .build();
                 Machine::Asm(AsmMachine::new(core1))
@@ -219,9 +221,9 @@ impl MachineTy {
                     ISA_IMC, version, max_cycles,
                 );
                 Machine::Interpreter(
-                    DefaultMachineBuilder::<DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>>::new(
-                        core_machine1,
-                    )
+                    RustDefaultMachineBuilder::<
+                        DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
+                    >::new(core_machine1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .build(),
                 )
@@ -230,15 +232,13 @@ impl MachineTy {
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
                     ISA_IMC, version, max_cycles,
                 );
-                Machine::InterpreterWithTrace(
-                    TraceMachine::new(
-                        DefaultMachineBuilder::<
-                            DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
-                        >::new(core_machine1)
-                        .instruction_cycle_func(Box::new(constant_cycles))
-                        .build(),
-                    ),
-                )
+                Machine::InterpreterWithTrace(TraceMachine::new(
+                    RustDefaultMachineBuilder::<
+                        DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>,
+                    >::new(core_machine1)
+                    .instruction_cycle_func(Box::new(constant_cycles))
+                    .build(),
+                ))
             }
         }
     }
@@ -316,7 +316,7 @@ pub fn test_sc_after_snapshot() {
 
     let snap = make_snapshot(&mut machine).unwrap();
     let mut machine_new = TraceMachine::new(
-        DefaultMachineBuilder::new(
+        RustDefaultMachineBuilder::new(
             DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
                 ISA_IMC | ISA_A,
                 VERSION2,

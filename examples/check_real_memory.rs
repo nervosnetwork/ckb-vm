@@ -7,8 +7,8 @@ use std::process::{id, Command};
 #[cfg(has_asm)]
 use ckb_vm::{
     machine::{
-        asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, VERSION0,
+        asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine},
+        DefaultMachineRunner, SupportMachine, VERSION0,
     },
     ISA_IMC,
 };
@@ -126,7 +126,7 @@ fn check_interpreter(memory_size: usize) -> Result<(), ()> {
         let result = run_with_memory::<u64, SparseMemory<u64>>(
             &Bytes::from(BIN_PATH_BUFFER),
             &vec![Bytes::from(BIN_NAME)],
-            SparseMemory::new_with_memory(memory_size),
+            memory_size,
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
@@ -146,7 +146,7 @@ fn check_falt(memory_size: usize) -> Result<(), ()> {
         let result = run_with_memory::<u64, FlatMemory<u64>>(
             &Bytes::from(BIN_PATH_BUFFER),
             &vec![Bytes::from(BIN_NAME)],
-            FlatMemory::new_with_memory(memory_size),
+            memory_size,
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0);
@@ -164,8 +164,13 @@ fn check_asm(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
-        let core = DefaultMachineBuilder::new(asm_core).build();
+        let asm_core = <AsmCoreMachine as SupportMachine>::new_with_memory(
+            ISA_IMC,
+            VERSION0,
+            u64::MAX,
+            memory_size,
+        );
+        let core = AsmDefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
             .load_program(
@@ -191,8 +196,13 @@ fn check_asm_in_thread(memory_size: usize) -> Result<(), ()> {
     );
     println!("Base memory: {}", get_current_memory());
     for _ in 0..G_CHECK_LOOP {
-        let asm_core = AsmCoreMachine::new_with_memory(ISA_IMC, VERSION0, u64::MAX, memory_size);
-        let core = DefaultMachineBuilder::new(asm_core).build();
+        let asm_core = <AsmCoreMachine as SupportMachine>::new_with_memory(
+            ISA_IMC,
+            VERSION0,
+            u64::MAX,
+            memory_size,
+        );
+        let core = AsmDefaultMachineBuilder::new(asm_core).build();
         let mut machine = AsmMachine::new(core);
         machine
             .load_program(

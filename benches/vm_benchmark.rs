@@ -4,13 +4,13 @@ extern crate criterion;
 use bytes::Bytes;
 #[cfg(has_asm)]
 use ckb_vm::{
-    decoder::build_decoder,
+    decoder::{DefaultDecoder, InstDecoder},
     machine::{
         asm::{
             traces::{MemoizedDynamicTraceDecoder, MemoizedFixedTraceDecoder},
-            AsmCoreMachine, AsmMachine,
+            AbstractAsmMachine, AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine,
         },
-        DefaultMachineBuilder, VERSION0, VERSION2,
+        AbstractDefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0, VERSION2,
     },
     ISA_B, ISA_IMC, ISA_MOP,
 };
@@ -45,7 +45,7 @@ fn asm_benchmark(c: &mut Criterion) {
         ].into_iter().map(|a| Ok(a.into()));
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC, VERSION0, u64::MAX);
-            let core = DefaultMachineBuilder::new(asm_core).build();
+            let core = AsmDefaultMachineBuilder::new(asm_core).build();
             let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, args.clone()).unwrap();
             machine.run().unwrap()
@@ -66,7 +66,7 @@ fn mop_benchmark(c: &mut Criterion) {
         ].into_iter().map(|a| Ok(a.into()));
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, u64::MAX);
-            let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            let core = AsmDefaultMachineBuilder::new(asm_core)
                 .build();
             let mut machine = AsmMachine::new(core);
             machine.load_program(&buffer, args.clone()).unwrap();
@@ -88,19 +88,19 @@ fn mop_memoized_benchmark(c: &mut Criterion) {
             "foo",
             "bar",
         ].into_iter().map(|a| Ok(a.into()));
-        let mut decoder = MemoizedFixedTraceDecoder::new(build_decoder::<u64>(isa, version));
+        let mut decoder = MemoizedFixedTraceDecoder::new::<u64>(isa, version);
         let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
-        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+        let core = AbstractDefaultMachineBuilder::<_, MemoizedFixedTraceDecoder<DefaultDecoder>>::new(asm_core)
             .build();
-        let mut machine = AsmMachine::new(core);
+        let mut machine = AbstractAsmMachine::new(core);
         machine.load_program(&buffer, args.clone()).unwrap();
         machine.run_with_decoder(&mut decoder).unwrap();
 
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
-            let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            let core = AbstractDefaultMachineBuilder::<_, MemoizedFixedTraceDecoder<DefaultDecoder>>::new(asm_core)
                 .build();
-            let mut machine = AsmMachine::new(core);
+            let mut machine = AbstractAsmMachine::new(core);
             machine.load_program(&buffer, args.clone()).unwrap();
             decoder.clear_traces();
             machine.run_with_decoder(&mut decoder).unwrap()
@@ -121,19 +121,19 @@ fn mop_memoized_dynamic_benchmark(c: &mut Criterion) {
             "foo",
             "bar",
         ].into_iter().map(|a| Ok(a.into()));
-        let mut decoder = MemoizedDynamicTraceDecoder::new(build_decoder::<u64>(isa, version));
+        let mut decoder = MemoizedDynamicTraceDecoder::new::<u64>(isa, version);
         let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
-        let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+        let core = AbstractDefaultMachineBuilder::<_, MemoizedDynamicTraceDecoder<DefaultDecoder>>::new(asm_core)
             .build();
-        let mut machine = AsmMachine::new(core);
+        let mut machine = AbstractAsmMachine::new(core);
         machine.load_program(&buffer, args.clone()).unwrap();
         machine.run_with_decoder(&mut decoder).unwrap();
 
         b.iter(|| {
             let asm_core = AsmCoreMachine::new(isa, version, u64::MAX);
-            let core = DefaultMachineBuilder::<Box<AsmCoreMachine>>::new(asm_core)
+            let core = AbstractDefaultMachineBuilder::<_, MemoizedDynamicTraceDecoder<DefaultDecoder>>::new(asm_core)
                 .build();
-            let mut machine = AsmMachine::new(core);
+            let mut machine = AbstractAsmMachine::new(core);
             machine.load_program(&buffer, args.clone()).unwrap();
             decoder.clear_traces();
             machine.run_with_decoder(&mut decoder).unwrap()
