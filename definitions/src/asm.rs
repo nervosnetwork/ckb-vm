@@ -66,3 +66,17 @@ pub struct AsmCoreMachine {
 
     pub memory: [u8; RISCV_MAX_MEMORY],
 }
+
+impl AsRef<Box<AsmCoreMachine>> for Box<AsmCoreMachine> {
+    #[inline(always)]
+    fn as_ref(&self) -> &Box<AsmCoreMachine> {
+        self
+    }
+}
+
+impl AsMut<Box<AsmCoreMachine>> for Box<AsmCoreMachine> {
+    #[inline(always)]
+    fn as_mut(&mut self) -> &mut Box<AsmCoreMachine> {
+        self
+    }
+}
