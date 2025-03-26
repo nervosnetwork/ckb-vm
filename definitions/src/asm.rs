@@ -118,3 +118,17 @@ impl AsmCoreMachine {
         self.max_cycles = cycles;
     }
 }
+
+impl AsRef<AsmCoreMachine> for AsmCoreMachine {
+    #[inline(always)]
+    fn as_ref(&self) -> &AsmCoreMachine {
+        self
+    }
+}
+
+impl AsMut<AsmCoreMachine> for AsmCoreMachine {
+    #[inline(always)]
+    fn as_mut(&mut self) -> &mut AsmCoreMachine {
+        self
+    }
+}
