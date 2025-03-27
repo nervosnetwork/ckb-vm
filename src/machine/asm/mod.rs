@@ -33,20 +33,61 @@ use crate::{
     MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
 };
 
-impl CoreMachine for AsmCoreMachine {
+pub trait AsmCoreMachineRevealer: AsRef<AsmCoreMachine> + AsMut<AsmCoreMachine> {
+    fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self;
+}
+
+impl AsmCoreMachineRevealer for AsmCoreMachine {
+    fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
+
+        let mut machine: AsmCoreMachine = unsafe { MaybeUninit::zeroed().assume_init() };
+
+        machine.max_cycles = max_cycles;
+        if cfg!(feature = "enable-chaos-mode-by-default") {
+            machine.chaos_mode = 1;
+        }
+        machine.load_reservation_address = u64::MAX;
+        machine.version = version;
+        machine.isa = isa;
+
+        machine.memory_size = memory_size as u64;
+        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
+        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
+
+        machine.last_read_frame = u64::MAX;
+        machine.last_write_page = u64::MAX;
+
+        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
+        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
+        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
+
+        machine
+    }
+}
+
+impl<R> CoreMachine for R
+where
+    R: AsmCoreMachineRevealer,
+{
     type REG = u64;
     type MEM = Self;
 
     fn pc(&self) -> &Self::REG {
-        &self.pc
+        &self.as_ref().pc
     }
 
     fn update_pc(&mut self, pc: Self::REG) {
-        self.next_pc = pc;
+        self.as_mut().next_pc = pc;
     }
 
     fn commit_pc(&mut self) {
-        self.pc = self.next_pc;
+        self.as_mut().pc = self.as_ref().next_pc;
     }
 
     fn memory(&self) -> &Self {
@@ -58,19 +99,19 @@ impl CoreMachine for AsmCoreMachine {
     }
 
     fn registers(&self) -> &[Self::REG] {
-        &self.registers
+        &self.as_ref().registers
     }
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
-        self.registers[idx] = value;
+        self.as_mut().registers[idx] = value;
     }
 
     fn isa(&self) -> u8 {
-        self.isa
+        self.as_ref().isa
     }
 
     fn version(&self) -> u32 {
-        self.version
+        self.as_ref().version
     }
 }
 
@@ -83,14 +124,17 @@ impl CoreMachine for AsmCoreMachine {
 #[no_mangle]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
+    let is_chaos_mode = machine.chaos_mode != 0;
+    let chaos_seed: u64 = machine.chaos_seed.into();
+
     let slice = cast_ptr_to_slice_mut(
         machine,
         machine.memory_ptr,
         addr_from,
         1 << MEMORY_FRAME_SHIFTS,
     );
-    if machine.chaos_mode != 0 {
-        let mut gen = rand::rngs::StdRng::seed_from_u64(machine.chaos_seed.into());
+    if is_chaos_mode {
+        let mut gen = rand::rngs::StdRng::seed_from_u64(chaos_seed);
         gen.fill_bytes(slice);
         machine.chaos_seed = gen.next_u32();
     } else {
@@ -98,14 +142,14 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
     }
 }
 
-fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
+fn check_memory<R: AsmCoreMachineRevealer>(machine: &mut R, page: u64) {
     let frame_index = page >> MEMORY_FRAME_PAGE_SHIFTS;
     unsafe {
-        let frames = machine.frames_ptr as *mut u8;
+        let frames = machine.as_mut().frames_ptr as *mut u8;
         let frame_addr = frames.add(frame_index as usize);
         let frame_flag = frame_addr.read();
         if frame_flag == 0 {
-            inited_memory(frame_index, machine);
+            inited_memory(frame_index, machine.as_mut());
             frame_addr.write(0x01);
         }
     }
@@ -120,8 +164,8 @@ fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<()
 }
 
 // check whether a memory address is writable or not and mark it as dirty, `size` should be 1, 2, 4 or 8
-fn check_memory_writable(
-    machine: &mut AsmCoreMachine,
+fn check_memory_writable<R: AsmCoreMachineRevealer>(
+    machine: &mut R,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -153,8 +197,8 @@ fn check_memory_writable(
 }
 
 // check whether a memory address is executable, `size` should be 2 or 4
-fn check_memory_executable(
-    machine: &mut AsmCoreMachine,
+fn check_memory_executable<R: AsmCoreMachineRevealer>(
+    machine: &mut R,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -185,7 +229,11 @@ fn check_memory_executable(
 }
 
 // check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
-fn check_memory_inited(machine: &mut AsmCoreMachine, addr: u64, size: usize) -> Result<(), Error> {
+fn check_memory_inited<R: AsmCoreMachineRevealer>(
+    machine: &mut R,
+    addr: u64,
+    size: usize,
+) -> Result<(), Error> {
     debug_assert!(size == 1 || size == 2 || size == 4 || size == 8);
     let page = addr >> RISCV_PAGE_SHIFTS;
     if page as usize >= machine.memory_pages() {
@@ -353,7 +401,10 @@ impl<'a> Memory for FastMemory<'a> {
     }
 }
 
-impl Memory for AsmCoreMachine {
+impl<R> Memory for R
+where
+    R: AsmCoreMachineRevealer,
+{
     type REG = u64;
 
     fn new(_memory_size: usize) -> Self {
@@ -402,7 +453,13 @@ impl Memory for AsmCoreMachine {
             }
             current_addr += RISCV_PAGESIZE as u64;
         }
-        fill_page_data(&mut FastMemory(self), addr, size, source, offset_from_addr)?;
+        fill_page_data(
+            &mut FastMemory(self.as_mut()),
+            addr,
+            size,
+            source,
+            offset_from_addr,
+        )?;
         current_addr = addr;
         while current_addr < addr + size {
             let page = current_addr / RISCV_PAGESIZE as u64;
@@ -410,14 +467,14 @@ impl Memory for AsmCoreMachine {
             current_addr += RISCV_PAGESIZE as u64;
         }
         // Clear last read/write page cache
-        self.last_read_frame = u64::MAX;
-        self.last_write_page = u64::MAX;
+        self.as_mut().last_read_frame = u64::MAX;
+        self.as_mut().last_write_page = u64::MAX;
         Ok(())
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
         if page < self.memory_pages() as u64 {
-            let slice = cast_ptr_to_slice(self, self.flags_ptr, page as usize, 1);
+            let slice = cast_ptr_to_slice(self, self.as_ref().flags_ptr, page as usize, 1);
             Ok(slice[0])
         } else {
             Err(Error::MemOutOfBound(
@@ -429,10 +486,10 @@ impl Memory for AsmCoreMachine {
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            let slice = cast_ptr_to_slice_mut(self, self.flags_ptr, page as usize, 1);
+            let slice = cast_ptr_to_slice_mut(self, self.as_ref().flags_ptr, page as usize, 1);
             slice[0] |= flag;
             // Clear last write page cache
-            self.last_write_page = u64::MAX;
+            self.as_mut().last_write_page = u64::MAX;
             Ok(())
         } else {
             Err(Error::MemOutOfBound(
@@ -444,10 +501,10 @@ impl Memory for AsmCoreMachine {
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            let slice = cast_ptr_to_slice_mut(self, self.flags_ptr, page as usize, 1);
+            let slice = cast_ptr_to_slice_mut(self, self.as_ref().flags_ptr, page as usize, 1);
             slice[0] &= !flag;
             // Clear last write page cache
-            self.last_write_page = u64::MAX;
+            self.as_mut().last_write_page = u64::MAX;
             Ok(())
         } else {
             Err(Error::MemOutOfBound(
@@ -458,21 +515,22 @@ impl Memory for AsmCoreMachine {
     }
 
     fn memory_size(&self) -> usize {
-        self.memory_size as usize
+        self.as_ref().memory_size as usize
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
         if value.is_empty() {
             return Ok(());
         }
-        check_no_overflow(addr, value.len() as u64, self.memory_size)?;
+        check_no_overflow(addr, value.len() as u64, self.as_ref().memory_size)?;
         let page_indices = get_page_indices(addr, value.len() as u64);
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        let slice = cast_ptr_to_slice_mut(self, self.memory_ptr, addr as usize, value.len());
+        let slice =
+            cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, value.len());
         slice.copy_from_slice(value);
         Ok(())
     }
@@ -481,14 +539,15 @@ impl Memory for AsmCoreMachine {
         if size == 0 {
             return Ok(());
         }
-        check_no_overflow(addr, size, self.memory_size)?;
+        check_no_overflow(addr, size, self.as_ref().memory_size)?;
         let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             check_permission(self, page, FLAG_WRITABLE)?;
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        let slice = cast_ptr_to_slice_mut(self, self.memory_ptr, addr as usize, size as usize);
+        let slice =
+            cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, size as usize);
         memset(slice, value);
         Ok(())
     }
@@ -497,13 +556,13 @@ impl Memory for AsmCoreMachine {
         if size == 0 {
             return Ok(Bytes::new());
         }
-        check_no_overflow(addr, size, self.memory_size)?;
+        check_no_overflow(addr, size, self.as_ref().memory_size)?;
         let page_indices = get_page_indices(addr, size);
         for page in page_indices.0..=page_indices.1 {
             check_memory(self, page);
         }
         let slice = unsafe {
-            let memory = self.memory_ptr as *mut u8;
+            let memory = self.as_ref().memory_ptr as *const u8;
             let memory_from = memory.add(addr as usize);
             std::slice::from_raw_parts(memory_from, size as usize)
         };
@@ -512,48 +571,48 @@ impl Memory for AsmCoreMachine {
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_memory_executable(self, addr, 2)?;
-        let slice = cast_ptr_to_slice(self, self.memory_ptr, addr as usize, 2);
+        let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 2);
         Ok(LittleEndian::read_u16(slice))
     }
 
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
         check_memory_executable(self, addr, 4)?;
-        let slice = cast_ptr_to_slice(self, self.memory_ptr, addr as usize, 4);
+        let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 4);
         Ok(LittleEndian::read_u32(slice))
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 1)?;
-        let slice = cast_ptr_to_slice(self, self.memory_ptr, addr as usize, 1);
+        let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 1);
         Ok(u64::from(slice[0]))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 2)?;
-        let slice = cast_ptr_to_slice(self, self.memory_ptr, addr as usize, 2);
+        let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 2);
         Ok(u64::from(LittleEndian::read_u16(slice)))
     }
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 4)?;
-        let slice = cast_ptr_to_slice(self, self.memory_ptr, addr as usize, 4);
+        let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 4);
         Ok(u64::from(LittleEndian::read_u32(slice)))
     }
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 8)?;
-        let slice = cast_ptr_to_slice(self, self.memory_ptr, addr as usize, 8);
+        let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 8);
         Ok(LittleEndian::read_u64(slice))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 1)?;
-        let slice = cast_ptr_to_slice_mut(self, self.memory_ptr, addr as usize, 1);
+        let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 1);
         slice[0] = *value as u8;
         Ok(())
     }
@@ -561,7 +620,7 @@ impl Memory for AsmCoreMachine {
     fn store16(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 2)?;
-        let slice = cast_ptr_to_slice_mut(self, self.memory_ptr, addr as usize, 2);
+        let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 2);
         LittleEndian::write_u16(slice, *value as u16);
         Ok(())
     }
@@ -569,7 +628,7 @@ impl Memory for AsmCoreMachine {
     fn store32(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 4)?;
-        let slice = cast_ptr_to_slice_mut(self, self.memory_ptr, addr as usize, 4);
+        let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 4);
         LittleEndian::write_u32(slice, *value as u32);
         Ok(())
     }
@@ -577,105 +636,84 @@ impl Memory for AsmCoreMachine {
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 8)?;
-        let slice = cast_ptr_to_slice_mut(self, self.memory_ptr, addr as usize, 8);
+        let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 8);
         LittleEndian::write_u64(slice, *value as u64);
         Ok(())
     }
 
     fn lr(&self) -> &Self::REG {
-        &self.load_reservation_address
+        &self.as_ref().load_reservation_address
     }
 
     fn set_lr(&mut self, value: &Self::REG) {
-        self.load_reservation_address = *value;
+        self.as_mut().load_reservation_address = *value;
     }
 }
 
-impl SupportMachine for AsmCoreMachine {
-    fn new_with_memory(
-        isa: u8,
-        version: u32,
-        max_cycles: u64,
-        memory_size: usize,
-    ) -> AsmCoreMachine {
-        assert_ne!(memory_size, 0);
-        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
-        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
-
-        let mut machine: AsmCoreMachine = unsafe { MaybeUninit::zeroed().assume_init() };
-
-        machine.max_cycles = max_cycles;
-        if cfg!(feature = "enable-chaos-mode-by-default") {
-            machine.chaos_mode = 1;
-        }
-        machine.load_reservation_address = u64::MAX;
-        machine.version = version;
-        machine.isa = isa;
-
-        machine.memory_size = memory_size as u64;
-        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
-        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
-
-        machine.last_read_frame = u64::MAX;
-        machine.last_write_page = u64::MAX;
-
-        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
-        machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
-        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
-        machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
-        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
-        machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
-
-        machine
+impl<R> SupportMachine for R
+where
+    R: AsmCoreMachineRevealer,
+{
+    fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> R {
+        R::new(isa, version, max_cycles, memory_size)
     }
 
     fn cycles(&self) -> u64 {
-        self.cycles
+        self.as_ref().cycles
     }
 
     fn set_cycles(&mut self, cycles: u64) {
-        self.cycles = cycles;
+        self.as_mut().cycles = cycles;
     }
 
     fn max_cycles(&self) -> u64 {
-        self.max_cycles
+        self.as_ref().max_cycles
     }
 
     fn set_max_cycles(&mut self, max_cycles: u64) {
-        self.max_cycles = max_cycles;
+        self.as_mut().max_cycles = max_cycles;
     }
 
     fn reset(&mut self, max_cycles: u64) -> Result<(), Error> {
-        self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
-        self.pc = 0;
-        self.cycles = 0;
-        self.max_cycles = max_cycles;
-        self.reset_signal = 1;
+        {
+            let m = self.as_mut();
+
+            m.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+            m.pc = 0;
+            m.cycles = 0;
+            m.max_cycles = max_cycles;
+            m.reset_signal = 1;
+            m.load_reservation_address = u64::MAX;
+            m.last_read_frame = u64::MAX;
+            m.last_write_page = u64::MAX;
+        }
 
         // Reset memory
-        let slice = cast_ptr_to_slice_mut(self, self.flags_ptr, 0, self.flags_size as usize);
+        let flags_ptr = self.as_ref().flags_ptr;
+        let flags_size = self.as_ref().flags_size as usize;
+        let slice = cast_ptr_to_slice_mut(self, flags_ptr, 0, flags_size);
         memset(slice, 0);
-        let slice = cast_ptr_to_slice_mut(self, self.frames_ptr, 0, self.frames_size as usize);
+
+        let frames_ptr = self.as_ref().frames_ptr;
+        let frames_size = self.as_ref().frames_size as usize;
+        let slice = cast_ptr_to_slice_mut(self, frames_ptr, 0, frames_size);
         memset(slice, 0);
-        self.load_reservation_address = u64::MAX;
-        self.last_read_frame = u64::MAX;
-        self.last_write_page = u64::MAX;
 
         Ok(())
     }
 
     fn reset_signal(&mut self) -> bool {
-        let ret = self.reset_signal != 0;
-        self.reset_signal = 0;
+        let ret = self.as_ref().reset_signal != 0;
+        self.as_mut().reset_signal = 0;
         ret
     }
 
     fn running(&self) -> bool {
-        self.running == 1
+        self.as_ref().running == 1
     }
 
     fn set_running(&mut self, running: bool) {
-        self.running = if running { 1 } else { 0 }
+        self.as_mut().running = if running { 1 } else { 0 }
     }
 
     #[cfg(feature = "pprof")]
@@ -696,29 +734,29 @@ pub type AsmDefaultMachineBuilder =
     AbstractDefaultMachineBuilder<AsmCoreMachine, SimpleFixedTraceDecoder>;
 pub type AsmDefaultMachine = DefaultMachine<AsmCoreMachine, SimpleFixedTraceDecoder>;
 
-pub type AsmMachine = AbstractAsmMachine<SimpleFixedTraceDecoder>;
+pub type AsmMachine = AbstractAsmMachine<AsmCoreMachine, SimpleFixedTraceDecoder>;
 
-pub struct AbstractAsmMachine<Decoder: TraceDecoder> {
-    pub machine: DefaultMachine<AsmCoreMachine, Decoder>,
+pub struct AbstractAsmMachine<R: AsmCoreMachineRevealer, D: TraceDecoder> {
+    pub machine: DefaultMachine<R, D>,
 }
 
-impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder> {
-    type Inner = AsmCoreMachine;
-    type Decoder = Decoder;
+impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<R, D> {
+    type Inner = R;
+    type Decoder = D;
 
-    fn new(machine: DefaultMachine<AsmCoreMachine, Decoder>) -> Self {
+    fn new(machine: DefaultMachine<R, D>) -> Self {
         Self { machine }
     }
 
-    fn machine(&self) -> &DefaultMachine<AsmCoreMachine, Decoder> {
+    fn machine(&self) -> &DefaultMachine<R, D> {
         &self.machine
     }
 
-    fn machine_mut(&mut self) -> &mut DefaultMachine<AsmCoreMachine, Decoder> {
+    fn machine_mut(&mut self) -> &mut DefaultMachine<R, D> {
         &mut self.machine
     }
 
-    fn run_with_decoder(&mut self, decoder: &mut Self::Decoder) -> Result<i8, Error> {
+    fn run_with_decoder(&mut self, decoder: &mut D) -> Result<i8, Error> {
         if self.machine.isa() & ISA_MOP != 0 && self.machine.version() == VERSION0 {
             return Err(Error::InvalidVersion);
         }
@@ -734,7 +772,7 @@ impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder>
                     fixed_traces: decoder.fixed_traces(),
                     fixed_trace_mask: decoder.fixed_trace_size().wrapping_sub(1),
                 };
-                ckb_vm_x64_execute(&mut *self.machine.inner_mut(), &data as *const _)
+                ckb_vm_x64_execute(&mut *self.machine.inner_mut().as_mut(), &data as *const _)
             };
             match result {
                 RET_DECODE_TRACE => decoder.prepare_traces(&mut self.machine)?,
@@ -745,13 +783,13 @@ impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder>
                 RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
                 RET_OUT_OF_BOUND => {
                     return Err(Error::MemOutOfBound(
-                        self.machine.inner.error_arg0,
+                        self.machine.inner.as_ref().error_arg0,
                         OutOfBoundKind::Memory,
                     ))
                 }
                 RET_INVALID_PERMISSION => {
                     return Err(Error::MemWriteOnExecutablePage(
-                        self.machine.inner.error_arg0,
+                        self.machine.inner.as_ref().error_arg0,
                     ))
                 }
                 RET_SLOWPATH => {
@@ -770,9 +808,9 @@ impl<Decoder: TraceDecoder> DefaultMachineRunner for AbstractAsmMachine<Decoder>
     }
 }
 
-impl<Decoder: TraceDecoder> AbstractAsmMachine<Decoder> {
+impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
     pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner.max_cycles = cycles;
+        self.machine.inner.as_mut().max_cycles = cycles;
     }
 
     pub fn load_program(
@@ -793,7 +831,7 @@ impl<Decoder: TraceDecoder> AbstractAsmMachine<Decoder> {
             .load_program_with_metadata(program, metadata, args)
     }
 
-    pub fn step(&mut self, decoder: &mut Decoder) -> Result<(), Error> {
+    pub fn step(&mut self, decoder: &mut D) -> Result<(), Error> {
         // Decode only one instruction into a trace
         let (trace, _) = decode_fixed_trace(decoder, &mut self.machine, Some(1))?;
 
@@ -803,7 +841,7 @@ impl<Decoder: TraceDecoder> AbstractAsmMachine<Decoder> {
                 fixed_traces: &trace as *const FixedTrace,
                 fixed_trace_mask: 0,
             };
-            ckb_vm_x64_execute(&mut *self.machine.inner_mut(), &data as *const _)
+            ckb_vm_x64_execute(&mut *self.machine.inner_mut().as_mut(), &data as *const _)
         };
         match result {
             RET_DECODE_TRACE => (),
@@ -812,13 +850,13 @@ impl<Decoder: TraceDecoder> AbstractAsmMachine<Decoder> {
             RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
             RET_OUT_OF_BOUND => {
                 return Err(Error::MemOutOfBound(
-                    self.machine.inner.error_arg0,
+                    self.machine.inner.as_ref().error_arg0,
                     OutOfBoundKind::Memory,
                 ))
             }
             RET_INVALID_PERMISSION => {
                 return Err(Error::MemWriteOnExecutablePage(
-                    self.machine.inner.error_arg0,
+                    self.machine.inner.as_ref().error_arg0,
                 ))
             }
             RET_SLOWPATH => {
@@ -834,7 +872,7 @@ impl<Decoder: TraceDecoder> AbstractAsmMachine<Decoder> {
 
 // Casts a raw pointer with an offset and size to a byte slice.
 // We need machine here for the lifetime.
-fn cast_ptr_to_slice(_machine: &AsmCoreMachine, ptr: u64, offset: usize, size: usize) -> &[u8] {
+fn cast_ptr_to_slice<R>(_machine: &R, ptr: u64, offset: usize, size: usize) -> &[u8] {
     unsafe {
         let ptr = ptr as *const u8;
         let ptr = ptr.add(offset);
@@ -843,12 +881,7 @@ fn cast_ptr_to_slice(_machine: &AsmCoreMachine, ptr: u64, offset: usize, size: u
 }
 
 // Provides similar functionality to `cast_ptr_to_slice` but returns mut slice.
-fn cast_ptr_to_slice_mut(
-    _machine: &AsmCoreMachine,
-    ptr: u64,
-    offset: usize,
-    size: usize,
-) -> &mut [u8] {
+fn cast_ptr_to_slice_mut<R>(_machine: &mut R, ptr: u64, offset: usize, size: usize) -> &mut [u8] {
     unsafe {
         let ptr = ptr as *mut u8;
         let ptr = ptr.add(offset);
