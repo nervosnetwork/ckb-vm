@@ -31,20 +31,74 @@ use crate::{
     MEMORY_FRAME_SHIFTS, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
-impl CoreMachine for Box<AsmCoreMachine> {
+pub trait AsmCoreMachineRevealer: AsRef<Box<AsmCoreMachine>> + AsMut<Box<AsmCoreMachine>> {
+    fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self;
+}
+
+impl AsmCoreMachineRevealer for Box<AsmCoreMachine> {
+    fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
+        assert_ne!(memory_size, 0);
+        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
+        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
+
+        let mut machine = unsafe {
+            let machine_size =
+                std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
+
+            let layout = Layout::array::<u8>(machine_size).unwrap();
+            let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
+            Box::from_raw(raw_allocation)
+        };
+        machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+        machine.pc = 0;
+        machine.next_pc = 0;
+        machine.running = 0;
+        machine.cycles = 0;
+        machine.max_cycles = max_cycles;
+        if cfg!(feature = "enable-chaos-mode-by-default") {
+            machine.chaos_mode = 1;
+        } else {
+            machine.chaos_mode = 0;
+        }
+        machine.chaos_seed = 0;
+        machine.load_reservation_address = u64::MAX;
+        machine.reset_signal = 0;
+        machine.version = version;
+        machine.isa = isa;
+        machine.flags = [0; RISCV_PAGES];
+        for i in 0..TRACE_SIZE {
+            machine.traces[i] = Trace::default();
+        }
+        machine.frames = [0; MEMORY_FRAMES];
+
+        machine.memory_size = memory_size as u64;
+        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
+        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
+
+        machine.last_read_frame = u64::MAX;
+        machine.last_write_page = u64::MAX;
+
+        machine
+    }
+}
+
+impl<R> CoreMachine for R
+where
+    R: AsmCoreMachineRevealer,
+{
     type REG = u64;
     type MEM = Self;
 
     fn pc(&self) -> &Self::REG {
-        &self.pc
+        &self.as_ref().pc
     }
 
     fn update_pc(&mut self, pc: Self::REG) {
-        self.next_pc = pc;
+        self.as_mut().next_pc = pc;
     }
 
     fn commit_pc(&mut self) {
-        self.pc = self.next_pc;
+        self.as_mut().pc = self.as_ref().next_pc;
     }
 
     fn memory(&self) -> &Self {
@@ -56,19 +110,19 @@ impl CoreMachine for Box<AsmCoreMachine> {
     }
 
     fn registers(&self) -> &[Self::REG] {
-        &self.registers
+        &self.as_ref().registers
     }
 
     fn set_register(&mut self, idx: usize, value: Self::REG) {
-        self.registers[idx] = value;
+        self.as_mut().registers[idx] = value;
     }
 
     fn isa(&self) -> u8 {
-        self.isa
+        self.as_ref().isa
     }
 
     fn version(&self) -> u32 {
-        self.version
+        self.as_ref().version
     }
 }
 
@@ -91,11 +145,11 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
     }
 }
 
-fn check_memory(machine: &mut AsmCoreMachine, page: u64) {
+fn check_memory<R: AsmCoreMachineRevealer>(machine: &mut R, page: u64) {
     let frame = page >> MEMORY_FRAME_PAGE_SHIFTS;
-    if machine.frames[frame as usize] == 0 {
-        inited_memory(frame, machine);
-        machine.frames[frame as usize] = 1;
+    if machine.as_ref().frames[frame as usize] == 0 {
+        inited_memory(frame, machine.as_mut());
+        machine.as_mut().frames[frame as usize] = 1;
     }
 }
 
@@ -108,8 +162,8 @@ fn check_permission<M: Memory>(memory: &mut M, page: u64, flag: u8) -> Result<()
 }
 
 // check whether a memory address is writable or not and mark it as dirty, `size` should be 1, 2, 4 or 8
-fn check_memory_writable(
-    machine: &mut Box<AsmCoreMachine>,
+fn check_memory_writable<R: AsmCoreMachineRevealer>(
+    machine: &mut R,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -138,8 +192,8 @@ fn check_memory_writable(
 }
 
 // check whether a memory address is executable, `size` should be 2 or 4
-fn check_memory_executable(
-    machine: &mut Box<AsmCoreMachine>,
+fn check_memory_executable<R: AsmCoreMachineRevealer>(
+    machine: &mut R,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -167,8 +221,8 @@ fn check_memory_executable(
 }
 
 // check whether a memory address is initialized, `size` should be 1, 2, 4 or 8
-fn check_memory_inited(
-    machine: &mut Box<AsmCoreMachine>,
+fn check_memory_inited<R: AsmCoreMachineRevealer>(
+    machine: &mut R,
     addr: u64,
     size: usize,
 ) -> Result<(), Error> {
@@ -192,7 +246,10 @@ fn check_memory_inited(
     Ok(())
 }
 
-impl Memory for Box<AsmCoreMachine> {
+impl<R> Memory for R
+where
+    R: AsmCoreMachineRevealer,
+{
     type REG = u64;
 
     fn new() -> Self {
@@ -241,14 +298,14 @@ impl Memory for Box<AsmCoreMachine> {
             current_addr += RISCV_PAGESIZE as u64;
         }
         // Clear last read/write page cache
-        self.last_read_frame = u64::MAX;
-        self.last_write_page = u64::MAX;
+        self.as_mut().last_read_frame = u64::MAX;
+        self.as_mut().last_write_page = u64::MAX;
         Ok(())
     }
 
     fn fetch_flag(&mut self, page: u64) -> Result<u8, Error> {
         if page < self.memory_pages() as u64 {
-            Ok(self.flags[page as usize])
+            Ok(self.as_mut().flags[page as usize])
         } else {
             Err(Error::MemOutOfBound)
         }
@@ -256,9 +313,9 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn set_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            self.flags[page as usize] |= flag;
+            self.as_mut().flags[page as usize] |= flag;
             // Clear last write page cache
-            self.last_write_page = u64::MAX;
+            self.as_mut().last_write_page = u64::MAX;
             Ok(())
         } else {
             Err(Error::MemOutOfBound)
@@ -267,9 +324,9 @@ impl Memory for Box<AsmCoreMachine> {
 
     fn clear_flag(&mut self, page: u64, flag: u8) -> Result<(), Error> {
         if page < self.memory_pages() as u64 {
-            self.flags[page as usize] &= !flag;
+            self.as_mut().flags[page as usize] &= !flag;
             // Clear last write page cache
-            self.last_write_page = u64::MAX;
+            self.as_mut().last_write_page = u64::MAX;
             Ok(())
         } else {
             Err(Error::MemOutOfBound)
@@ -277,7 +334,7 @@ impl Memory for Box<AsmCoreMachine> {
     }
 
     fn memory_size(&self) -> usize {
-        self.memory_size as usize
+        self.as_ref().memory_size as usize
     }
 
     fn store_bytes(&mut self, addr: u64, value: &[u8]) -> Result<(), Error> {
@@ -290,7 +347,7 @@ impl Memory for Box<AsmCoreMachine> {
             check_memory(self, page);
             self.set_flag(page, FLAG_DIRTY)?;
         }
-        let slice = &mut self.memory[addr as usize..addr as usize + value.len()];
+        let slice = &mut self.as_mut().memory[addr as usize..addr as usize + value.len()];
         slice.copy_from_slice(value);
         Ok(())
     }
@@ -306,7 +363,7 @@ impl Memory for Box<AsmCoreMachine> {
             self.set_flag(page, FLAG_DIRTY)?;
         }
         memset(
-            &mut self.memory[addr as usize..(addr + size) as usize],
+            &mut self.as_mut().memory[addr as usize..(addr + size) as usize],
             value,
         );
         Ok(())
@@ -321,35 +378,35 @@ impl Memory for Box<AsmCoreMachine> {
             check_memory(self, page);
         }
         Ok(Bytes::from(
-            self.memory[addr as usize..(addr + size) as usize].to_vec(),
+            self.as_ref().memory[addr as usize..(addr + size) as usize].to_vec(),
         ))
     }
 
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_memory_executable(self, addr, 2)?;
         Ok(LittleEndian::read_u16(
-            &self.memory[addr as usize..addr as usize + 2],
+            &self.as_ref().memory[addr as usize..addr as usize + 2],
         ))
     }
 
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
         check_memory_executable(self, addr, 4)?;
         Ok(LittleEndian::read_u32(
-            &self.memory[addr as usize..addr as usize + 4],
+            &self.as_ref().memory[addr as usize..addr as usize + 4],
         ))
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 1)?;
-        Ok(u64::from(self.memory[addr as usize]))
+        Ok(u64::from(self.as_ref().memory[addr as usize]))
     }
 
     fn load16(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 2)?;
         Ok(u64::from(LittleEndian::read_u16(
-            &self.memory[addr as usize..addr as usize + 2],
+            &self.as_ref().memory[addr as usize..addr as usize + 2],
         )))
     }
 
@@ -357,7 +414,7 @@ impl Memory for Box<AsmCoreMachine> {
         let addr = *addr;
         check_memory_inited(self, addr, 4)?;
         Ok(u64::from(LittleEndian::read_u32(
-            &self.memory[addr as usize..addr as usize + 4],
+            &self.as_ref().memory[addr as usize..addr as usize + 4],
         )))
     }
 
@@ -365,14 +422,14 @@ impl Memory for Box<AsmCoreMachine> {
         let addr = *addr;
         check_memory_inited(self, addr, 8)?;
         Ok(LittleEndian::read_u64(
-            &self.memory[addr as usize..addr as usize + 8],
+            &self.as_ref().memory[addr as usize..addr as usize + 8],
         ))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 1)?;
-        self.memory[addr as usize] = (*value) as u8;
+        self.as_mut().memory[addr as usize] = (*value) as u8;
         Ok(())
     }
 
@@ -380,7 +437,7 @@ impl Memory for Box<AsmCoreMachine> {
         let addr = *addr;
         check_memory_writable(self, addr, 2)?;
         LittleEndian::write_u16(
-            &mut self.memory[addr as usize..(addr + 2) as usize],
+            &mut self.as_mut().memory[addr as usize..(addr + 2) as usize],
             *value as u16,
         );
         Ok(())
@@ -390,7 +447,7 @@ impl Memory for Box<AsmCoreMachine> {
         let addr = *addr;
         check_memory_writable(self, addr, 4)?;
         LittleEndian::write_u32(
-            &mut self.memory[addr as usize..(addr + 4) as usize],
+            &mut self.as_mut().memory[addr as usize..(addr + 4) as usize],
             *value as u32,
         );
         Ok(())
@@ -399,112 +456,74 @@ impl Memory for Box<AsmCoreMachine> {
     fn store64(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
         let addr = *addr;
         check_memory_writable(self, addr, 8)?;
-        LittleEndian::write_u64(&mut self.memory[addr as usize..(addr + 8) as usize], *value);
+        LittleEndian::write_u64(
+            &mut self.as_mut().memory[addr as usize..(addr + 8) as usize],
+            *value,
+        );
         Ok(())
     }
 
     fn lr(&self) -> &Self::REG {
-        &self.load_reservation_address
+        &self.as_ref().load_reservation_address
     }
 
     fn set_lr(&mut self, value: &Self::REG) {
-        self.load_reservation_address = *value;
+        self.as_mut().load_reservation_address = *value;
     }
 }
 
-impl SupportMachine for Box<AsmCoreMachine> {
-    fn new_with_memory(
-        isa: u8,
-        version: u32,
-        max_cycles: u64,
-        memory_size: usize,
-    ) -> Box<AsmCoreMachine> {
-        assert_ne!(memory_size, 0);
-        assert_eq!(memory_size % RISCV_PAGESIZE, 0);
-        assert_eq!(memory_size % (1 << MEMORY_FRAME_SHIFTS), 0);
-
-        let mut machine = unsafe {
-            let machine_size =
-                std::mem::size_of::<AsmCoreMachine>() - RISCV_MAX_MEMORY + memory_size;
-
-            let layout = Layout::array::<u8>(machine_size).unwrap();
-            let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
-            Box::from_raw(raw_allocation)
-        };
-        machine.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
-        machine.pc = 0;
-        machine.next_pc = 0;
-        machine.running = 0;
-        machine.cycles = 0;
-        machine.max_cycles = max_cycles;
-        if cfg!(feature = "enable-chaos-mode-by-default") {
-            machine.chaos_mode = 1;
-        } else {
-            machine.chaos_mode = 0;
-        }
-        machine.chaos_seed = 0;
-        machine.load_reservation_address = u64::MAX;
-        machine.reset_signal = 0;
-        machine.version = version;
-        machine.isa = isa;
-        machine.flags = [0; RISCV_PAGES];
-        for i in 0..TRACE_SIZE {
-            machine.traces[i] = Trace::default();
-        }
-        machine.frames = [0; MEMORY_FRAMES];
-
-        machine.memory_size = memory_size as u64;
-        machine.frames_size = (memory_size / MEMORY_FRAMESIZE) as u64;
-        machine.flags_size = (memory_size / RISCV_PAGESIZE) as u64;
-
-        machine.last_read_frame = u64::MAX;
-        machine.last_write_page = u64::MAX;
-
-        machine
+impl<R> SupportMachine for R
+where
+    R: AsmCoreMachineRevealer,
+{
+    fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> R {
+        R::new(isa, version, max_cycles, memory_size)
     }
 
     fn cycles(&self) -> u64 {
-        self.cycles
+        self.as_ref().cycles
     }
 
     fn set_cycles(&mut self, cycles: u64) {
-        self.cycles = cycles;
+        self.as_mut().cycles = cycles;
     }
 
     fn max_cycles(&self) -> u64 {
-        self.max_cycles
+        self.as_ref().max_cycles
     }
 
     fn set_max_cycles(&mut self, max_cycles: u64) {
-        self.max_cycles = max_cycles;
+        self.as_mut().max_cycles = max_cycles;
     }
 
     fn reset(&mut self, max_cycles: u64) {
-        self.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
-        self.pc = 0;
-        self.flags = [0; RISCV_PAGES];
+        let m = self.as_mut();
+
+        m.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
+        m.pc = 0;
+        m.flags = [0; RISCV_PAGES];
         for i in 0..TRACE_SIZE {
-            self.traces[i] = Trace::default();
+            m.traces[i] = Trace::default();
         }
-        self.frames = [0; MEMORY_FRAMES];
-        self.cycles = 0;
-        self.max_cycles = max_cycles;
-        self.reset_signal = 1;
-        self.load_reservation_address = u64::MAX;
+        m.frames = [0; MEMORY_FRAMES];
+        m.cycles = 0;
+        m.max_cycles = max_cycles;
+        m.reset_signal = 1;
+        m.load_reservation_address = u64::MAX;
     }
 
     fn reset_signal(&mut self) -> bool {
-        let ret = self.reset_signal != 0;
-        self.reset_signal = 0;
+        let ret = self.as_ref().reset_signal != 0;
+        self.as_mut().reset_signal = 0;
         ret
     }
 
     fn running(&self) -> bool {
-        self.running == 1
+        self.as_ref().running == 1
     }
 
     fn set_running(&mut self, running: bool) {
-        self.running = if running { 1 } else { 0 }
+        self.as_mut().running = if running { 1 } else { 0 }
     }
 
     #[cfg(feature = "pprof")]
@@ -520,22 +539,25 @@ extern "C" {
     pub fn ckb_vm_asm_labels();
 }
 
-pub struct AsmMachine {
-    pub machine: DefaultMachine<Box<AsmCoreMachine>>,
+pub struct AsmMachine<R = Box<AsmCoreMachine>> {
+    pub machine: DefaultMachine<R>,
 }
 
-impl DefaultMachineRunner for AsmMachine {
-    type Inner = Box<AsmCoreMachine>;
+impl<R> DefaultMachineRunner for AsmMachine<R>
+where
+    R: AsmCoreMachineRevealer,
+{
+    type Inner = R;
 
-    fn new(machine: DefaultMachine<Box<AsmCoreMachine>>) -> Self {
+    fn new(machine: DefaultMachine<R>) -> Self {
         Self { machine }
     }
 
-    fn machine(&self) -> &DefaultMachine<Box<AsmCoreMachine>> {
+    fn machine(&self) -> &DefaultMachine<R> {
         &self.machine
     }
 
-    fn machine_mut(&mut self) -> &mut DefaultMachine<Box<AsmCoreMachine>> {
+    fn machine_mut(&mut self) -> &mut DefaultMachine<R> {
         &mut self.machine
     }
 
@@ -551,7 +573,7 @@ impl DefaultMachineRunner for AsmMachine {
             }
             let result = unsafe {
                 ckb_vm_x64_execute(
-                    &mut **self.machine.inner_mut(),
+                    &mut **self.machine.inner_mut().as_mut(),
                     self.machine.pause.get_raw_ptr(),
                 )
             };
@@ -589,7 +611,7 @@ impl DefaultMachineRunner for AsmMachine {
                     };
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
-                    self.machine.inner_mut().traces[slot] = trace;
+                    self.machine.inner_mut().as_mut().traces[slot] = trace;
                 }
                 RET_ECALL => self.machine.ecall()?,
                 RET_EBREAK => self.machine.ebreak()?,
@@ -614,9 +636,12 @@ impl DefaultMachineRunner for AsmMachine {
     }
 }
 
-impl AsmMachine {
+impl<R> AsmMachine<R>
+where
+    R: AsmCoreMachineRevealer,
+{
     pub fn set_max_cycles(&mut self, cycles: u64) {
-        self.machine.inner.max_cycles = cycles;
+        self.machine.inner.as_mut().max_cycles = cycles;
     }
 
     pub fn load_program(
@@ -658,11 +683,11 @@ impl AsmMachine {
         };
         trace.address = pc;
         trace.length = len;
-        self.machine.inner_mut().traces[slot] = trace;
+        self.machine.inner_mut().as_mut().traces[slot] = trace;
 
         let result = unsafe {
             ckb_vm_x64_execute(
-                &mut (**self.machine.inner_mut()),
+                &mut (**self.machine.inner_mut().as_mut()),
                 self.machine.pause.get_raw_ptr(),
             )
         };
@@ -680,7 +705,7 @@ impl AsmMachine {
             }
             _ => return Err(Error::Asm(result)),
         }
-        self.machine.inner_mut().traces[slot] = Trace::default();
+        self.machine.inner_mut().as_mut().traces[slot] = Trace::default();
         Ok(())
     }
 }
