@@ -15,14 +15,14 @@ pub use self::register::Register;
 use super::Error;
 pub use ckb_vm_definitions::{
     instructions::{
-        self as insts, instruction_opcode_name, Instruction, InstructionOpcode,
-        MAXIMUM_BASIC_BLOCK_END_OPCODE, MINIMAL_BASIC_BLOCK_END_OPCODE, MINIMAL_OPCODE,
+        self as insts, Instruction, InstructionOpcode, MAXIMUM_BASIC_BLOCK_END_OPCODE,
+        MINIMAL_BASIC_BLOCK_END_OPCODE, MINIMAL_OPCODE, instruction_opcode_name,
     },
     registers::REGISTER_ABI_NAMES,
 };
 use core::fmt;
 pub use execute::{
-    execute, execute_instruction, execute_with_thread, handle_invalid_op, Thread, ThreadFactory,
+    Thread, ThreadFactory, execute, execute_instruction, execute_with_thread, handle_invalid_op,
 };
 
 pub type RegisterIndex = usize;

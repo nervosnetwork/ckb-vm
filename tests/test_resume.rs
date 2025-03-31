@@ -9,8 +9,8 @@ use ckb_vm::machine::{
     VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
-use ckb_vm::snapshot::{make_snapshot, resume, Snapshot};
-use ckb_vm::{Error, RustDefaultMachineBuilder, ISA_A, ISA_IMC};
+use ckb_vm::snapshot::{Snapshot, make_snapshot, resume};
+use ckb_vm::{Error, ISA_A, ISA_IMC, RustDefaultMachineBuilder};
 use std::fs::File;
 use std::io::Read;
 

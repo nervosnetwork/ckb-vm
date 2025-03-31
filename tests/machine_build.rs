@@ -2,7 +2,7 @@ use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
-use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine};
+use ckb_vm::machine::{DefaultCoreMachine, trace::TraceMachine};
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{
     DefaultMachineRunner, Error, Register, RustDefaultMachineBuilder, SparseMemory, SupportMachine,

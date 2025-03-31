@@ -4,33 +4,34 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
+    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS,
     asm::{
         FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
         RET_PAUSE, RET_SLOWPATH,
     },
-    ISA_MOP, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
 };
-use rand::{prelude::RngCore, SeedableRng};
-use std::alloc::{alloc, alloc_zeroed, Layout};
+use rand::{SeedableRng, prelude::RngCore};
+use std::alloc::{Layout, alloc, alloc_zeroed};
 use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
 
 use crate::{
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, MEMORY_FRAME_SHIFTS, Machine, Memory,
+    RISCV_PAGESIZE, SupportMachine,
     elf::ProgramMetadata,
     error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
-        asm::traces::{decode_fixed_trace, SimpleFixedTraceDecoder, TraceDecoder},
         AbstractDefaultMachineBuilder, VERSION0,
+        asm::traces::{SimpleFixedTraceDecoder, TraceDecoder, decode_fixed_trace},
     },
     memory::{
+        FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
         check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
-        round_page_up, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+        round_page_up,
     },
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, Machine, Memory, SupportMachine,
-    MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
 };
 
 pub trait AsmCoreMachineRevealer: AsRef<AsmCoreMachine> + AsMut<AsmCoreMachine> {
@@ -121,7 +122,7 @@ where
 // but consider that in the asm machine, `frame_index` is stored in `rdi` and `machine`
 // is stored in `rsi`, there is no need to exchange the values in the two registers
 // in this way.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
     let is_chaos_mode = machine.chaos_mode != 0;
@@ -134,9 +135,9 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
         1 << MEMORY_FRAME_SHIFTS,
     );
     if is_chaos_mode {
-        let mut gen = rand::rngs::StdRng::seed_from_u64(chaos_seed);
-        gen.fill_bytes(slice);
-        machine.chaos_seed = gen.next_u32();
+        let mut rgen = rand::rngs::StdRng::seed_from_u64(chaos_seed);
+        rgen.fill_bytes(slice);
+        machine.chaos_seed = rgen.next_u32();
     } else {
         memset(slice, 0);
     }
@@ -261,7 +262,7 @@ fn check_memory_inited<R: AsmCoreMachineRevealer>(
 // permission checking
 struct FastMemory<'a>(&'a mut AsmCoreMachine);
 
-impl<'a> FastMemory<'a> {
+impl FastMemory<'_> {
     fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
         check_no_overflow(addr, size, self.0.memory_size)?;
         let frame_start = addr >> MEMORY_FRAME_SHIFTS << MEMORY_FRAME_SHIFTS;
@@ -294,7 +295,7 @@ impl<'a> FastMemory<'a> {
     }
 }
 
-impl<'a> Memory for FastMemory<'a> {
+impl Memory for FastMemory<'_> {
     type REG = u64;
 
     fn new(_memory_size: usize) -> Self {
@@ -722,7 +723,7 @@ where
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *const InvokeData) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
@@ -785,12 +786,12 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     return Err(Error::MemOutOfBound(
                         self.machine.inner.as_ref().error_arg0,
                         OutOfBoundKind::Memory,
-                    ))
+                    ));
                 }
                 RET_INVALID_PERMISSION => {
                     return Err(Error::MemWriteOnExecutablePage(
                         self.machine.inner.as_ref().error_arg0,
-                    ))
+                    ));
                 }
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
@@ -852,12 +853,12 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 return Err(Error::MemOutOfBound(
                     self.machine.inner.as_ref().error_arg0,
                     OutOfBoundKind::Memory,
-                ))
+                ));
             }
             RET_INVALID_PERMISSION => {
                 return Err(Error::MemWriteOnExecutablePage(
                     self.machine.inner.as_ref().error_arg0,
-                ))
+                ));
             }
             RET_SLOWPATH => {
                 let pc = *self.machine.pc() - 4;

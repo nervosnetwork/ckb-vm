@@ -5,9 +5,9 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine}
 use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
 use ckb_vm::{
-    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, Error, Memory,
-    RustDefaultMachineBuilder, SparseMemory, SupportMachine, TraceMachine, WXorXMemory, ISA_B,
-    ISA_IMC, ISA_MOP, RISCV_PAGESIZE,
+    CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, Error, ISA_B, ISA_IMC,
+    ISA_MOP, Memory, RISCV_PAGESIZE, RustDefaultMachineBuilder, SparseMemory, SupportMachine,
+    TraceMachine, WXorXMemory,
 };
 use std::fs;
 

@@ -1,13 +1,13 @@
 use ckb_vm::decoder::{DefaultDecoder, InstDecoder};
 use ckb_vm::instructions::{
-    extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
+    Instruction, Utype, extract_opcode, instruction_length, set_instruction_length_n,
 };
-#[cfg(has_asm)]
-use ckb_vm::machine::asm::{traces::SimpleFixedTraceDecoder, AbstractAsmMachine, AsmCoreMachine};
 use ckb_vm::machine::VERSION1;
+#[cfg(has_asm)]
+use ckb_vm::machine::asm::{AbstractAsmMachine, AsmCoreMachine, traces::SimpleFixedTraceDecoder};
 use ckb_vm::{
-    machine::AbstractDefaultMachineBuilder, CoreMachine, DefaultCoreMachine, DefaultMachineRunner,
-    Error, Memory, Register, SparseMemory, SupportMachine, ISA_IMC,
+    CoreMachine, DefaultCoreMachine, DefaultMachineRunner, Error, ISA_IMC, Memory, Register,
+    SparseMemory, SupportMachine, machine::AbstractDefaultMachineBuilder,
 };
 use ckb_vm_definitions::instructions as insts;
 use std::fs;

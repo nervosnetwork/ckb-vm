@@ -1,7 +1,7 @@
-use super::super::{error::OutOfBoundKind, Error, Register, RISCV_PAGESIZE};
+use super::super::{Error, RISCV_PAGESIZE, Register, error::OutOfBoundKind};
 use super::{
-    check_no_overflow, check_permission, get_page_indices, round_page_down, round_page_up, Memory,
-    FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
+    FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, Memory, check_no_overflow, check_permission,
+    get_page_indices, round_page_down, round_page_up,
 };
 
 use bytes::Bytes;

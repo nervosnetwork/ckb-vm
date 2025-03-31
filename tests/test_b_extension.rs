@@ -1,4 +1,4 @@
-use ckb_vm::{machine::VERSION1, ISA_B, ISA_IMC};
+use ckb_vm::{ISA_B, ISA_IMC, machine::VERSION1};
 
 pub mod machine_build;
 

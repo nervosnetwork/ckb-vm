@@ -1,7 +1,7 @@
 use ckb_vm::machine::VERSION0;
 use ckb_vm::{
-    run, DefaultCoreMachine, DefaultMachineRunner, Error, FlatMemory, Instruction,
-    RustDefaultMachineBuilder, SparseMemory, SupportMachine, ISA_IMC,
+    DefaultCoreMachine, DefaultMachineRunner, Error, FlatMemory, ISA_IMC, Instruction,
+    RustDefaultMachineBuilder, SparseMemory, SupportMachine, run,
 };
 use std::fs;
 

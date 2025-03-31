@@ -1,12 +1,12 @@
-use ckb_vm::{error::OutOfBoundKind, run_with_memory, FlatMemory, SparseMemory};
 #[cfg(has_asm)]
 use ckb_vm::{
+    DefaultMachineRunner, ISA_B, ISA_IMC, ISA_MOP, SupportMachine,
     machine::{
-        asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine},
         VERSION0, VERSION2,
+        asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine},
     },
-    DefaultMachineRunner, SupportMachine, ISA_B, ISA_IMC, ISA_MOP,
 };
+use ckb_vm::{FlatMemory, SparseMemory, error::OutOfBoundKind, run_with_memory};
 use std::fs;
 
 fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {

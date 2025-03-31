@@ -3,8 +3,8 @@ use ckb_vm_definitions::registers::{RA, ZERO};
 
 use crate::error::OutOfBoundKind;
 use crate::instructions::{
-    a, b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
-    InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype,
+    Instruction, InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype, a, b,
+    extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n,
 };
 use crate::machine::VERSION2;
 use crate::memory::Memory;

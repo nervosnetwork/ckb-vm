@@ -5,7 +5,7 @@ use super::utils::{
     lw, lwu, opcode, rd, rs1, rs2, stype_immediate, utype_immediate,
 };
 use super::{
-    blank_instruction, set_instruction_length_4, Instruction, Itype, Register, Rtype, Stype, Utype,
+    Instruction, Itype, Register, Rtype, Stype, Utype, blank_instruction, set_instruction_length_4,
 };
 
 // The FENCE instruction is used to order device I/O and memory accesses

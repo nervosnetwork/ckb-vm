@@ -4,20 +4,20 @@ pub mod trace;
 
 use std::fmt::{self, Display};
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 
 use bytes::Bytes;
 
 use super::debugger::Debugger;
 use super::decoder::{DefaultDecoder, InstDecoder};
-use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
-use super::instructions::{execute, Instruction, Register};
-use super::memory::{load_c_string_byte_by_byte, Memory};
+use super::elf::{LoadingAction, ProgramMetadata, parse_elf};
+use super::instructions::{Instruction, Register, execute};
+use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
 use super::{
+    DEFAULT_MEMORY_SIZE, Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
-    Error, DEFAULT_MEMORY_SIZE, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -878,7 +878,7 @@ impl<'a, M: Memory> FlattenedArgsReader<'a, M> {
     }
 }
 
-impl<'a, M: Memory> Iterator for FlattenedArgsReader<'a, M> {
+impl<M: Memory> Iterator for FlattenedArgsReader<'_, M> {
     type Item = Result<Bytes, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -907,7 +907,7 @@ impl<'a, M: Memory> Iterator for FlattenedArgsReader<'a, M> {
     }
 }
 
-impl<'a, M: Memory> ExactSizeIterator for FlattenedArgsReader<'a, M> {
+impl<M: Memory> ExactSizeIterator for FlattenedArgsReader<'_, M> {
     fn len(&self) -> usize {
         self.argc.to_u64() as usize
     }

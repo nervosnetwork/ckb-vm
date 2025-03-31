@@ -1,9 +1,9 @@
 use crate::{
+    Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, Register,
     bits::roundup,
     elf::{LoadingAction, ProgramMetadata},
     machine::SupportMachine,
-    memory::{get_page_indices, Memory, FLAG_DIRTY},
-    Error, Register, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
+    memory::{FLAG_DIRTY, Memory, get_page_indices},
 };
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};

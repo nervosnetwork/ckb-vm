@@ -2,12 +2,12 @@ use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
-use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION2};
+use ckb_vm::machine::{DefaultCoreMachine, VERSION2, trace::TraceMachine};
 use ckb_vm::memory::load_c_string_byte_by_byte;
 use ckb_vm::registers::{A0, A1, A2, A7};
 use ckb_vm::{
-    DefaultMachineRunner, Error, FlattenedArgsReader, Register, RustDefaultMachineBuilder,
-    SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_B, ISA_IMC, ISA_MOP,
+    DefaultMachineRunner, Error, FlattenedArgsReader, ISA_B, ISA_IMC, ISA_MOP, Register,
+    RustDefaultMachineBuilder, SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
 use std::sync::{Arc, Mutex};
 
