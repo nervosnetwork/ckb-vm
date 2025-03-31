@@ -262,7 +262,7 @@ fn check_memory_inited<R: AsmCoreMachineRevealer>(
 // permission checking
 struct FastMemory<'a>(&'a mut AsmCoreMachine);
 
-impl<'a> FastMemory<'a> {
+impl FastMemory<'_> {
     fn prepare_memory(&mut self, addr: u64, size: u64) -> Result<(), Error> {
         check_no_overflow(addr, size, self.0.memory_size)?;
         let frame_start = addr >> MEMORY_FRAME_SHIFTS << MEMORY_FRAME_SHIFTS;
@@ -295,7 +295,7 @@ impl<'a> FastMemory<'a> {
     }
 }
 
-impl<'a> Memory for FastMemory<'a> {
+impl Memory for FastMemory<'_> {
     type REG = u64;
 
     fn new(_memory_size: usize) -> Self {

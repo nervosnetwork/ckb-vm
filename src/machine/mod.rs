@@ -878,7 +878,7 @@ impl<'a, M: Memory> FlattenedArgsReader<'a, M> {
     }
 }
 
-impl<'a, M: Memory> Iterator for FlattenedArgsReader<'a, M> {
+impl<M: Memory> Iterator for FlattenedArgsReader<'_, M> {
     type Item = Result<Bytes, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -907,7 +907,7 @@ impl<'a, M: Memory> Iterator for FlattenedArgsReader<'a, M> {
     }
 }
 
-impl<'a, M: Memory> ExactSizeIterator for FlattenedArgsReader<'a, M> {
+impl<M: Memory> ExactSizeIterator for FlattenedArgsReader<'_, M> {
     fn len(&self) -> usize {
         self.argc.to_u64() as usize
     }
