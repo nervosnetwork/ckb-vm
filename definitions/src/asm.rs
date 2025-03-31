@@ -1,5 +1,5 @@
-use crate::{instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER};
-use std::alloc::{dealloc, Layout};
+use crate::{RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
+use std::alloc::{Layout, dealloc};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;

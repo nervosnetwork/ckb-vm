@@ -1,16 +1,16 @@
 // This example is mainly to test whether there is memory overflow.
 // Under linux, we choose to use smem, which can monitor memory changes more accurately
 
-use ckb_vm::{run_with_memory, Bytes, FlatMemory, SparseMemory};
-use std::process::{id, Command};
+use ckb_vm::{Bytes, FlatMemory, SparseMemory, run_with_memory};
+use std::process::{Command, id};
 
 #[cfg(has_asm)]
 use ckb_vm::{
-    machine::{
-        asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine},
-        DefaultMachineRunner, SupportMachine, VERSION0,
-    },
     ISA_IMC,
+    machine::{
+        DefaultMachineRunner, SupportMachine, VERSION0,
+        asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine},
+    },
 };
 
 #[cfg(has_asm)]

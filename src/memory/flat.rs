@@ -1,5 +1,5 @@
-use super::super::{error::OutOfBoundKind, Error, Register, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
-use super::{check_no_overflow, fill_page_data, get_page_indices, memset, set_dirty, Memory};
+use super::super::{Error, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE, Register, error::OutOfBoundKind};
+use super::{Memory, check_no_overflow, fill_page_data, get_page_indices, memset, set_dirty};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;

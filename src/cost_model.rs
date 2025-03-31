@@ -1,6 +1,6 @@
 use crate::{
-    instructions::{extract_opcode, insts},
     Instruction,
+    instructions::{extract_opcode, insts},
 };
 
 // Returns the spent cycles to execute the specific instruction.

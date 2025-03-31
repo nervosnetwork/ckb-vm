@@ -1,7 +1,7 @@
 use crate::{
     error::Error,
     instructions::{
-        extract_opcode, insts, Instruction, Itype, R4type, R5type, Rtype, Stype, Utype,
+        Instruction, Itype, R4type, R5type, Rtype, Stype, Utype, extract_opcode, insts,
     },
 };
 use core::convert::TryFrom;

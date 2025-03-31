@@ -4,8 +4,8 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::machine::{DefaultCoreMachine, RustDefaultMachineBuilder, VERSION1};
 use ckb_vm::{
-    registers::A7, DefaultMachineRunner, Error, Register, SparseMemory, SupportMachine, Syscalls,
-    TraceMachine, WXorXMemory, DEFAULT_MEMORY_SIZE, ISA_IMC, ISA_MOP,
+    DEFAULT_MEMORY_SIZE, DefaultMachineRunner, Error, ISA_IMC, ISA_MOP, Register, SparseMemory,
+    SupportMachine, Syscalls, TraceMachine, WXorXMemory, registers::A7,
 };
 
 #[allow(dead_code)]

@@ -1,6 +1,7 @@
 use crate::{
+    Register,
     ckb_vm_definitions::{
-        asm::{calculate_slot, FixedTrace, TRACE_ITEM_LENGTH, TRACE_SIZE},
+        asm::{FixedTrace, TRACE_ITEM_LENGTH, TRACE_SIZE, calculate_slot},
         instructions::{
             Instruction, InstructionOpcode, OP_CUSTOM_ASM_TRACE_JUMP, OP_CUSTOM_TRACE_END,
         },
@@ -12,13 +13,12 @@ use crate::{
         is_slowpath_instruction,
     },
     machine::{
-        asm::{ckb_vm_asm_labels, AsmCoreMachineRevealer},
         CoreMachine, DefaultMachine,
+        asm::{AsmCoreMachineRevealer, ckb_vm_asm_labels},
     },
     memory::Memory,
-    Register,
 };
-use std::alloc::{alloc, alloc_zeroed, Layout};
+use std::alloc::{Layout, alloc, alloc_zeroed};
 use std::collections::HashMap;
 
 pub trait TraceDecoder: InstDecoder {

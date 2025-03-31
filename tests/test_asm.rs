@@ -11,10 +11,10 @@ use ckb_vm::machine::asm::{
 use ckb_vm::machine::{AbstractDefaultMachineBuilder, CoreMachine, VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::Memory;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
-use ckb_vm::{Debugger, DefaultMachineRunner, Error, Register, SupportMachine, Syscalls, ISA_IMC};
+use ckb_vm::{Debugger, DefaultMachineRunner, Error, ISA_IMC, Register, SupportMachine, Syscalls};
 use std::fs;
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread;
 pub mod machine_build;
 

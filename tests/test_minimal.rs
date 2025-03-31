@@ -1,4 +1,4 @@
-use ckb_vm::{run, SparseMemory};
+use ckb_vm::{SparseMemory, run};
 use std::fs;
 
 #[test]

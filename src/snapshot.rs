@@ -1,7 +1,7 @@
 use crate::instructions::Register;
-use crate::memory::Memory;
 use crate::memory::FLAG_DIRTY;
-use crate::{CoreMachine, Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
+use crate::memory::Memory;
+use crate::{CoreMachine, Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE};
 use serde::{Deserialize, Serialize};
 
 // Snapshot provides a mechanism for suspending and resuming a virtual machine.

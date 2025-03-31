@@ -4,33 +4,34 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
+    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS,
     asm::{
         FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
         RET_PAUSE, RET_SLOWPATH,
     },
-    ISA_MOP, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER,
-    RISCV_PAGE_SHIFTS,
 };
-use rand::{prelude::RngCore, SeedableRng};
-use std::alloc::{alloc, alloc_zeroed, Layout};
+use rand::{SeedableRng, prelude::RngCore};
+use std::alloc::{Layout, alloc, alloc_zeroed};
 use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
 
 use crate::{
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, MEMORY_FRAME_SHIFTS, Machine, Memory,
+    RISCV_PAGESIZE, SupportMachine,
     elf::ProgramMetadata,
     error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
-        asm::traces::{decode_fixed_trace, SimpleFixedTraceDecoder, TraceDecoder},
         AbstractDefaultMachineBuilder, VERSION0,
+        asm::traces::{SimpleFixedTraceDecoder, TraceDecoder, decode_fixed_trace},
     },
     memory::{
+        FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
         check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
-        round_page_up, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+        round_page_up,
     },
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, Machine, Memory, SupportMachine,
-    MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
 };
 
 pub trait AsmCoreMachineRevealer: AsRef<AsmCoreMachine> + AsMut<AsmCoreMachine> {
@@ -134,9 +135,9 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
         1 << MEMORY_FRAME_SHIFTS,
     );
     if is_chaos_mode {
-        let mut gen = rand::rngs::StdRng::seed_from_u64(chaos_seed);
-        gen.fill_bytes(slice);
-        machine.chaos_seed = gen.next_u32();
+        let mut rgen = rand::rngs::StdRng::seed_from_u64(chaos_seed);
+        rgen.fill_bytes(slice);
+        machine.chaos_seed = rgen.next_u32();
     } else {
         memset(slice, 0);
     }
@@ -785,12 +786,12 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     return Err(Error::MemOutOfBound(
                         self.machine.inner.as_ref().error_arg0,
                         OutOfBoundKind::Memory,
-                    ))
+                    ));
                 }
                 RET_INVALID_PERMISSION => {
                     return Err(Error::MemWriteOnExecutablePage(
                         self.machine.inner.as_ref().error_arg0,
-                    ))
+                    ));
                 }
                 RET_SLOWPATH => {
                     let pc = *self.machine.pc() - 4;
@@ -852,12 +853,12 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 return Err(Error::MemOutOfBound(
                     self.machine.inner.as_ref().error_arg0,
                     OutOfBoundKind::Memory,
-                ))
+                ));
             }
             RET_INVALID_PERMISSION => {
                 return Err(Error::MemWriteOnExecutablePage(
                     self.machine.inner.as_ref().error_arg0,
-                ))
+                ));
             }
             RET_SLOWPATH => {
                 let pc = *self.machine.pc() - 4;

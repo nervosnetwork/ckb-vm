@@ -4,17 +4,17 @@ extern crate criterion;
 use bytes::Bytes;
 #[cfg(has_asm)]
 use ckb_vm::{
+    ISA_B, ISA_IMC, ISA_MOP,
     decoder::{DefaultDecoder, InstDecoder},
     machine::{
-        asm::{
-            traces::{MemoizedDynamicTraceDecoder, MemoizedFixedTraceDecoder},
-            AbstractAsmMachine, AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine,
-        },
         AbstractDefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0, VERSION2,
+        asm::{
+            AbstractAsmMachine, AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine,
+            traces::{MemoizedDynamicTraceDecoder, MemoizedFixedTraceDecoder},
+        },
     },
-    ISA_B, ISA_IMC, ISA_MOP,
 };
-use ckb_vm::{run, SparseMemory};
+use ckb_vm::{SparseMemory, run};
 use criterion::Criterion;
 use std::fs;
 
