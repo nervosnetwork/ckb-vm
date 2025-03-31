@@ -122,7 +122,7 @@ where
 // but consider that in the asm machine, `frame_index` is stored in `rdi` and `machine`
 // is stored in `rsi`, there is no need to exchange the values in the two registers
 // in this way.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
     let is_chaos_mode = machine.chaos_mode != 0;
@@ -723,7 +723,7 @@ where
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *const InvokeData) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
