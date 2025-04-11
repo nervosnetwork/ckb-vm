@@ -1,5 +1,5 @@
 #![no_main]
-use ckb_vm::CoreMachine;
+use ckb_vm::{CoreMachine, SupportMachine};
 use libfuzzer_sys::fuzz_target;
 use spike_sys::Spike;
 use std::collections::VecDeque;
@@ -40,13 +40,17 @@ fuzz_target!(|data: [u8; 512]| {
     let ckb_vm_isa = ckb_vm::ISA_IMC | ckb_vm::ISA_A | ckb_vm::ISA_B;
     let ckb_vm_version = ckb_vm::machine::VERSION2;
     let mut ckb_vm_int =
-        ckb_vm::DefaultMachineBuilder::new(ckb_vm::DefaultCoreMachine::<
+        ckb_vm::RustDefaultMachineBuilder::new(ckb_vm::DefaultCoreMachine::<
             u64,
             ckb_vm::SparseMemory<u64>,
         >::new(ckb_vm_isa, ckb_vm_version, u64::MAX))
         .build();
-    let mut ckb_vm_asm = ckb_vm::DefaultMachineBuilder::new(
-        ckb_vm::machine::asm::AsmCoreMachine::new(ckb_vm_isa, ckb_vm_version, u64::MAX),
+    let mut ckb_vm_asm = ckb_vm::machine::asm::AsmDefaultMachineBuilder::new(
+        <ckb_vm::machine::asm::AsmCoreMachine as SupportMachine>::new(
+            ckb_vm_isa,
+            ckb_vm_version,
+            u64::MAX,
+        ),
     )
     .build();
 
