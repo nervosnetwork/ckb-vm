@@ -3,7 +3,7 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::{DefaultCoreMachine, DefaultMachineBuilder, VERSION2};
 use ckb_vm::memory::sparse::SparseMemory;
 use ckb_vm::memory::wxorx::WXorXMemory;
-use ckb_vm::{Bytes, Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP};
+use ckb_vm::{Bytes, Error, SupportMachine, ISA_A, ISA_B, ISA_IMC, ISA_MOP};
 use libfuzzer_sys::fuzz_target;
 
 fn run(data: &[u8]) -> Result<i8, Error> {
