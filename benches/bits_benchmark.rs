@@ -53,19 +53,19 @@ fn roundup_benchmark(c: &mut Criterion) {
     c.bench_function("roundup via bit ops", |b| {
         b.iter(|| round_bench!(bits::roundup))
     });
-    c.bench_function("roundup via multication", |b| {
+    c.bench_function("roundup via multiplication", |b| {
         b.iter(|| round_bench!(roundup_via_multiplication))
     });
 }
 
 fn rounddown_benchmark(c: &mut Criterion) {
-    c.bench_function("roundup via remainder", |b| {
+    c.bench_function("rounddown via remainder", |b| {
         b.iter(|| round_bench!(rounddown_via_remainder))
     });
-    c.bench_function("roundup via bit ops", |b| {
+    c.bench_function("rounddown via bit ops", |b| {
         b.iter(|| round_bench!(bits::rounddown))
     });
-    c.bench_function("roundup via multication", |b| {
+    c.bench_function("rounddown via multiplication", |b| {
         b.iter(|| round_bench!(rounddown_via_multiplication))
     });
 }
