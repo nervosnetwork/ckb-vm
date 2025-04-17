@@ -3,7 +3,7 @@ name = "ckb-vm-fuzz"
 version = "0.1.0"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
 publish = false
-edition = "2018"
+edition = "2024"
 
 [package.metadata]
 cargo-fuzz = true

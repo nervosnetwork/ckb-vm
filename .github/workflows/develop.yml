@@ -197,3 +197,13 @@ jobs:
         shell: pwsh
         run: |
           make ci-asm
+
+  linux-fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build fuzz
+        run: |
+          sudo apt install device-tree-compiler
+          cargo install cargo-fuzz
+          cargo +nightly fuzz build
