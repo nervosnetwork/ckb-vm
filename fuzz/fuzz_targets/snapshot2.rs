@@ -4,8 +4,8 @@ use ckb_vm::{
     machine::VERSION2,
     memory::{round_page_down, round_page_up, FLAG_EXECUTABLE, FLAG_FREEZED},
     snapshot2::{DataSource, Snapshot2Context},
-    Bytes, CoreMachine, DefaultMachine, DefaultMachineBuilder, Memory, ISA_A, ISA_B, ISA_IMC,
-    ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    Bytes, CoreMachine, DefaultMachine, DefaultMachineBuilder, Memory, SupportMachine, ISA_A,
+    ISA_B, ISA_IMC, ISA_MOP, RISCV_MAX_MEMORY, RISCV_PAGESIZE,
 };
 use ckb_vm_definitions::asm::AsmCoreMachine;
 use libfuzzer_sys::fuzz_target;
@@ -65,7 +65,7 @@ impl DataSource<u32> for DummyData {
 
 fn build_machine() -> DefaultMachine<Box<AsmCoreMachine>> {
     let isa = ISA_IMC | ISA_A | ISA_B | ISA_MOP;
-    let core_machine = AsmCoreMachine::new(isa, VERSION2, u64::MAX);
+    let core_machine = <Box<AsmCoreMachine> as SupportMachine>::new(isa, VERSION2, u64::MAX);
     DefaultMachineBuilder::new(core_machine).build()
 }
 
