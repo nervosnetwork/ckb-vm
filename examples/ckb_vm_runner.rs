@@ -40,9 +40,9 @@ impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
 }
 
 #[cfg(has_asm)]
-fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
+fn main_asm64(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
     let asm_core = <ckb_vm::machine::asm::AsmCoreMachine as SupportMachine>::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_A | ckb_vm::ISA_MOP,
         ckb_vm::machine::VERSION2,
         u64::MAX,
     );
@@ -55,7 +55,7 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
     let exit = machine.run();
     let cycles = machine.machine.cycles();
     println!(
-        "asm exit={:?} cycles={:?} r[a1]={:?}",
+        "asm64 exit={:?} cycles={:?} r[a1]={:?}",
         exit,
         cycles,
         machine.machine.registers()[ckb_vm::registers::A1]
@@ -64,9 +64,13 @@ fn main_asm(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
 }
 
 #[cfg(not(has_asm))]
-fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
-    let core_machine = ckb_vm::DefaultCoreMachine::<u64, ckb_vm::SparseMemory<u64>>::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
+fn main_asm64(_: Bytes, _: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
+    panic!("please use --features=asm to enable asm support.")
+}
+
+fn main_interpreter32(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
+    let core_machine = ckb_vm::DefaultCoreMachine::<u32, ckb_vm::SparseMemory<u32>>::new(
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_A | ckb_vm::ISA_MOP,
         ckb_vm::machine::VERSION2,
         u64::MAX,
     );
@@ -77,7 +81,28 @@ fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
     let exit = machine.run();
     let cycles = machine.cycles();
     println!(
-        "int exit={:?} cycles={:?} r[a1]={:?}",
+        "interpreter32 exit={:?} cycles={:?} r[a1]={:?}",
+        exit,
+        cycles,
+        machine.registers()[ckb_vm::registers::A1]
+    );
+    std::process::exit(exit? as i32);
+}
+
+fn main_interpreter64(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
+    let core_machine = ckb_vm::DefaultCoreMachine::<u64, ckb_vm::SparseMemory<u64>>::new(
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_A | ckb_vm::ISA_MOP,
+        ckb_vm::machine::VERSION2,
+        u64::MAX,
+    );
+    let machine_builder = ckb_vm::RustDefaultMachineBuilder::new(core_machine)
+        .instruction_cycle_func(Box::new(estimate_cycles));
+    let mut machine = machine_builder.syscall(Box::new(DebugSyscall {})).build();
+    machine.load_program(&code, args.into_iter().map(Ok))?;
+    let exit = machine.run();
+    let cycles = machine.cycles();
+    println!(
+        "interpreter64 exit={:?} cycles={:?} r[a1]={:?}",
         exit,
         cycles,
         machine.registers()[ckb_vm::registers::A1]
@@ -86,16 +111,30 @@ fn main_int(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Err
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().collect();
-    let code = std::fs::read(&args[1])?.into();
-    let riscv_args: Vec<Bytes> = if args.len() > 2 {
-        (&args[2..]).into_iter().map(|s| s.clone().into()).collect()
-    } else {
-        Vec::new()
-    };
-    #[cfg(has_asm)]
-    main_asm(code, riscv_args)?;
-    #[cfg(not(has_asm))]
-    main_int(code, riscv_args)?;
+    let mut mode = String::from("asm64");
+    let mut program_path = String::from("");
+    let mut program_args: Vec<String> = vec![];
+    {
+        let mut ap = argparse::ArgumentParser::new();
+        ap.set_description("CKB VM Runner");
+        ap.refer(&mut mode).add_option(
+            &["--mode"],
+            argparse::Store,
+            "[asm64, interpreter32, interpreter64]",
+        );
+        ap.refer(&mut program_path)
+            .add_argument("program_path", argparse::Store, "program path");
+        ap.refer(&mut program_args)
+            .add_argument("program_args", argparse::List, "program args");
+        ap.parse_args_or_exit();
+    }
+    let code = std::fs::read(&program_path)?.into();
+    let program_args = program_args.into_iter().map(|e| e.into()).collect();
+    match mode.as_str() {
+        "asm64" => main_asm64(code, program_args)?,
+        "interpreter32" => main_interpreter32(code, program_args)?,
+        "interpreter64" => main_interpreter64(code, program_args)?,
+        _ => panic!("mode should be one of [asm64, interpreter32, interpreter64]"),
+    }
     Ok(())
 }
