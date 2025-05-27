@@ -85,13 +85,14 @@ jobs:
                               zlib1g-dev
       - name: Run test suite
         run: |
-          git clone https://github.com/nervosnetwork/ckb-vm-test-suite
-          ln -snf .. ckb-vm-test-suite/ckb-vm
+          git clone https://github.com/nervosnetwork/ckb-vm-contrib --recursive
+          cd ckb-vm-contrib
+          git checkout 51ece04
+          cd ..
+          ln -snf ../.. ckb-vm-contrib/ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
-          cd ckb-vm-test-suite
-          git checkout 2be7dcb0fda7ab41932813632fd1904e8cecf1f0
-          git submodule update --init --recursive
-          RISCV=`pwd`/../riscv ./test.sh
+          cd ckb-vm-contrib/ckb-vm-test-suite
+          RISCV=`pwd`/../../riscv ./test.sh
 
   linux-native-test-spawn:
     strategy:
@@ -157,24 +158,22 @@ jobs:
           rustup target add aarch64-unknown-linux-gnu
       - name: Build test suite
         run: |
-          git clone https://github.com/nervosnetwork/ckb-vm-test-suite
-          ln -snf .. ckb-vm-test-suite/ckb-vm
-          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
-          cd ckb-vm-test-suite
-          git checkout 2be7dcb0fda7ab41932813632fd1904e8cecf1f0
-          git submodule update --init --recursive
-          RISCV=`pwd`/../riscv ./test.sh --build-only
+          git clone https://github.com/nervosnetwork/ckb-vm-contrib --recursive
+          cd ckb-vm-contrib
+          git checkout 51ece04
           cd ..
+          ln -snf ../.. ckb-vm-contrib/ckb-vm-test-suite/ckb-vm
+          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
+          cd ckb-vm-contrib/ckb-vm-test-suite
+          RISCV=`pwd`/../../riscv ./test.sh --build-only
       - name: Run test suite
         run: |
           sudo apt install -y qemu-system binfmt-support qemu-user-static
           sudo apt install -y gcc-multilib
           sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          cd ckb-vm-test-suite
-          cd binary && cargo build --release --target=aarch64-unknown-linux-gnu && cd ..
-          cd ..
-          docker run --rm -v `pwd`:/code -t --platform linux/arm64 arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
+          cargo build --release --target=aarch64-unknown-linux-gnu --example=ckb_vm_runner --features=asm --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
+          docker run --rm -v `pwd`:/code -t --platform linux/arm64 arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-contrib/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
 
   macos-x86-ci-asm:
     runs-on: macos-latest
