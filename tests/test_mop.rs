@@ -173,7 +173,7 @@ pub fn test_mop_secp256k1() {
     ];
 
     let mut machine = machine_build::int(
-        "benches/data/secp256k1_bench",
+        "tests/programs/secp256k1",
         args.clone(),
         VERSION1,
         ISA_IMC | ISA_B | ISA_MOP,
@@ -184,7 +184,7 @@ pub fn test_mop_secp256k1() {
     assert_eq!(machine.machine.cycles(), 611871);
 
     let mut machine = machine_build::int(
-        "benches/data/secp256k1_bench",
+        "tests/programs/secp256k1",
         args.clone(),
         VERSION2,
         ISA_IMC | ISA_B | ISA_MOP,
@@ -197,7 +197,7 @@ pub fn test_mop_secp256k1() {
     #[cfg(has_asm)]
     {
         let mut machine_asm = machine_build::asm(
-            "benches/data/secp256k1_bench",
+            "tests/programs/secp256k1",
             args.clone(),
             VERSION1,
             ISA_IMC | ISA_B | ISA_MOP,
@@ -208,7 +208,7 @@ pub fn test_mop_secp256k1() {
         assert_eq!(machine_asm.machine.cycles(), 611871);
 
         let mut machine_asm = machine_build::asm(
-            "benches/data/secp256k1_bench",
+            "tests/programs/secp256k1",
             args.clone(),
             VERSION2,
             ISA_IMC | ISA_B | ISA_MOP,

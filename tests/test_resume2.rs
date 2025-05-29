@@ -58,7 +58,7 @@ fn test_resume2_asm_2_asm() {
 
 #[test]
 fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
-    let data_source = load_program("benches/data/secp256k1_bench");
+    let data_source = load_program("tests/programs/secp256k1");
 
     let version = VERSION1;
     let except_cycles = 613073;

@@ -467,7 +467,7 @@ fn test_zero_address() {
 fn test_memoized_secp256k1() {
     let isa = ISA_IMC;
     let version = VERSION1;
-    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let buffer = fs::read("tests/programs/secp256k1").unwrap().into();
     let asm_core = <AsmCoreMachine as SupportMachine>::new(isa, version, u64::MAX);
     let core = AbstractDefaultMachineBuilder::<_, MemoizedFixedTraceDecoder<DefaultDecoder>>::new(
         asm_core,
@@ -491,7 +491,7 @@ fn test_memoized_secp256k1() {
 fn test_memoized_dynamic_secp256k1() {
     let isa = ISA_IMC;
     let version = VERSION1;
-    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let buffer = fs::read("tests/programs/secp256k1").unwrap().into();
     let asm_core = <AsmCoreMachine as SupportMachine>::new(isa, version, u64::MAX);
     let core =
         AbstractDefaultMachineBuilder::<_, MemoizedDynamicTraceDecoder<DefaultDecoder>>::new(
@@ -535,7 +535,7 @@ pub fn test_big_binary() {
 fn test_fast_memory_initialization_bug() {
     let isa = ISA_IMC;
     let version = VERSION1;
-    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let buffer = fs::read("tests/programs/secp256k1").unwrap().into();
     let asm_core = <AsmCoreMachine as SupportMachine>::new(isa, version, u64::MAX);
     let core = AsmDefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);
