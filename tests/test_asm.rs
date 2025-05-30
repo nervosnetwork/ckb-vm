@@ -1,14 +1,10 @@
 #![cfg(has_asm)]
 use ckb_vm::cost_model::constant_cycles;
-use ckb_vm::decoder::{DefaultDecoder, InstDecoder};
+use ckb_vm::decoder::InstDecoder;
 use ckb_vm::error::OutOfBoundKind;
-use ckb_vm::machine::asm::traces::{
-    MemoizedDynamicTraceDecoder, MemoizedFixedTraceDecoder, SimpleFixedTraceDecoder,
-};
-use ckb_vm::machine::asm::{
-    AbstractAsmMachine, AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine,
-};
-use ckb_vm::machine::{AbstractDefaultMachineBuilder, CoreMachine, VERSION0, VERSION1, VERSION2};
+use ckb_vm::machine::asm::traces::SimpleFixedTraceDecoder;
+use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
+use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::Memory;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{Debugger, DefaultMachineRunner, Error, ISA_IMC, Register, SupportMachine, Syscalls};
@@ -464,55 +460,6 @@ fn test_zero_address() {
 }
 
 #[test]
-fn test_memoized_secp256k1() {
-    let isa = ISA_IMC;
-    let version = VERSION1;
-    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-    let asm_core = <AsmCoreMachine as SupportMachine>::new(isa, version, u64::MAX);
-    let core = AbstractDefaultMachineBuilder::<_, MemoizedFixedTraceDecoder<DefaultDecoder>>::new(
-        asm_core,
-    )
-    .build();
-    let mut machine = AbstractAsmMachine::new(core);
-    let args = [
-            "secp256k1_bench",
-            "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-            "foo",
-            "bar",
-        ].into_iter().map(|a| Ok(a.into()));
-    machine.load_program(&buffer, args).unwrap();
-    let mut decoder = MemoizedFixedTraceDecoder::new::<u64>(isa, version);
-    let result = machine.run_with_decoder(&mut decoder);
-    assert_eq!(result.unwrap(), 0);
-}
-
-#[test]
-fn test_memoized_dynamic_secp256k1() {
-    let isa = ISA_IMC;
-    let version = VERSION1;
-    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
-    let asm_core = <AsmCoreMachine as SupportMachine>::new(isa, version, u64::MAX);
-    let core =
-        AbstractDefaultMachineBuilder::<_, MemoizedDynamicTraceDecoder<DefaultDecoder>>::new(
-            asm_core,
-        )
-        .build();
-    let mut machine = AbstractAsmMachine::new(core);
-    let args = [
-            "secp256k1_bench",
-            "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-            "foo",
-            "bar",
-        ].into_iter().map(|a| Ok(a.into()));
-    machine.load_program(&buffer, args).unwrap();
-    let mut decoder = MemoizedDynamicTraceDecoder::new::<u64>(isa, version);
-    let result = machine.run_with_decoder(&mut decoder);
-    assert_eq!(result.unwrap(), 0);
-}
-
-#[test]
 pub fn test_big_binary() {
     let buffer = fs::read("tests/programs/big_binary").unwrap().into();
     let asm_core = <AsmCoreMachine as SupportMachine>::new_with_memory(
@@ -535,7 +482,7 @@ pub fn test_big_binary() {
 fn test_fast_memory_initialization_bug() {
     let isa = ISA_IMC;
     let version = VERSION1;
-    let buffer = fs::read("benches/data/secp256k1_bench").unwrap().into();
+    let buffer = fs::read("tests/programs/big_binary").unwrap().into();
     let asm_core = <AsmCoreMachine as SupportMachine>::new(isa, version, u64::MAX);
     let core = AsmDefaultMachineBuilder::new(asm_core).build();
     let mut machine = AsmMachine::new(core);

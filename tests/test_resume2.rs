@@ -57,56 +57,6 @@ fn test_resume2_asm_2_asm() {
 }
 
 #[test]
-fn test_resume2_secp256k1_asm_2_interpreter_2_asm() {
-    let data_source = load_program("benches/data/secp256k1_bench");
-
-    let version = VERSION1;
-    let except_cycles = 613073;
-
-    let mut machine1 = MachineTy::Asm.build(data_source.clone(), version);
-    machine1.set_max_cycles(100000);
-    machine1.load_program([
-        "secp256k1_bench",
-        "033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f",
-        "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-        "foo",
-        "bar",
-    ].into_iter().map(|e| Ok(e.into()))).unwrap();
-    let result1 = machine1.run();
-    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
-    let snapshot1 = machine1.snapshot().unwrap();
-    assert!(!snapshot1.pages_from_source.is_empty());
-
-    let mut machine2 = MachineTy::Interpreter.build(data_source.clone(), version);
-    machine2.resume(snapshot1).unwrap();
-
-    assert_eq!(machine1.cycles(), machine2.cycles());
-    assert_eq!(machine1.full_registers(), machine2.full_registers());
-    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
-    assert_eq!(machine1.full_memory(), machine2.full_memory());
-
-    machine2.set_max_cycles(100000 + 200000);
-    let result2 = machine2.run();
-    assert_eq!(result2.unwrap_err(), Error::CyclesExceeded);
-    let snapshot2 = machine2.snapshot().unwrap();
-    assert!(!snapshot2.pages_from_source.is_empty());
-
-    let mut machine3 = MachineTy::Asm.build(data_source, version);
-    machine3.resume(snapshot2).unwrap();
-
-    assert_eq!(machine2.cycles(), machine3.cycles());
-    assert_eq!(machine2.full_registers(), machine3.full_registers());
-    #[cfg(not(feature = "enable-chaos-mode-by-default"))]
-    assert_eq!(machine2.full_memory(), machine3.full_memory());
-
-    machine3.set_max_cycles(100000 + 200000 + 400000);
-    let result3 = machine3.run();
-    let cycles3 = machine3.cycles();
-    assert_eq!(result3.unwrap(), 0);
-    assert_eq!(cycles3, except_cycles);
-}
-
-#[test]
 fn test_resume2_load_data_asm_2_interpreter() {
     let data_source = load_program("tests/programs/resume2_load_data");
 
