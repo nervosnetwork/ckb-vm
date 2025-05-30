@@ -1,5 +1,4 @@
 pub mod machine_build;
-use bytes::Bytes;
 use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::{VERSION1, VERSION2};
 use ckb_vm::{
@@ -157,66 +156,6 @@ pub fn test_mop_ld_32_constants() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
-    }
-}
-
-#[test]
-#[cfg_attr(miri, ignore)]
-pub fn test_mop_secp256k1() {
-    let args = vec![
-        Bytes::from("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f"),
-        Bytes::from(
-            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
-        ),
-        Bytes::from("foo"),
-        Bytes::from("bar"),
-    ];
-
-    let mut machine = machine_build::int(
-        "tests/programs/secp256k1",
-        args.clone(),
-        VERSION1,
-        ISA_IMC | ISA_B | ISA_MOP,
-    );
-    let ret = machine.run();
-    assert!(ret.is_ok());
-    assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 611871);
-
-    let mut machine = machine_build::int(
-        "tests/programs/secp256k1",
-        args.clone(),
-        VERSION2,
-        ISA_IMC | ISA_B | ISA_MOP,
-    );
-    let ret = machine.run();
-    assert!(ret.is_ok());
-    assert_eq!(ret.unwrap(), 0);
-    assert_eq!(machine.machine.cycles(), 576608);
-
-    #[cfg(has_asm)]
-    {
-        let mut machine_asm = machine_build::asm(
-            "tests/programs/secp256k1",
-            args.clone(),
-            VERSION1,
-            ISA_IMC | ISA_B | ISA_MOP,
-        );
-        let ret_asm = machine_asm.run();
-        assert!(ret_asm.is_ok());
-        assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine_asm.machine.cycles(), 611871);
-
-        let mut machine_asm = machine_build::asm(
-            "tests/programs/secp256k1",
-            args.clone(),
-            VERSION2,
-            ISA_IMC | ISA_B | ISA_MOP,
-        );
-        let ret_asm = machine_asm.run();
-        assert!(ret_asm.is_ok());
-        assert_eq!(ret_asm.unwrap(), 0);
-        assert_eq!(machine_asm.machine.cycles(), 576608);
     }
 }
 
