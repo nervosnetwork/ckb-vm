@@ -442,6 +442,7 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
   cmp %rcx, %rdx
   jne .exit_trace
+.trace_loaded:
   mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
   test %rdx, %rdx
   je .exit_trace
@@ -467,49 +468,14 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:
   /* Load current instruction as the full trace address */
   movq -16(INST_ARGS), TRACE
-  /* Prefetch trace info for the consecutive block */
-  prefetcht2 CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE)
-  mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
-  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
-  addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
-  jc .exit_cycles_overflow
-  cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
-  ja .exit_max_cycles_exceeded
-  movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
-  addq %rdx, PC_ADDRESS
-  lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
-  mov INST_PC, INST_ARGS
-  add $8, INST_ARGS
-  NEXT_INST
+  jmp .trace_loaded
 .p2align 3
 .prepare_trace:
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_PAUSE(INVOKE_DATA), %rax
   movzbl 0(%rax), %eax
   test %rax, %rax
   jnz .exit_pause
-  LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
-  shr $2, %eax
-  andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
-  imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
-  movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), TRACE
-  addq %rax, TRACE
-  movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE), %rdx
-  cmp %rcx, %rdx
-  jne .exit_trace
-  mov CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE), %edx
-  test %rdx, %rdx
-  je .exit_trace
-  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE), %rax
-  addq CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE), %rax
-  jc .exit_cycles_overflow
-  cmp CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE), %rax
-  ja .exit_max_cycles_exceeded
-  movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
-  addq %rdx, PC_ADDRESS
-  lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
-  mov INST_PC, INST_ARGS
-  add $8, INST_ARGS
-  NEXT_INST
+  jmp .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_ADDI:
   DECODE_I
