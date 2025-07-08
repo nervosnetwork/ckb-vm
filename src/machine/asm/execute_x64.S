@@ -369,7 +369,7 @@
  * addq $8, INST_PC
  * jmp *-8(TEMP1)
  *
- * Even though this would save us one instruction to exectue, keeping the jump
+ * Even though this would save us one instruction to execute, keeping the jump
  * target in TEMP1 actually aids branch predictor for better performance.
  */
 #define NEXT_INST \
