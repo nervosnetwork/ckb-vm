@@ -237,7 +237,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         self.track_pages(machine, start, length, id, offset + action.source.start)
     }
 
-    /// The followings are only made public for advanced usages, but make sure to exercise more
+    /// The following are only made public for advanced usages, but make sure to exercise more
     /// cautions when calling it!
     pub fn track_pages<M: SupportMachine>(
         &mut self,
