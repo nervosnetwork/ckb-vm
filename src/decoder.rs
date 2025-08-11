@@ -23,12 +23,8 @@ pub struct DefaultDecoder {
     factories: Vec<InstructionFactory>,
     mop: bool,
     version: u32,
-    // Use a cache of instructions to avoid decoding the same instruction
-    // twice, pc is the key and the instruction is the value.
-    //
-    // Use Vector so that the data is on the heap. Otherwise, if there is
-    // a vm call chain, it will quickly consume Rust's 2M stack space.
-    instructions_cache: Vec<(u64, u64)>,
+    // use a cache of instructions to avoid decoding the same instruction twice, pc is the key and the instruction is the value
+    instructions_cache: [(u64, u64); INSTRUCTION_CACHE_SIZE],
 }
 
 impl DefaultDecoder {
@@ -38,7 +34,7 @@ impl DefaultDecoder {
             factories: vec![],
             mop,
             version,
-            instructions_cache: vec![(u64::MAX as u64, 0); INSTRUCTION_CACHE_SIZE],
+            instructions_cache: [(u64::MAX, 0); INSTRUCTION_CACHE_SIZE],
         }
     }
 
@@ -886,7 +882,7 @@ impl InstDecoder for DefaultDecoder {
     }
 
     fn reset_instructions_cache(&mut self) -> Result<(), Error> {
-        self.instructions_cache = vec![(u64::MAX, 0); INSTRUCTION_CACHE_SIZE];
+        self.instructions_cache = [(u64::MAX, 0); INSTRUCTION_CACHE_SIZE];
         Ok(())
     }
 }
