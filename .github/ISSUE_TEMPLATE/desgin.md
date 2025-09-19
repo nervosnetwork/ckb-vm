@@ -1,5 +1,5 @@
 ---
-name: Project desgin
+name: Project design
 about: Suggest an idea for this project
 title: ''
 labels: 'design'
