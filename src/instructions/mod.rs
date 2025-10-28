@@ -6,6 +6,7 @@ mod utils;
 pub mod a;
 pub mod ast;
 pub mod b;
+pub mod cfi;
 pub mod i;
 pub mod m;
 pub mod rvc;

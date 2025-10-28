@@ -94,6 +94,14 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
     fn version(&self) -> u32 {
         self.machine.version()
     }
+
+    fn elp(&self) -> u32 {
+        self.machine.elp()
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.machine.set_elp(elp);
+    }
 }
 
 impl<Inner: SupportMachine, Decoder> Machine for AbstractTraceMachine<Inner, Decoder> {

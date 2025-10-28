@@ -4,11 +4,11 @@ use super::{
     extract_opcode, instruction_length,
     utils::update_register,
 };
-use crate::memory::Memory;
+use crate::{instructions::tagged::TaggedInstruction, memory::Memory};
 use ckb_vm_definitions::{
     for_each_inst_array1, for_each_inst_match2,
     instructions::{self as insts, paste},
-    registers::RA,
+    registers::{RA, T0, T2},
 };
 
 pub fn handle_sub<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
@@ -555,6 +555,9 @@ pub fn handle_jalr_version1<Mac: Machine>(
     next_pc = next_pc & (!Mac::REG::one());
     update_register(machine, i.rd(), link);
     machine.update_pc(next_pc);
+    if i.rs1() != RA && i.rs1() != T0 && i.rs1() != T2 {
+        machine.set_elp(1);
+    }
     Ok(())
 }
 
@@ -1503,6 +1506,25 @@ pub fn handle_add3c<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Resul
     Ok(())
 }
 
+pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    if machine.elp() == 0 {
+        return Ok(());
+    }
+    println!("Handling LPAD instruction");
+    // If PC not 4-byte aligned then software-check exception.
+    if machine.pc().to_u64() % 4 != 0 {
+        return Err(Error::SoftwareCheckException);
+    }
+    // If landing pad label not matched -> software-check exception
+    let lpl = Utype(inst).immediate_u();
+    let x7l = machine.registers()[T2].to_u32() & 0xFFFFF000;
+    if lpl != x7l && lpl != 0 {
+        return Err(Error::SoftwareCheckException);
+    }
+    machine.set_elp(0);
+    Ok(())
+}
+
 pub fn handle_custom_load_uimm<Mac: Machine>(
     machine: &mut Mac,
     inst: Instruction,
@@ -1557,6 +1579,7 @@ pub fn execute_instruction<Mac: Machine>(
     machine: &mut Mac,
 ) -> Result<(), Error> {
     let op = extract_opcode(inst);
+    println!("{}", TaggedInstruction::try_from(inst).unwrap());
     for_each_inst_match2!(
         handle_single_opcode,
         op,

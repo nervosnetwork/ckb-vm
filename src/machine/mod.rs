@@ -30,6 +30,7 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
 pub const VERSION2: u32 = 2;
+pub const VERSION3: u32 = 3;
 
 /// This is the core part of RISC-V that only deals with data part, it
 /// is extracted from Machine so we can handle lifetime logic in dynamic
@@ -50,6 +51,10 @@ pub trait CoreMachine {
     // in case of bug fixes.
     fn version(&self) -> u32;
     fn isa(&self) -> u8;
+
+    // CFI specific field. 0: NO_LP_EXPECTED, 1: LP_EXPECTED.
+    fn elp(&self) -> u32;
+    fn set_elp(&mut self, elp: u32);
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
@@ -214,7 +219,7 @@ pub trait SupportMachine: CoreMachine {
         // of each argv object.
         let mut values = vec![Self::REG::from_u64(args.len() as u64)];
         for arg in args {
-            let arg = arg?;
+            let arg: Bytes = arg?;
             let len = Self::REG::from_u64(arg.len() as u64 + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
@@ -340,6 +345,8 @@ pub struct DefaultCoreMachine<R, M> {
     running: bool,
     isa: u8,
     version: u32,
+    // CFI specific field.
+    elp: u32,
     #[cfg(feature = "pprof")]
     code: Bytes,
 }
@@ -382,6 +389,14 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn elp(&self) -> u32 {
+        self.elp
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.elp = elp;
+    }
 }
 
 impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
@@ -397,6 +412,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
             running: Default::default(),
             isa,
             version,
+            elp: Default::default(),
             #[cfg(feature = "pprof")]
             code: Default::default(),
         }
@@ -535,6 +551,14 @@ impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder>
 
     fn version(&self) -> u32 {
         self.inner.version()
+    }
+
+    fn elp(&self) -> u32 {
+        self.inner.elp()
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.inner.set_elp(elp);
     }
 }
 
