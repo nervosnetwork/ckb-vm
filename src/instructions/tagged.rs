@@ -245,6 +245,7 @@ impl TryFrom<Instruction> for TaggedInstruction {
             insts::OP_ADD3C => R5type(i).into(),
             insts::OP_CUSTOM_LOAD_UIMM => Utype(i).into(),
             insts::OP_CUSTOM_LOAD_IMM => Utype(i).into(),
+            insts::OP_LPAD => Utype(i).into(),
             _ => return Err(Error::InvalidOp(op)),
         };
         Ok(tagged_inst)

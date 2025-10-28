@@ -17,3 +17,4 @@ pub const ISA_B: u8 = 0b0000_0001;
 pub const ISA_MOP: u8 = 0b0000_0010;
 // Extension ISA_A is not enabled in ckb 2nd hardfork(aka, meepo hardfork)
 pub const ISA_A: u8 = 0b0000_0100;
+pub const ISA_CFI: u8 = 0b0000_1000;
