@@ -16,7 +16,7 @@ use super::instructions::{Instruction, Register, execute};
 use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
 use super::{
-    DEFAULT_MEMORY_SIZE, Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
+    DEFAULT_MEMORY_SIZE, DEFAULT_SHADOW_STACK_SIZE, Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
 };
 
@@ -55,6 +55,12 @@ pub trait CoreMachine {
     // CFI specific field. 0: NO_LP_EXPECTED, 1: LP_EXPECTED.
     fn elp(&self) -> u32;
     fn set_elp(&mut self, elp: u32);
+    fn ssp(&self) -> &Self::REG;
+    fn set_ssp(&mut self, ssp: &Self::REG);
+    fn ss(&self) -> [u8; DEFAULT_SHADOW_STACK_SIZE];
+    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE];
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
@@ -194,6 +200,8 @@ pub trait SupportMachine: CoreMachine {
         stack_start: u64,
         stack_size: u64,
     ) -> Result<u64, Error> {
+        // Initialize shadow stack pointer.
+        self.set_ssp(&Self::REG::from_u64(DEFAULT_SHADOW_STACK_SIZE as u64));
         // When we re-ordered the sections of a program, writing data in high memory
         // will cause unnecessary changes. At the same time, for ckb, argc is always 0
         // and the memory is initialized to 0, so memory writing can be safely skipped.
@@ -333,7 +341,6 @@ pub trait DefaultMachineRunner {
     }
 }
 
-#[derive(Default)]
 pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pc: R,
@@ -347,8 +354,32 @@ pub struct DefaultCoreMachine<R, M> {
     version: u32,
     // CFI specific field.
     elp: u32,
+    shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
+    ssp: R,
     #[cfg(feature = "pprof")]
     code: Bytes,
+}
+
+impl<R: Default, M: Default> Default for DefaultCoreMachine<R, M> {
+    fn default() -> Self {
+        Self {
+            registers: Default::default(),
+            pc: Default::default(),
+            next_pc: Default::default(),
+            reset_signal: Default::default(),
+            memory: Default::default(),
+            cycles: Default::default(),
+            max_cycles: Default::default(),
+            running: Default::default(),
+            isa: Default::default(),
+            version: Default::default(),
+            elp: Default::default(),
+            shadow_stack: [0; DEFAULT_SHADOW_STACK_SIZE],
+            ssp: Default::default(),
+            #[cfg(feature = "pprof")]
+            code: Default::default(),
+        }
+    }
 }
 
 impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -397,6 +428,63 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     fn set_elp(&mut self, elp: u32) {
         self.elp = elp;
     }
+
+    fn ssp(&self) -> &Self::REG {
+        &self.ssp
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.ssp = ssp.clone();
+    }
+
+    fn ss(&self) -> [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        self.shadow_stack
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        &mut self.shadow_stack
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        let offset = addr.to_u64() as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::ShadowStackOutOfStack);
+        }
+        let ra = self
+            .shadow_stack
+            .get(offset..end)
+            .and_then(|bytes| match size {
+                4 => Some(Self::REG::from_u32(u32::from_le_bytes(
+                    bytes.try_into().unwrap(),
+                ))),
+                8 => Some(Self::REG::from_u64(u64::from_le_bytes(
+                    bytes.try_into().unwrap(),
+                ))),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                Error::Unexpected("Failed to read return address from shadow stack".into())
+            })?;
+        Ok(ra)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        let offset = addr.to_u64() as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::ShadowStackOutOfStack);
+        }
+        let bytes = match size {
+            4 => value.to_u32().to_le_bytes().to_vec(),
+            8 => value.to_u64().to_le_bytes().to_vec(),
+            _ => return Err(Error::Unexpected("Failed to write shadow stack".into())),
+        };
+        self.shadow_stack[offset..end].copy_from_slice(&bytes);
+        Ok(())
+    }
 }
 
 impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
@@ -413,6 +501,8 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
             isa,
             version,
             elp: Default::default(),
+            shadow_stack: [0; DEFAULT_SHADOW_STACK_SIZE],
+            ssp: Default::default(),
             #[cfg(feature = "pprof")]
             code: Default::default(),
         }
@@ -559,6 +649,30 @@ impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder>
 
     fn set_elp(&mut self, elp: u32) {
         self.inner.set_elp(elp);
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        self.inner.ssp()
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.inner.set_ssp(ssp);
+    }
+
+    fn ss(&self) -> [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        self.inner.ss()
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        self.inner.ss_mut()
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        self.inner.ra(addr)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        self.inner.set_ra(addr, value)
     }
 }
 
