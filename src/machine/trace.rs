@@ -8,7 +8,8 @@ use super::{
             handle_invalid_op, instruction_length, is_basic_block_end_instruction,
         },
     },
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
+    CoreMachine, DEFAULT_SHADOW_STACK_SIZE, DefaultMachine, DefaultMachineRunner, Machine,
+    SupportMachine, VERSION2,
 };
 use bytes::Bytes;
 
@@ -101,6 +102,30 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
 
     fn set_elp(&mut self, elp: u32) {
         self.machine.set_elp(elp);
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        self.machine.ssp()
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.machine.set_ssp(ssp);
+    }
+
+    fn ss(&self) -> [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        self.machine.ss()
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        self.machine.ss_mut()
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        self.machine.ra(addr)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        self.machine.set_ra(addr, value)
     }
 }
 

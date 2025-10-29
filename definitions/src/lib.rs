@@ -11,6 +11,7 @@ pub const MEMORY_FRAMESIZE: usize = 1 << MEMORY_FRAME_SHIFTS; // 256 KB
 pub const MEMORY_FRAME_PAGE_SHIFTS: usize = MEMORY_FRAME_SHIFTS - RISCV_PAGE_SHIFTS;
 
 pub const DEFAULT_MEMORY_SIZE: usize = 4 << 20; // 4 MB
+pub const DEFAULT_SHADOW_STACK_SIZE: usize = 64 << 10; // 64 KB
 
 pub const ISA_IMC: u8 = 0b0000_0000;
 pub const ISA_B: u8 = 0b0000_0001;

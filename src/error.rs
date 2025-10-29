@@ -51,8 +51,10 @@ pub enum Error {
     Unexpected(String),
     #[display("yield")]
     Yield,
-    #[display("software check exception")]
-    SoftwareCheckException,
+    #[display("shadow stack software check exception")]
+    ShadowStackSoftwareCheckException,
+    #[display("shadow stack out of stack")]
+    ShadowStackOutOfStack,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Display)]

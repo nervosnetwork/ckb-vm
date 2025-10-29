@@ -285,9 +285,14 @@ macro_rules! __for_each_inst_inner {
             (FAR_JUMP_ABS, 0xab),
             // CFI
             (LPAD, 0xac),
+            (SSPUSH, 0xad),
+            (SSPOPCHK, 0xae),
+            (SSRDP, 0xaf),
+            (SSAMOSWAP_W, 0xb0),
+            (SSAMOSWAP_D, 0xb1),
             // CUSTOM
-            (CUSTOM_ASM_TRACE_JUMP, 0xad),
-            (CUSTOM_TRACE_END, 0xae)
+            (CUSTOM_ASM_TRACE_JUMP, 0xb2),
+            (CUSTOM_TRACE_END, 0xb3)
         );
     };
 }

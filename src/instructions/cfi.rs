@@ -1,18 +1,92 @@
-use super::utils::{opcode, rd};
-use super::{Instruction, Register, set_instruction_length_4};
-use crate::instructions::Utype;
+use super::utils::{funct3, funct7, opcode, rd, rs1, rs2};
+use super::{Instruction, Register, set_instruction_length_2, set_instruction_length_4};
+use crate::instructions::{Itype, Rtype, Utype};
 use ckb_vm_definitions::instructions as insts;
 
 pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction> {
-    let inst = match opcode(instruction_bits) {
+    match opcode(instruction_bits) {
         0b_0010111 => {
             if rd(instruction_bits) == 0 {
-                Some(Utype::new(insts::OP_LPAD, 0, instruction_bits & 0xFFFFF000).0)
-            } else {
-                None
+                let inst = Utype::new(insts::OP_LPAD, 0, instruction_bits & 0xFFFFF000).0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
             }
         }
-        _ => None,
-    };
-    inst.map(set_instruction_length_4)
+        0b_1110011 => {
+            if instruction_bits == 0b_1100111_00001_00000_100_00000_1110011 {
+                let inst = Rtype::new(insts::OP_SSPUSH, 0, 0, 1).0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+            if instruction_bits == 0b_1100111_00101_00000_100_00000_1110011 {
+                let inst = Rtype::new(insts::OP_SSPUSH, 0, 0, 5).0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+            if instruction_bits == 0b_110011011100_00001_100_00000_1110011 {
+                let inst = Itype::new_u(insts::OP_SSPOPCHK, 0, 1, 0).0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+            if instruction_bits == 0b_110011011100_00101_100_00000_1110011 {
+                let inst = Itype::new_u(insts::OP_SSPOPCHK, 0, 5, 0).0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+            if instruction_bits & 0xFFFF_F000 == 0b_110011011100_00000_100_00000_0000000 {
+                let rd = rd(instruction_bits);
+                if rd == 0 {
+                    return None;
+                }
+                let inst = Itype::new_u(insts::OP_SSRDP, rd, 0, 0).0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+        }
+        0b_0101111 => {
+            let f7 = funct7(instruction_bits);
+            let f5 = f7 >> 2;
+            if f5 != 0b_01001 {
+                return None;
+            }
+            let f3 = funct3(instruction_bits);
+            if f3 == 0b_010 {
+                let inst = Rtype::new(
+                    insts::OP_SSAMOSWAP_W,
+                    rd(instruction_bits),
+                    rs1(instruction_bits),
+                    rs2(instruction_bits),
+                )
+                .0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+            // RV64 only.
+            if f3 == 0b_011 && R::BITS == 64 {
+                let inst = Rtype::new(
+                    insts::OP_SSAMOSWAP_D,
+                    rd(instruction_bits),
+                    rs1(instruction_bits),
+                    rs2(instruction_bits),
+                )
+                .0;
+                let inst = set_instruction_length_4(inst);
+                return Some(inst);
+            }
+            return None;
+        }
+        _ => {
+            if instruction_bits == 0b_011_0_0_000_1_00000_01 {
+                let inst = Rtype::new(insts::OP_SSPUSH, 0, 0, 1).0;
+                let inst = set_instruction_length_2(inst);
+                return Some(inst);
+            }
+            if instruction_bits == 0b_011_0_0_010_1_00000_01 {
+                let inst = Itype::new_u(insts::OP_SSPOPCHK, 0, 5, 0).0;
+                let inst = set_instruction_length_2(inst);
+                return Some(inst);
+            }
+        }
+    }
+    None
 }

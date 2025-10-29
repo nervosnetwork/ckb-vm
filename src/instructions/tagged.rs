@@ -246,6 +246,11 @@ impl TryFrom<Instruction> for TaggedInstruction {
             insts::OP_CUSTOM_LOAD_UIMM => Utype(i).into(),
             insts::OP_CUSTOM_LOAD_IMM => Utype(i).into(),
             insts::OP_LPAD => Utype(i).into(),
+            insts::OP_SSPUSH => Rtype(i).into(),
+            insts::OP_SSPOPCHK => Itype(i).into(),
+            insts::OP_SSRDP => Itype(i).into(),
+            insts::OP_SSAMOSWAP_W => Rtype(i).into(),
+            insts::OP_SSAMOSWAP_D => Rtype(i).into(),
             _ => return Err(Error::InvalidOp(op)),
         };
         Ok(tagged_inst)

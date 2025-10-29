@@ -101,6 +101,9 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         machine
             .memory_mut()
             .set_lr(&M::REG::from_u64(snapshot.load_reservation_address));
+        machine.set_elp(snapshot.elp);
+        machine.set_ssp(&M::REG::from_u64(snapshot.ssp));
+        machine.ss_mut().copy_from_slice(&snapshot.ss);
         Ok(())
     }
 
@@ -219,6 +222,9 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             cycles: machine.cycles(),
             max_cycles: machine.max_cycles(),
             load_reservation_address: machine.memory().lr().to_u64(),
+            elp: machine.elp(),
+            ssp: machine.ssp().to_u64(),
+            ss: machine.ss().to_vec(),
         })
     }
 
@@ -296,4 +302,7 @@ pub struct Snapshot2<I: Clone + PartialEq> {
     pub cycles: u64,
     pub max_cycles: u64,
     pub load_reservation_address: u64,
+    pub elp: u32,
+    pub ssp: u64,
+    pub ss: Vec<u8>,
 }
