@@ -590,7 +590,7 @@ ckb_vm_x64_execute:
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_DIV:
   DECODE_R
-  push RD
+  movq RD, TEMP3
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
@@ -610,7 +610,7 @@ ckb_vm_x64_execute:
   idivq RS2r
   MOV_RAX_TO_RS1
 .div_branch3:
-  pop RD
+  movq TEMP3, RD
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -622,14 +622,12 @@ ckb_vm_x64_execute:
   WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
 .divu_branch1:
-  PUSH_RD_IF_RAX
-  PUSH_RD_IF_RDX
+  movq RD, TEMP3
   movq REGISTER_ADDRESS(RS1), %rax
   xorq %rdx, %rdx
   divq RS2r
   mov %rax, RS2r
-  POP_RD_IF_RDX
-  POP_RD_IF_RAX
+  movq TEMP3, RD
   WRITE_RD(RS2r)
   NEXT_INST
 .p2align 3
@@ -642,22 +640,20 @@ ckb_vm_x64_execute:
   WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
 .divuw_branch1:
-  PUSH_RD_IF_RAX
-  PUSH_RD_IF_RDX
+  movq RD, TEMP3
   movq REGISTER_ADDRESS(RS1), %rax
   mov %eax, %eax
   xorq %rdx, %rdx
   divq RS2r
   mov %rax, RS2r
-  POP_RD_IF_RDX
-  POP_RD_IF_RAX
+  movq TEMP3, RD
   movslq RS2rd, RS2r
   WRITE_RD(RS2r)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_DIVW:
   DECODE_R
-  push RD
+  movq RD, TEMP3
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
   movslq RS1d, RS1
@@ -679,7 +675,7 @@ ckb_vm_x64_execute:
   idivq RS2r
   MOV_RAX_TO_RS1
 .divw_branch3:
-  pop RD
+  movq TEMP3, RD
   movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -977,7 +973,7 @@ ckb_vm_x64_execute:
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_REM:
   DECODE_R
-  push RD
+  movq RD, TEMP3
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
@@ -997,7 +993,7 @@ ckb_vm_x64_execute:
   idivq RS2r
   MOV_RDX_TO_RS1
 .rem_branch3:
-  pop RD
+  movq TEMP3, RD
   WRITE_RD(RS1)
   NEXT_INST
 .p2align 3
@@ -1010,14 +1006,12 @@ ckb_vm_x64_execute:
   WRITE_RD(RS1)
   NEXT_INST
 .remu_branch2:
-  PUSH_RD_IF_RAX
-  PUSH_RD_IF_RDX
+  movq RD, TEMP3
   movq REGISTER_ADDRESS(RS1), %rax
   xorq %rdx, %rdx
   divq RS2r
   mov %rdx, RS2r
-  POP_RD_IF_RDX
-  POP_RD_IF_RAX
+  movq TEMP3, RD
   WRITE_RD(RS2r)
   NEXT_INST
 .p2align 3
@@ -1032,22 +1026,20 @@ ckb_vm_x64_execute:
   WRITE_RD(RS1)
   NEXT_INST
 .remuw_branch2:
-  PUSH_RD_IF_RAX
-  PUSH_RD_IF_RDX
+  movq RD, TEMP3
   movq REGISTER_ADDRESS(RS1), %rax
   mov %eax, %eax
   xorq %rdx, %rdx
   divq RS2r
   mov %rdx, RS2r
-  POP_RD_IF_RDX
-  POP_RD_IF_RAX
+  movq TEMP3, RD
   movslq RS2rd, RS2r
   WRITE_RD(RS2r)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_REMW:
   DECODE_R
-  push RD
+  movq RD, TEMP3
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
   movslq RS1d, RS1
@@ -1069,7 +1061,7 @@ ckb_vm_x64_execute:
   idivq RS2r
   MOV_RDX_TO_RS1
 .remw_branch3:
-  pop RD
+  movq TEMP3, RD
   movslq RS1d, RS1
   WRITE_RD(RS1)
   NEXT_INST
@@ -2241,7 +2233,7 @@ ckb_vm_x64_execute:
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_WIDE_DIV:
   DECODE_R4
-  push RD
+  movq RD, TEMP3
   movq $INT64_MIN, RD
   movq REGISTER_ADDRESS(RS1), RS1
   movq REGISTER_ADDRESS(RS2r), RS2r
@@ -2264,7 +2256,7 @@ ckb_vm_x64_execute:
   mov %rdx, TEMP1
   MOV_RAX_TO_RS1
 .wide_div_branch3:
-  pop RD
+  movq TEMP3, RD
   WRITE_RS3(TEMP1)
   WRITE_RD(RS1)
   NEXT_INST
@@ -2279,15 +2271,13 @@ ckb_vm_x64_execute:
   WRITE_RD_VALUE($UINT64_MAX, RS2r)
   NEXT_INST
 .wide_divu_branch1:
-  PUSH_RD_IF_RAX
-  PUSH_RD_IF_RDX
+  movq RD, TEMP3
   movq RS1, %rax
   xorq %rdx, %rdx
   divq RS2r
   mov %rax, TEMP1
   MOV_RDX_TO_RS2r
-  POP_RD_IF_RDX
-  POP_RD_IF_RAX
+  movq TEMP3, RD
   WRITE_RS3(RS2r)
   WRITE_RD(TEMP1)
   NEXT_INST
