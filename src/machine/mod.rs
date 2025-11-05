@@ -52,7 +52,7 @@ pub trait CoreMachine {
     fn version(&self) -> u32;
     fn isa(&self) -> u8;
 
-    // CFI specific field. 0: NO_LP_EXPECTED, 1: LP_EXPECTED.
+    // CFI specific field.
     fn elp(&self) -> u32;
     fn set_elp(&mut self, elp: u32);
     fn ssp(&self) -> &Self::REG;
