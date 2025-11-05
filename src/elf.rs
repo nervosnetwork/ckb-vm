@@ -1,6 +1,6 @@
 // This module maps the data structure of different versions of goblin to the
 // same internal structure.
-use crate::machine::VERSION1;
+use crate::machine::{VERSION1, VERSION3};
 use crate::memory::{FLAG_EXECUTABLE, FLAG_FREEZED, round_page_down, round_page_up};
 use crate::{Error, Register};
 use bytes::Bytes;
@@ -10,6 +10,16 @@ use std::ops::Range;
 // Even for different versions of goblin, their values must be consistent.
 pub use goblin_v023::elf::program_header::{PF_R, PF_W, PF_X, PT_LOAD};
 pub use goblin_v023::elf::section_header::SHF_EXECINSTR;
+
+// GNU property note constants for RISC-V CFI features
+// See: https://github.com/llvm/llvm-project/blob/c5aaee0bb07b221e5d3314bbdcf1abc4a604d6bd/llvm/include/llvm/BinaryFormat/ELF.h#L1809
+const NT_GNU_PROPERTY_TYPE_0: u32 = 5;
+// See: https://github.com/llvm/llvm-project/blob/c5aaee0bb07b221e5d3314bbdcf1abc4a604d6bd/llvm/include/llvm/BinaryFormat/ELF.h#L1845
+const GNU_PROPERTY_RISCV_FEATURE_1_AND: u32 = 0xC000_0000;
+// See: https://github.com/llvm/llvm-project/blob/c5aaee0bb07b221e5d3314bbdcf1abc4a604d6bd/llvm/include/llvm/BinaryFormat/ELF.h#L1911-L1915
+const GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_UNLABELED: u32 = 1 << 0;
+const GNU_PROPERTY_RISCV_FEATURE_1_CFI_SS: u32 = 1 << 1;
+const GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_FUNC_SIG: u32 = 1 << 2;
 
 /// Converts goblin's ELF flags into RISC-V flags
 pub fn convert_flags(p_flags: u32, allow_freeze_writable: bool, vaddr: u64) -> Result<u8, Error> {
@@ -126,18 +136,28 @@ pub struct LoadingAction {
     pub offset_from_addr: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProgramMetadata {
-    pub actions: Vec<LoadingAction>,
-    pub entry: u64,
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct CFI {
+    pub lp_unlabeled: bool,
+    pub ss: bool,
+    pub lp_func_sig: bool,
 }
 
-pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMetadata, Error> {
-    // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
-    // * https://github.com/nervosnetwork/ckb-vm/issues/143
-    let (entry, program_headers): (u64, Vec<ProgramHeader>) = if version < VERSION1 {
+#[derive(Default)]
+pub struct ParseElfPortableData {
+    pub entry: u64,
+    pub program_headers: Vec<ProgramHeader>,
+    pub section_headers: Vec<SectionHeader>,
+    pub shstrtab_offset: usize,
+}
+
+impl ParseElfPortableData {
+    pub fn from_v0<R: Register>(program: &Bytes) -> Result<Self, Error> {
         use goblin_v023::container::Ctx;
-        use goblin_v023::elf::{Header, program_header::ProgramHeader as GoblinProgramHeader};
+        use goblin_v023::elf::{
+            Header, program_header::ProgramHeader as GoblinProgramHeader,
+            section_header::SectionHeader as GoblinSectionHeader,
+        };
         let header = program.pread::<Header>(0)?;
         let container = header.container().map_err(|_e| Error::ElfBits)?;
         let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
@@ -154,10 +174,29 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
         .iter()
         .map(ProgramHeader::from_v0)
         .collect();
-        (header.e_entry, program_headers)
-    } else {
+        let section_headers = GoblinSectionHeader::parse(
+            program,
+            header.e_shoff as usize,
+            header.e_shnum as usize,
+            ctx,
+        )?
+        .iter()
+        .map(SectionHeader::from_v0)
+        .collect();
+        Ok(Self {
+            entry: header.e_entry,
+            program_headers,
+            section_headers,
+            shstrtab_offset: header.e_shstrndx as usize,
+        })
+    }
+
+    pub fn from_v1<R: Register>(program: &Bytes) -> Result<Self, Error> {
         use goblin_v040::container::Ctx;
-        use goblin_v040::elf::{Header, program_header::ProgramHeader as GoblinProgramHeader};
+        use goblin_v040::elf::{
+            Header, program_header::ProgramHeader as GoblinProgramHeader,
+            section_header::SectionHeader as GoblinSectionHeader,
+        };
         let header = program.pread::<Header>(0)?;
         let container = header.container().map_err(|_e| Error::ElfBits)?;
         let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
@@ -174,11 +213,161 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
         .iter()
         .map(ProgramHeader::from_v1)
         .collect();
-        (header.e_entry, program_headers)
+        let section_headers = GoblinSectionHeader::parse(
+            program,
+            header.e_shoff as usize,
+            header.e_shnum as usize,
+            ctx,
+        )?
+        .iter()
+        .map(SectionHeader::from_v1)
+        .collect();
+        Ok(Self {
+            entry: header.e_entry,
+            program_headers,
+            section_headers,
+            shstrtab_offset: header.e_shstrndx as usize,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProgramMetadata {
+    pub actions: Vec<LoadingAction>,
+    pub entry: u64,
+    pub cfi: CFI,
+}
+
+/// Parse GNU property notes to extract RISC-V CFI feature flags.
+fn parse_gnu_property_note(note_data: &[u8]) -> Result<CFI, Error> {
+    let mut cfi = CFI::default();
+    let mut buf = [0u8; 4];
+    let mut offset: usize = 0;
+    while offset + 8 <= note_data.len() {
+        // Read property type (4 bytes) and property data size (4 bytes)
+        buf.copy_from_slice(&note_data[offset..offset + 4]);
+        let pr_type = u32::from_le_bytes(buf);
+        buf.copy_from_slice(&note_data[offset + 4..offset + 8]);
+        let pr_datasz = u32::from_le_bytes(buf) as usize;
+        // Overflow or unreasonable size check.
+        if pr_datasz > note_data.len() {
+            return Err(Error::ElfParseError(
+                "Unreasonable property data size".into(),
+            ));
+        }
+        offset += 8;
+        if pr_type == GNU_PROPERTY_RISCV_FEATURE_1_AND && pr_datasz >= 4 {
+            if offset + 4 <= note_data.len() {
+                buf.copy_from_slice(&note_data[offset..offset + 4]);
+                let feature_flags = u32::from_le_bytes(buf);
+                cfi.lp_unlabeled =
+                    feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_UNLABELED != 0;
+                cfi.ss = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_SS != 0;
+                cfi.lp_func_sig = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_FUNC_SIG != 0;
+            }
+        }
+        // Align to 8 bytes for next property.
+        let aligned_datasz = (pr_datasz + 7) & !7;
+        offset += aligned_datasz;
+    }
+    Ok(cfi)
+}
+
+pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMetadata, Error> {
+    // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
+    // * https://github.com/nervosnetwork/ckb-vm/issues/143
+    let pepd = if version < VERSION1 {
+        ParseElfPortableData::from_v0::<R>(program)?
+    } else {
+        ParseElfPortableData::from_v1::<R>(program)?
     };
+    let mut cfi = CFI::default();
+    // CFI will only be parsed when using version 3. This avoids errors in older code from
+    // versions 0 to 2 due to the newly added CFI parsing.
+    if version >= VERSION3 {
+        if pepd.shstrtab_offset >= pepd.section_headers.len() {
+            return Err(Error::ElfParseError(
+                "Invalid section header string table offset".into(),
+            ));
+        }
+        let shstrtab = &pepd.section_headers[pepd.shstrtab_offset];
+        let shstrtab_start = shstrtab.sh_offset as usize;
+        let shstrtab_end = shstrtab.sh_offset.saturating_add(shstrtab.sh_size) as usize;
+        if shstrtab_end > program.len() {
+            return Err(Error::ElfParseError(
+                "Section header string table exceeds program size".into(),
+            ));
+        }
+        for section in &pepd.section_headers {
+            // Get section name.
+            let name_offset = shstrtab_start.saturating_add(section.sh_name);
+            if name_offset >= shstrtab_end {
+                return Err(Error::ElfParseError("Invalid section name offset".into()));
+            }
+            let name_bytes = &program[name_offset..shstrtab_end];
+            let null_pos = name_bytes.iter().position(|&b| b == 0);
+            if null_pos.is_none() {
+                return Err(Error::ElfParseError(
+                    "Section name is not null-terminated".into(),
+                ));
+            }
+            let section_name = &name_bytes[..null_pos.unwrap()];
+            // Look for .note.gnu.property section.
+            if section_name != b".note.gnu.property" {
+                continue;
+            }
+            if section.sh_size < 12 {
+                return Err(Error::ElfParseError(
+                    ".note.gnu.property section too small".into(),
+                ));
+            }
+            let note_start = section.sh_offset as usize;
+            let note_end = note_start.saturating_add(section.sh_size as usize);
+            if note_end > program.len() {
+                return Err(Error::ElfParseError(
+                    ".note.gnu.property section exceeds program size".into(),
+                ));
+            }
+            let note_data = &program[note_start..note_end];
+            // Parse note header: namesz (4), descsz (4), type (4), name, desc
+            let mut offset = 0;
+            let mut buf = [0u8; 4];
+            while offset + 12 <= note_data.len() {
+                buf.copy_from_slice(&note_data[offset..offset + 4]);
+                let namesz = u32::from_le_bytes(buf) as usize;
+                if namesz > note_data.len() {
+                    return Err(Error::ElfParseError("Invalid namesz".into()));
+                }
+                buf.copy_from_slice(&note_data[offset + 4..offset + 8]);
+                let descsz = u32::from_le_bytes(buf) as usize;
+                if descsz > note_data.len() {
+                    return Err(Error::ElfParseError("Invalid descsz".into()));
+                }
+                buf.copy_from_slice(&note_data[offset + 8..offset + 12]);
+                let note_type = u32::from_le_bytes(buf);
+                offset += 12;
+                // Align namesz to 4 bytes.
+                let aligned_namesz = (namesz + 3) & !3;
+                if note_type == NT_GNU_PROPERTY_TYPE_0 {
+                    let desc_offset = offset + aligned_namesz;
+                    if desc_offset + descsz <= note_data.len() {
+                        let desc_data = &note_data[desc_offset..desc_offset + descsz];
+                        if let Ok(icfi) = parse_gnu_property_note(desc_data) {
+                            cfi = icfi;
+                        }
+                    }
+                }
+                // Move to next note (align descsz to 4 bytes)
+                let aligned_descsz = (descsz + 3) & !3;
+                offset += aligned_namesz + aligned_descsz;
+            }
+            break;
+        }
+    }
+
     let mut bytes: u64 = 0;
     let mut actions = vec![];
-    for program_header in program_headers {
+    for program_header in pepd.program_headers {
         if program_header.p_type == PT_LOAD {
             let aligned_start = round_page_down(program_header.p_vaddr);
             let padding_start = program_header.p_vaddr.wrapping_sub(aligned_start);
@@ -206,5 +395,9 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
             })?;
         }
     }
-    Ok(ProgramMetadata { actions, entry })
+    Ok(ProgramMetadata {
+        actions,
+        entry: pepd.entry,
+        cfi,
+    })
 }
