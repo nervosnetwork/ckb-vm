@@ -1,9 +1,29 @@
 use super::utils::{funct3, funct7, opcode, rd, rs1, rs2};
 use super::{Instruction, Register, set_instruction_length_2, set_instruction_length_4};
-use crate::instructions::{Itype, Rtype, Utype};
+use crate::elf::CFI;
+use crate::instructions::i::nop;
+use crate::instructions::{Itype, Rtype, Utype, extract_opcode, instruction_length};
 use ckb_vm_definitions::instructions as insts;
 
-pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, _: u32, cfi: CFI) -> Option<Instruction> {
+    let inst = factory_bare::<R>(instruction_bits, 0, cfi);
+    if let Some(i) = inst {
+        if extract_opcode(i) == insts::OP_LPAD && cfi.lp_unlabeled {
+            return Some(i);
+        }
+        if cfi.ss {
+            return Some(i);
+        }
+        match instruction_length(i) {
+            2 => return Some(set_instruction_length_4(nop())),
+            4 => return Some(set_instruction_length_2(nop())),
+            _ => return None, // Should not happen.
+        }
+    }
+    None
+}
+
+pub fn factory_bare<R: Register>(instruction_bits: u32, _: u32, _: CFI) -> Option<Instruction> {
     match opcode(instruction_bits) {
         0b_0010111 => {
             if rd(instruction_bits) == 0 {

@@ -11,7 +11,7 @@ use bytes::Bytes;
 
 use super::debugger::Debugger;
 use super::decoder::{DefaultDecoder, InstDecoder};
-use super::elf::{LoadingAction, ProgramMetadata, parse_elf};
+use super::elf::{CFI, LoadingAction, ProgramMetadata, parse_elf};
 use super::instructions::{Instruction, Register, execute};
 use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
@@ -53,6 +53,8 @@ pub trait CoreMachine {
     fn isa(&self) -> u8;
 
     // CFI specific field.
+    fn cfi(&self) -> CFI;
+    fn set_cfi(&mut self, cfi: CFI);
     fn elp(&self) -> u32;
     fn set_elp(&mut self, elp: u32);
     fn ssp(&self) -> &Self::REG;
@@ -181,6 +183,7 @@ pub trait SupportMachine: CoreMachine {
             self.update_pc(Self::REG::from_u64(metadata.entry));
             self.commit_pc();
         }
+        self.set_cfi(metadata.cfi);
         Ok(bytes)
     }
 
@@ -311,6 +314,7 @@ pub trait DefaultMachineRunner {
         let mut decoder = Self::Decoder::new::<<Self::Inner as CoreMachine>::REG>(
             self.machine().isa(),
             self.machine().version(),
+            self.machine().cfi(),
         );
         self.run_with_decoder(&mut decoder)
     }
@@ -353,6 +357,7 @@ pub struct DefaultCoreMachine<R, M> {
     isa: u8,
     version: u32,
     // CFI specific field.
+    cfi: CFI,
     elp: u32,
     shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
     ssp: R,
@@ -373,6 +378,7 @@ impl<R: Default, M: Default> Default for DefaultCoreMachine<R, M> {
             running: Default::default(),
             isa: Default::default(),
             version: Default::default(),
+            cfi: CFI::default(),
             elp: Default::default(),
             shadow_stack: [0; DEFAULT_SHADOW_STACK_SIZE],
             ssp: Default::default(),
@@ -419,6 +425,14 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
 
     fn version(&self) -> u32 {
         self.version
+    }
+
+    fn cfi(&self) -> CFI {
+        self.cfi
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.cfi = cfi;
     }
 
     fn elp(&self) -> u32 {
@@ -500,6 +514,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
             running: Default::default(),
             isa,
             version,
+            cfi: Default::default(),
             elp: Default::default(),
             shadow_stack: [0; DEFAULT_SHADOW_STACK_SIZE],
             ssp: Default::default(),
@@ -641,6 +656,14 @@ impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder>
 
     fn version(&self) -> u32 {
         self.inner.version()
+    }
+
+    fn cfi(&self) -> CFI {
+        self.inner.cfi()
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.inner.set_cfi(cfi);
     }
 
     fn elp(&self) -> u32 {

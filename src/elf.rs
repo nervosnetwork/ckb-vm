@@ -136,7 +136,7 @@ pub struct LoadingAction {
     pub offset_from_addr: u64,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct CFI {
     pub lp_unlabeled: bool,
     pub ss: bool,

@@ -1,6 +1,7 @@
 use ckb_vm_definitions::instructions::{self as insts};
 use ckb_vm_definitions::registers::{RA, ZERO};
 
+use crate::elf::CFI;
 use crate::error::OutOfBoundKind;
 use crate::instructions::{
     Instruction, InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype, a, b, cfi,
@@ -14,7 +15,7 @@ const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 const INSTRUCTION_CACHE_SIZE: usize = 4096;
 
 pub trait InstDecoder {
-    fn new<R: Register>(isa: u8, version: u32) -> Self;
+    fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self;
     fn decode<M: Memory>(&mut self, memory: &mut M, pc: u64) -> Result<Instruction, Error>;
     fn reset_instructions_cache(&mut self) -> Result<(), Error>;
 }
@@ -23,6 +24,7 @@ pub struct DefaultDecoder {
     factories: Vec<InstructionFactory>,
     mop: bool,
     version: u32,
+    cfi: CFI,
     // use a cache of instructions to avoid decoding the same instruction twice, pc is the key and the instruction is the value
     instructions_cache: [(u64, u64); INSTRUCTION_CACHE_SIZE],
 }
@@ -34,6 +36,7 @@ impl DefaultDecoder {
             factories: vec![],
             mop,
             version,
+            cfi: CFI::default(),
             instructions_cache: [(u64::MAX, 0); INSTRUCTION_CACHE_SIZE],
         }
     }
@@ -118,7 +121,7 @@ impl DefaultDecoder {
         }
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
-            if let Some(instruction) = factory(instruction_bits, self.version) {
+            if let Some(instruction) = factory(instruction_bits, self.version, self.cfi) {
                 self.instructions_cache[instruction_cache_key] = (pc, instruction);
                 return Ok(instruction);
             }
@@ -859,8 +862,9 @@ impl DefaultDecoder {
 }
 
 impl InstDecoder for DefaultDecoder {
-    fn new<R: Register>(isa: u8, version: u32) -> Self {
+    fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self {
         let mut decoder = Self::empty(isa & ISA_MOP != 0, version);
+        decoder.cfi = cfi;
         if isa & ISA_CFI != 0 {
             decoder.add_instruction_factory(cfi::factory::<R>);
         }

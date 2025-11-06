@@ -7,6 +7,7 @@ use super::utils::{
 use super::{
     Instruction, Itype, Register, Rtype, Stype, Utype, blank_instruction, set_instruction_length_4,
 };
+use crate::elf::CFI;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
@@ -31,7 +32,7 @@ impl FenceType {
     }
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, version: u32, _: CFI) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
