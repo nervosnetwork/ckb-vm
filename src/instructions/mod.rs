@@ -14,6 +14,7 @@ pub mod tagged;
 
 pub use self::register::Register;
 use super::Error;
+use super::elf::CFI;
 pub use ckb_vm_definitions::{
     instructions::{
         self as insts, Instruction, InstructionOpcode, MAXIMUM_BASIC_BLOCK_END_OPCODE,
@@ -35,7 +36,8 @@ pub fn extract_opcode(i: Instruction) -> InstructionOpcode {
     (((i >> 8) & 0xff00) | (i & 0x00ff)) as u16
 }
 
-pub type InstructionFactory = fn(instruction_bits: u32, version: u32) -> Option<Instruction>;
+pub type InstructionFactory =
+    fn(instruction_bits: u32, version: u32, cfi: CFI) -> Option<Instruction>;
 
 // Blank instructions need no register indices nor immediates, they only have opcode
 // and module bit set.
@@ -458,14 +460,14 @@ mod tests {
     fn test_stype_display() {
         // This is "sd	a5,568(sp)"
         let sd_inst = 0x22f13c23;
-        let decoded = factory::<u64>(sd_inst, u32::MAX).expect("decoding");
+        let decoded = factory::<u64>(sd_inst, u32::MAX, CFI::default()).expect("decoding");
         let stype = Stype(decoded);
 
         assert_eq!("sd a5,568(sp)", format!("{}", stype));
 
         // This is "beq	a0,a5,1012e"
         let sd_inst = 0xf4f500e3;
-        let decoded = factory::<u64>(sd_inst, u32::MAX).expect("decoding");
+        let decoded = factory::<u64>(sd_inst, u32::MAX, CFI::default()).expect("decoding");
         let stype = Stype(decoded);
 
         assert_eq!("beq a0,a5,-192", format!("{}", stype));

@@ -8,7 +8,7 @@ use super::{
             handle_invalid_op, instruction_length, is_basic_block_end_instruction,
         },
     },
-    CoreMachine, DEFAULT_SHADOW_STACK_SIZE, DefaultMachine, DefaultMachineRunner, Machine,
+    CFI, CoreMachine, DEFAULT_SHADOW_STACK_SIZE, DefaultMachine, DefaultMachineRunner, Machine,
     SupportMachine, VERSION2,
 };
 use bytes::Bytes;
@@ -94,6 +94,14 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
 
     fn version(&self) -> u32 {
         self.machine.version()
+    }
+
+    fn cfi(&self) -> CFI {
+        self.machine.cfi()
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.machine.set_cfi(cfi);
     }
 
     fn elp(&self) -> u32 {

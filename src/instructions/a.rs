@@ -2,8 +2,9 @@ use ckb_vm_definitions::instructions as insts;
 
 use super::utils::{funct3, funct7, opcode, rd, rs1, rs2};
 use super::{Instruction, Register, Rtype, set_instruction_length_4};
+use crate::elf::CFI;
 
-pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, _: u32, _: CFI) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;

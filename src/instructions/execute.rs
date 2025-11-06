@@ -555,8 +555,10 @@ pub fn handle_jalr_version1<Mac: Machine>(
     next_pc = next_pc & (!Mac::REG::one());
     update_register(machine, i.rd(), link);
     machine.update_pc(next_pc);
-    if i.rs1() != RA && i.rs1() != T0 && i.rs1() != T2 {
-        machine.set_elp(1);
+    if machine.cfi().lp_unlabeled {
+        if i.rs1() != RA && i.rs1() != T0 && i.rs1() != T2 {
+            machine.set_elp(1);
+        }
     }
     Ok(())
 }
@@ -1510,7 +1512,6 @@ pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     if machine.elp() == 0 {
         return Ok(());
     }
-    println!("Handling LPAD instruction");
     // If PC not 4-byte aligned then software-check exception.
     if machine.pc().to_u64() % 4 != 0 {
         return Err(Error::ShadowStackSoftwareCheckException);
