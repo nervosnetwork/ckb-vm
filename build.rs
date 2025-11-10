@@ -8,12 +8,15 @@ fn main() {
 
     let target_pointer_width = env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap();
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     let is_windows = target_family == "windows";
     let is_unix = target_family == "unix";
-    let can_enable_asm = (target_pointer_width == "64") && (is_windows || is_unix);
+    let is_x86_64 = target_arch == "x86_64";
+    let is_aarch64 = target_arch == "aarch64";
+    let can_enable_asm = (target_pointer_width == "64") && (is_windows || is_unix) && (is_x86_64 || is_aarch64);
 
     if cfg!(feature = "asm") && (!can_enable_asm) {
-        panic!("asm feature can only be enabled on 64-bit Linux, macOS and Windows platforms!");
+        panic!("asm feature can only be enabled on 64-bit Linux, macOS and Windows platforms with x86_64 or aarch64 architecture!");
     }
 
     if cfg!(any(feature = "asm", feature = "detect-asm")) && can_enable_asm {
@@ -35,7 +38,16 @@ fn main() {
 
         let mut build = Build::new();
 
-        if is_windows {
+        if is_aarch64 {
+            // ARM64/AArch64 build (e.g., Apple Silicon M1/M2/M3)
+            build
+                .file("src/machine/asm/execute.aarch64.S")
+                .flag("-arch")
+                .flag("arm64");
+            println!("cargo:rustc-cfg=has_asm");
+            println!("cargo:rustc-cfg=has_asm_aarch64");
+        } else if is_windows {
+            // Windows x64 build
             let out_dir = env::var("OUT_DIR").unwrap();
             let expand_path = Path::new(&out_dir).join("execute-expanded.S");
             let mut expand_command = Command::new("clang");
@@ -63,17 +75,20 @@ fn main() {
             build
                 .object(&compile_path)
                 .file("src/machine/aot/aot.x64.win.compiled.c");
+            println!("cargo:rustc-cfg=has_asm");
+            println!("cargo:rustc-cfg=has_asm_x64");
         } else {
+            // Unix x64 build (Linux, macOS Intel)
             build
                 .file("src/machine/asm/execute.S")
                 .file("src/machine/aot/aot.x64.compiled.c");
+            println!("cargo:rustc-cfg=has_asm");
+            println!("cargo:rustc-cfg=has_asm_x64");
         }
 
         build
             .include("dynasm")
             .include("src/machine/asm")
             .compile("asm");
-
-        println!("cargo:rustc-cfg=has_asm")
     }
 }

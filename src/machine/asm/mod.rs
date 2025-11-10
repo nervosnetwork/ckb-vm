@@ -225,8 +225,17 @@ pub struct AsmMachine<'a> {
     pub aot_code: Option<&'a AotCode>,
 }
 
+#[cfg(target_arch = "x86_64")]
 extern "C" {
     fn ckb_vm_x64_execute(m: *mut AsmCoreMachine) -> c_uchar;
+    // We are keeping this as a function here, but at the bottom level this really
+    // just points to an array of assembly label offsets for each opcode.
+    fn ckb_vm_asm_labels();
+}
+
+#[cfg(target_arch = "aarch64")]
+extern "C" {
+    fn ckb_vm_aarch64_execute(m: *mut AsmCoreMachine) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
     fn ckb_vm_asm_labels();
@@ -255,6 +264,7 @@ impl<'a> AsmMachine<'a> {
         let decoder = build_imac_decoder::<u64>();
         self.machine.set_running(true);
         while self.machine.running() {
+            #[cfg(target_arch = "x86_64")]
             let result = if let Some(aot_code) = &self.aot_code {
                 if let Some(offset) = aot_code.labels.get(self.machine.pc()) {
                     let base_address = aot_code.base_address();
@@ -268,6 +278,22 @@ impl<'a> AsmMachine<'a> {
                 }
             } else {
                 unsafe { ckb_vm_x64_execute(&mut (**self.machine.inner_mut())) }
+            };
+
+            #[cfg(target_arch = "aarch64")]
+            let result = if let Some(aot_code) = &self.aot_code {
+                if let Some(offset) = aot_code.labels.get(self.machine.pc()) {
+                    let base_address = aot_code.base_address();
+                    let offset_address = base_address + u64::from(*offset);
+                    let f = unsafe {
+                        transmute::<u64, fn(*mut AsmCoreMachine, u64) -> u8>(base_address)
+                    };
+                    f(&mut (**self.machine.inner_mut()), offset_address)
+                } else {
+                    unsafe { ckb_vm_aarch64_execute(&mut (**self.machine.inner_mut())) }
+                }
+            } else {
+                unsafe { ckb_vm_aarch64_execute(&mut (**self.machine.inner_mut())) }
             };
             match result {
                 RET_DECODE_TRACE => {
