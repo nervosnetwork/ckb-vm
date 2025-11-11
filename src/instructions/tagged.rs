@@ -245,6 +245,8 @@ impl TryFrom<Instruction> for TaggedInstruction {
             insts::OP_ADD3C => R5type(i).into(),
             insts::OP_CUSTOM_LOAD_UIMM => Utype(i).into(),
             insts::OP_CUSTOM_LOAD_IMM => Utype(i).into(),
+            insts::OP_VSETVLI => Itype(i).into(),
+            insts::OP_VADD_VV => Rtype(i).into(),
             _ => return Err(Error::InvalidOp(op)),
         };
         Ok(tagged_inst)
@@ -258,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_all_valid_opcodes_convert_to_tagged_instruction() {
-        for i in insts::OP_UNLOADED..=insts::OP_CUSTOM_TRACE_END {
+        for i in insts::MINIMAL_OPCODE..=insts::MAXIMUM_OPCODE {
             let inst = blank_instruction(i);
             let result = TaggedInstruction::try_from(inst);
             assert!(

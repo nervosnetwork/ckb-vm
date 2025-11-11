@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
-    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
+    ISA_MOP, ISA_V, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS,
     asm::{
         FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
@@ -24,7 +24,7 @@ use crate::{
     error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
-        AbstractDefaultMachineBuilder, VERSION0,
+        AbstractDefaultMachineBuilder, VectorRegisterFile, VERSION0,
         asm::traces::{SimpleFixedTraceDecoder, TraceDecoder, decode_fixed_trace},
     },
     memory::{
@@ -113,6 +113,50 @@ where
 
     fn version(&self) -> u32 {
         self.as_ref().version
+    }
+
+    fn vector_registers(&self) -> Option<&VectorRegisterFile> {
+        if self.as_ref().isa & ISA_V == 0 {
+            None
+        } else {
+            Some(&self.as_ref().vector_registers)
+        }
+    }
+
+    fn vector_registers_mut(&mut self) -> Option<&mut VectorRegisterFile> {
+        if self.as_ref().isa & ISA_V == 0 {
+            None
+        } else {
+            Some(&mut self.as_mut().vector_registers)
+        }
+    }
+
+    fn vector_length(&self) -> Option<u64> {
+        if self.as_ref().isa & ISA_V == 0 {
+            None
+        } else {
+            Some(self.as_ref().vector_length)
+        }
+    }
+
+    fn set_vector_length(&mut self, vl: u64) {
+        if self.as_ref().isa & ISA_V != 0 {
+            self.as_mut().vector_length = vl;
+        }
+    }
+
+    fn vector_vtype(&self) -> Option<u64> {
+        if self.as_ref().isa & ISA_V == 0 {
+            None
+        } else {
+            Some(self.as_ref().vector_vtype)
+        }
+    }
+
+    fn set_vector_vtype(&mut self, vtype: u64) {
+        if self.as_ref().isa & ISA_V != 0 {
+            self.as_mut().vector_vtype = vtype;
+        }
     }
 }
 

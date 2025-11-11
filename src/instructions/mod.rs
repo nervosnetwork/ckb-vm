@@ -10,6 +10,7 @@ pub mod i;
 pub mod m;
 pub mod rvc;
 pub mod tagged;
+pub mod v;
 
 pub use self::register::Register;
 use super::Error;
@@ -23,6 +24,7 @@ pub use ckb_vm_definitions::{
 use core::fmt;
 pub use execute::{
     Thread, ThreadFactory, execute, execute_instruction, execute_with_thread, handle_invalid_op,
+    handle_vadd_vv, handle_vsetvli,
 };
 
 pub type RegisterIndex = usize;

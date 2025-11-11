@@ -284,7 +284,10 @@ macro_rules! __for_each_inst_inner {
             (FAR_JUMP_REL, 0xaa),
             (FAR_JUMP_ABS, 0xab),
             (CUSTOM_ASM_TRACE_JUMP, 0xac),
-            (CUSTOM_TRACE_END, 0xad)
+            (CUSTOM_TRACE_END, 0xad),
+            // V
+            (VSETVLI, 0xae),
+            (VADD_VV, 0xaf)
         );
     };
 }
@@ -393,7 +396,7 @@ macro_rules! define_instruction {
 for_each_inst!(define_instruction);
 
 pub const MINIMAL_OPCODE: InstructionOpcode = OP_UNLOADED;
-pub const MAXIMUM_OPCODE: InstructionOpcode = OP_CUSTOM_TRACE_END;
+pub const MAXIMUM_OPCODE: InstructionOpcode = OP_VADD_VV;
 
 pub const MINIMAL_BASIC_BLOCK_END_OPCODE: InstructionOpcode = OP_AUIPC;
 pub const MAXIMUM_BASIC_BLOCK_END_OPCODE: InstructionOpcode = OP_FAR_JUMP_ABS;

@@ -1,4 +1,7 @@
-use crate::{RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
+use crate::{
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_VECTOR_LANES, RISCV_VECTOR_REGISTER_NUMBER,
+    instructions::Instruction,
+};
 use std::alloc::{Layout, dealloc};
 
 // The number of trace items to keep
@@ -76,6 +79,9 @@ pub struct InvokeData {
 #[repr(C)]
 pub struct AsmCoreMachine {
     pub registers: [u64; RISCV_GENERAL_REGISTER_NUMBER],
+    pub vector_registers: [[u64; RISCV_VECTOR_LANES]; RISCV_VECTOR_REGISTER_NUMBER],
+    pub vector_length: u64,
+    pub vector_vtype: u64,
     pub pc: u64,
     pub next_pc: u64,
     pub running: u8,

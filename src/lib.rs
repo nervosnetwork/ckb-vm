@@ -19,7 +19,7 @@ pub use ckb_vm_definitions;
 
 pub use crate::{
     debugger::Debugger,
-    instructions::{Instruction, Register},
+    instructions::{Instruction, Register, execute},
     machine::{
         CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, FlattenedArgsReader,
         InstructionCycleFunc, Machine, RustDefaultMachineBuilder, SupportMachine,
@@ -31,8 +31,9 @@ pub use crate::{
 pub use bytes::Bytes;
 
 pub use ckb_vm_definitions::{
-    DEFAULT_MEMORY_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE,
-    RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE, registers,
+    DEFAULT_MEMORY_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, ISA_V, MEMORY_FRAME_SHIFTS,
+    MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE,
+    RISCV_VECTOR_LANES, RISCV_VECTOR_REGISTER_BYTES, RISCV_VECTOR_REGISTER_NUMBER, registers,
 };
 
 pub use error::Error;

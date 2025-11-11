@@ -4,11 +4,11 @@ use ckb_vm_definitions::registers::{RA, ZERO};
 use crate::error::OutOfBoundKind;
 use crate::instructions::{
     Instruction, InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype, a, b,
-    extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n,
+    extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, v,
 };
 use crate::machine::VERSION2;
 use crate::memory::Memory;
-use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_PAGESIZE};
+use crate::{Error, ISA_A, ISA_B, ISA_MOP, ISA_V, RISCV_PAGESIZE};
 
 const RISCV_PAGESIZE_MASK: u64 = RISCV_PAGESIZE as u64 - 1;
 const INSTRUCTION_CACHE_SIZE: usize = 4096;
@@ -864,6 +864,9 @@ impl InstDecoder for DefaultDecoder {
         decoder.add_instruction_factory(rvc::factory::<R>);
         decoder.add_instruction_factory(i::factory::<R>);
         decoder.add_instruction_factory(m::factory::<R>);
+        if isa & ISA_V != 0 {
+            decoder.add_instruction_factory(v::factory::<R>);
+        }
         if isa & ISA_B != 0 {
             decoder.add_instruction_factory(b::factory::<R>);
         }

@@ -9,6 +9,7 @@ use super::{
         },
     },
     CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
+    VectorRegisterFile,
 };
 use bytes::Bytes;
 
@@ -93,6 +94,30 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
 
     fn version(&self) -> u32 {
         self.machine.version()
+    }
+
+    fn vector_registers(&self) -> Option<&VectorRegisterFile> {
+        self.machine.vector_registers()
+    }
+
+    fn vector_registers_mut(&mut self) -> Option<&mut VectorRegisterFile> {
+        self.machine.vector_registers_mut()
+    }
+
+    fn vector_length(&self) -> Option<u64> {
+        self.machine.vector_length()
+    }
+
+    fn set_vector_length(&mut self, vl: u64) {
+        self.machine.set_vector_length(vl)
+    }
+
+    fn vector_vtype(&self) -> Option<u64> {
+        self.machine.vector_vtype()
+    }
+
+    fn set_vector_vtype(&mut self, vtype: u64) {
+        self.machine.set_vector_vtype(vtype)
     }
 }
 

@@ -16,7 +16,8 @@ use super::instructions::{Instruction, Register, execute};
 use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
 use super::{
-    DEFAULT_MEMORY_SIZE, Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
+    DEFAULT_MEMORY_SIZE, Error, ISA_MOP, ISA_V, RISCV_GENERAL_REGISTER_NUMBER, RISCV_VECTOR_LANES,
+    RISCV_VECTOR_REGISTER_NUMBER,
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
 };
 
@@ -30,6 +31,9 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
 pub const VERSION2: u32 = 2;
+
+pub type VectorRegister = [u64; RISCV_VECTOR_LANES];
+pub type VectorRegisterFile = [VectorRegister; RISCV_VECTOR_REGISTER_NUMBER];
 
 /// This is the core part of RISC-V that only deals with data part, it
 /// is extracted from Machine so we can handle lifetime logic in dynamic
@@ -50,6 +54,26 @@ pub trait CoreMachine {
     // in case of bug fixes.
     fn version(&self) -> u32;
     fn isa(&self) -> u8;
+
+    fn vector_registers(&self) -> Option<&VectorRegisterFile> {
+        None
+    }
+
+    fn vector_registers_mut(&mut self) -> Option<&mut VectorRegisterFile> {
+        None
+    }
+
+    fn vector_length(&self) -> Option<u64> {
+        None
+    }
+
+    fn set_vector_length(&mut self, _vl: u64) {}
+
+    fn vector_vtype(&self) -> Option<u64> {
+        None
+    }
+
+    fn set_vector_vtype(&mut self, _vtype: u64) {}
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
@@ -331,6 +355,9 @@ pub trait DefaultMachineRunner {
 #[derive(Default)]
 pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
+    vector_registers: VectorRegisterFile,
+    vector_length: u64,
+    vector_vtype: u64,
     pc: R,
     next_pc: R,
     reset_signal: bool,
@@ -379,6 +406,50 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.isa
     }
 
+    fn vector_registers(&self) -> Option<&VectorRegisterFile> {
+        if self.isa & ISA_V == 0 {
+            None
+        } else {
+            Some(&self.vector_registers)
+        }
+    }
+
+    fn vector_registers_mut(&mut self) -> Option<&mut VectorRegisterFile> {
+        if self.isa & ISA_V == 0 {
+            None
+        } else {
+            Some(&mut self.vector_registers)
+        }
+    }
+
+    fn vector_length(&self) -> Option<u64> {
+        if self.isa & ISA_V == 0 {
+            None
+        } else {
+            Some(self.vector_length)
+        }
+    }
+
+    fn set_vector_length(&mut self, vl: u64) {
+        if self.isa & ISA_V != 0 {
+            self.vector_length = vl;
+        }
+    }
+
+    fn vector_vtype(&self) -> Option<u64> {
+        if self.isa & ISA_V == 0 {
+            None
+        } else {
+            Some(self.vector_vtype)
+        }
+    }
+
+    fn set_vector_vtype(&mut self, vtype: u64) {
+        if self.isa & ISA_V != 0 {
+            self.vector_vtype = vtype;
+        }
+    }
+
     fn version(&self) -> u32 {
         self.version
     }
@@ -388,6 +459,9 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
     fn new_with_memory(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
         Self {
             registers: Default::default(),
+            vector_registers: Default::default(),
+            vector_length: 0,
+            vector_vtype: 0,
             pc: Default::default(),
             next_pc: Default::default(),
             reset_signal: Default::default(),
@@ -420,6 +494,9 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
 
     fn reset(&mut self, max_cycles: u64) -> Result<(), Error> {
         self.registers = Default::default();
+        self.vector_registers = Default::default();
+        self.vector_length = 0;
+        self.vector_vtype = 0;
         self.pc = Default::default();
         self.memory = M::new(self.memory().memory_size());
         self.cycles = 0;
@@ -535,6 +612,30 @@ impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder>
 
     fn version(&self) -> u32 {
         self.inner.version()
+    }
+
+    fn vector_registers(&self) -> Option<&VectorRegisterFile> {
+        self.inner.vector_registers()
+    }
+
+    fn vector_registers_mut(&mut self) -> Option<&mut VectorRegisterFile> {
+        self.inner.vector_registers_mut()
+    }
+
+    fn vector_length(&self) -> Option<u64> {
+        self.inner.vector_length()
+    }
+
+    fn set_vector_length(&mut self, vl: u64) {
+        self.inner.set_vector_length(vl)
+    }
+
+    fn vector_vtype(&self) -> Option<u64> {
+        self.inner.vector_vtype()
+    }
+
+    fn set_vector_vtype(&mut self, vtype: u64) {
+        self.inner.set_vector_vtype(vtype)
     }
 }
 

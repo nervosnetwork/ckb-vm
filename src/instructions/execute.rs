@@ -6,7 +6,7 @@ use super::{
 };
 use crate::memory::Memory;
 use ckb_vm_definitions::{
-    for_each_inst_array1, for_each_inst_match2,
+    RISCV_VECTOR_LANES, RISCV_VECTOR_REGISTER_NUMBER, for_each_inst_array1, for_each_inst_match2,
     instructions::{self as insts, paste},
     registers::RA,
 };
@@ -1520,6 +1520,62 @@ pub fn handle_custom_load_imm<Mac: Machine>(
     let value = Mac::REG::from_i32(i.immediate_s());
     update_register(machine, i.rd(), value);
     Ok(())
+}
+
+pub fn handle_vsetvli<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    if machine.vector_registers().is_none() {
+        return Err(Error::InvalidOp(insts::OP_VSETVLI));
+    }
+    let i = Itype(inst);
+    let zimm = i.immediate_u() as u64;
+    if !is_supported_vector_config(zimm) {
+        return Err(Error::InvalidOp(insts::OP_VSETVLI));
+    }
+    let avl = machine.registers()[i.rs1()].to_u64();
+    let vlmax = RISCV_VECTOR_LANES as u64;
+    let vl = avl.min(vlmax);
+    machine.set_vector_length(vl);
+    machine.set_vector_vtype(zimm);
+    update_register(machine, i.rd(), Mac::REG::from_u64(vl));
+    Ok(())
+}
+
+pub fn handle_vadd_vv<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    if machine
+        .vector_vtype()
+        .map_or(true, |value| !is_supported_vector_config(value))
+    {
+        return Err(Error::InvalidOp(insts::OP_VADD_VV));
+    }
+    let vl = machine
+        .vector_length()
+        .unwrap_or(0)
+        .min(RISCV_VECTOR_LANES as u64) as usize;
+    if vl == 0 {
+        return Ok(());
+    }
+    let r = Rtype(inst);
+    let vd = r.rd() % RISCV_VECTOR_REGISTER_NUMBER;
+    let vs1 = r.rs1() % RISCV_VECTOR_REGISTER_NUMBER;
+    let vs2 = r.rs2() % RISCV_VECTOR_REGISTER_NUMBER;
+    let vregs = machine
+        .vector_registers_mut()
+        .ok_or(Error::InvalidOp(insts::OP_VADD_VV))?;
+    for lane in 0..vl {
+        let lhs = vregs[vs2][lane];
+        let rhs = vregs[vs1][lane];
+        vregs[vd][lane] = lhs.wrapping_add(rhs);
+    }
+    for lane in vl..RISCV_VECTOR_LANES {
+        vregs[vd][lane] = 0;
+    }
+    Ok(())
+}
+
+fn is_supported_vector_config(zimm: u64) -> bool {
+    let vsew = zimm & 0x7;
+    let vlmul = (zimm >> 3) & 0x7;
+    vsew == 3 && vlmul == 0
 }
 
 pub fn handle_unloaded<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {

@@ -1,6 +1,6 @@
 use ckb_vm_definitions::{
     MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE, RISCV_PAGE_SHIFTS,
-    RISCV_PAGESIZE,
+    RISCV_PAGESIZE, RISCV_VECTOR_LANES, RISCV_VECTOR_REGISTER_BYTES,
     asm::{
         AsmCoreMachine, FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE,
         RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED,
@@ -42,6 +42,16 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_MEMORY_FRAME_PAGE_SHIFTS {}",
         MEMORY_FRAME_PAGE_SHIFTS
+    );
+    println!();
+
+    println!(
+        "#define CKB_VM_ASM_VECTOR_REGISTER_BYTES {}",
+        RISCV_VECTOR_REGISTER_BYTES
+    );
+    println!(
+        "#define CKB_VM_ASM_VECTOR_LANES {}",
+        RISCV_VECTOR_LANES
     );
     println!();
 
@@ -145,6 +155,18 @@ fn main() {
         (&m.registers as *const u64 as usize) - m_address
     );
     println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VECTOR_REGISTERS {}",
+        (&m.vector_registers as *const _ as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VECTOR_LENGTH {}",
+        (&m.vector_length as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VECTOR_VTYPE {}",
+        (&m.vector_vtype as *const u64 as usize) - m_address
+    );
+    println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC {}",
         (&m.pc as *const u64 as usize) - m_address
     );
@@ -211,7 +233,7 @@ fn main() {
     );
     println!();
 
-    for op in MINIMAL_OPCODE..MAXIMUM_OPCODE {
+    for op in MINIMAL_OPCODE..=MAXIMUM_OPCODE {
         println!(
             "#define CKB_VM_ASM_OP_{} {}",
             instruction_opcode_name(op),

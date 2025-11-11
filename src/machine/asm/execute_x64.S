@@ -846,6 +846,12 @@ ckb_vm_x64_execute:
   WRITE_RD(IMMEDIATE)
   NEXT_INST
 .p2align 3
+.CKB_VM_ASM_LABEL_OP_VSETVLI:
+  jmp .exit_slowpath
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_VADD_VV:
+  jmp .exit_slowpath
+.p2align 3
 .CKB_VM_ASM_LABEL_OP_LW_VERSION0:
   DECODE_I
   movq REGISTER_ADDRESS(RS1), RS1
