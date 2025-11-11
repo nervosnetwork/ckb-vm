@@ -112,7 +112,9 @@ fuzz_target!(|data: [u8; 512]| {
         let mask = insts[choose].1;
 
         let inst = inst | (mask & deque.u32());
-        let insn = ckb_vm::instructions::b::factory::<u64>(inst, ckb_vm_version).unwrap();
+        let insn =
+            ckb_vm::instructions::b::factory::<u64>(inst, ckb_vm_version, Default::default())
+                .unwrap();
 
         spike.execute(inst as u64).unwrap();
         ckb_vm::instructions::execute_instruction(insn, &mut ckb_vm_int).unwrap();

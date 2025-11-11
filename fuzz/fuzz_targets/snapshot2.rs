@@ -112,6 +112,7 @@ fuzz_target!(|data: [u8; 96]| {
     let metadata = ProgramMetadata {
         actions: loading_action_vec.clone(),
         entry: 0,
+        cfi: Default::default(),
     };
 
     let mut machine1 = build_machine();

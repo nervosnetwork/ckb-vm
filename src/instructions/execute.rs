@@ -8,7 +8,7 @@ use crate::{instructions::tagged::TaggedInstruction, memory::Memory};
 use ckb_vm_definitions::{
     for_each_inst_array1, for_each_inst_match2,
     instructions::{self as insts, paste},
-    registers::{RA, T0, T2},
+    registers::{RA, T2},
 };
 
 pub fn handle_sub<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
@@ -555,10 +555,8 @@ pub fn handle_jalr_version1<Mac: Machine>(
     next_pc = next_pc & (!Mac::REG::one());
     update_register(machine, i.rd(), link);
     machine.update_pc(next_pc);
-    if machine.cfi().lp_unlabeled {
-        if i.rs1() != RA && i.rs1() != T0 && i.rs1() != T2 {
-            machine.set_elp(1);
-        }
+    if inst & (1 << 28) != 0 {
+        machine.set_elp(1);
     }
     Ok(())
 }

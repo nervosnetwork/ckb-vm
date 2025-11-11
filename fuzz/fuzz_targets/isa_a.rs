@@ -86,7 +86,9 @@ fuzz_target!(|data: [u8; 512]| {
         }
 
         let inst = inst | ((rs1 as u32) << 15) | ((rs2 as u32) << 20) | ((rd as u32) << 7);
-        let insn = ckb_vm::instructions::a::factory::<u64>(inst, ckb_vm_version).unwrap();
+        let insn =
+            ckb_vm::instructions::a::factory::<u64>(inst, ckb_vm_version, Default::default())
+                .unwrap();
 
         spike.execute(inst as u64).unwrap();
         ckb_vm::instructions::execute_instruction(insn, &mut ckb_vm_int).unwrap();

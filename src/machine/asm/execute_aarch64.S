@@ -1894,6 +1894,24 @@ ckb_vm_x64_execute:
   WRITE_RD_V2(TEMP1)
   WRITE_RS3(TEMP3)
   NEXT_INST_V2
+.CKB_VM_ASM_LABEL_OP_LPAD:
+  DECODE_U
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_SSPUSH:
+  DECODE_R
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_SSPOPCHK:
+  DECODE_I
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_SSRDP:
+  DECODE_I
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_SSAMOSWAP_W:
+  DECODE_R
+  NEXT_INST
+.CKB_VM_ASM_LABEL_OP_SSAMOSWAP_D:
+  DECODE_R
+  NEXT_INST
 .exit_max_cycles_exceeded:
   mov x0, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED
   b .exit
@@ -1907,6 +1925,12 @@ ckb_vm_x64_execute:
 .exit_invalid_permission:
   str TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0]
   mov x0, CKB_VM_ASM_RET_INVALID_PERMISSION
+  b .exit
+.exit_shadow_stack_software_check_exception:
+  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION
+  b .exit
+.exit_shadow_stack_stack_out_of_stack:
+  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_STACK_OUT_OF_STACK
   b .exit
 .exit_pause:
   mov x0, CKB_VM_ASM_RET_PAUSE

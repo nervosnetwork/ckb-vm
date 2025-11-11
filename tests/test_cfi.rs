@@ -12,4 +12,16 @@ pub fn test_simple_instructions_64() {
     );
     let ret = machine.run();
     assert!(ret.is_ok());
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/simple64",
+            vec![],
+            VERSION3,
+            ISA_IMC | ISA_B | ISA_MOP | ISA_CFI,
+        );
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+    }
 }

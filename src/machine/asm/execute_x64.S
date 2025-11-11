@@ -135,6 +135,9 @@
 #define SP_ADDRESS \
   (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_SP * 8)(MACHINE)
 
+#define T2_ADDRESS \
+  (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8)(MACHINE)
+
 #define REGISTER_ADDRESS(r) \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE, r, 8)
 
@@ -384,6 +387,16 @@
 #define NEXT_INST_V2 \
   movq $0, ZERO_ADDRESS; \
   NEXT_INST
+
+#define SS_GET(addr_regd, temp_regd) \
+  cmp $65528, addr_regd; \
+  ja .exit_shadow_stack_stack_out_of_stack; \
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1), temp_regd
+
+#define SS_SET(addr_regd, from_regd) \
+  cmp $65528, addr_regd; \
+  ja .exit_shadow_stack_stack_out_of_stack; \
+  movq from_regd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1)
 
 #define DECODE_R \
   movzbl %cl, RS1d; \
@@ -732,6 +745,13 @@ ckb_vm_x64_execute:
   addq IMMEDIATE, RS2r
   andq $-2, RS2r
   movq RS2r, PC_ADDRESS
+  /* Loading flag of current instruction */
+  movq -16(INST_ARGS), TEMP1
+  sar $28, TEMP1
+  andq $0x1, TEMP1
+  cmp $1, TEMP1
+  jne .prepare_trace
+  movq $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
   jmp .prepare_trace
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LB_VERSION0:
@@ -2379,6 +2399,73 @@ ckb_vm_x64_execute:
   WRITE_RS3(TEMP3)
   NEXT_INST_V2
 .p2align 3
+.CKB_VM_ASM_LABEL_OP_LPAD:
+  DECODE_U
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE), RS1d
+  cmp $0, RS1d
+  je .lpad_branch_success
+  movq PC_ADDRESS, RS1
+  andq $3, RS1
+  jnz .exit_shadow_stack_software_check_exception
+  movq T2_ADDRESS, RS1
+  shr $12, RS1
+  cmp $0, IMMEDIATE
+  je .lpad_branch_success
+  cmp IMMEDIATE, RS1
+  jne .exit_shadow_stack_software_check_exception
+.lpad_branch_success:
+  movq $0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSPUSH:
+  DECODE_R
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS1
+  movq REGISTER_ADDRESS(RS2r), RS2r
+  sub $8, RS1
+  SS_SET(RS1, RS2r)
+  movq RS1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSPOPCHK:
+  DECODE_I
+  movq REGISTER_ADDRESS(RS1), RS1
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS2r
+  SS_GET(RS2r, TEMP1)
+  addq $8, RS2r
+  movq RS2r, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
+  cmp RS1, TEMP1
+  jne .exit_shadow_stack_software_check_exception
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSRDP:
+  DECODE_I
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS1
+  WRITE_RD(RS1)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSAMOSWAP_W:
+  DECODE_R
+  movq REGISTER_ADDRESS(RS1), RS1
+  movq REGISTER_ADDRESS(RS2r), RS2r
+  SS_GET(RS1, TEMP1)
+  movslq TEMP1d, TEMP2
+  sarq $32, TEMP1
+  shlq $32, TEMP1
+  movl RS2rd, RS2rd
+  orq TEMP1, RS2r
+  SS_SET(RS1, RS2r)
+  WRITE_RD(TEMP2)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSAMOSWAP_D:
+  DECODE_R
+  movq REGISTER_ADDRESS(RS1), RS1
+  movq REGISTER_ADDRESS(RS2r), RS2r
+  SS_GET(RS1, TEMP1)
+  SS_SET(RS1, RS2r)
+  WRITE_RD(TEMP1)
+  NEXT_INST
+.p2align 3
 .exit_out_of_bound:
   mov TEMP3, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_OUT_OF_BOUND, ARG_RETd
@@ -2395,6 +2482,14 @@ ckb_vm_x64_execute:
 .exit_invalid_permission:
   mov TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_shadow_stack_software_check_exception:
+  mov $CKB_VM_ASM_RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_shadow_stack_stack_out_of_stack:
+  mov $CKB_VM_ASM_RET_SHADOW_STACK_STACK_OUT_OF_STACK, ARG_RETd
   jmp .exit
 /*
  * Some instructions that are difficult to implement will be interpreted and

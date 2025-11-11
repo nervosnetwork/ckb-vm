@@ -120,7 +120,7 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
         self.machine.set_ssp(ssp);
     }
 
-    fn ss(&self) -> [u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE] {
         self.machine.ss()
     }
 

@@ -87,6 +87,7 @@ pub fn test_asm_auipc_fusion() {
     let mut decoder = SimpleFixedTraceDecoder::<AuxDecoder>::new::<u64>(
         machine.machine.isa(),
         machine.machine.version(),
+        Default::default(),
     );
 
     let result = machine.run_with_decoder(&mut decoder).expect("run");

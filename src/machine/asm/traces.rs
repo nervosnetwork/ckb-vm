@@ -14,7 +14,7 @@ use crate::{
     },
     machine::{
         CoreMachine, DefaultMachine,
-        asm::{AsmCoreMachineRevealer, ckb_vm_asm_labels},
+        asm::{AsmCoreMachineRevealer, CFI, ckb_vm_asm_labels},
     },
     memory::Memory,
 };
@@ -122,8 +122,8 @@ impl<D: InstDecoder> TraceDecoder for SimpleFixedTraceDecoder<D> {
 }
 
 impl<D: InstDecoder> InstDecoder for SimpleFixedTraceDecoder<D> {
-    fn new<R: Register>(isa: u8, version: u32) -> Self {
-        let decoder = D::new::<R>(isa, version);
+    fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self {
+        let decoder = D::new::<R>(isa, version, cfi);
         let traces = unsafe {
             let layout = Layout::array::<FixedTrace>(TRACE_SIZE).unwrap();
             let raw_allocation = alloc_zeroed(layout) as *mut _;
@@ -187,9 +187,9 @@ impl<D: InstDecoder> TraceDecoder for MemoizedFixedTraceDecoder<D> {
 }
 
 impl<D: InstDecoder> InstDecoder for MemoizedFixedTraceDecoder<D> {
-    fn new<R: Register>(isa: u8, version: u32) -> Self {
+    fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self {
         Self {
-            inner: SimpleFixedTraceDecoder::new::<R>(isa, version),
+            inner: SimpleFixedTraceDecoder::new::<R>(isa, version, cfi),
             cache: HashMap::default(),
         }
     }
@@ -370,9 +370,9 @@ impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
 }
 
 impl<D: InstDecoder> InstDecoder for MemoizedDynamicTraceDecoder<D> {
-    fn new<R: Register>(isa: u8, version: u32) -> Self {
+    fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self {
         Self {
-            inner: SimpleFixedTraceDecoder::new::<R>(isa, version),
+            inner: SimpleFixedTraceDecoder::new::<R>(isa, version, cfi),
             fixed_cache: HashMap::default(),
             dynamic_cache: HashMap::default(),
         }
