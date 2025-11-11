@@ -1518,7 +1518,7 @@ pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     }
     // If landing pad label not matched -> software-check exception
     let lpl = Utype(inst).immediate_u();
-    let x7l = machine.registers()[T2].to_u32() & 0xFFFFF000;
+    let x7l = (machine.registers()[T2].to_u32() & 0xFFFFF000) >> 12;
     if lpl != x7l && lpl != 0 {
         return Err(Error::ShadowStackSoftwareCheckException);
     }
