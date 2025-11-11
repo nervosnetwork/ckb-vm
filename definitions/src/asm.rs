@@ -1,4 +1,4 @@
-use crate::{RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
+use crate::{DEFAULT_SHADOW_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
 use std::alloc::{Layout, dealloc};
 
 // The number of trace items to keep
@@ -15,6 +15,8 @@ pub const RET_OUT_OF_BOUND: u8 = 7;
 pub const RET_INVALID_PERMISSION: u8 = 8;
 pub const RET_SLOWPATH: u8 = 9;
 pub const RET_PAUSE: u8 = 10;
+pub const RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION: u8 = 11;
+pub const RET_SHADOW_STACK_STACK_OUT_OF_STACK: u8 = 12;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
@@ -100,6 +102,11 @@ pub struct AsmCoreMachine {
     pub memory_ptr: u64,
     pub flags_ptr: u64,
     pub frames_ptr: u64,
+
+    pub cfi: u8,
+    pub elp: u32,
+    pub shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
+    pub ssp: u64,
 }
 
 impl Drop for AsmCoreMachine {

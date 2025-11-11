@@ -1,6 +1,6 @@
 // This module maps the data structure of different versions of goblin to the
 // same internal structure.
-use crate::machine::{VERSION1, VERSION3};
+use crate::machine::{VERSION0, VERSION1, VERSION2, VERSION3};
 use crate::memory::{FLAG_EXECUTABLE, FLAG_FREEZED, round_page_down, round_page_up};
 use crate::{Error, Register};
 use bytes::Bytes;
@@ -143,6 +143,24 @@ pub struct CFI {
     pub lp_func_sig: bool,
 }
 
+impl From<u8> for CFI {
+    fn from(byte: u8) -> Self {
+        Self {
+            lp_unlabeled: byte & 0b0000_0001 != 0,
+            ss: byte & 0b0000_0010 != 0,
+            lp_func_sig: byte & 0b0000_0100 != 0,
+        }
+    }
+}
+
+impl From<CFI> for u8 {
+    fn from(val: CFI) -> Self {
+        (if val.lp_unlabeled { 0b0000_0001 } else { 0 })
+            | (if val.ss { 0b0000_0010 } else { 0 })
+            | (if val.lp_func_sig { 0b0000_0100 } else { 0 })
+    }
+}
+
 #[derive(Default)]
 pub struct ParseElfPortableData {
     pub entry: u64,
@@ -154,10 +172,7 @@ pub struct ParseElfPortableData {
 impl ParseElfPortableData {
     pub fn from_v0<R: Register>(program: &Bytes) -> Result<Self, Error> {
         use goblin_v023::container::Ctx;
-        use goblin_v023::elf::{
-            Header, program_header::ProgramHeader as GoblinProgramHeader,
-            section_header::SectionHeader as GoblinSectionHeader,
-        };
+        use goblin_v023::elf::{Header, program_header::ProgramHeader as GoblinProgramHeader};
         let header = program.pread::<Header>(0)?;
         let container = header.container().map_err(|_e| Error::ElfBits)?;
         let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
@@ -174,15 +189,7 @@ impl ParseElfPortableData {
         .iter()
         .map(ProgramHeader::from_v0)
         .collect();
-        let section_headers = GoblinSectionHeader::parse(
-            program,
-            header.e_shoff as usize,
-            header.e_shnum as usize,
-            ctx,
-        )?
-        .iter()
-        .map(SectionHeader::from_v0)
-        .collect();
+        let section_headers = vec![];
         Ok(Self {
             entry: header.e_entry,
             program_headers,
@@ -192,6 +199,34 @@ impl ParseElfPortableData {
     }
 
     pub fn from_v1<R: Register>(program: &Bytes) -> Result<Self, Error> {
+        use goblin_v040::container::Ctx;
+        use goblin_v040::elf::{Header, program_header::ProgramHeader as GoblinProgramHeader};
+        let header = program.pread::<Header>(0)?;
+        let container = header.container().map_err(|_e| Error::ElfBits)?;
+        let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
+        if R::BITS != if container.is_big() { 64 } else { 32 } {
+            return Err(Error::ElfBits);
+        }
+        let ctx = Ctx::new(container, endianness);
+        let program_headers = GoblinProgramHeader::parse(
+            program,
+            header.e_phoff as usize,
+            header.e_phnum as usize,
+            ctx,
+        )?
+        .iter()
+        .map(ProgramHeader::from_v1)
+        .collect();
+        let section_headers = vec![];
+        Ok(Self {
+            entry: header.e_entry,
+            program_headers,
+            section_headers,
+            shstrtab_offset: header.e_shstrndx as usize,
+        })
+    }
+
+    pub fn from_v3<R: Register>(program: &Bytes) -> Result<Self, Error> {
         use goblin_v040::container::Ctx;
         use goblin_v040::elf::{
             Header, program_header::ProgramHeader as GoblinProgramHeader,
@@ -256,15 +291,15 @@ fn parse_gnu_property_note(note_data: &[u8]) -> Result<CFI, Error> {
             ));
         }
         offset += 8;
-        if pr_type == GNU_PROPERTY_RISCV_FEATURE_1_AND && pr_datasz >= 4 {
-            if offset + 4 <= note_data.len() {
-                buf.copy_from_slice(&note_data[offset..offset + 4]);
-                let feature_flags = u32::from_le_bytes(buf);
-                cfi.lp_unlabeled =
-                    feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_UNLABELED != 0;
-                cfi.ss = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_SS != 0;
-                cfi.lp_func_sig = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_FUNC_SIG != 0;
-            }
+        if pr_type == GNU_PROPERTY_RISCV_FEATURE_1_AND
+            && pr_datasz >= 4
+            && offset + 4 <= note_data.len()
+        {
+            buf.copy_from_slice(&note_data[offset..offset + 4]);
+            let feature_flags = u32::from_le_bytes(buf);
+            cfi.lp_unlabeled = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_UNLABELED != 0;
+            cfi.ss = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_SS != 0;
+            cfi.lp_func_sig = feature_flags & GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_FUNC_SIG != 0;
         }
         // Align to 8 bytes for next property.
         let aligned_datasz = (pr_datasz + 7) & !7;
@@ -276,10 +311,11 @@ fn parse_gnu_property_note(note_data: &[u8]) -> Result<CFI, Error> {
 pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMetadata, Error> {
     // We did not use Elf::parse here to avoid triggering potential bugs in goblin.
     // * https://github.com/nervosnetwork/ckb-vm/issues/143
-    let pepd = if version < VERSION1 {
-        ParseElfPortableData::from_v0::<R>(program)?
-    } else {
-        ParseElfPortableData::from_v1::<R>(program)?
+    let pepd = match version {
+        VERSION0 => ParseElfPortableData::from_v0::<R>(program)?,
+        VERSION1 | VERSION2 => ParseElfPortableData::from_v1::<R>(program)?,
+        VERSION3 => ParseElfPortableData::from_v3::<R>(program)?,
+        _ => ParseElfPortableData::from_v3::<R>(program)?,
     };
     let mut cfi = CFI::default();
     // CFI will only be parsed when using version 3. This avoids errors in older code from

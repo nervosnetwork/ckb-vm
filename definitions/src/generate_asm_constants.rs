@@ -1,15 +1,16 @@
 use ckb_vm_definitions::{
-    MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE, RISCV_PAGE_SHIFTS,
-    RISCV_PAGESIZE,
+    DEFAULT_SHADOW_STACK_SIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE,
+    RISCV_PAGE_SHIFTS, RISCV_PAGESIZE,
     asm::{
         AsmCoreMachine, FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE,
         RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED,
-        RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
+        RET_OUT_OF_BOUND, RET_PAUSE, RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION,
+        RET_SHADOW_STACK_STACK_OUT_OF_STACK, RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
     instructions::{MAXIMUM_OPCODE, MINIMAL_OPCODE, instruction_opcode_name},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
-    registers::{RA, SP},
+    registers::{RA, SP, T2},
 };
 use std::alloc::{Layout, alloc};
 use std::mem::{size_of, zeroed};
@@ -70,10 +71,19 @@ fn main() {
     );
     println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
     println!("#define CKB_VM_ASM_RET_PAUSE {}", RET_PAUSE);
+    println!(
+        "#define CKB_VM_ASM_RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION {}",
+        RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION
+    );
+    println!(
+        "#define CKB_VM_ASM_RET_SHADOW_STACK_STACK_OUT_OF_STACK {}",
+        RET_SHADOW_STACK_STACK_OUT_OF_STACK
+    );
     println!();
 
     println!("#define CKB_VM_ASM_REGISTER_RA {}", RA);
     println!("#define CKB_VM_ASM_REGISTER_SP {}", SP);
+    println!("#define CKB_VM_ASM_REGISTER_T2 {}", T2);
     println!();
 
     println!("#define CKB_VM_ASM_MEMORY_FLAG_FREEZED {}", FLAG_FREEZED);
@@ -208,6 +218,22 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR {}",
         (&m.frames_ptr as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CFI {}",
+        (&m.cfi as *const u8 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP {}",
+        (&m.elp as *const u32 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK {}",
+        (&m.shadow_stack as *const [u8; DEFAULT_SHADOW_STACK_SIZE] as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP {}",
+        (&m.ssp as *const u64 as usize) - m_address
     );
     println!();
 

@@ -18,13 +18,13 @@ use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
 
 use crate::{
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, MEMORY_FRAME_SHIFTS, Machine, Memory,
-    RISCV_PAGESIZE, SupportMachine,
+    CoreMachine, DEFAULT_SHADOW_STACK_SIZE, DefaultMachine, DefaultMachineRunner, Error,
+    MEMORY_FRAME_SHIFTS, Machine, Memory, RISCV_PAGESIZE, SupportMachine,
     elf::ProgramMetadata,
     error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
-        AbstractDefaultMachineBuilder, VERSION0,
+        AbstractDefaultMachineBuilder, CFI, VERSION0,
         asm::traces::{SimpleFixedTraceDecoder, TraceDecoder, decode_fixed_trace},
     },
     memory::{
@@ -113,6 +113,68 @@ where
 
     fn version(&self) -> u32 {
         self.as_ref().version
+    }
+
+    fn cfi(&self) -> CFI {
+        self.as_ref().cfi.into()
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.as_mut().cfi = cfi.into();
+    }
+
+    fn elp(&self) -> u32 {
+        self.as_ref().elp
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.as_mut().elp = elp;
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        &self.as_ref().ssp
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.as_mut().ssp = *ssp;
+    }
+
+    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE] {
+        &self.as_ref().shadow_stack
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+        &mut self.as_mut().shadow_stack
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        let offset = *addr as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::ShadowStackOutOfStack);
+        }
+        let ra = self
+            .as_ref()
+            .shadow_stack
+            .get(offset..end)
+            .map(|bytes| Self::REG::from_le_bytes(bytes.try_into().unwrap()))
+            .ok_or_else(|| {
+                Error::Unexpected("Failed to read return address from shadow stack".into())
+            })?;
+        Ok(ra)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        let offset = *addr as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::ShadowStackOutOfStack);
+        }
+        let bytes = value.to_le_bytes().to_vec();
+        self.as_mut().shadow_stack[offset..end].copy_from_slice(&bytes);
+        Ok(())
     }
 }
 

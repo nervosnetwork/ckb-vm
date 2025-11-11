@@ -1,4 +1,5 @@
 use ckb_vm_definitions::instructions as insts;
+use ckb_vm_definitions::registers::{RA, T0, T2};
 
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jalr, jtype_immediate, lb, lbu, ld, lh, lhu,
@@ -32,7 +33,7 @@ impl FenceType {
     }
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, version: u32, _: CFI) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
@@ -70,13 +71,14 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, _: CFI) -> Opti
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Itype::new_s(
-                    inst,
-                    rd(instruction_bits),
-                    rs1(instruction_bits),
-                    itype_immediate(instruction_bits),
-                )
-                .0
+                let rd = rd(instruction_bits);
+                let rs1 = rs1(instruction_bits);
+                let n = Itype::new_s(inst, rd, rs1, itype_immediate(instruction_bits)).0;
+                if cfi.lp_unlabeled && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                    n | (1 << 28) // Mark as a cfi jump for CFI
+                } else {
+                    n
+                }
             })
         }
         0b_0000011 => {
