@@ -228,12 +228,12 @@ fn main() {
         (&m.elp as *const u32 as usize) - m_address
     );
     println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK {}",
-        (&m.shadow_stack as *const [u8; DEFAULT_SHADOW_STACK_SIZE] as usize) - m_address
-    );
-    println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP {}",
         (&m.ssp as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK {}",
+        (&m.shadow_stack as *const [u8; DEFAULT_SHADOW_STACK_SIZE] as usize) - m_address
     );
     println!();
 
