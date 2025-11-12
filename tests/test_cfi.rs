@@ -32,3 +32,10 @@ pub fn test_cfi_success() {
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 }
+
+#[test]
+pub fn test_cfi_ss_not_active() {
+    let ret = run("tests/programs/cfi_ss_not_active");
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+}

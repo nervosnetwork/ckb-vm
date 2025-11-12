@@ -15,3 +15,5 @@ build_ss() {
 }
 
 build_ss cfi_success.S cfi_success
+build_ss cfi_ss_not_active.S cfi_ss_not_active
+
