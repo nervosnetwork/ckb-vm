@@ -110,6 +110,20 @@
   str ZERO_VALUE, ZERO_ADDRESS SEP \
   NEXT_INST
 
+#define SS_GET(addr_reg, temp_reg) \
+  ldr TEMP4, =65528 SEP \
+  cmp addr_reg, TEMP4 SEP \
+  bhi .exit_shadow_stack_stack_out_of_stack SEP \
+  add TEMP4, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
+  ldr temp_reg, [TEMP4, addr_reg]
+
+#define SS_SET(addr_reg, from_reg) \
+  ldr TEMP4, =65528 SEP \
+  cmp addr_reg, TEMP4 SEP \
+  bhi .exit_shadow_stack_stack_out_of_stack SEP \
+  add TEMP4, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
+  str from_reg, [TEMP4, addr_reg]
+
 #define DECODE_R \
   ubfx RS1, TEMP1, 0, 8 SEP \
   ubfx RS2, TEMP1, 8, 8
@@ -1896,21 +1910,64 @@ ckb_vm_x64_execute:
   NEXT_INST_V2
 .CKB_VM_ASM_LABEL_OP_LPAD:
   DECODE_U
+  ldrb TEMP1w, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
+  cmp TEMP1, 0
+  beq .lpad_branch_success
+  ldr TEMP1, PC_ADDRESS
+  and TEMP1, TEMP1, 3
+  cbnz TEMP1, .exit_shadow_stack_software_check_exception
+  ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8]
+  lsr TEMP1, TEMP1, 12
+  cmp IMMEDIATE, 0
+  beq .lpad_branch_success
+  cmp IMMEDIATE, TEMP1
+  bne .exit_shadow_stack_software_check_exception
+.lpad_branch_success:
+  strb wzr, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SSPUSH:
   DECODE_R
+  ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
+  ldr TEMP2, REGISTER_ADDRESS(RS2)
+  sub TEMP1, TEMP1, 8
+  SS_SET(TEMP1, TEMP2)
+  str TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SSPOPCHK:
   DECODE_I
+  ldr TEMP1, REGISTER_ADDRESS(RS1)
+  ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
+  SS_GET(TEMP2, TEMP3)
+  add TEMP2, TEMP2, 8
+  str TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
+  cmp TEMP1, TEMP3
+  bne .exit_shadow_stack_software_check_exception
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SSRDP:
   DECODE_I
+  ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
+  WRITE_RD(TEMP1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SSAMOSWAP_W:
   DECODE_R
+  ldr TEMP1, REGISTER_ADDRESS(RS1)
+  ldr TEMP2, REGISTER_ADDRESS(RS2)
+  SS_GET(TEMP1, TEMP3)
+  sxtw TEMP4, TEMP3w
+  asr TEMP3, TEMP3, 32
+  lsl TEMP3, TEMP3, 32
+  and TEMP2, TEMP2, 0xFFFFFFFF
+  orr TEMP2, TEMP2, TEMP3
+  SS_SET(TEMP1, TEMP2)
+  WRITE_RD(TEMP4)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SSAMOSWAP_D:
   DECODE_R
+  ldr TEMP1, REGISTER_ADDRESS(RS1)
+  ldr TEMP2, REGISTER_ADDRESS(RS2)
+  SS_GET(TEMP1, TEMP3)
+  SS_SET(TEMP1, TEMP2)
+  WRITE_RD(TEMP3)
   NEXT_INST
 .exit_max_cycles_exceeded:
   mov x0, CKB_VM_ASM_RET_MAX_CYCLES_EXCEEDED
