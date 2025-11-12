@@ -41,8 +41,8 @@ loop_start:
 
 loop_end:
     ssrdp t0
-    // shadow stack pointer becomes zero which is invalid, TODO fix code
-    beq t0, x0, 1f
+    // shadow stack pointer becomes zero which is invalid
+    bne t0, x0, 1f
     exit_imm 2
 
 1:

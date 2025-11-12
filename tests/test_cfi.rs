@@ -27,8 +27,8 @@ pub fn test_simple_instructions_64() {
 }
 
 #[test]
-pub fn test_cfi_success() {
-    let ret = run("tests/programs/cfi_success");
+pub fn test_cfi_ss_success() {
+    let ret = run("tests/programs/cfi_ss_success");
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 }
@@ -47,3 +47,22 @@ pub fn test_cfi_ss_stack_full() {
     assert_eq!(ret.unwrap(), 0);
 }
 
+#[test]
+pub fn test_cfi_lpad_unlabeled() {
+    let ret = run("tests/programs/cfi_lpad_unlabeled");
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+}
+
+#[test]
+pub fn test_cfi_lpad_not_active() {
+    let ret = run("tests/programs/cfi_lpad_not_active");
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+}
+
+#[test]
+pub fn test_cfi_lpad_unlabeled_failed() {
+    let ret = run("tests/programs/cfi_lpad_unlabeled_failed");
+    assert!(ret.is_err());
+}
