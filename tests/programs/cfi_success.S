@@ -56,13 +56,12 @@ _start:
     sspush t0
     
     ssrdp t3
-    addi t3, t3, -8  // Point to the value we just pushed
     
     // Prepare new value (200) to swap
     li t4, 200
     
     // Perform atomic swap: load from [t3] into t5, store t4 to [t3]
-    ssamoswap.w t5, t4, (t3)
+    ssamoswap.d t5, t4, (t3)
     
     // Verify that t5 now contains the old value (100)
     li t6, 100
@@ -71,10 +70,8 @@ _start:
     
 1:
     // Pop the value and verify it's the new value (200)
+    li t0, 200
     sspopchk t0
-    li t6, 200
-    beq t0, t6, 1f
-    exit_imm 5
 
 1:
     // Verify shadow stack pointer is back to original
