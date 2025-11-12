@@ -22,20 +22,20 @@ ndesc_end:
 .text
 .global _start
 _start:
-    // sspush and sspopchk work as no-op
+    // sspush and sspopchk work as May-Be-Operations
     sspush t0
     sspopchk t0
     sspopchk t0
     sspopchk t0
 
     li t0, 100
-    // ssrdp can work, but returns zero
+    // ssrdp can work, but returns zero (May-Be-Operations)
     ssrdp t0
     beqz t0, 1f
     exit_imm 1
     
 1:
-    // ssamoswap works as no-op? TODO
+    // ssamoswap works as May-Be-Operations? TODO
     li t0, -1
     ssamoswap.d ra, x0, (t0)
     exit_imm 0 
