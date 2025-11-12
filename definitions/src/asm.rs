@@ -105,8 +105,8 @@ pub struct AsmCoreMachine {
 
     pub cfi: u8,
     pub elp: u32,
-    pub shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
     pub ssp: u64,
+    pub shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
 }
 
 impl Drop for AsmCoreMachine {
