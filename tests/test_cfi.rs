@@ -1,16 +1,16 @@
 use ckb_vm::machine::VERSION3;
-use ckb_vm::{DefaultMachineRunner, ISA_B, ISA_CFI, ISA_IMC, ISA_MOP};
+use ckb_vm::{DefaultMachineRunner, Error, ISA_B, ISA_CFI, ISA_IMC, ISA_MOP};
 pub mod machine_build;
+
+fn run(path: &str) -> Result<i8, Error> {
+    let mut machine =
+        machine_build::int(path, vec![], VERSION3, ISA_IMC | ISA_B | ISA_MOP | ISA_CFI);
+    machine.run()
+}
 
 #[test]
 pub fn test_simple_instructions_64() {
-    let mut machine = machine_build::int(
-        "tests/programs/simple64",
-        vec![],
-        VERSION3,
-        ISA_IMC | ISA_B | ISA_MOP | ISA_CFI,
-    );
-    let ret = machine.run();
+    let ret = run("tests/programs/simple64");
     assert!(ret.is_ok());
 
     #[cfg(has_asm)]
@@ -24,4 +24,11 @@ pub fn test_simple_instructions_64() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
     }
+}
+
+#[test]
+pub fn test_cfi_success() {
+    let ret = run("tests/programs/cfi_success");
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
 }
