@@ -751,7 +751,7 @@ ckb_vm_x64_execute:
   andq $0x1, TEMP1
   cmp $1, TEMP1
   jne .prepare_trace
-  movq $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
+  movl $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
   jmp .prepare_trace
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LB_VERSION0:
@@ -2414,7 +2414,7 @@ ckb_vm_x64_execute:
   cmp IMMEDIATE, RS1
   jne .exit_shadow_stack_software_check_exception
 .lpad_branch_success:
-  movq $0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
+  movl $0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SSPUSH:
