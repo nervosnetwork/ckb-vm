@@ -66,3 +66,21 @@ pub fn test_cfi_lpad_unlabeled_failed() {
     let ret = run("tests/programs/cfi_lpad_unlabeled_failed");
     assert!(ret.is_err());
 }
+
+#[test]
+pub fn test_cfi_lpad_func_sig() {
+    let ret = run("tests/programs/cfi_lpad_func_sig");
+    assert!(ret.is_ok());
+}
+
+#[test]
+pub fn test_cfi_lpad_func_sig_zero() {
+    let ret = run("tests/programs/cfi_lpad_func_sig_zero");
+    assert!(ret.is_ok());
+}
+
+#[test]
+pub fn test_cfi_lpad_func_sig_failed() {
+    let ret = run("tests/programs/cfi_lpad_func_sig_failed");
+    assert!(ret.is_err());
+}
