@@ -575,6 +575,14 @@ ckb_vm_x64_execute:
   add TEMP2, TEMP2, IMMEDIATE
   and TEMP2, TEMP2, -2
   str TEMP2, PC_ADDRESS
+  /* Loading instruction flags */
+  ldr TEMP1, [INST_ARGS, -16]
+  asr TEMP1, TEMP1, 28
+  and TEMP1, TEMP1, 0x1
+  cmp TEMP1, 1
+  bne .prepare_trace
+  mov TEMP1, 1
+  strb TEMP1w, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
   b .prepare_trace
 .CKB_VM_ASM_LABEL_OP_LB_VERSION0:
   DECODE_I
