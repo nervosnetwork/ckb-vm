@@ -9,7 +9,8 @@ use ckb_vm_definitions::{
     asm::{
         FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SLOWPATH,
+        RET_PAUSE, RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION, RET_SHADOW_STACK_STACK_OUT_OF_STACK,
+        RET_SLOWPATH,
     },
 };
 use rand::{SeedableRng, prelude::RngCore};
@@ -864,6 +865,12 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     self.machine.pause.free();
                     return Err(Error::Pause);
                 }
+                RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION => {
+                    return Err(Error::ShadowStackSoftwareCheckException);
+                }
+                RET_SHADOW_STACK_STACK_OUT_OF_STACK => {
+                    return Err(Error::ShadowStackOutOfStack);
+                }
                 _ => return Err(Error::Asm(result)),
             }
         }
@@ -926,6 +933,12 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 let pc = *self.machine.pc() - 4;
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                 execute_instruction(instruction, &mut self.machine)?;
+            }
+            RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION => {
+                return Err(Error::ShadowStackSoftwareCheckException);
+            }
+            RET_SHADOW_STACK_STACK_OUT_OF_STACK => {
+                return Err(Error::ShadowStackOutOfStack);
             }
             _ => return Err(Error::Asm(result)),
         }
