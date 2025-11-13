@@ -359,8 +359,8 @@ pub struct DefaultCoreMachine<R, M> {
     // CFI specific field.
     cfi: CFI,
     elp: u32,
-    shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
     ssp: R,
+    shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
     #[cfg(feature = "pprof")]
     code: Bytes,
 }
@@ -547,6 +547,10 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.max_cycles = max_cycles;
         self.reset_signal = true;
         self.memory_mut().set_lr(&R::from_u64(u64::MAX));
+        self.cfi = CFI::default();
+        self.elp = 0;
+        self.ssp = R::from_u64(DEFAULT_SHADOW_STACK_SIZE as u64);
+        self.shadow_stack = [0; DEFAULT_SHADOW_STACK_SIZE];
         Ok(())
     }
 

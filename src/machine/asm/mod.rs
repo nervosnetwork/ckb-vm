@@ -750,6 +750,10 @@ where
             m.load_reservation_address = u64::MAX;
             m.last_read_frame = u64::MAX;
             m.last_write_page = u64::MAX;
+            m.cfi = 0;
+            m.elp = 0;
+            m.ssp = DEFAULT_SHADOW_STACK_SIZE as u64;
+            m.shadow_stack = [0; DEFAULT_SHADOW_STACK_SIZE];
         }
 
         // Reset memory
