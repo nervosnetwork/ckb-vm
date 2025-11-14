@@ -480,6 +480,16 @@ ckb_vm_x64_execute:
   lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
   mov INST_PC, INST_ARGS
   add $8, INST_ARGS
+  /* Check elp flag */
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE), %eax
+  test %eax, %eax
+  jz .trace_loaded_no_elp_check
+  /* Check elp flag. if elp=1, check the next instruction is lpad */
+  movq (INST_PC), %rax
+  leaq .CKB_VM_ASM_LABEL_OP_LPAD(%rip), %rcx
+  cmp %rcx, %rax
+  jne .exit_shadow_stack_software_check_exception
+.trace_loaded_no_elp_check:
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:

@@ -114,11 +114,11 @@ pub fn test_cfi_lpad_unlabeled_failed() {
     let ret = run_int("tests/programs/cfi_lpad_unlabeled_failed");
     assert!(ret.is_err());
 
-    // #[cfg(has_asm)]
-    // {
-    //     let ret_asm = run_asm("tests/programs/cfi_lpad_unlabeled_failed");
-    //     assert!(ret_asm.is_err());
-    // }
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_lpad_unlabeled_failed");
+        assert!(ret_asm.is_err());
+    }
 }
 
 #[test]
