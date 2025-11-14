@@ -74,7 +74,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Op
                 let rd = rd(instruction_bits);
                 let rs1 = rs1(instruction_bits);
                 let n = Itype::new_s(inst, rd, rs1, itype_immediate(instruction_bits)).0;
-                if cfi.lp_unlabeled && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
                     n | (1 << 28) // Mark as a cfi jump for CFI
                 } else {
                     n

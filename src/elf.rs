@@ -143,6 +143,12 @@ pub struct CFI {
     pub lp_func_sig: bool,
 }
 
+impl CFI {
+    pub fn allow_lpad(&self) -> bool {
+        self.lp_unlabeled || self.lp_func_sig
+    }
+}
+
 impl From<u8> for CFI {
     fn from(byte: u8) -> Self {
         Self {

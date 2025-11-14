@@ -8,10 +8,12 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
 use bytes::Bytes;
+use ckb_vm_definitions::instructions as insts;
 
 use super::debugger::Debugger;
 use super::decoder::{DefaultDecoder, InstDecoder};
 use super::elf::{CFI, LoadingAction, ProgramMetadata, parse_elf};
+use super::instructions::extract_opcode;
 use super::instructions::{Instruction, Register, execute};
 use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
@@ -930,6 +932,9 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
             let memory = self.memory_mut();
             decoder.decode(memory, pc)?
         };
+        if self.elp() != 0 && extract_opcode(instruction) != insts::OP_LPAD {
+            return Err(Error::ShadowStackSoftwareCheckException);
+        }
         let cycles = self.instruction_cycle_func()(instruction);
         self.add_cycles(cycles)?;
         execute(instruction, self)

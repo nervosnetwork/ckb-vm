@@ -114,6 +114,9 @@
   ldr TEMP4, =65528 SEP \
   cmp addr_reg, TEMP4 SEP \
   bhi .exit_shadow_stack_stack_out_of_stack SEP \
+  ldr TEMP4, =0 SEP \
+  cmp addr_reg, TEMP4 SEP \
+  beq .exit_shadow_stack_stack_out_of_stack SEP \
   add TEMP4, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
   ldr temp_reg, [TEMP4, addr_reg]
 
@@ -121,6 +124,9 @@
   ldr TEMP4, =65528 SEP \
   cmp addr_reg, TEMP4 SEP \
   bhi .exit_shadow_stack_stack_out_of_stack SEP \
+  ldr TEMP4, =0 SEP \
+  cmp addr_reg, TEMP4 SEP \
+  beq .exit_shadow_stack_stack_out_of_stack SEP \
   add TEMP4, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
   str from_reg, [TEMP4, addr_reg]
 
@@ -1921,13 +1927,10 @@ ckb_vm_x64_execute:
   ldrb TEMP1w, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
   cmp TEMP1, 0
   beq .lpad_branch_success
-  ldr TEMP1, PC_ADDRESS
-  and TEMP1, TEMP1, 3
-  cbnz TEMP1, .exit_shadow_stack_software_check_exception
-  ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8]
-  lsr TEMP1, TEMP1, 12
   cmp IMMEDIATE, 0
   beq .lpad_branch_success
+  ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8]
+  and TEMP1, TEMP1, 0xFFFFF000
   cmp IMMEDIATE, TEMP1
   bne .exit_shadow_stack_software_check_exception
 .lpad_branch_success:
@@ -1946,10 +1949,10 @@ ckb_vm_x64_execute:
   ldr TEMP1, REGISTER_ADDRESS(RS1)
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   SS_GET(TEMP2, TEMP3)
-  add TEMP2, TEMP2, 8
-  str TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   cmp TEMP1, TEMP3
   bne .exit_shadow_stack_software_check_exception
+  add TEMP2, TEMP2, 8
+  str TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SSRDP:
   DECODE_I

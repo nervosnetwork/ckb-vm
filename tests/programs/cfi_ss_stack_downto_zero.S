@@ -29,8 +29,8 @@ _start:
     exit_imm 1
 
 1:
-    // Loop 0x10000/8 - 1 = 0x1FFF times
-    li t2, 0x1FFF
+    // Loop 0x10000/8 = 0x2000 times
+    li t2, 0x2000
     li t0, 0
 
 loop_start:
@@ -40,10 +40,7 @@ loop_start:
     j loop_start
 
 loop_end:
-    ssrdp t0
-    // shadow stack pointer becomes zero which is invalid
-    bne t0, x0, 1f
-    exit_imm 2
+    exit_imm 0
 
 1:
     exit_imm 0

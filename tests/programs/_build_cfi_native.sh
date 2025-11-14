@@ -15,6 +15,7 @@ build() {
 
 build cfi_ss_success.S cfi_ss_success
 build cfi_ss_not_active.S cfi_ss_not_active
+build cfi_ss_stack_downto_zero.S cfi_ss_stack_downto_zero
 build cfi_ss_stack_full.S cfi_ss_stack_full
 build cfi_lpad_unlabeled.S cfi_lpad_unlabeled
 build cfi_lpad_not_active.S cfi_lpad_not_active
@@ -22,4 +23,3 @@ build cfi_lpad_unlabeled_failed.S cfi_lpad_unlabeled_failed
 build cfi_lpad_func_sig.S cfi_lpad_func_sig
 build cfi_lpad_func_sig_zero.S cfi_lpad_func_sig_zero
 build cfi_lpad_func_sig_failed.S cfi_lpad_func_sig_failed
-

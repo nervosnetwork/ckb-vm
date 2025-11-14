@@ -28,7 +28,7 @@ _start:
     li t2, 142
     jalr ra, t1, 0
     exit_imm 0
-    
+
 .globl func
 .type func,@function
 func:

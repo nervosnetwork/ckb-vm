@@ -5,19 +5,41 @@ use crate::instructions::i::nop;
 use crate::instructions::{Itype, Rtype, Utype, extract_opcode, instruction_length};
 use ckb_vm_definitions::instructions as insts;
 
+pub fn may_be_operation(rd: usize) -> Instruction {
+    Itype::new_u(insts::OP_ADDI, rd, 0, 0).0
+}
+
 pub fn factory<R: Register>(instruction_bits: u32, _: u32, cfi: CFI) -> Option<Instruction> {
     let inst = factory_bare::<R>(instruction_bits, 0, cfi);
     if let Some(i) = inst {
-        if extract_opcode(i) == insts::OP_LPAD && cfi.lp_unlabeled {
-            return Some(i);
-        }
-        if cfi.ss {
-            return Some(i);
-        }
-        match instruction_length(i) {
-            2 => return Some(set_instruction_length_4(nop())),
-            4 => return Some(set_instruction_length_2(nop())),
-            _ => return None, // Should not happen.
+        let opcode = extract_opcode(i);
+        let length = instruction_length(i);
+        let rd = rd(instruction_bits);
+        match opcode {
+            insts::OP_LPAD => {
+                if !cfi.allow_lpad() {
+                    return Some(set_instruction_length_4(nop()));
+                }
+                return Some(i);
+            }
+            insts::OP_SSPUSH | insts::OP_SSPOPCHK | insts::OP_SSRDP => {
+                if !cfi.ss {
+                    let mop = may_be_operation(rd);
+                    match length {
+                        2 => return Some(set_instruction_length_2(mop)),
+                        4 => return Some(set_instruction_length_4(mop)),
+                        _ => return None, // Should not happen.
+                    }
+                }
+                return Some(i);
+            }
+            insts::OP_SSAMOSWAP_W | insts::OP_SSAMOSWAP_D => {
+                if !cfi.ss {
+                    return Some(set_instruction_length_4(nop()));
+                }
+                return Some(i);
+            }
+            _ => unreachable!(), // Should not happen.
         }
     }
     None

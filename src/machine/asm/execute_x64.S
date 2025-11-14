@@ -391,11 +391,15 @@
 #define SS_GET(addr_regd, temp_regd) \
   cmp $65528, addr_regd; \
   ja .exit_shadow_stack_stack_out_of_stack; \
+  cmp $0, addr_regd; \
+  je .exit_shadow_stack_stack_out_of_stack; \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1), temp_regd
 
 #define SS_SET(addr_regd, from_regd) \
   cmp $65528, addr_regd; \
   ja .exit_shadow_stack_stack_out_of_stack; \
+  cmp $0, addr_regd; \
+  je .exit_shadow_stack_stack_out_of_stack; \
   movq from_regd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1)
 
 #define DECODE_R \
@@ -2404,13 +2408,10 @@ ckb_vm_x64_execute:
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE), RS1d
   cmp $0, RS1d
   je .lpad_branch_success
-  movq PC_ADDRESS, RS1
-  andq $3, RS1
-  jnz .exit_shadow_stack_software_check_exception
-  movq T2_ADDRESS, RS1
-  shr $12, RS1
   cmp $0, IMMEDIATE
   je .lpad_branch_success
+  movq T2_ADDRESS, RS1
+  andl $0xFFFFF000, RS1d
   cmp IMMEDIATE, RS1
   jne .exit_shadow_stack_software_check_exception
 .lpad_branch_success:
@@ -2431,10 +2432,10 @@ ckb_vm_x64_execute:
   movq REGISTER_ADDRESS(RS1), RS1
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS2r
   SS_GET(RS2r, TEMP1)
-  addq $8, RS2r
-  movq RS2r, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
   cmp RS1, TEMP1
   jne .exit_shadow_stack_software_check_exception
+  addq $8, RS2r
+  movq RS2r, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_SSRDP:

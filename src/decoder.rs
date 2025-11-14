@@ -122,6 +122,10 @@ impl DefaultDecoder {
         let instruction_bits = self.decode_bits(memory, pc)?;
         for factory in &self.factories {
             if let Some(instruction) = factory(instruction_bits, self.version, self.cfi) {
+                // Shadow Stack Software Check for LPAD instruction.
+                if extract_opcode(instruction) == insts::OP_LPAD && pc % 4 != 0 {
+                    return Err(Error::ShadowStackSoftwareCheckException);
+                }
                 self.instructions_cache[instruction_cache_key] = (pc, instruction);
                 return Ok(instruction);
             }
