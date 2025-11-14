@@ -12,6 +12,7 @@ use super::{
     SupportMachine, VERSION2,
 };
 use bytes::Bytes;
+use ckb_vm_definitions::instructions as insts;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -212,6 +213,11 @@ impl<Inner: SupportMachine, Decoder: InstDecoder> DefaultMachineRunner
                 self.traces[slot].address = pc;
                 self.traces[slot].length = (current_pc - pc) as usize;
                 self.traces[slot].instruction_count = i as u8;
+            }
+            if self.machine.elp() != 0
+                && extract_opcode(self.traces[slot].instructions[0]) != insts::OP_LPAD
+            {
+                return Err(Error::ShadowStackSoftwareCheckException);
             }
             for i in 0..self.traces[slot].instruction_count {
                 let inst = self.traces[slot].instructions[i as usize];

@@ -1516,7 +1516,7 @@ pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     }
     // If landing pad label not matched -> software-check exception
     let lpl = Utype(inst).immediate_u();
-    let x7l = (machine.registers()[T2].to_u32() & 0xFFFFF000) >> 12;
+    let x7l = machine.registers()[T2].to_u32() & 0xFFFFF000;
     if lpl != x7l && lpl != 0 {
         return Err(Error::ShadowStackSoftwareCheckException);
     }
@@ -1529,6 +1529,9 @@ pub fn handle_sspush<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Resu
     let rs2_value = machine.registers()[i.rs2()].clone();
     let ssp = machine.ssp().clone();
     let ssp = ssp.overflowing_sub(&Mac::REG::from_u8(Mac::REG::BITS / 8));
+    if ssp.to_u64() == 0 {
+        return Err(Error::ShadowStackOutOfStack);
+    }
     machine.set_ra(&ssp, &rs2_value)?;
     machine.set_ssp(&ssp);
     Ok(())
@@ -1540,10 +1543,10 @@ pub fn handle_sspopchk<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     let ssp = machine.ssp().clone();
     let ret = machine.ra(&ssp)?.clone();
     let ssp = ssp.overflowing_add(&Mac::REG::from_u8(Mac::REG::BITS / 8));
-    machine.set_ssp(&ssp);
     if ret.to_u64() != rs1_value.to_u64() {
         return Err(Error::ShadowStackSoftwareCheckException);
     }
+    machine.set_ssp(&ssp);
     Ok(())
 }
 

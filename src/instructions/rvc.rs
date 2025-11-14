@@ -1,5 +1,5 @@
 use ckb_vm_definitions::instructions::{self as insts};
-use ckb_vm_definitions::registers::SP;
+use ckb_vm_definitions::registers::{RA, SP, T0, T2};
 
 use super::i::nop;
 use super::register::Register;
@@ -91,7 +91,7 @@ fn b_immediate(instruction_bits: u32) -> i32 {
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub fn factory<R: Register>(instruction_bits: u32, version: u32, _: CFI) -> Option<Instruction> {
+pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
@@ -428,7 +428,13 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, _: CFI) -> Opti
                     if rs2 == 0 {
                         if rd != 0 {
                             // C.JR
-                            Some(Itype::new_s(jalr(version), 0, rd, 0).0)
+                            let n = Itype::new_s(jalr(version), 0, rd, 0).0;
+                            let rs1 = rd;
+                            if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                                Some(n | (1 << 28)) // Mark as a cfi jump for CFI
+                            } else {
+                                Some(n)
+                            }
                         } else {
                             // Reserved
                             None
@@ -452,7 +458,14 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, _: CFI) -> Opti
                         // C.EBREAK
                         (0, 0) => Some(blank_instruction(insts::OP_EBREAK)),
                         // C.JALR
-                        (rs1, 0) => Some(Itype::new_s(jalr(version), 1, rs1, 0).0),
+                        (rs1, 0) => {
+                            let n = Itype::new_s(jalr(version), 1, rs1, 0).0;
+                            if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                                Some(n | (1 << 28)) // Mark as a cfi jump for CFI
+                            } else {
+                                Some(n)
+                            }
+                        }
                         // C.ADD
                         (rd, rs2) => {
                             if rd != 0 {

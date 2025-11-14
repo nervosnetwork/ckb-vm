@@ -55,19 +55,31 @@ pub fn test_cfi_ss_not_active() {
     }
 }
 
-// #[test]
-// pub fn test_cfi_ss_stack_full() {
-//     let ret = run_int("tests/programs/cfi_ss_stack_full");
-//     assert!(ret.is_ok());
-//     assert_eq!(ret.unwrap(), 0);
+#[test]
+pub fn test_cfi_ss_stack_downto_zero() {
+    let ret = run_int("tests/programs/cfi_ss_stack_downto_zero");
+    assert!(ret.is_err());
 
-//     #[cfg(has_asm)]
-//     {
-//         let ret_asm = run_asm("tests/programs/cfi_ss_stack_full");
-//         assert!(ret_asm.is_ok());
-//         assert_eq!(ret_asm.unwrap(), 0);
-//     }
-// }
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_ss_stack_downto_zero");
+        assert!(ret_asm.is_err());
+    }
+}
+
+#[test]
+pub fn test_cfi_ss_stack_full() {
+    let ret = run_int("tests/programs/cfi_ss_stack_full");
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_ss_stack_full");
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+    }
+}
 
 #[test]
 pub fn test_cfi_lpad_unlabeled() {
@@ -83,31 +95,31 @@ pub fn test_cfi_lpad_unlabeled() {
     }
 }
 
-// #[test]
-// pub fn test_cfi_lpad_not_active() {
-//     let ret = run_int("tests/programs/cfi_lpad_not_active");
-//     assert!(ret.is_ok());
-//     assert_eq!(ret.unwrap(), 0);
+#[test]
+pub fn test_cfi_lpad_not_active() {
+    let ret = run_int("tests/programs/cfi_lpad_not_active");
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
 
-//     #[cfg(has_asm)]
-//     {
-//         let ret_asm = run_asm("tests/programs/cfi_lpad_not_active");
-//         assert!(ret_asm.is_ok());
-//         assert_eq!(ret_asm.unwrap(), 0);
-//     }
-// }
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_lpad_not_active");
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+    }
+}
 
-// #[test]
-// pub fn test_cfi_lpad_unlabeled_failed() {
-//     let ret = run_int("tests/programs/cfi_lpad_unlabeled_failed");
-//     assert!(ret.is_err());
+#[test]
+pub fn test_cfi_lpad_unlabeled_failed() {
+    let ret = run_int("tests/programs/cfi_lpad_unlabeled_failed");
+    assert!(ret.is_err());
 
-//     #[cfg(has_asm)]
-//     {
-//         let ret_asm = run_asm("tests/programs/cfi_lpad_unlabeled_failed");
-//         assert!(ret_asm.is_err());
-//     }
-// }
+    // #[cfg(has_asm)]
+    // {
+    //     let ret_asm = run_asm("tests/programs/cfi_lpad_unlabeled_failed");
+    //     assert!(ret_asm.is_err());
+    // }
+}
 
 #[test]
 pub fn test_cfi_lpad_func_sig() {
@@ -121,26 +133,26 @@ pub fn test_cfi_lpad_func_sig() {
     }
 }
 
-// #[test]
-// pub fn test_cfi_lpad_func_sig_zero() {
-//     let ret = run_int("tests/programs/cfi_lpad_func_sig_zero");
-//     assert!(ret.is_ok());
+#[test]
+pub fn test_cfi_lpad_func_sig_zero() {
+    let ret = run_int("tests/programs/cfi_lpad_func_sig_zero");
+    assert!(ret.is_ok());
 
-//     #[cfg(has_asm)]
-//     {
-//         let ret_asm = run_asm("tests/programs/cfi_lpad_func_sig_zero");
-//         assert!(ret_asm.is_ok());
-//     }
-// }
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_lpad_func_sig_zero");
+        assert!(ret_asm.is_ok());
+    }
+}
 
-// #[test]
-// pub fn test_cfi_lpad_func_sig_failed() {
-//     let ret = run_int("tests/programs/cfi_lpad_func_sig_failed");
-//     assert!(ret.is_err());
+#[test]
+pub fn test_cfi_lpad_func_sig_failed() {
+    let ret = run_int("tests/programs/cfi_lpad_func_sig_failed");
+    assert!(ret.is_err());
 
-//     #[cfg(has_asm)]
-//     {
-//         let ret_asm = run_asm("tests/programs/cfi_lpad_func_sig_failed");
-//         assert!(ret_asm.is_err());
-//     }
-// }
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_lpad_func_sig_failed");
+        assert!(ret_asm.is_err());
+    }
+}

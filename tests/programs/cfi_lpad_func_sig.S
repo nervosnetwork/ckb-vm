@@ -25,10 +25,10 @@ _start:
     //   is_lp_expected = ( (JALR || C.JR || C.JALR) &&
     //                    (rs1 != x1) && (rs1 != x5) && (rs1 != x7) ) ? 1 : 0;
     la t1, func
-    li t2, 42
+    li t2, 172032 // 42 << 12
     jalr ra, t1, 0
     exit_imm 0
-    
+
 .globl func
 .type func,@function
 func:
