@@ -368,6 +368,16 @@ ckb_vm_x64_execute:
   prfm pldl3keep, [TEMP2, TEMP1]
   add INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREADS
   add INST_ARGS, INST_PC, 8
+  /* Check elp flag */
+  ldrb TEMP1w, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
+  cmp TEMP1, 0
+  beq .trace_loaded_no_elp_check
+  /* Check elp flag. if elp=1, check the next instruction is lpad */
+  ldr TEMP1, [INST_PC]
+  adr TEMP2, .CKB_VM_ASM_LABEL_OP_LPAD
+  cmp TEMP1, TEMP2
+  bne .exit_shadow_stack_software_check_exception
+.trace_loaded_no_elp_check:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:
   /* Load current instruction as the full trace address */
