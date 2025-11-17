@@ -376,7 +376,7 @@ ckb_vm_x64_execute:
   ldr TEMP1, [INST_PC]
   adr TEMP2, .CKB_VM_ASM_LABEL_OP_LPAD
   cmp TEMP1, TEMP2
-  bne .exit_shadow_stack_software_check_exception
+  bne .exit_shadow_stack_not_lpad
 .trace_loaded_no_elp_check:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:
@@ -1942,7 +1942,7 @@ ckb_vm_x64_execute:
   ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8]
   and TEMP1, TEMP1, 0xFFFFF000
   cmp IMMEDIATE, TEMP1
-  bne .exit_shadow_stack_software_check_exception
+  bne .exit_shadow_stack_label_wrong
 .lpad_branch_success:
   strb wzr, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
   NEXT_INST
@@ -1960,7 +1960,7 @@ ckb_vm_x64_execute:
   ldr TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   SS_GET(TEMP2, TEMP3)
   cmp TEMP1, TEMP3
-  bne .exit_shadow_stack_software_check_exception
+  bne .exit_shadow_stack_value_wrong
   add TEMP2, TEMP2, 8
   str TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   NEXT_INST
@@ -2004,8 +2004,14 @@ ckb_vm_x64_execute:
   str TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0]
   mov x0, CKB_VM_ASM_RET_INVALID_PERMISSION
   b .exit
-.exit_shadow_stack_software_check_exception:
-  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION
+.exit_shadow_stack_not_lpad:
+  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_NOT_LPAD
+  b .exit
+.exit_shadow_stack_label_wrong:
+  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_LABEL_WRONG
+  b .exit
+.exit_shadow_stack_value_wrong:
+  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_VALUE_WRONG
   b .exit
 .exit_shadow_stack_stack_out_of_stack:
   mov x0, CKB_VM_ASM_RET_SHADOW_STACK_STACK_OUT_OF_STACK

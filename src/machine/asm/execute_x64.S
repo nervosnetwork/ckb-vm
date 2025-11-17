@@ -488,7 +488,7 @@ ckb_vm_x64_execute:
   movq (INST_PC), %rax
   leaq .CKB_VM_ASM_LABEL_OP_LPAD(%rip), %rcx
   cmp %rcx, %rax
-  jne .exit_shadow_stack_software_check_exception
+  jne .exit_shadow_stack_not_lpad
 .trace_loaded_no_elp_check:
   NEXT_INST
 .p2align 3
@@ -2423,7 +2423,7 @@ ckb_vm_x64_execute:
   movq T2_ADDRESS, RS1
   andl $0xFFFFF000, RS1d
   cmp IMMEDIATE, RS1
-  jne .exit_shadow_stack_software_check_exception
+  jne .exit_shadow_stack_label_wrong
 .lpad_branch_success:
   movl $0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
   NEXT_INST
@@ -2443,7 +2443,7 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS2r
   SS_GET(RS2r, TEMP1)
   cmp RS1, TEMP1
-  jne .exit_shadow_stack_software_check_exception
+  jne .exit_shadow_stack_value_wrong
   addq $8, RS2r
   movq RS2r, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
   NEXT_INST
@@ -2495,8 +2495,16 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
   jmp .exit
 .p2align 3
-.exit_shadow_stack_software_check_exception:
-  mov $CKB_VM_ASM_RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION, ARG_RETd
+.exit_shadow_stack_not_lpad:
+  mov $CKB_VM_ASM_RET_SHADOW_STACK_NOT_LPAD, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_shadow_stack_label_wrong:
+  mov $CKB_VM_ASM_RET_SHADOW_STACK_LABEL_WRONG, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_shadow_stack_value_wrong:
+  mov $CKB_VM_ASM_RET_SHADOW_STACK_VALUE_WRONG, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_shadow_stack_stack_out_of_stack:
