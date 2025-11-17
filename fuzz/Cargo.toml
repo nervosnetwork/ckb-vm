@@ -19,6 +19,12 @@ ckb-vm-definitions = { path = "../definitions" }
 members = ["."]
 
 [[bin]]
+name = "asm_3"
+path = "fuzz_targets/asm_3.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "asm"
 path = "fuzz_targets/asm.rs"
 test = false
