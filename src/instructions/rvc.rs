@@ -3,7 +3,7 @@ use ckb_vm_definitions::registers::{RA, SP, T0, T2};
 
 use super::i::nop;
 use super::register::Register;
-use super::utils::{jalr, ld, lw, rd, x, xs};
+use super::utils::{jalr, jalr_cfi_mark, ld, lw, rd, x, xs};
 use super::{Instruction, Itype, Rtype, Stype, Utype, blank_instruction, set_instruction_length_2};
 use crate::elf::CFI;
 
@@ -431,7 +431,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Op
                             let n = Itype::new_s(jalr(version), 0, rd, 0).0;
                             let rs1 = rd;
                             if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
-                                Some(n | (1 << 28)) // Mark as a cfi jump for CFI
+                                Some(jalr_cfi_mark(n)) // Mark as a cfi jump for CFI
                             } else {
                                 Some(n)
                             }
@@ -461,7 +461,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Op
                         (rs1, 0) => {
                             let n = Itype::new_s(jalr(version), 1, rs1, 0).0;
                             if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
-                                Some(n | (1 << 28)) // Mark as a cfi jump for CFI
+                                Some(jalr_cfi_mark(n)) // Mark as a cfi jump for CFI
                             } else {
                                 Some(n)
                             }

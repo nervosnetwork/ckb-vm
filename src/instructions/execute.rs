@@ -4,7 +4,9 @@ use super::{
     extract_opcode, instruction_length,
     utils::update_register,
 };
-use crate::{instructions::tagged::TaggedInstruction, memory::Memory};
+use crate::{
+    instructions::tagged::TaggedInstruction, instructions::utils::jalr_cfi, memory::Memory,
+};
 use ckb_vm_definitions::{
     for_each_inst_array1, for_each_inst_match2,
     instructions::{self as insts, paste},
@@ -555,7 +557,7 @@ pub fn handle_jalr_version1<Mac: Machine>(
     next_pc = next_pc & (!Mac::REG::one());
     update_register(machine, i.rd(), link);
     machine.update_pc(next_pc);
-    if inst & (1 << 28) != 0 {
+    if jalr_cfi(inst) {
         machine.set_elp(1);
     }
     Ok(())
