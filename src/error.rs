@@ -51,8 +51,14 @@ pub enum Error {
     Unexpected(String),
     #[display("yield")]
     Yield,
-    #[display("shadow stack software check exception")]
-    ShadowStackSoftwareCheckException,
+    #[display("shadow stack lpad not 4-byte aligned")]
+    ShadowStackLpadNot4ByteAligned,
+    #[display("shadow stack not lpad")]
+    ShadowStackNotLpad,
+    #[display("shadow stack label wrong")]
+    ShadowStackLabelWrong,
+    #[display("shadow stack value wrong")]
+    ShadowStackValueWrong,
     #[display("shadow stack out of stack")]
     ShadowStackOutOfStack,
 }

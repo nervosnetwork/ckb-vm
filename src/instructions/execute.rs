@@ -1514,13 +1514,13 @@ pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     }
     // If PC not 4-byte aligned then software-check exception.
     if machine.pc().to_u64() % 4 != 0 {
-        return Err(Error::ShadowStackSoftwareCheckException);
+        return Err(Error::ShadowStackLpadNot4ByteAligned);
     }
     // If landing pad label not matched -> software-check exception
     let lpl = Utype(inst).immediate_u();
     let x7l = machine.registers()[T2].to_u32() & 0xFFFFF000;
     if lpl != x7l && lpl != 0 {
-        return Err(Error::ShadowStackSoftwareCheckException);
+        return Err(Error::ShadowStackLabelWrong);
     }
     machine.set_elp(0);
     Ok(())
@@ -1546,7 +1546,7 @@ pub fn handle_sspopchk<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     let ret = machine.ra(&ssp)?.clone();
     let ssp = ssp.overflowing_add(&Mac::REG::from_u8(Mac::REG::BITS / 8));
     if ret.to_u64() != rs1_value.to_u64() {
-        return Err(Error::ShadowStackSoftwareCheckException);
+        return Err(Error::ShadowStackValueWrong);
     }
     machine.set_ssp(&ssp);
     Ok(())

@@ -9,8 +9,9 @@ use ckb_vm_definitions::{
     asm::{
         FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION, RET_SHADOW_STACK_STACK_OUT_OF_STACK,
-        RET_SLOWPATH,
+        RET_PAUSE, RET_SHADOW_STACK_LABEL_WRONG, RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED,
+        RET_SHADOW_STACK_NOT_LPAD, RET_SHADOW_STACK_STACK_OUT_OF_STACK,
+        RET_SHADOW_STACK_VALUE_WRONG, RET_SLOWPATH,
     },
 };
 use rand::{SeedableRng, prelude::RngCore};
@@ -869,8 +870,18 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     self.machine.pause.free();
                     return Err(Error::Pause);
                 }
-                RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION => {
-                    return Err(Error::ShadowStackSoftwareCheckException);
+                RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED => {
+                    // Should not be caught. The check occurs during the decoder phase.
+                    unreachable!();
+                }
+                RET_SHADOW_STACK_NOT_LPAD => {
+                    return Err(Error::ShadowStackNotLpad);
+                }
+                RET_SHADOW_STACK_LABEL_WRONG => {
+                    return Err(Error::ShadowStackLabelWrong);
+                }
+                RET_SHADOW_STACK_VALUE_WRONG => {
+                    return Err(Error::ShadowStackValueWrong);
                 }
                 RET_SHADOW_STACK_STACK_OUT_OF_STACK => {
                     return Err(Error::ShadowStackOutOfStack);
@@ -938,8 +949,18 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                 execute_instruction(instruction, &mut self.machine)?;
             }
-            RET_SHADOW_STACK_SOFTWARE_CHECK_EXCEPTION => {
-                return Err(Error::ShadowStackSoftwareCheckException);
+            RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED => {
+                // Should not be caught. The check occurs during the decoder phase.
+                unreachable!();
+            }
+            RET_SHADOW_STACK_NOT_LPAD => {
+                return Err(Error::ShadowStackNotLpad);
+            }
+            RET_SHADOW_STACK_LABEL_WRONG => {
+                return Err(Error::ShadowStackLabelWrong);
+            }
+            RET_SHADOW_STACK_VALUE_WRONG => {
+                return Err(Error::ShadowStackValueWrong);
             }
             RET_SHADOW_STACK_STACK_OUT_OF_STACK => {
                 return Err(Error::ShadowStackOutOfStack);

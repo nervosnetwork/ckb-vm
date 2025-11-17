@@ -933,7 +933,7 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
             decoder.decode(memory, pc)?
         };
         if self.elp() != 0 && extract_opcode(instruction) != insts::OP_LPAD {
-            return Err(Error::ShadowStackSoftwareCheckException);
+            return Err(Error::ShadowStackNotLpad);
         }
         let cycles = self.instruction_cycle_func()(instruction);
         self.add_cycles(cycles)?;
