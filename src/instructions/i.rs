@@ -9,6 +9,7 @@ use super::{
     Instruction, Itype, Register, Rtype, Stype, Utype, blank_instruction, set_instruction_length_4,
 };
 use crate::elf::CFI;
+use crate::instructions::utils::jalr_cfi_mark;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
@@ -75,7 +76,7 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Op
                 let rs1 = rs1(instruction_bits);
                 let n = Itype::new_s(inst, rd, rs1, itype_immediate(instruction_bits)).0;
                 if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
-                    n | (1 << 28) // Mark as a cfi jump for CFI
+                    jalr_cfi_mark(n) // Mark as a cfi jump for CFI
                 } else {
                     n
                 }
