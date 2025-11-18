@@ -1,23 +1,6 @@
+.include "cfi_macro.h"
 
-.section ".note.gnu.property", "a"
-.balign 8
-.4byte 4
-.4byte (ndesc_end - ndesc_begin)
-.4byte 0x5        // NT_GNU_PROPERTY_TYPE_0
-.asciz "GNU"
-ndesc_begin:
-.balign 8
-.4byte 0xc0000000 // GNU_PROPERTY_RISCV_FEATURE_1_AND
-.4byte 4
-.4byte 2          // GNU_PROPERTY_RISCV_FEATURE_1_CFI_SS
-.balign 8
-ndesc_end:
-
-.macro exit_imm val
-    li a0, \val
-    li a7, 93
-    ecall
-.endm
+gnu_property_cfi_ss 2
 
 .text
 .global _start
@@ -39,6 +22,9 @@ _start:
     sspush ra
     sspopchk ra
 
+    sspush t0
+    sspopchk t0
+    
     li t0, 42
     beq ra, t0, 1f
     exit_imm 2
@@ -79,6 +65,17 @@ _start:
     li t1, 0x10000
     beq t0, t1, 1f
     exit_imm 6
+
+1:
+    # test ssamoswap.w version
+    li t0, 100
+    sspush t0
+    ssrdp t3
+    li t4, 200
+    ssamoswap.w t5, t4, (t3)
+    li t6, 100
+    beq t5, t6, 1f
+    exit_imm 7
 
 1:
     exit_imm 0

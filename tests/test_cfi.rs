@@ -156,3 +156,27 @@ pub fn test_cfi_lpad_func_sig_failed() {
         assert!(ret_asm.is_err());
     }
 }
+
+#[test]
+pub fn test_cfi_ss_only_pop() {
+    let ret = run_int("tests/programs/cfi_ss_only_pop");
+    assert!(ret.is_err());
+
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_ss_only_pop");
+        assert!(ret_asm.is_err());
+    }
+}
+
+#[test]
+pub fn test_cfi_ss_popchk_failed() {
+    let ret = run_int("tests/programs/cfi_ss_popchk_failed");
+    assert!(ret.is_err());
+
+    #[cfg(has_asm)]
+    {
+        let ret_asm = run_asm("tests/programs/cfi_ss_popchk_failed");
+        assert!(ret_asm.is_err());
+    }
+}
