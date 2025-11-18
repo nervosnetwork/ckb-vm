@@ -23,3 +23,6 @@ build cfi_lpad_unlabeled_failed.S cfi_lpad_unlabeled_failed
 build cfi_lpad_func_sig.S cfi_lpad_func_sig
 build cfi_lpad_func_sig_zero.S cfi_lpad_func_sig_zero
 build cfi_lpad_func_sig_failed.S cfi_lpad_func_sig_failed
+build cfi_ss_only_pop.S cfi_ss_only_pop
+build cfi_ss_popchk_failed.S cfi_ss_popchk_failed
+

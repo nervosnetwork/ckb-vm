@@ -1,33 +1,33 @@
+.include "cfi_macro.h"
 
-.section ".note.gnu.property", "a"
-.balign 8
-.4byte 4
-.4byte (ndesc_end - ndesc_begin)
-.4byte 0x5        // NT_GNU_PROPERTY_TYPE_0
-.asciz "GNU"
-ndesc_begin:
-.balign 8
-.4byte 0xc0000000 // GNU_PROPERTY_RISCV_FEATURE_1_AND
-.4byte 4
-.4byte 1          // GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_UNLABELED
-.balign 8
-ndesc_end:
-
-.macro exit_imm val
-    li a0, \val
-    li a7, 93
-    ecall
-.endm
+gnu_property_cfi_ss 1
 
 .text
 .global _start
 _start:
     la t1, func
     jalr ra, t1, 0
-    exit_imm 0
+
+    la t1, func
+    c.jalr t1
+
+    la t1, exit
+    c.jr t1
+    
+    exit_imm 1
     
 .globl func
 .type func,@function
+# lpad checks alignment with 4
+.balign 4
 func:
   lpad 0
   ret
+
+.global exit
+.type func,@function
+# lpad checks alignment with 4
+.balign 4
+exit:
+    lpad 0
+    exit_imm 0
