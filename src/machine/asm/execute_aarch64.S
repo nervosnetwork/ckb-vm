@@ -111,24 +111,24 @@
   NEXT_INST
 
 #define SS_GET(addr_reg, temp_reg) \
-  ldr TEMP4, =65528 SEP \
-  cmp addr_reg, TEMP4 SEP \
+  ldr TEMP5, =65528 SEP \
+  cmp addr_reg, TEMP5 SEP \
   bhi .exit_shadow_stack_stack_out_of_stack SEP \
-  ldr TEMP4, =0 SEP \
-  cmp addr_reg, TEMP4 SEP \
+  ldr TEMP5, =0 SEP \
+  cmp addr_reg, TEMP5 SEP \
   beq .exit_shadow_stack_stack_out_of_stack SEP \
-  add TEMP4, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
-  ldr temp_reg, [TEMP4, addr_reg]
+  add TEMP5, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
+  ldr temp_reg, [TEMP5, addr_reg]
 
 #define SS_SET(addr_reg, from_reg) \
-  ldr TEMP4, =65528 SEP \
-  cmp addr_reg, TEMP4 SEP \
+  ldr TEMP5, =65528 SEP \
+  cmp addr_reg, TEMP5 SEP \
   bhi .exit_shadow_stack_stack_out_of_stack SEP \
-  ldr TEMP4, =0 SEP \
-  cmp addr_reg, TEMP4 SEP \
+  ldr TEMP5, =0 SEP \
+  cmp addr_reg, TEMP5 SEP \
   beq .exit_shadow_stack_stack_out_of_stack SEP \
-  add TEMP4, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
-  str from_reg, [TEMP4, addr_reg]
+  add TEMP5, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
+  str from_reg, [TEMP5, addr_reg]
 
 #define DECODE_R \
   ubfx RS1, TEMP1, 0, 8 SEP \
