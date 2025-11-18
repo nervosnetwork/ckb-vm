@@ -217,7 +217,7 @@ impl<Inner: SupportMachine, Decoder: InstDecoder> DefaultMachineRunner
             if self.machine.elp() != 0
                 && extract_opcode(self.traces[slot].instructions[0]) != insts::OP_LPAD
             {
-                return Err(Error::ShadowStackNotLpad);
+                return Err(Error::CFILpadNotFound);
             }
             for i in 0..self.traces[slot].instruction_count {
                 let inst = self.traces[slot].instructions[i as usize];

@@ -2005,16 +2005,16 @@ ckb_vm_x64_execute:
   mov x0, CKB_VM_ASM_RET_INVALID_PERMISSION
   b .exit
 .exit_shadow_stack_not_lpad:
-  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_NOT_LPAD
+  mov x0, CKB_VM_ASM_RET_CFI_LPAD_NOT_FOUND
   b .exit
 .exit_shadow_stack_label_wrong:
-  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_LABEL_WRONG
+  mov x0, CKB_VM_ASM_RET_CFI_LPAD_LABEL_MISMATCHED
   b .exit
 .exit_shadow_stack_value_wrong:
-  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_VALUE_WRONG
+  mov x0, CKB_VM_ASM_RET_CFI_SS_VALUE_FAULT
   b .exit
 .exit_shadow_stack_stack_out_of_stack:
-  mov x0, CKB_VM_ASM_RET_SHADOW_STACK_STACK_OUT_OF_STACK
+  mov x0, CKB_VM_ASM_RET_CFI_SS_OUT_OF_STACK
   b .exit
 .exit_pause:
   mov x0, CKB_VM_ASM_RET_PAUSE

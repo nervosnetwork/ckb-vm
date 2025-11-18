@@ -466,7 +466,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         let size = Self::REG::BITS as usize / 8;
         let (end, overflowed) = offset.overflowing_add(size);
         if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
-            return Err(Error::ShadowStackOutOfStack);
+            return Err(Error::CFIShadowStackOutOfStack);
         }
         let ra = self
             .shadow_stack
@@ -491,7 +491,7 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         let size = Self::REG::BITS as usize / 8;
         let (end, overflowed) = offset.overflowing_add(size);
         if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
-            return Err(Error::ShadowStackOutOfStack);
+            return Err(Error::CFIShadowStackOutOfStack);
         }
         let bytes = match size {
             4 => value.to_u32().to_le_bytes().to_vec(),
@@ -933,7 +933,7 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
             decoder.decode(memory, pc)?
         };
         if self.elp() != 0 && extract_opcode(instruction) != insts::OP_LPAD {
-            return Err(Error::ShadowStackNotLpad);
+            return Err(Error::CFILpadNotFound);
         }
         let cycles = self.instruction_cycle_func()(instruction);
         self.add_cycles(cycles)?;

@@ -7,11 +7,10 @@ use ckb_vm_definitions::{
     ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS,
     asm::{
-        FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
-        RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SHADOW_STACK_LABEL_WRONG, RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED,
-        RET_SHADOW_STACK_NOT_LPAD, RET_SHADOW_STACK_STACK_OUT_OF_STACK,
-        RET_SHADOW_STACK_VALUE_WRONG, RET_SLOWPATH,
+        FixedTrace, InvokeData, RET_CFI_LPAD_LABEL_MISMATCHED, RET_CFI_LPAD_NOT_4BYTE_ALIGNED,
+        RET_CFI_LPAD_NOT_FOUND, RET_CFI_SS_OUT_OF_STACK, RET_CFI_SS_VALUE_FAULT,
+        RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH,
     },
 };
 use rand::{SeedableRng, prelude::RngCore};
@@ -154,7 +153,7 @@ where
         let size = Self::REG::BITS as usize / 8;
         let (end, overflowed) = offset.overflowing_add(size);
         if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
-            return Err(Error::ShadowStackOutOfStack);
+            return Err(Error::CFIShadowStackOutOfStack);
         }
         let ra = self
             .as_ref()
@@ -172,7 +171,7 @@ where
         let size = Self::REG::BITS as usize / 8;
         let (end, overflowed) = offset.overflowing_add(size);
         if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
-            return Err(Error::ShadowStackOutOfStack);
+            return Err(Error::CFIShadowStackOutOfStack);
         }
         let bytes = value.to_le_bytes().to_vec();
         self.as_mut().shadow_stack[offset..end].copy_from_slice(&bytes);
@@ -870,21 +869,21 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     self.machine.pause.free();
                     return Err(Error::Pause);
                 }
-                RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED => {
+                RET_CFI_LPAD_NOT_4BYTE_ALIGNED => {
                     // Should not be caught. The check occurs during the decoder phase.
                     unreachable!();
                 }
-                RET_SHADOW_STACK_NOT_LPAD => {
-                    return Err(Error::ShadowStackNotLpad);
+                RET_CFI_LPAD_NOT_FOUND => {
+                    return Err(Error::CFILpadNotFound);
                 }
-                RET_SHADOW_STACK_LABEL_WRONG => {
-                    return Err(Error::ShadowStackLabelWrong);
+                RET_CFI_LPAD_LABEL_MISMATCHED => {
+                    return Err(Error::CFILpadLabelMismatched);
                 }
-                RET_SHADOW_STACK_VALUE_WRONG => {
-                    return Err(Error::ShadowStackValueWrong);
+                RET_CFI_SS_VALUE_FAULT => {
+                    return Err(Error::CFIShadowStackValueFault);
                 }
-                RET_SHADOW_STACK_STACK_OUT_OF_STACK => {
-                    return Err(Error::ShadowStackOutOfStack);
+                RET_CFI_SS_OUT_OF_STACK => {
+                    return Err(Error::CFIShadowStackOutOfStack);
                 }
                 _ => return Err(Error::Asm(result)),
             }
@@ -949,21 +948,21 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                 execute_instruction(instruction, &mut self.machine)?;
             }
-            RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED => {
+            RET_CFI_LPAD_NOT_4BYTE_ALIGNED => {
                 // Should not be caught. The check occurs during the decoder phase.
                 unreachable!();
             }
-            RET_SHADOW_STACK_NOT_LPAD => {
-                return Err(Error::ShadowStackNotLpad);
+            RET_CFI_LPAD_NOT_FOUND => {
+                return Err(Error::CFILpadNotFound);
             }
-            RET_SHADOW_STACK_LABEL_WRONG => {
-                return Err(Error::ShadowStackLabelWrong);
+            RET_CFI_LPAD_LABEL_MISMATCHED => {
+                return Err(Error::CFILpadLabelMismatched);
             }
-            RET_SHADOW_STACK_VALUE_WRONG => {
-                return Err(Error::ShadowStackValueWrong);
+            RET_CFI_SS_VALUE_FAULT => {
+                return Err(Error::CFIShadowStackValueFault);
             }
-            RET_SHADOW_STACK_STACK_OUT_OF_STACK => {
-                return Err(Error::ShadowStackOutOfStack);
+            RET_CFI_SS_OUT_OF_STACK => {
+                return Err(Error::CFIShadowStackOutOfStack);
             }
             _ => return Err(Error::Asm(result)),
         }

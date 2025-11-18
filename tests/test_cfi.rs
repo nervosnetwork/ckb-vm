@@ -40,7 +40,7 @@ pub fn test_cfi_ss_not_active() {
 pub fn test_cfi_ss_stack_downto_zero() {
     let ret = run("tests/programs/cfi_ss_stack_downto_zero");
     assert!(ret.is_err());
-    assert!(matches!(ret, Err(Error::ShadowStackOutOfStack)));
+    assert!(matches!(ret, Err(Error::CFIShadowStackOutOfStack)));
 }
 
 #[test]
@@ -65,7 +65,7 @@ pub fn test_cfi_lpad_not_active() {
 pub fn test_cfi_lpad_unlabeled_failed() {
     let ret = run("tests/programs/cfi_lpad_unlabeled_failed");
     assert!(ret.is_err());
-    assert!(matches!(ret, Err(Error::ShadowStackNotLpad)));
+    assert!(matches!(ret, Err(Error::CFILpadNotFound)));
 }
 
 #[test]
@@ -84,7 +84,7 @@ pub fn test_cfi_lpad_func_sig_zero() {
 pub fn test_cfi_lpad_func_sig_failed() {
     let ret = run("tests/programs/cfi_lpad_func_sig_failed");
     assert!(ret.is_err());
-    assert!(matches!(ret, Err(Error::ShadowStackLabelWrong)));
+    assert!(matches!(ret, Err(Error::CFILpadLabelMismatched)));
 }
 
 #[test]
@@ -92,12 +92,12 @@ pub fn test_cfi_ss_only_pop() {
     let ret = run("tests/programs/cfi_ss_only_pop");
     print!("err {:?}", ret);
     assert!(ret.is_err());
-    assert!(matches!(ret, Err(Error::ShadowStackOutOfStack)));
+    assert!(matches!(ret, Err(Error::CFIShadowStackOutOfStack)));
 }
 
 #[test]
 pub fn test_cfi_ss_popchk_failed() {
     let ret = run("tests/programs/cfi_ss_popchk_failed");
     assert!(ret.is_err());
-    assert!(matches!(ret, Err(Error::ShadowStackValueWrong)));
+    assert!(matches!(ret, Err(Error::CFIShadowStackValueFault)));
 }

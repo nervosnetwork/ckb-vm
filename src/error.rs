@@ -52,15 +52,15 @@ pub enum Error {
     #[display("yield")]
     Yield,
     #[display("shadow stack lpad not 4-byte aligned")]
-    ShadowStackLpadNot4ByteAligned,
+    CFILpadNot4ByteAligned,
     #[display("shadow stack not lpad")]
-    ShadowStackNotLpad,
+    CFILpadNotFound,
     #[display("shadow stack label wrong")]
-    ShadowStackLabelWrong,
+    CFILpadLabelMismatched,
     #[display("shadow stack value wrong")]
-    ShadowStackValueWrong,
+    CFIShadowStackValueFault,
     #[display("shadow stack out of stack")]
-    ShadowStackOutOfStack,
+    CFIShadowStackOutOfStack,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Display)]
