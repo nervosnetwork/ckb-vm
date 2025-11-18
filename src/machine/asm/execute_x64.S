@@ -2496,19 +2496,19 @@ ckb_vm_x64_execute:
   jmp .exit
 .p2align 3
 .exit_shadow_stack_not_lpad:
-  mov $CKB_VM_ASM_RET_SHADOW_STACK_NOT_LPAD, ARG_RETd
+  mov $CKB_VM_ASM_RET_CFI_LPAD_NOT_FOUND, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_shadow_stack_label_wrong:
-  mov $CKB_VM_ASM_RET_SHADOW_STACK_LABEL_WRONG, ARG_RETd
+  mov $CKB_VM_ASM_RET_CFI_LPAD_LABEL_MISMATCHED, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_shadow_stack_value_wrong:
-  mov $CKB_VM_ASM_RET_SHADOW_STACK_VALUE_WRONG, ARG_RETd
+  mov $CKB_VM_ASM_RET_CFI_SS_VALUE_FAULT, ARG_RETd
   jmp .exit
 .p2align 3
 .exit_shadow_stack_stack_out_of_stack:
-  mov $CKB_VM_ASM_RET_SHADOW_STACK_STACK_OUT_OF_STACK, ARG_RETd
+  mov $CKB_VM_ASM_RET_CFI_SS_OUT_OF_STACK, ARG_RETd
   jmp .exit
 /*
  * Some instructions that are difficult to implement will be interpreted and

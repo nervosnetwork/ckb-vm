@@ -15,11 +15,11 @@ pub const RET_OUT_OF_BOUND: u8 = 7;
 pub const RET_INVALID_PERMISSION: u8 = 8;
 pub const RET_SLOWPATH: u8 = 9;
 pub const RET_PAUSE: u8 = 10;
-pub const RET_SHADOW_STACK_LPAD_NOT_4BYTE_ALIGNED: u8 = 11;
-pub const RET_SHADOW_STACK_NOT_LPAD: u8 = 12;
-pub const RET_SHADOW_STACK_LABEL_WRONG: u8 = 13;
-pub const RET_SHADOW_STACK_VALUE_WRONG: u8 = 14;
-pub const RET_SHADOW_STACK_STACK_OUT_OF_STACK: u8 = 15;
+pub const RET_CFI_LPAD_NOT_4BYTE_ALIGNED: u8 = 11;
+pub const RET_CFI_LPAD_NOT_FOUND: u8 = 12;
+pub const RET_CFI_LPAD_LABEL_MISMATCHED: u8 = 13;
+pub const RET_CFI_SS_VALUE_FAULT: u8 = 14;
+pub const RET_CFI_SS_OUT_OF_STACK: u8 = 15;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {

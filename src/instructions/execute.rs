@@ -1514,13 +1514,13 @@ pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
     }
     // If PC not 4-byte aligned then software-check exception.
     if machine.pc().to_u64() % 4 != 0 {
-        return Err(Error::ShadowStackLpadNot4ByteAligned);
+        return Err(Error::CFILpadNot4ByteAligned);
     }
     // If landing pad label not matched -> software-check exception
     let lpl = Utype(inst).immediate_u();
     let x7l = machine.registers()[T2].to_u32() & 0xFFFFF000;
     if lpl != x7l && lpl != 0 {
-        return Err(Error::ShadowStackLabelWrong);
+        return Err(Error::CFILpadLabelMismatched);
     }
     machine.set_elp(0);
     Ok(())
@@ -1532,7 +1532,7 @@ pub fn handle_sspush<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Resu
     let ssp = machine.ssp().clone();
     let ssp = ssp.overflowing_sub(&Mac::REG::from_u8(Mac::REG::BITS / 8));
     if ssp.to_u64() == 0 {
-        return Err(Error::ShadowStackOutOfStack);
+        return Err(Error::CFIShadowStackOutOfStack);
     }
     machine.set_ra(&ssp, &rs2_value)?;
     machine.set_ssp(&ssp);
@@ -1546,7 +1546,7 @@ pub fn handle_sspopchk<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Re
     let ret = machine.ra(&ssp)?.clone();
     let ssp = ssp.overflowing_add(&Mac::REG::from_u8(Mac::REG::BITS / 8));
     if ret.to_u64() != rs1_value.to_u64() {
-        return Err(Error::ShadowStackValueWrong);
+        return Err(Error::CFIShadowStackValueFault);
     }
     machine.set_ssp(&ssp);
     Ok(())
