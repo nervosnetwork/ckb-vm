@@ -390,16 +390,16 @@
 
 #define SS_GET(addr_regd, temp_regd) \
   cmp $65528, addr_regd; \
-  ja .exit_shadow_stack_stack_out_of_stack; \
+  ja .exit_cfi_ss_out_of_stack; \
   cmp $0, addr_regd; \
-  je .exit_shadow_stack_stack_out_of_stack; \
+  je .exit_cfi_ss_out_of_stack; \
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1), temp_regd
 
 #define SS_SET(addr_regd, from_regd) \
   cmp $65528, addr_regd; \
-  ja .exit_shadow_stack_stack_out_of_stack; \
+  ja .exit_cfi_ss_out_of_stack; \
   cmp $0, addr_regd; \
-  je .exit_shadow_stack_stack_out_of_stack; \
+  je .exit_cfi_ss_out_of_stack; \
   movq from_regd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1)
 
 #define DECODE_R \
@@ -488,7 +488,7 @@ ckb_vm_x64_execute:
   movq (INST_PC), %rax
   leaq .CKB_VM_ASM_LABEL_OP_LPAD(%rip), %rcx
   cmp %rcx, %rax
-  jne .exit_shadow_stack_not_lpad
+  jne .exit_cfi_lpad_not_found
 .trace_loaded_no_elp_check:
   NEXT_INST
 .p2align 3
@@ -2418,12 +2418,18 @@ ckb_vm_x64_execute:
   movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE), RS1d
   cmp $0, RS1d
   je .lpad_branch_success
+  /* Loading flag of current instruction */
+  movq -16(INST_ARGS), TEMP1
+  sar $28, TEMP1
+  andq $0x1, TEMP1
+  cmp $1, TEMP1
+  jne .exit_cfi_lpad_not_4byte_aligned
   cmp $0, IMMEDIATE
   je .lpad_branch_success
   movq T2_ADDRESS, RS1
   andl $0xFFFFF000, RS1d
   cmp IMMEDIATE, RS1
-  jne .exit_shadow_stack_label_wrong
+  jne .exit_cfi_lpad_label_mismatched
 .lpad_branch_success:
   movl $0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
   NEXT_INST
@@ -2443,7 +2449,7 @@ ckb_vm_x64_execute:
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS2r
   SS_GET(RS2r, TEMP1)
   cmp RS1, TEMP1
-  jne .exit_shadow_stack_value_wrong
+  jne .exit_cfi_value_fault
   addq $8, RS2r
   movq RS2r, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
   NEXT_INST
@@ -2495,19 +2501,23 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
   jmp .exit
 .p2align 3
-.exit_shadow_stack_not_lpad:
+.exit_cfi_lpad_not_4byte_aligned:
+  mov $CKB_VM_ASM_RET_CFI_LPAD_NOT_4BYTE_ALIGNED, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cfi_lpad_not_found:
   mov $CKB_VM_ASM_RET_CFI_LPAD_NOT_FOUND, ARG_RETd
   jmp .exit
 .p2align 3
-.exit_shadow_stack_label_wrong:
+.exit_cfi_lpad_label_mismatched:
   mov $CKB_VM_ASM_RET_CFI_LPAD_LABEL_MISMATCHED, ARG_RETd
   jmp .exit
 .p2align 3
-.exit_shadow_stack_value_wrong:
+.exit_cfi_value_fault:
   mov $CKB_VM_ASM_RET_CFI_SS_VALUE_FAULT, ARG_RETd
   jmp .exit
 .p2align 3
-.exit_shadow_stack_stack_out_of_stack:
+.exit_cfi_ss_out_of_stack:
   mov $CKB_VM_ASM_RET_CFI_SS_OUT_OF_STACK, ARG_RETd
   jmp .exit
 /*

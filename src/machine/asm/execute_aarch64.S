@@ -113,20 +113,20 @@
 #define SS_GET(addr_reg, into_reg) \
   ldr TEMP5, =65528 SEP \
   cmp addr_reg, TEMP5 SEP \
-  bhi .exit_shadow_stack_stack_out_of_stack SEP \
+  bhi .exit_cfi_ss_out_of_stack SEP \
   ldr TEMP5, =0 SEP \
   cmp addr_reg, TEMP5 SEP \
-  beq .exit_shadow_stack_stack_out_of_stack SEP \
+  beq .exit_cfi_ss_out_of_stack SEP \
   add TEMP5, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
   ldr into_reg, [TEMP5, addr_reg]
 
 #define SS_SET(addr_reg, from_reg) \
   ldr TEMP5, =65528 SEP \
   cmp addr_reg, TEMP5 SEP \
-  bhi .exit_shadow_stack_stack_out_of_stack SEP \
+  bhi .exit_cfi_ss_out_of_stack SEP \
   ldr TEMP5, =0 SEP \
   cmp addr_reg, TEMP5 SEP \
-  beq .exit_shadow_stack_stack_out_of_stack SEP \
+  beq .exit_cfi_ss_out_of_stack SEP \
   add TEMP5, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
   str from_reg, [TEMP5, addr_reg]
 
@@ -376,7 +376,7 @@ ckb_vm_x64_execute:
   ldr TEMP1, [INST_PC]
   adr TEMP2, .CKB_VM_ASM_LABEL_OP_LPAD
   cmp TEMP1, TEMP2
-  bne .exit_shadow_stack_not_lpad
+  bne .exit_cfi_lpad_not_found
 .trace_loaded_no_elp_check:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:
@@ -1937,12 +1937,18 @@ ckb_vm_x64_execute:
   ldrb TEMP1w, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
   cmp TEMP1, 0
   beq .lpad_branch_success
+  /* Loading instruction flags */
+  ldr TEMP1, [INST_ARGS, -16]
+  asr TEMP1, TEMP1, 28
+  and TEMP1, TEMP1, 0x1
+  cmp TEMP1, 1
+  bne .exit_cfi_lpad_not_4byte_aligned
   cmp IMMEDIATE, 0
   beq .lpad_branch_success
   ldr TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8]
   and TEMP1, TEMP1, 0xFFFFF000
   cmp IMMEDIATE, TEMP1
-  bne .exit_shadow_stack_label_wrong
+  bne .exit_cfi_lpad_label_mismatched
 .lpad_branch_success:
   strb wzr, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP]
   NEXT_INST
@@ -1960,7 +1966,7 @@ ckb_vm_x64_execute:
   ldr RS2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   SS_GET(RS2, TEMP1)
   cmp RS1, TEMP1
-  bne .exit_shadow_stack_value_wrong
+  bne .exit_cfi_ss_value_fault
   add RS2, RS2, 8
   str RS2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP]
   NEXT_INST
@@ -2004,16 +2010,19 @@ ckb_vm_x64_execute:
   str TEMP1, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0]
   mov x0, CKB_VM_ASM_RET_INVALID_PERMISSION
   b .exit
-.exit_shadow_stack_not_lpad:
+.exit_cfi_lpad_not_4byte_aligned:
+  mov x0, CKB_VM_ASM_RET_CFI_LPAD_NOT_4BYTE_ALIGNED
+  b .exit
+.exit_cfi_lpad_not_found:
   mov x0, CKB_VM_ASM_RET_CFI_LPAD_NOT_FOUND
   b .exit
-.exit_shadow_stack_label_wrong:
+.exit_cfi_lpad_label_mismatched:
   mov x0, CKB_VM_ASM_RET_CFI_LPAD_LABEL_MISMATCHED
   b .exit
-.exit_shadow_stack_value_wrong:
+.exit_cfi_ss_value_fault:
   mov x0, CKB_VM_ASM_RET_CFI_SS_VALUE_FAULT
   b .exit
-.exit_shadow_stack_stack_out_of_stack:
+.exit_cfi_ss_out_of_stack:
   mov x0, CKB_VM_ASM_RET_CFI_SS_OUT_OF_STACK
   b .exit
 .exit_pause:

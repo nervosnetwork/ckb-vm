@@ -34,7 +34,12 @@ impl FenceType {
     }
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, version: u32, cfi: CFI) -> Option<Instruction> {
+pub fn factory<R: Register>(
+    _: u64,
+    instruction_bits: u32,
+    version: u32,
+    cfi: CFI,
+) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
