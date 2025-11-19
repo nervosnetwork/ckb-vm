@@ -5,10 +5,7 @@ use super::{
     utils::update_register,
 };
 use crate::{
-    instructions::{
-        tagged::TaggedInstruction,
-        utils::{jalr_cfi, lpad_4byte_aligned},
-    },
+    instructions::utils::{jalr_cfi, lpad_4byte_aligned},
     memory::Memory,
 };
 use ckb_vm_definitions::{
@@ -1644,7 +1641,6 @@ pub fn execute_instruction<Mac: Machine>(
     machine: &mut Mac,
 ) -> Result<(), Error> {
     let op = extract_opcode(inst);
-    println!("{}", TaggedInstruction::try_from(inst).unwrap());
     for_each_inst_match2!(
         handle_single_opcode,
         op,
