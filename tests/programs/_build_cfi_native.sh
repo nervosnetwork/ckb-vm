@@ -25,4 +25,5 @@ build cfi_lpad_func_sig_zero.S cfi_lpad_func_sig_zero
 build cfi_lpad_func_sig_failed.S cfi_lpad_func_sig_failed
 build cfi_ss_only_pop.S cfi_ss_only_pop
 build cfi_ss_popchk_failed.S cfi_ss_popchk_failed
+build cfi_lpad_align_failed.S cfi_lpad_align_failed
 
