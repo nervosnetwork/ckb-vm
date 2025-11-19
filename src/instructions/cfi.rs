@@ -41,7 +41,7 @@ pub fn factory<R: Register>(
             }
             insts::OP_SSAMOSWAP_W | insts::OP_SSAMOSWAP_D => {
                 if !cfi.ss {
-                    return Some(set_instruction_length_4(nop()));
+                    return None;
                 }
                 return Some(i);
             }

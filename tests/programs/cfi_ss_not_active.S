@@ -16,9 +16,6 @@ _start:
     ssrdp t0
     beqz t0, 1f
     exit_imm 1
-    
+
 1:
-    // ssamoswap works as May-Be-Operations? TODO
-    li t0, -1
-    ssamoswap.d ra, x0, (t0)
-    exit_imm 0 
+    exit_imm 0

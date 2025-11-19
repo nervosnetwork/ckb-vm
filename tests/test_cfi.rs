@@ -37,6 +37,18 @@ pub fn test_cfi_ss_not_active() {
 }
 
 #[test]
+pub fn test_cfi_ss_not_active_amo() {
+    let ret = run("tests/programs/cfi_ss_not_active_amo");
+    assert!(matches!(
+        ret,
+        Err(Error::InvalidInstruction {
+            pc: 69922,
+            instruction: 1208135855
+        })
+    ));
+}
+
+#[test]
 pub fn test_cfi_ss_stack_downto_zero() {
     let ret = run("tests/programs/cfi_ss_stack_downto_zero");
     assert!(matches!(ret, Err(Error::CFIShadowStackOutOfStack)));
