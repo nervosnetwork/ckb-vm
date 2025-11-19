@@ -13,6 +13,7 @@ pub use goblin_v023::elf::section_header::SHF_EXECINSTR;
 
 // GNU property note constants for RISC-V CFI features
 // See: https://github.com/llvm/llvm-project/blob/c5aaee0bb07b221e5d3314bbdcf1abc4a604d6bd/llvm/include/llvm/BinaryFormat/ELF.h#L1809
+#[allow(dead_code)]
 const NT_GNU_PROPERTY_TYPE_0: u32 = 5;
 // See: https://github.com/llvm/llvm-project/blob/c5aaee0bb07b221e5d3314bbdcf1abc4a604d6bd/llvm/include/llvm/BinaryFormat/ELF.h#L1845
 const GNU_PROPERTY_RISCV_FEATURE_1_AND: u32 = 0xC000_0000;
@@ -371,37 +372,13 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
                 ));
             }
             let note_data = &program[note_start..note_end];
-            // Parse note header: namesz (4), descsz (4), type (4), name, desc
-            let mut offset = 0;
-            let mut buf = [0u8; 4];
-            while offset + 12 <= note_data.len() {
-                buf.copy_from_slice(&note_data[offset..offset + 4]);
-                let namesz = u32::from_le_bytes(buf) as usize;
-                if namesz > note_data.len() {
-                    return Err(Error::ElfParseError("Invalid namesz".into()));
+            // Parse note header: namesz(4), descsz(4),                type(4),  name
+            //                         4u32      16u32  NT_GNU_PROPERTY_TYPE_0  GNU\0
+            let expect_note_header: [u8; 16] = [4, 0, 0, 0, 16, 0, 0, 0, 5, 0, 0, 0, 71, 78, 85, 0];
+            if note_data.len() == 32 && note_data[..16] == expect_note_header {
+                if let Ok(icfi) = parse_gnu_property_note(&note_data[16..]) {
+                    cfi = icfi;
                 }
-                buf.copy_from_slice(&note_data[offset + 4..offset + 8]);
-                let descsz = u32::from_le_bytes(buf) as usize;
-                if descsz > note_data.len() {
-                    return Err(Error::ElfParseError("Invalid descsz".into()));
-                }
-                buf.copy_from_slice(&note_data[offset + 8..offset + 12]);
-                let note_type = u32::from_le_bytes(buf);
-                offset += 12;
-                // Align namesz to 4 bytes.
-                let aligned_namesz = (namesz + 3) & !3;
-                if note_type == NT_GNU_PROPERTY_TYPE_0 {
-                    let desc_offset = offset + aligned_namesz;
-                    if desc_offset + descsz <= note_data.len() {
-                        let desc_data = &note_data[desc_offset..desc_offset + descsz];
-                        if let Ok(icfi) = parse_gnu_property_note(desc_data) {
-                            cfi = icfi;
-                        }
-                    }
-                }
-                // Move to next note (align descsz to 4 bytes)
-                let aligned_descsz = (descsz + 3) & !3;
-                offset += aligned_namesz + aligned_descsz;
             }
             break;
         }
