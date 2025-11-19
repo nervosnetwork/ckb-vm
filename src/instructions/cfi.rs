@@ -2,6 +2,7 @@ use super::utils::{funct3, funct7, opcode, rd, rs1, rs2};
 use super::{Instruction, Register, set_instruction_length_2, set_instruction_length_4};
 use crate::elf::CFI;
 use crate::instructions::i::nop;
+use crate::instructions::utils::lpad_4byte_aligned_mark;
 use crate::instructions::{Itype, Rtype, Utype, extract_opcode, instruction_length};
 use ckb_vm_definitions::instructions as insts;
 
@@ -9,8 +10,13 @@ pub fn may_be_operation(rd: usize) -> Instruction {
     Itype::new_u(insts::OP_ADDI, rd, 0, 0).0
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, _: u32, cfi: CFI) -> Option<Instruction> {
-    let inst = factory_bare::<R>(instruction_bits, 0, cfi);
+pub fn factory<R: Register>(
+    pc: u64,
+    instruction_bits: u32,
+    version: u32,
+    cfi: CFI,
+) -> Option<Instruction> {
+    let inst = factory_bare::<R>(pc, instruction_bits, version, cfi);
     if let Some(i) = inst {
         let opcode = extract_opcode(i);
         let length = instruction_length(i);
@@ -45,12 +51,20 @@ pub fn factory<R: Register>(instruction_bits: u32, _: u32, cfi: CFI) -> Option<I
     None
 }
 
-pub fn factory_bare<R: Register>(instruction_bits: u32, _: u32, _: CFI) -> Option<Instruction> {
+pub fn factory_bare<R: Register>(
+    pc: u64,
+    instruction_bits: u32,
+    _: u32,
+    _: CFI,
+) -> Option<Instruction> {
     match opcode(instruction_bits) {
         0b_0010111 => {
             if rd(instruction_bits) == 0 {
                 let inst = Utype::new(insts::OP_LPAD, 0, instruction_bits & 0xFFFFF000).0;
                 let inst = set_instruction_length_4(inst);
+                if pc % 4 == 0 {
+                    return Some(lpad_4byte_aligned_mark(inst));
+                }
                 return Some(inst);
             }
         }

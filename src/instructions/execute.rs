@@ -5,7 +5,11 @@ use super::{
     utils::update_register,
 };
 use crate::{
-    instructions::tagged::TaggedInstruction, instructions::utils::jalr_cfi, memory::Memory,
+    instructions::{
+        tagged::TaggedInstruction,
+        utils::{jalr_cfi, lpad_4byte_aligned},
+    },
+    memory::Memory,
 };
 use ckb_vm_definitions::{
     for_each_inst_array1, for_each_inst_match2,
@@ -1513,7 +1517,7 @@ pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
         return Ok(());
     }
     // If PC not 4-byte aligned then software-check exception.
-    if machine.pc().to_u64() % 4 != 0 {
+    if !lpad_4byte_aligned(inst) {
         return Err(Error::CFILpadNot4ByteAligned);
     }
     // If landing pad label not matched -> software-check exception

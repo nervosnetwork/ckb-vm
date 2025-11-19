@@ -870,8 +870,7 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     return Err(Error::Pause);
                 }
                 RET_CFI_LPAD_NOT_4BYTE_ALIGNED => {
-                    // Should not be caught. The check occurs during the decoder phase.
-                    unreachable!();
+                    return Err(Error::CFILpadNot4ByteAligned);
                 }
                 RET_CFI_LPAD_NOT_FOUND => {
                     return Err(Error::CFILpadNotFound);
@@ -949,8 +948,7 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 execute_instruction(instruction, &mut self.machine)?;
             }
             RET_CFI_LPAD_NOT_4BYTE_ALIGNED => {
-                // Should not be caught. The check occurs during the decoder phase.
-                unreachable!();
+                return Err(Error::CFILpadNot4ByteAligned);
             }
             RET_CFI_LPAD_NOT_FOUND => {
                 return Err(Error::CFILpadNotFound);
