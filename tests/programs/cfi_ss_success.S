@@ -25,6 +25,12 @@ _start:
     sspush t0
     sspopchk t0
     
+    c.sspush ra
+    sspopchk ra
+
+    sspush t0
+    c.sspopchk t0
+
     li t0, 42
     beq ra, t0, 1f
     exit_imm 2
