@@ -61,8 +61,8 @@ pub trait CoreMachine {
     fn set_elp(&mut self, elp: u32);
     fn ssp(&self) -> &Self::REG;
     fn set_ssp(&mut self, ssp: &Self::REG);
-    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE];
-    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE];
+    fn ss(&self) -> &[u8];
+    fn ss_mut(&mut self) -> &mut [u8];
     fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
     fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
 }
@@ -362,7 +362,7 @@ pub struct DefaultCoreMachine<R, M> {
     cfi: CFI,
     elp: u32,
     ssp: R,
-    shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
+    shadow_stack: Vec<u8>,
     #[cfg(feature = "pprof")]
     code: Bytes,
 }
@@ -382,7 +382,7 @@ impl<R: Default, M: Default> Default for DefaultCoreMachine<R, M> {
             version: Default::default(),
             cfi: CFI::default(),
             elp: Default::default(),
-            shadow_stack: [0; DEFAULT_SHADOW_STACK_SIZE],
+            shadow_stack: vec![0; DEFAULT_SHADOW_STACK_SIZE],
             ssp: Default::default(),
             #[cfg(feature = "pprof")]
             code: Default::default(),
@@ -453,11 +453,11 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
         self.ssp = ssp.clone();
     }
 
-    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss(&self) -> &[u8] {
         &self.shadow_stack
     }
 
-    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss_mut(&mut self) -> &mut [u8] {
         &mut self.shadow_stack
     }
 
@@ -518,7 +518,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
             version,
             cfi: Default::default(),
             elp: Default::default(),
-            shadow_stack: [0; DEFAULT_SHADOW_STACK_SIZE],
+            shadow_stack: vec![0; DEFAULT_SHADOW_STACK_SIZE],
             ssp: Default::default(),
             #[cfg(feature = "pprof")]
             code: Default::default(),
@@ -552,7 +552,7 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.cfi = CFI::default();
         self.elp = 0;
         self.ssp = R::from_u64(DEFAULT_SHADOW_STACK_SIZE as u64);
-        self.shadow_stack = [0; DEFAULT_SHADOW_STACK_SIZE];
+        self.shadow_stack = vec![0; DEFAULT_SHADOW_STACK_SIZE];
         Ok(())
     }
 
@@ -688,11 +688,11 @@ impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder>
         self.inner.set_ssp(ssp);
     }
 
-    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss(&self) -> &[u8] {
         self.inner.ss()
     }
 
-    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss_mut(&mut self) -> &mut [u8] {
         self.inner.ss_mut()
     }
 

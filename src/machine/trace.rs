@@ -8,8 +8,7 @@ use super::{
             handle_invalid_op, instruction_length, is_basic_block_end_instruction,
         },
     },
-    CFI, CoreMachine, DEFAULT_SHADOW_STACK_SIZE, DefaultMachine, DefaultMachineRunner, Machine,
-    SupportMachine, VERSION2,
+    CFI, CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
 };
 use bytes::Bytes;
 use ckb_vm_definitions::instructions as insts;
@@ -121,11 +120,11 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
         self.machine.set_ssp(ssp);
     }
 
-    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss(&self) -> &[u8] {
         self.machine.ss()
     }
 
-    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss_mut(&mut self) -> &mut [u8] {
         self.machine.ss_mut()
     }
 
