@@ -140,11 +140,11 @@ where
         self.as_mut().ssp = *ssp;
     }
 
-    fn ss(&self) -> &[u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss(&self) -> &[u8] {
         &self.as_ref().shadow_stack
     }
 
-    fn ss_mut(&mut self) -> &mut [u8; DEFAULT_SHADOW_STACK_SIZE] {
+    fn ss_mut(&mut self) -> &mut [u8] {
         &mut self.as_mut().shadow_stack
     }
 
