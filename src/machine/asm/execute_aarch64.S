@@ -117,7 +117,7 @@
   ldr TEMP5, =0 SEP \
   cmp addr_reg, TEMP5 SEP \
   beq .exit_cfi_ss_out_of_stack SEP \
-  add TEMP5, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
+  ldr TEMP5, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR] SEP \
   ldr into_reg, [TEMP5, addr_reg]
 
 #define SS_SET(addr_reg, from_reg) \
@@ -127,7 +127,7 @@
   ldr TEMP5, =0 SEP \
   cmp addr_reg, TEMP5 SEP \
   beq .exit_cfi_ss_out_of_stack SEP \
-  add TEMP5, MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK SEP \
+  ldr TEMP5, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR] SEP \
   str from_reg, [TEMP5, addr_reg]
 
 #define DECODE_R \

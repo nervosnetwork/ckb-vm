@@ -1,6 +1,6 @@
 use ckb_vm_definitions::{
-    DEFAULT_SHADOW_STACK_SIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE,
-    RISCV_PAGE_SHIFTS, RISCV_PAGESIZE,
+    MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE, RISCV_PAGE_SHIFTS,
+    RISCV_PAGESIZE,
     asm::{
         AsmCoreMachine, FixedTrace, InvokeData, RET_CFI_LPAD_LABEL_MISMATCHED,
         RET_CFI_LPAD_NOT_4BYTE_ALIGNED, RET_CFI_LPAD_NOT_FOUND, RET_CFI_SS_OUT_OF_STACK,
@@ -245,8 +245,8 @@ fn main() {
         (&m.ssp as *const u64 as usize) - m_address
     );
     println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK {}",
-        (&m.shadow_stack as *const [u8; DEFAULT_SHADOW_STACK_SIZE] as usize) - m_address
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR {}",
+        (&m.shadow_stack_ptr as *const u64 as usize) - m_address
     );
     println!();
 
