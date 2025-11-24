@@ -68,6 +68,8 @@ impl AsmCoreMachineRevealer for AsmCoreMachine {
         machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
         let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
         machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
+        let shadow_stack_layout = Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).unwrap();
+        machine.shadow_stack_ptr = unsafe { alloc_zeroed(shadow_stack_layout) } as u64;
 
         machine
     }
@@ -141,11 +143,13 @@ where
     }
 
     fn ss(&self) -> &[u8] {
-        &self.as_ref().shadow_stack
+        let machine = self.as_ref();
+        cast_ptr_to_slice(self, machine.shadow_stack_ptr, 0, DEFAULT_SHADOW_STACK_SIZE)
     }
 
     fn ss_mut(&mut self) -> &mut [u8] {
-        &mut self.as_mut().shadow_stack
+        let shadow_stack_ptr = self.as_ref().shadow_stack_ptr;
+        cast_ptr_to_slice_mut(self, shadow_stack_ptr, 0, DEFAULT_SHADOW_STACK_SIZE)
     }
 
     fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
@@ -155,14 +159,9 @@ where
         if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
             return Err(Error::CFIShadowStackOutOfStack);
         }
-        let ra = self
-            .as_ref()
-            .shadow_stack
-            .get(offset..end)
-            .map(|bytes| Self::REG::from_le_bytes(bytes.try_into().unwrap()))
-            .ok_or_else(|| {
-                Error::Unexpected("Failed to read return address from shadow stack".into())
-            })?;
+        let machine = self.as_ref();
+        let slice = cast_ptr_to_slice(self, machine.shadow_stack_ptr, offset, size);
+        let ra = Self::REG::from_le_bytes(slice.try_into().unwrap());
         Ok(ra)
     }
 
@@ -173,8 +172,10 @@ where
         if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
             return Err(Error::CFIShadowStackOutOfStack);
         }
-        let bytes = value.to_le_bytes().to_vec();
-        self.as_mut().shadow_stack[offset..end].copy_from_slice(&bytes);
+        let bytes = value.to_le_bytes();
+        let shadow_stack_ptr = self.as_ref().shadow_stack_ptr;
+        let slice = cast_ptr_to_slice_mut(self, shadow_stack_ptr, offset, size);
+        slice.copy_from_slice(&bytes);
         Ok(())
     }
 }
@@ -753,7 +754,6 @@ where
             m.cfi = 0;
             m.elp = 0;
             m.ssp = DEFAULT_SHADOW_STACK_SIZE as u64;
-            m.shadow_stack = [0; DEFAULT_SHADOW_STACK_SIZE];
         }
 
         // Reset memory
@@ -766,6 +766,11 @@ where
         let frames_size = self.as_ref().frames_size as usize;
         let slice = cast_ptr_to_slice_mut(self, frames_ptr, 0, frames_size);
         memset(slice, 0);
+
+        // Reset shadow stack
+        let shadow_stack_ptr = self.as_ref().shadow_stack_ptr;
+        let slice = cast_ptr_to_slice_mut(self, shadow_stack_ptr, 0, DEFAULT_SHADOW_STACK_SIZE);
+        slice.fill(0);
 
         Ok(())
     }

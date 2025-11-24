@@ -388,19 +388,21 @@
   movq $0, ZERO_ADDRESS; \
   NEXT_INST
 
-#define SS_GET(addr_regd, temp_regd) \
+#define SS_GET(addr_regd, into_regd) \
   cmp $65528, addr_regd; \
   ja .exit_cfi_ss_out_of_stack; \
   cmp $0, addr_regd; \
   je .exit_cfi_ss_out_of_stack; \
-  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1), temp_regd
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR(MACHINE), into_regd; \
+  movq (into_regd, addr_regd, 1), into_regd
 
 #define SS_SET(addr_regd, from_regd) \
   cmp $65528, addr_regd; \
   ja .exit_cfi_ss_out_of_stack; \
   cmp $0, addr_regd; \
   je .exit_cfi_ss_out_of_stack; \
-  movq from_regd, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK(MACHINE, addr_regd, 1)
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR(MACHINE), TEMP3; \
+  movq from_regd, (TEMP3, addr_regd, 1)
 
 #define DECODE_R \
   movzbl %cl, RS1d; \

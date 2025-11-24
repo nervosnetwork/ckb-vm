@@ -109,7 +109,7 @@ pub struct AsmCoreMachine {
     pub cfi: u8,
     pub elp: u32,
     pub ssp: u64,
-    pub shadow_stack: [u8; DEFAULT_SHADOW_STACK_SIZE],
+    pub shadow_stack_ptr: u64,
 }
 
 impl Drop for AsmCoreMachine {
@@ -120,6 +120,8 @@ impl Drop for AsmCoreMachine {
         unsafe { dealloc(self.flags_ptr as *mut u8, flags_layout) };
         let frames_layout = Layout::array::<u8>(self.frames_size as usize).unwrap();
         unsafe { dealloc(self.frames_ptr as *mut u8, frames_layout) };
+        let shadow_stack_layout = Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).unwrap();
+        unsafe { dealloc(self.shadow_stack_ptr as *mut u8, shadow_stack_layout) };
     }
 }
 
