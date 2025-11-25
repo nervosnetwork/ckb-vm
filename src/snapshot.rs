@@ -33,6 +33,7 @@ pub struct Snapshot {
     pub page_flags: Vec<u8>,
     pub pages: Vec<Vec<u8>>,
     pub load_reservation_address: u64,
+    pub cfi: u8,
     pub elp: u32,
     pub ssp: u64,
     pub ss: Vec<u8>,
@@ -43,6 +44,7 @@ pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error>
         version: machine.version(),
         pc: machine.pc().to_u64(),
         load_reservation_address: machine.memory().lr().to_u64(),
+        cfi: machine.cfi().into(),
         elp: machine.elp(),
         ssp: machine.ssp().to_u64(),
         ss: machine.ss().to_vec(),
@@ -103,6 +105,7 @@ pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<()
     machine
         .memory_mut()
         .set_lr(&T::REG::from_u64(snapshot.load_reservation_address));
+    machine.set_cfi(snapshot.cfi.into());
     machine.set_elp(snapshot.elp);
     machine.set_ssp(&T::REG::from_u64(snapshot.ssp));
     machine.ss_mut().copy_from_slice(&snapshot.ss);
