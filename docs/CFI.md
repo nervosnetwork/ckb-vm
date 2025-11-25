@@ -14,7 +14,7 @@ In the RISC-V architecture, the function call mechanism relies on the `ra` (retu
 
 This design introduces a critical security risk: if an attacker can corrupt the stack contents through some means (such as buffer overflow vulnerabilities), they can tamper with the return address saved on the stack. This is the core principle of [ROP (Return-Oriented Programming)](https://en.wikipedia.org/wiki/Return-oriented_programming) or JOP attacks. Attackers hijack the program's control flow through carefully constructed `gadgets` (code snippets) chains, thereby achieving arbitrary code execution.
 
-In the context of CKB smart contracts, the threat of such attacks is particularly significant. Attackers don't even need to construct complex ROP chains; they only need to point the return address to `syscall exit` and set the exit code to 0 to bypass the contract's security checks and disable verification logic. This attack method is simple yet highly destructive.
+In CKB smart contracts, this attack threat is particularly severe. When stack content is corrupted, attackers can possibly bypass all security checks simply by redirecting the return address to `syscall exit` with an exit code of 0, effectively disabling the contract's verification logic. Unlike traditional exploits requiring complex ROP chains, this attack vector is remarkably simple yet devastating in its impact.
 
 Therefore, protection mechanisms for the stack, especially integrity verification of return addresses, are crucial for ensuring the security of CKB-VM. This is also the fundamental motivation for introducing the CFI (Control Flow Integrity) extension.
 
