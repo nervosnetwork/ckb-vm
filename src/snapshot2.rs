@@ -1,5 +1,5 @@
 use crate::{
-    Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, Register,
+    DEFAULT_SHADOW_STACK_SIZE, Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, Register,
     bits::roundup,
     elf::{LoadingAction, ProgramMetadata},
     machine::SupportMachine,
@@ -104,7 +104,8 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         machine.set_cfi(snapshot.cfi.into());
         machine.set_elp(snapshot.elp);
         machine.set_ssp(&M::REG::from_u64(snapshot.ssp));
-        machine.ss_mut().copy_from_slice(&snapshot.ss);
+        machine.ss_mut()[DEFAULT_SHADOW_STACK_SIZE - snapshot.ss.len()..]
+            .copy_from_slice(&snapshot.ss);
         Ok(())
     }
 
@@ -214,6 +215,12 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         for (i, v) in machine.registers().iter().enumerate() {
             registers[i] = v.to_u64();
         }
+        let mut snap_ss = machine.ss().to_vec();
+        if let Some(pos) = snap_ss.iter().position(|&x| x != 0) {
+            snap_ss.drain(..pos);
+        } else {
+            snap_ss.clear();
+        }
         Ok(Snapshot2 {
             pages_from_source,
             dirty_pages,
@@ -226,7 +233,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             cfi: machine.cfi().into(),
             elp: machine.elp(),
             ssp: machine.ssp().to_u64(),
-            ss: machine.ss().to_vec(),
+            ss: snap_ss,
         })
     }
 
