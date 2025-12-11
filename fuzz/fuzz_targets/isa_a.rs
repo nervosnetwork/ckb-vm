@@ -31,8 +31,8 @@ impl Deque {
 fuzz_target!(|data: [u8; 512]| {
     let mut deque = Deque::new(data);
     let spike = Spike::new(4 * 1024 * 1024 - 4096);
-    let ckb_vm_isa = ckb_vm::ISA_IMC | ckb_vm::ISA_A | ckb_vm::ISA_B;
-    let ckb_vm_version = ckb_vm::machine::VERSION2;
+    let ckb_vm_isa = ckb_vm::ISA_IMC | ckb_vm::ISA_A | ckb_vm::ISA_B | ckb_vm::ISA_CFI;
+    let ckb_vm_version = ckb_vm::machine::VERSION3;
     let mut ckb_vm_int =
         ckb_vm::RustDefaultMachineBuilder::new(ckb_vm::DefaultCoreMachine::<
             u64,

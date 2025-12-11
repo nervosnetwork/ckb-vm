@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-spike-sys = "0.1.2"
+spike-sys = { version = "0.1.2", optional = true }
 ckb-vm = { path = "..", features = ["asm"] }
 ckb-vm-definitions = { path = "../definitions" }
 
@@ -41,12 +41,14 @@ name = "isa_a"
 path = "fuzz_targets/isa_a.rs"
 test = false
 doc = false
+required-features = ["spike-sys"]
 
 [[bin]]
 name = "isa_b"
 path = "fuzz_targets/isa_b.rs"
 test = false
 doc = false
+required-features = ["spike-sys"]
 
 [[bin]]
 name = "snapshot"

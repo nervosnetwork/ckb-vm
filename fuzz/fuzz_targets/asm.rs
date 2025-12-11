@@ -3,15 +3,19 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
-    DefaultCoreMachine, DefaultMachineRunner, RustDefaultMachineBuilder, SupportMachine, VERSION2,
+    DefaultCoreMachine, DefaultMachineRunner, RustDefaultMachineBuilder, SupportMachine, VERSION3,
 };
 use ckb_vm::memory::sparse::SparseMemory;
 use ckb_vm::memory::wxorx::WXorXMemory;
-use ckb_vm::{Bytes, Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP};
+use ckb_vm::{Bytes, Error, ISA_A, ISA_B, ISA_CFI, ISA_IMC, ISA_MOP};
 use libfuzzer_sys::fuzz_target;
 
 fn run_asm(data: &[u8]) -> Result<(i8, u64), Error> {
-    let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, 200_000);
+    let asm_core = AsmCoreMachine::new(
+        ISA_IMC | ISA_A | ISA_B | ISA_MOP | ISA_CFI,
+        VERSION3,
+        200_000,
+    );
     let core = AsmDefaultMachineBuilder::new(asm_core)
         .instruction_cycle_func(Box::new(constant_cycles))
         .build();
@@ -25,8 +29,8 @@ fn run_asm(data: &[u8]) -> Result<(i8, u64), Error> {
 
 fn run_int(data: &[u8]) -> Result<(i8, u64), Error> {
     let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
-        VERSION2,
+        ISA_IMC | ISA_A | ISA_B | ISA_MOP | ISA_CFI,
+        VERSION3,
         200_000,
     );
     let mut machine = TraceMachine::new(
