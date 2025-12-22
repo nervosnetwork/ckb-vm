@@ -354,7 +354,7 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
                     "Section name is not null-terminated".into(),
                 ));
             }
-            let section_name = &name_bytes[..null_pos.unwrap()];
+            let section_name = &name_bytes[..null_pos.expect("Checked above")];
             // Look for .note.gnu.property section.
             if section_name != b".note.gnu.property" {
                 continue;

@@ -114,13 +114,17 @@ pub struct AsmCoreMachine {
 
 impl Drop for AsmCoreMachine {
     fn drop(&mut self) {
-        let memory_layout = Layout::array::<u8>(self.memory_size as usize).unwrap();
+        let memory_layout =
+            Layout::array::<u8>(self.memory_size as usize).expect("layout creation failed");
         unsafe { dealloc(self.memory_ptr as *mut u8, memory_layout) };
-        let flags_layout = Layout::array::<u8>(self.flags_size as usize).unwrap();
+        let flags_layout =
+            Layout::array::<u8>(self.flags_size as usize).expect("layout creation failed");
         unsafe { dealloc(self.flags_ptr as *mut u8, flags_layout) };
-        let frames_layout = Layout::array::<u8>(self.frames_size as usize).unwrap();
+        let frames_layout =
+            Layout::array::<u8>(self.frames_size as usize).expect("layout creation failed");
         unsafe { dealloc(self.frames_ptr as *mut u8, frames_layout) };
-        let shadow_stack_layout = Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).unwrap();
+        let shadow_stack_layout =
+            Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).expect("layout creation failed");
         unsafe { dealloc(self.shadow_stack_ptr as *mut u8, shadow_stack_layout) };
     }
 }

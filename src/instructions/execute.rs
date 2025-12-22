@@ -1714,6 +1714,6 @@ impl<Mac: Machine> std::ops::Index<InstructionOpcode> for ThreadFactory<Mac> {
     type Output = Thread<Mac>;
 
     fn index(&self, opcode: InstructionOpcode) -> &Thread<Mac> {
-        self.get(opcode).unwrap()
+        self.get(opcode).expect("Thread not found for opcode")
     }
 }

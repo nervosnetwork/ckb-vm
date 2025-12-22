@@ -158,7 +158,7 @@ fn main() {
     let m: Box<AsmCoreMachine> = unsafe {
         let machine_size = std::mem::size_of::<AsmCoreMachine>();
 
-        let layout = Layout::array::<u8>(machine_size).unwrap();
+        let layout = Layout::array::<u8>(machine_size).expect("layout creation failed");
         let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
         Box::from_raw(raw_allocation)
     };

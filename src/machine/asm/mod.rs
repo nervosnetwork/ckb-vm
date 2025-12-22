@@ -62,13 +62,17 @@ impl AsmCoreMachineRevealer for AsmCoreMachine {
         machine.last_read_frame = u64::MAX;
         machine.last_write_page = u64::MAX;
 
-        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        let memory_layout =
+            Layout::array::<u8>(machine.memory_size as usize).expect("layout creation failed");
         machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
-        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        let flags_layout =
+            Layout::array::<u8>(machine.flags_size as usize).expect("layout creation failed");
         machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
-        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        let frames_layout =
+            Layout::array::<u8>(machine.frames_size as usize).expect("layout creation failed");
         machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
-        let shadow_stack_layout = Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).unwrap();
+        let shadow_stack_layout =
+            Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).expect("layout creation failed");
         machine.shadow_stack_ptr = unsafe { alloc_zeroed(shadow_stack_layout) } as u64;
 
         machine
@@ -161,7 +165,7 @@ where
         }
         let machine = self.as_ref();
         let slice = cast_ptr_to_slice(self, machine.shadow_stack_ptr, offset, size);
-        let ra = Self::REG::from_le_bytes(slice.try_into().unwrap());
+        let ra = Self::REG::from_le_bytes(slice.try_into().expect("slice with incorrect length"));
         Ok(ra)
     }
 

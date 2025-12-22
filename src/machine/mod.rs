@@ -473,15 +473,19 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
             .get(offset..end)
             .and_then(|bytes| match size {
                 4 => Some(Self::REG::from_u32(u32::from_le_bytes(
-                    bytes.try_into().unwrap(),
+                    bytes
+                        .try_into()
+                        .expect("failed to read return address from shadow stack"),
                 ))),
                 8 => Some(Self::REG::from_u64(u64::from_le_bytes(
-                    bytes.try_into().unwrap(),
+                    bytes
+                        .try_into()
+                        .expect("failed to read return address from shadow stack"),
                 ))),
                 _ => None,
             })
             .ok_or_else(|| {
-                Error::Unexpected("Failed to read return address from shadow stack".into())
+                Error::Unexpected("failed to read return address from shadow stack".into())
             })?;
         Ok(ra)
     }
@@ -1063,12 +1067,12 @@ impl<M: Memory> Iterator for FlattenedArgsReader<'_, M> {
         if let Err(err) = addr {
             return Some(Err(err));
         };
-        let addr = addr.unwrap();
+        let addr = addr.expect("failed to load address");
         let cstr = load_c_string_byte_by_byte(self.memory, &addr);
         if let Err(err) = cstr {
             return Some(Err(err));
         };
-        let cstr = cstr.unwrap();
+        let cstr = cstr.expect("failed to load C string");
         self.cidx = self.cidx.overflowing_add(&M::REG::from_u8(1));
         self.argv = self
             .argv

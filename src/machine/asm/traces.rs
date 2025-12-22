@@ -125,7 +125,7 @@ impl<D: InstDecoder> InstDecoder for SimpleFixedTraceDecoder<D> {
     fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self {
         let decoder = D::new::<R>(isa, version, cfi);
         let traces = unsafe {
-            let layout = Layout::array::<FixedTrace>(TRACE_SIZE).unwrap();
+            let layout = Layout::array::<FixedTrace>(TRACE_SIZE).expect("fixed traces layout");
             let raw_allocation = alloc_zeroed(layout) as *mut _;
             Box::from_raw(raw_allocation)
         };
@@ -263,7 +263,7 @@ impl DynamicTraceBuilder {
         let fixed_size = std::mem::size_of::<DynamicTrace>();
         let total_size = fixed_size + self.insts.len() * 16;
         let p = unsafe {
-            let layout = Layout::array::<u8>(total_size).unwrap();
+            let layout = Layout::array::<u8>(total_size).expect("dynamic trace layout");
             alloc(layout)
         };
         let threads = unsafe { p.add(fixed_size) } as *mut u64;
