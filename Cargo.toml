@@ -41,10 +41,6 @@ argparse = "0.2"
 criterion = "0.5.1"
 proptest = "1.5.0"
 
-[target.'cfg(not(target_os = "windows"))'.dev-dependencies]
-jemallocator = "0.5.0"
-jemalloc-ctl = "0.5.0"
-
 [[bench]]
 name = "bits_benchmark"
 path = "benches/bits_benchmark.rs"
