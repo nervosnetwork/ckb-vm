@@ -71,7 +71,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
                 return Err(Error::MemPageUnalignedAccess(*address));
             }
             let (data, _) = self.load_data(id, *offset, *length)?;
-            if data.len() as u64 % PAGE_SIZE != 0 {
+            if !(data.len() as u64).is_multiple_of(PAGE_SIZE) {
                 return Err(Error::MemPageUnalignedAccess(
                     address.wrapping_add(data.len() as u64),
                 ));
@@ -87,7 +87,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             if address % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess(*address));
             }
-            if content.len() as u64 % PAGE_SIZE != 0 {
+            if !(content.len() as u64).is_multiple_of(PAGE_SIZE) {
                 return Err(Error::MemPageUnalignedAccess(
                     address.wrapping_add(content.len() as u64),
                 ));
@@ -140,7 +140,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
     /// 1. use elf::parse_elf to generate ProgramMetadata
     /// 2. use DefaultMachine::load_program_with_metadata to load the program
     /// 3. Pass ProgramMetadata to this method so we can track memory pages from
-    ///     program, so as to further reduce the size of the generated snapshot.
+    ///    program, so as to further reduce the size of the generated snapshot.
     ///
     /// One can also use the original DefaultMachine::load_program, and parse the
     /// ELF a second time to extract metadata for this method. However the above

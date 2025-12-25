@@ -71,7 +71,7 @@ impl<R: Register> Memory for SparseMemory<R> {
     type REG = R;
 
     fn new(memory_size: usize) -> Self {
-        assert!(memory_size % RISCV_PAGESIZE == 0);
+        assert!(memory_size.is_multiple_of(RISCV_PAGESIZE));
         Self {
             indices: vec![INVALID_PAGE_INDEX; memory_size / RISCV_PAGESIZE],
             pages: Vec::new(),

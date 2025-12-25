@@ -730,7 +730,7 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
             self.initialize_stack(args, (memory_size - stack_size) as u64, stack_size as u64)?;
         // Make sure SP is 16 byte aligned
         if self.inner.version() >= VERSION1 {
-            debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
+            debug_assert!(self.registers()[SP].to_u64().is_multiple_of(16));
         }
         Ok(stack_bytes)
     }

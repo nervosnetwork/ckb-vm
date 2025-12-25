@@ -36,7 +36,7 @@ impl<R: Register> Memory for FlatMemory<R> {
     type REG = R;
 
     fn new(memory_size: usize) -> Self {
-        assert!(memory_size % RISCV_PAGESIZE == 0);
+        assert!(memory_size.is_multiple_of(RISCV_PAGESIZE));
         Self {
             data: vec![0; memory_size],
             flags: vec![0; memory_size / RISCV_PAGESIZE],
