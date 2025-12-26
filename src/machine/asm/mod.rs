@@ -7,9 +7,10 @@ use ckb_vm_definitions::{
     ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER,
     RISCV_PAGE_SHIFTS,
     asm::{
-        FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
-        RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SLOWPATH,
+        FixedTrace, InvokeData, RET_CFI_LPAD_LABEL_MISMATCHED, RET_CFI_LPAD_NOT_4BYTE_ALIGNED,
+        RET_CFI_LPAD_NOT_FOUND, RET_CFI_SS_OUT_OF_STACK, RET_CFI_SS_VALUE_FAULT,
+        RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH,
     },
 };
 use rand::{SeedableRng, prelude::RngCore};
@@ -18,13 +19,13 @@ use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
 
 use crate::{
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, MEMORY_FRAME_SHIFTS, Machine, Memory,
-    RISCV_PAGESIZE, SupportMachine,
+    CoreMachine, DEFAULT_SHADOW_STACK_SIZE, DefaultMachine, DefaultMachineRunner, Error,
+    MEMORY_FRAME_SHIFTS, Machine, Memory, RISCV_PAGESIZE, SupportMachine,
     elf::ProgramMetadata,
     error::OutOfBoundKind,
     instructions::execute_instruction,
     machine::{
-        AbstractDefaultMachineBuilder, VERSION0,
+        AbstractDefaultMachineBuilder, CFI, VERSION0,
         asm::traces::{SimpleFixedTraceDecoder, TraceDecoder, decode_fixed_trace},
     },
     memory::{
@@ -61,12 +62,18 @@ impl AsmCoreMachineRevealer for AsmCoreMachine {
         machine.last_read_frame = u64::MAX;
         machine.last_write_page = u64::MAX;
 
-        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        let memory_layout =
+            Layout::array::<u8>(machine.memory_size as usize).expect("layout creation failed");
         machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
-        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        let flags_layout =
+            Layout::array::<u8>(machine.flags_size as usize).expect("layout creation failed");
         machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
-        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        let frames_layout =
+            Layout::array::<u8>(machine.frames_size as usize).expect("layout creation failed");
         machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
+        let shadow_stack_layout =
+            Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).expect("layout creation failed");
+        machine.shadow_stack_ptr = unsafe { alloc_zeroed(shadow_stack_layout) } as u64;
 
         machine
     }
@@ -113,6 +120,67 @@ where
 
     fn version(&self) -> u32 {
         self.as_ref().version
+    }
+
+    fn cfi(&self) -> CFI {
+        self.as_ref().cfi.into()
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.as_mut().cfi = cfi.into();
+    }
+
+    fn elp(&self) -> u32 {
+        self.as_ref().elp
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.as_mut().elp = elp;
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        &self.as_ref().ssp
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.as_mut().ssp = *ssp;
+    }
+
+    fn ss(&self) -> &[u8] {
+        let machine = self.as_ref();
+        cast_ptr_to_slice(self, machine.shadow_stack_ptr, 0, DEFAULT_SHADOW_STACK_SIZE)
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8] {
+        let shadow_stack_ptr = self.as_ref().shadow_stack_ptr;
+        cast_ptr_to_slice_mut(self, shadow_stack_ptr, 0, DEFAULT_SHADOW_STACK_SIZE)
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        let offset = *addr as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::CFIShadowStackOutOfStack);
+        }
+        let machine = self.as_ref();
+        let slice = cast_ptr_to_slice(self, machine.shadow_stack_ptr, offset, size);
+        let ra = Self::REG::from_le_bytes(slice.try_into().expect("slice with incorrect length"));
+        Ok(ra)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        let offset = *addr as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::CFIShadowStackOutOfStack);
+        }
+        let bytes = value.to_le_bytes();
+        let shadow_stack_ptr = self.as_ref().shadow_stack_ptr;
+        let slice = cast_ptr_to_slice_mut(self, shadow_stack_ptr, offset, size);
+        slice.copy_from_slice(&bytes);
+        Ok(())
     }
 }
 
@@ -687,6 +755,9 @@ where
             m.load_reservation_address = u64::MAX;
             m.last_read_frame = u64::MAX;
             m.last_write_page = u64::MAX;
+            m.cfi = 0;
+            m.elp = 0;
+            m.ssp = DEFAULT_SHADOW_STACK_SIZE as u64;
         }
 
         // Reset memory
@@ -699,6 +770,11 @@ where
         let frames_size = self.as_ref().frames_size as usize;
         let slice = cast_ptr_to_slice_mut(self, frames_ptr, 0, frames_size);
         memset(slice, 0);
+
+        // Reset shadow stack
+        let shadow_stack_ptr = self.as_ref().shadow_stack_ptr;
+        let slice = cast_ptr_to_slice_mut(self, shadow_stack_ptr, 0, DEFAULT_SHADOW_STACK_SIZE);
+        slice.fill(0);
 
         Ok(())
     }
@@ -802,6 +878,21 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     self.machine.pause.free();
                     return Err(Error::Pause);
                 }
+                RET_CFI_LPAD_NOT_4BYTE_ALIGNED => {
+                    return Err(Error::CFILpadNot4ByteAligned);
+                }
+                RET_CFI_LPAD_NOT_FOUND => {
+                    return Err(Error::CFILpadNotFound);
+                }
+                RET_CFI_LPAD_LABEL_MISMATCHED => {
+                    return Err(Error::CFILpadLabelMismatched);
+                }
+                RET_CFI_SS_VALUE_FAULT => {
+                    return Err(Error::CFIShadowStackValueFault);
+                }
+                RET_CFI_SS_OUT_OF_STACK => {
+                    return Err(Error::CFIShadowStackOutOfStack);
+                }
                 _ => return Err(Error::Asm(result)),
             }
         }
@@ -864,6 +955,21 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 let pc = *self.machine.pc() - 4;
                 let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
                 execute_instruction(instruction, &mut self.machine)?;
+            }
+            RET_CFI_LPAD_NOT_4BYTE_ALIGNED => {
+                return Err(Error::CFILpadNot4ByteAligned);
+            }
+            RET_CFI_LPAD_NOT_FOUND => {
+                return Err(Error::CFILpadNotFound);
+            }
+            RET_CFI_LPAD_LABEL_MISMATCHED => {
+                return Err(Error::CFILpadLabelMismatched);
+            }
+            RET_CFI_SS_VALUE_FAULT => {
+                return Err(Error::CFIShadowStackValueFault);
+            }
+            RET_CFI_SS_OUT_OF_STACK => {
+                return Err(Error::CFIShadowStackOutOfStack);
             }
             _ => return Err(Error::Asm(result)),
         }

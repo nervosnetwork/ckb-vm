@@ -1,5 +1,5 @@
 use crate::{
-    Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, Register,
+    DEFAULT_SHADOW_STACK_SIZE, Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, Register,
     bits::roundup,
     elf::{LoadingAction, ProgramMetadata},
     machine::SupportMachine,
@@ -101,6 +101,11 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         machine
             .memory_mut()
             .set_lr(&M::REG::from_u64(snapshot.load_reservation_address));
+        machine.set_cfi(snapshot.cfi.into());
+        machine.set_elp(snapshot.elp);
+        machine.set_ssp(&M::REG::from_u64(snapshot.ssp));
+        machine.ss_mut()[DEFAULT_SHADOW_STACK_SIZE - snapshot.ss.len()..]
+            .copy_from_slice(&snapshot.ss);
         Ok(())
     }
 
@@ -210,6 +215,12 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
         for (i, v) in machine.registers().iter().enumerate() {
             registers[i] = v.to_u64();
         }
+        let mut snap_ss = machine.ss().to_vec();
+        if let Some(pos) = snap_ss.iter().position(|&x| x != 0) {
+            snap_ss.drain(..pos);
+        } else {
+            snap_ss.clear();
+        }
         Ok(Snapshot2 {
             pages_from_source,
             dirty_pages,
@@ -219,6 +230,10 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             cycles: machine.cycles(),
             max_cycles: machine.max_cycles(),
             load_reservation_address: machine.memory().lr().to_u64(),
+            cfi: machine.cfi().into(),
+            elp: machine.elp(),
+            ssp: machine.ssp().to_u64(),
+            ss: snap_ss,
         })
     }
 
@@ -296,4 +311,8 @@ pub struct Snapshot2<I: Clone + PartialEq> {
     pub cycles: u64,
     pub max_cycles: u64,
     pub load_reservation_address: u64,
+    pub cfi: u8,
+    pub elp: u32,
+    pub ssp: u64,
+    pub ss: Vec<u8>,
 }

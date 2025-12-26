@@ -1,16 +1,16 @@
 #![no_main]
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::trace::TraceMachine;
-use ckb_vm::machine::{DefaultCoreMachine, RustDefaultMachineBuilder, SupportMachine, VERSION2};
+use ckb_vm::machine::{DefaultCoreMachine, RustDefaultMachineBuilder, SupportMachine, VERSION3};
 use ckb_vm::memory::sparse::SparseMemory;
 use ckb_vm::memory::wxorx::WXorXMemory;
-use ckb_vm::{Bytes, DefaultMachineRunner, Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP};
+use ckb_vm::{Bytes, DefaultMachineRunner, Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP, ISA_CFI};
 use libfuzzer_sys::fuzz_target;
 
 fn run(data: &[u8]) -> Result<(i8, u64), Error> {
     let machine_core = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-        ISA_IMC | ISA_A | ISA_B | ISA_MOP,
-        VERSION2,
+        ISA_IMC | ISA_A | ISA_B | ISA_MOP | ISA_CFI,
+        VERSION3,
         200_000,
     );
     let mut machine = TraceMachine::new(

@@ -8,15 +8,17 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
 use bytes::Bytes;
+use ckb_vm_definitions::instructions as insts;
 
 use super::debugger::Debugger;
 use super::decoder::{DefaultDecoder, InstDecoder};
-use super::elf::{LoadingAction, ProgramMetadata, parse_elf};
+use super::elf::{CFI, LoadingAction, ProgramMetadata, parse_elf};
+use super::instructions::extract_opcode;
 use super::instructions::{Instruction, Register, execute};
 use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
 use super::{
-    DEFAULT_MEMORY_SIZE, Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
+    DEFAULT_MEMORY_SIZE, DEFAULT_SHADOW_STACK_SIZE, Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER,
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
 };
 
@@ -30,6 +32,7 @@ pub const VERSION0: u32 = 0;
 // * https://github.com/nervosnetwork/ckb-vm/issues/106
 pub const VERSION1: u32 = 1;
 pub const VERSION2: u32 = 2;
+pub const VERSION3: u32 = 3;
 
 /// This is the core part of RISC-V that only deals with data part, it
 /// is extracted from Machine so we can handle lifetime logic in dynamic
@@ -50,6 +53,18 @@ pub trait CoreMachine {
     // in case of bug fixes.
     fn version(&self) -> u32;
     fn isa(&self) -> u8;
+
+    // CFI specific field.
+    fn cfi(&self) -> CFI;
+    fn set_cfi(&mut self, cfi: CFI);
+    fn elp(&self) -> u32;
+    fn set_elp(&mut self, elp: u32);
+    fn ssp(&self) -> &Self::REG;
+    fn set_ssp(&mut self, ssp: &Self::REG);
+    fn ss(&self) -> &[u8];
+    fn ss_mut(&mut self) -> &mut [u8];
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error>;
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error>;
 }
 
 /// This is the core trait describing a full RISC-V machine. Instruction
@@ -170,6 +185,7 @@ pub trait SupportMachine: CoreMachine {
             self.update_pc(Self::REG::from_u64(metadata.entry));
             self.commit_pc();
         }
+        self.set_cfi(metadata.cfi);
         Ok(bytes)
     }
 
@@ -189,6 +205,8 @@ pub trait SupportMachine: CoreMachine {
         stack_start: u64,
         stack_size: u64,
     ) -> Result<u64, Error> {
+        // Initialize shadow stack pointer.
+        self.set_ssp(&Self::REG::from_u64(DEFAULT_SHADOW_STACK_SIZE as u64));
         // When we re-ordered the sections of a program, writing data in high memory
         // will cause unnecessary changes. At the same time, for ckb, argc is always 0
         // and the memory is initialized to 0, so memory writing can be safely skipped.
@@ -214,7 +232,7 @@ pub trait SupportMachine: CoreMachine {
         // of each argv object.
         let mut values = vec![Self::REG::from_u64(args.len() as u64)];
         for arg in args {
-            let arg = arg?;
+            let arg: Bytes = arg?;
             let len = Self::REG::from_u64(arg.len() as u64 + 1);
             let address = self.registers()[SP].overflowing_sub(&len);
 
@@ -298,6 +316,7 @@ pub trait DefaultMachineRunner {
         let mut decoder = Self::Decoder::new::<<Self::Inner as CoreMachine>::REG>(
             self.machine().isa(),
             self.machine().version(),
+            self.machine().cfi(),
         );
         self.run_with_decoder(&mut decoder)
     }
@@ -328,7 +347,6 @@ pub trait DefaultMachineRunner {
     }
 }
 
-#[derive(Default)]
 pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pc: R,
@@ -340,8 +358,36 @@ pub struct DefaultCoreMachine<R, M> {
     running: bool,
     isa: u8,
     version: u32,
+    // CFI specific field.
+    cfi: CFI,
+    elp: u32,
+    ssp: R,
+    shadow_stack: Vec<u8>,
     #[cfg(feature = "pprof")]
     code: Bytes,
+}
+
+impl<R: Default, M: Default> Default for DefaultCoreMachine<R, M> {
+    fn default() -> Self {
+        Self {
+            registers: Default::default(),
+            pc: Default::default(),
+            next_pc: Default::default(),
+            reset_signal: Default::default(),
+            memory: Default::default(),
+            cycles: Default::default(),
+            max_cycles: Default::default(),
+            running: Default::default(),
+            isa: Default::default(),
+            version: Default::default(),
+            cfi: CFI::default(),
+            elp: Default::default(),
+            shadow_stack: vec![0; DEFAULT_SHADOW_STACK_SIZE],
+            ssp: Default::default(),
+            #[cfg(feature = "pprof")]
+            code: Default::default(),
+        }
+    }
 }
 
 impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
@@ -382,6 +428,83 @@ impl<R: Register, M: Memory<REG = R>> CoreMachine for DefaultCoreMachine<R, M> {
     fn version(&self) -> u32 {
         self.version
     }
+
+    fn cfi(&self) -> CFI {
+        self.cfi
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.cfi = cfi;
+    }
+
+    fn elp(&self) -> u32 {
+        self.elp
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.elp = elp;
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        &self.ssp
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.ssp = ssp.clone();
+    }
+
+    fn ss(&self) -> &[u8] {
+        &self.shadow_stack
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8] {
+        &mut self.shadow_stack
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        let offset = addr.to_u64() as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::CFIShadowStackOutOfStack);
+        }
+        let ra = self
+            .shadow_stack
+            .get(offset..end)
+            .and_then(|bytes| match size {
+                4 => Some(Self::REG::from_u32(u32::from_le_bytes(
+                    bytes
+                        .try_into()
+                        .expect("failed to read return address from shadow stack"),
+                ))),
+                8 => Some(Self::REG::from_u64(u64::from_le_bytes(
+                    bytes
+                        .try_into()
+                        .expect("failed to read return address from shadow stack"),
+                ))),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                Error::Unexpected("failed to read return address from shadow stack".into())
+            })?;
+        Ok(ra)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        let offset = addr.to_u64() as usize;
+        let size = Self::REG::BITS as usize / 8;
+        let (end, overflowed) = offset.overflowing_add(size);
+        if overflowed || end > DEFAULT_SHADOW_STACK_SIZE {
+            return Err(Error::CFIShadowStackOutOfStack);
+        }
+        let bytes = match size {
+            4 => value.to_u32().to_le_bytes().to_vec(),
+            8 => value.to_u64().to_le_bytes().to_vec(),
+            _ => return Err(Error::Unexpected("Failed to write shadow stack".into())),
+        };
+        self.shadow_stack[offset..end].copy_from_slice(&bytes);
+        Ok(())
+    }
 }
 
 impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M> {
@@ -397,6 +520,10 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
             running: Default::default(),
             isa,
             version,
+            cfi: Default::default(),
+            elp: Default::default(),
+            shadow_stack: vec![0; DEFAULT_SHADOW_STACK_SIZE],
+            ssp: Default::default(),
             #[cfg(feature = "pprof")]
             code: Default::default(),
         }
@@ -426,6 +553,10 @@ impl<R: Register, M: Memory<REG = R>> SupportMachine for DefaultCoreMachine<R, M
         self.max_cycles = max_cycles;
         self.reset_signal = true;
         self.memory_mut().set_lr(&R::from_u64(u64::MAX));
+        self.cfi = CFI::default();
+        self.elp = 0;
+        self.ssp = R::from_u64(DEFAULT_SHADOW_STACK_SIZE as u64);
+        self.shadow_stack = vec![0; DEFAULT_SHADOW_STACK_SIZE];
         Ok(())
     }
 
@@ -535,6 +666,46 @@ impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder>
 
     fn version(&self) -> u32 {
         self.inner.version()
+    }
+
+    fn cfi(&self) -> CFI {
+        self.inner.cfi()
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.inner.set_cfi(cfi);
+    }
+
+    fn elp(&self) -> u32 {
+        self.inner.elp()
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.inner.set_elp(elp);
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        self.inner.ssp()
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.inner.set_ssp(ssp);
+    }
+
+    fn ss(&self) -> &[u8] {
+        self.inner.ss()
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8] {
+        self.inner.ss_mut()
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        self.inner.ra(addr)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        self.inner.set_ra(addr, value)
     }
 }
 
@@ -765,6 +936,9 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
             let memory = self.memory_mut();
             decoder.decode(memory, pc)?
         };
+        if self.elp() != 0 && extract_opcode(instruction) != insts::OP_LPAD {
+            return Err(Error::CFILpadNotFound);
+        }
         let cycles = self.instruction_cycle_func()(instruction);
         self.add_cycles(cycles)?;
         execute(instruction, self)
@@ -893,12 +1067,12 @@ impl<M: Memory> Iterator for FlattenedArgsReader<'_, M> {
         if let Err(err) = addr {
             return Some(Err(err));
         };
-        let addr = addr.unwrap();
+        let addr = addr.expect("failed to load address");
         let cstr = load_c_string_byte_by_byte(self.memory, &addr);
         if let Err(err) = cstr {
             return Some(Err(err));
         };
-        let cstr = cstr.unwrap();
+        let cstr = cstr.expect("failed to load C string");
         self.cidx = self.cidx.overflowing_add(&M::REG::from_u8(1));
         self.argv = self
             .argv

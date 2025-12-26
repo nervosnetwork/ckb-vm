@@ -1,9 +1,9 @@
 #![no_main]
 use ckb_vm::{
-    Bytes, CoreMachine, DEFAULT_MEMORY_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, Memory,
+    Bytes, CoreMachine, DEFAULT_MEMORY_SIZE, ISA_A, ISA_B, ISA_CFI, ISA_IMC, ISA_MOP, Memory,
     RISCV_PAGESIZE, SupportMachine,
     elf::{LoadingAction, ProgramMetadata},
-    machine::VERSION2,
+    machine::VERSION3,
     machine::asm::{AsmDefaultMachine, AsmDefaultMachineBuilder},
     memory::{FLAG_EXECUTABLE, FLAG_FREEZED, round_page_down, round_page_up},
     snapshot2::{DataSource, Snapshot2Context},
@@ -65,8 +65,8 @@ impl DataSource<u32> for DummyData {
 }
 
 fn build_machine() -> AsmDefaultMachine {
-    let isa = ISA_IMC | ISA_A | ISA_B | ISA_MOP;
-    let core_machine = <AsmCoreMachine as SupportMachine>::new(isa.into(), VERSION2, u64::MAX);
+    let isa = ISA_IMC | ISA_A | ISA_B | ISA_MOP | ISA_CFI;
+    let core_machine = <AsmCoreMachine as SupportMachine>::new(isa.into(), VERSION3, u64::MAX);
     AsmDefaultMachineBuilder::new(core_machine).build()
 }
 
@@ -112,6 +112,7 @@ fuzz_target!(|data: [u8; 96]| {
     let metadata = ProgramMetadata {
         actions: loading_action_vec.clone(),
         entry: 0,
+        cfi: Default::default(),
     };
 
     let mut machine1 = build_machine();

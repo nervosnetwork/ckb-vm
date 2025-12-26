@@ -1,4 +1,5 @@
 use ckb_vm_definitions::instructions as insts;
+use ckb_vm_definitions::registers::{RA, T0, T2};
 
 use super::utils::{
     btype_immediate, funct3, funct7, itype_immediate, jalr, jtype_immediate, lb, lbu, ld, lh, lhu,
@@ -7,6 +8,8 @@ use super::utils::{
 use super::{
     Instruction, Itype, Register, Rtype, Stype, Utype, blank_instruction, set_instruction_length_4,
 };
+use crate::elf::CFI;
+use crate::instructions::utils::jalr_cfi_mark;
 
 // The FENCE instruction is used to order device I/O and memory accesses
 // as viewed by other RISC- V harts and external devices or coprocessors.
@@ -31,7 +34,12 @@ impl FenceType {
     }
 }
 
-pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(
+    _: u64,
+    instruction_bits: u32,
+    version: u32,
+    cfi: CFI,
+) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
@@ -69,13 +77,14 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                 _ => None,
             };
             inst_opt.map(|inst| {
-                Itype::new_s(
-                    inst,
-                    rd(instruction_bits),
-                    rs1(instruction_bits),
-                    itype_immediate(instruction_bits),
-                )
-                .0
+                let rd = rd(instruction_bits);
+                let rs1 = rs1(instruction_bits);
+                let n = Itype::new_s(inst, rd, rs1, itype_immediate(instruction_bits)).0;
+                if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                    jalr_cfi_mark(n) // Mark as a cfi jump for CFI
+                } else {
+                    n
+                }
             })
         }
         0b_0000011 => {

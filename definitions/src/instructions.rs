@@ -283,8 +283,16 @@ macro_rules! __for_each_inst_inner {
             (JALR_VERSION1, 0xa9),
             (FAR_JUMP_REL, 0xaa),
             (FAR_JUMP_ABS, 0xab),
-            (CUSTOM_ASM_TRACE_JUMP, 0xac),
-            (CUSTOM_TRACE_END, 0xad)
+            // CFI
+            (LPAD, 0xac),
+            (SSPUSH, 0xad),
+            (SSPOPCHK, 0xae),
+            (SSRDP, 0xaf),
+            (SSAMOSWAP_W, 0xb0),
+            (SSAMOSWAP_D, 0xb1),
+            // CUSTOM
+            (CUSTOM_ASM_TRACE_JUMP, 0xb2),
+            (CUSTOM_TRACE_END, 0xb3)
         );
     };
 }

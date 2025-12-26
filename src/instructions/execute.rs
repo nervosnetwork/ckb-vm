@@ -4,11 +4,14 @@ use super::{
     extract_opcode, instruction_length,
     utils::update_register,
 };
-use crate::memory::Memory;
+use crate::{
+    instructions::utils::{jalr_cfi, lpad_4byte_aligned},
+    memory::Memory,
+};
 use ckb_vm_definitions::{
     for_each_inst_array1, for_each_inst_match2,
     instructions::{self as insts, paste},
-    registers::RA,
+    registers::{RA, T2},
 };
 
 pub fn handle_sub<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
@@ -555,6 +558,9 @@ pub fn handle_jalr_version1<Mac: Machine>(
     next_pc = next_pc & (!Mac::REG::one());
     update_register(machine, i.rd(), link);
     machine.update_pc(next_pc);
+    if jalr_cfi(inst) {
+        machine.set_elp(1);
+    }
     Ok(())
 }
 
@@ -1503,6 +1509,84 @@ pub fn handle_add3c<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Resul
     Ok(())
 }
 
+pub fn handle_lpad<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    if machine.elp() == 0 {
+        return Ok(());
+    }
+    // If PC not 4-byte aligned then software-check exception.
+    if !lpad_4byte_aligned(inst) {
+        return Err(Error::CFILpadNot4ByteAligned);
+    }
+    // If landing pad label not matched -> software-check exception
+    let lpl = Utype(inst).immediate_u();
+    let x7l = machine.registers()[T2].to_u32() & 0xFFFFF000;
+    if lpl != x7l && lpl != 0 {
+        return Err(Error::CFILpadLabelMismatched);
+    }
+    machine.set_elp(0);
+    Ok(())
+}
+
+pub fn handle_sspush<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let rs2_value = machine.registers()[i.rs2()].clone();
+    let ssp = machine.ssp().clone();
+    let ssp = ssp.overflowing_sub(&Mac::REG::from_u8(Mac::REG::BITS / 8));
+    if ssp.to_u64() == 0 {
+        return Err(Error::CFIShadowStackOutOfStack);
+    }
+    machine.set_ra(&ssp, &rs2_value)?;
+    machine.set_ssp(&ssp);
+    Ok(())
+}
+
+pub fn handle_sspopchk<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    let rs1_value = machine.registers()[i.rs1()].clone();
+    let ssp = machine.ssp().clone();
+    let ret = machine.ra(&ssp)?.clone();
+    let ssp = ssp.overflowing_add(&Mac::REG::from_u8(Mac::REG::BITS / 8));
+    if ret.to_u64() != rs1_value.to_u64() {
+        return Err(Error::CFIShadowStackValueFault);
+    }
+    machine.set_ssp(&ssp);
+    Ok(())
+}
+
+pub fn handle_ssrdp<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Itype(inst);
+    update_register(machine, i.rd(), machine.ssp().clone());
+    Ok(())
+}
+
+pub fn handle_ssamoswap_w<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    if Mac::REG::BITS == 32 {
+        return handle_ssamoswap_d(machine, inst);
+    }
+    let i = Rtype(inst);
+    let addr = machine.registers()[i.rs1()].clone();
+    let wide = machine.ra(&addr)?.clone();
+    let wide_h = wide
+        .signed_shr(&Mac::REG::from_u8(32))
+        .signed_shl(&Mac::REG::from_u8(32));
+    let wide_l = wide.sign_extend(&Mac::REG::from_u8(32));
+    let new_value = machine.registers()[i.rs2()].zero_extend(&Mac::REG::from_u8(32)) | wide_h;
+    let old_value = wide_l;
+    update_register(machine, i.rd(), old_value);
+    machine.set_ra(&addr, &new_value)?;
+    Ok(())
+}
+
+pub fn handle_ssamoswap_d<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
+    let i = Rtype(inst);
+    let addr = machine.registers()[i.rs1()].clone();
+    let new_value = machine.registers()[i.rs2()].clone();
+    let old_value = machine.ra(&addr)?.clone();
+    update_register(machine, i.rd(), old_value);
+    machine.set_ra(&addr, &new_value)?;
+    Ok(())
+}
+
 pub fn handle_custom_load_uimm<Mac: Machine>(
     machine: &mut Mac,
     inst: Instruction,
@@ -1630,6 +1714,6 @@ impl<Mac: Machine> std::ops::Index<InstructionOpcode> for ThreadFactory<Mac> {
     type Output = Thread<Mac>;
 
     fn index(&self, opcode: InstructionOpcode) -> &Thread<Mac> {
-        self.get(opcode).unwrap()
+        self.get(opcode).expect("Thread not found for opcode")
     }
 }

@@ -88,6 +88,13 @@ pub fn estimate_cycles(i: Instruction) -> u64 {
         insts::OP_WIDE_DIVU => 32,
         insts::OP_FAR_JUMP_REL => 3,
         insts::OP_FAR_JUMP_ABS => 3,
+        // CFI
+        insts::OP_LPAD => 3,
+        insts::OP_SSRDP => 3,
+        insts::OP_SSPUSH => 3,
+        insts::OP_SSPOPCHK => 3,
+        insts::OP_SSAMOSWAP_W => 4,
+        insts::OP_SSAMOSWAP_D => 4,
         _ => 1,
     }
 }

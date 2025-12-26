@@ -2,14 +2,16 @@ use ckb_vm_definitions::{
     MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE, RISCV_PAGE_SHIFTS,
     RISCV_PAGESIZE,
     asm::{
-        AsmCoreMachine, FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE,
-        RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED,
-        RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
+        AsmCoreMachine, FixedTrace, InvokeData, RET_CFI_LPAD_LABEL_MISMATCHED,
+        RET_CFI_LPAD_NOT_4BYTE_ALIGNED, RET_CFI_LPAD_NOT_FOUND, RET_CFI_SS_OUT_OF_STACK,
+        RET_CFI_SS_VALUE_FAULT, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
+        RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
+        RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
     instructions::{MAXIMUM_OPCODE, MINIMAL_OPCODE, instruction_opcode_name},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
-    registers::{RA, SP},
+    registers::{RA, SP, T2},
 };
 use std::alloc::{Layout, alloc};
 use std::mem::{size_of, zeroed};
@@ -70,10 +72,31 @@ fn main() {
     );
     println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
     println!("#define CKB_VM_ASM_RET_PAUSE {}", RET_PAUSE);
+    println!(
+        "#define CKB_VM_ASM_RET_CFI_LPAD_NOT_4BYTE_ALIGNED {}",
+        RET_CFI_LPAD_NOT_4BYTE_ALIGNED
+    );
+    println!(
+        "#define CKB_VM_ASM_RET_CFI_LPAD_NOT_FOUND {}",
+        RET_CFI_LPAD_NOT_FOUND
+    );
+    println!(
+        "#define CKB_VM_ASM_RET_CFI_LPAD_LABEL_MISMATCHED {}",
+        RET_CFI_LPAD_LABEL_MISMATCHED
+    );
+    println!(
+        "#define CKB_VM_ASM_RET_CFI_SS_VALUE_FAULT {}",
+        RET_CFI_SS_VALUE_FAULT
+    );
+    println!(
+        "#define CKB_VM_ASM_RET_CFI_SS_OUT_OF_STACK {}",
+        RET_CFI_SS_OUT_OF_STACK
+    );
     println!();
 
     println!("#define CKB_VM_ASM_REGISTER_RA {}", RA);
     println!("#define CKB_VM_ASM_REGISTER_SP {}", SP);
+    println!("#define CKB_VM_ASM_REGISTER_T2 {}", T2);
     println!();
 
     println!("#define CKB_VM_ASM_MEMORY_FLAG_FREEZED {}", FLAG_FREEZED);
@@ -135,7 +158,7 @@ fn main() {
     let m: Box<AsmCoreMachine> = unsafe {
         let machine_size = std::mem::size_of::<AsmCoreMachine>();
 
-        let layout = Layout::array::<u8>(machine_size).unwrap();
+        let layout = Layout::array::<u8>(machine_size).expect("layout creation failed");
         let raw_allocation = alloc(layout) as *mut AsmCoreMachine;
         Box::from_raw(raw_allocation)
     };
@@ -208,6 +231,22 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_FRAMES_PTR {}",
         (&m.frames_ptr as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CFI {}",
+        (&m.cfi as *const u8 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP {}",
+        (&m.elp as *const u32 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP {}",
+        (&m.ssp as *const u64 as usize) - m_address
+    );
+    println!(
+        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR {}",
+        (&m.shadow_stack_ptr as *const u64 as usize) - m_address
     );
     println!();
 

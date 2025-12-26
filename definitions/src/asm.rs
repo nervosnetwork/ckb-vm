@@ -1,4 +1,4 @@
-use crate::{RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
+use crate::{DEFAULT_SHADOW_STACK_SIZE, RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
 use std::alloc::{Layout, dealloc};
 
 // The number of trace items to keep
@@ -15,6 +15,11 @@ pub const RET_OUT_OF_BOUND: u8 = 7;
 pub const RET_INVALID_PERMISSION: u8 = 8;
 pub const RET_SLOWPATH: u8 = 9;
 pub const RET_PAUSE: u8 = 10;
+pub const RET_CFI_LPAD_NOT_4BYTE_ALIGNED: u8 = 11;
+pub const RET_CFI_LPAD_NOT_FOUND: u8 = 12;
+pub const RET_CFI_LPAD_LABEL_MISMATCHED: u8 = 13;
+pub const RET_CFI_SS_VALUE_FAULT: u8 = 14;
+pub const RET_CFI_SS_OUT_OF_STACK: u8 = 15;
 
 #[inline(always)]
 pub fn calculate_slot(addr: u64) -> usize {
@@ -100,16 +105,27 @@ pub struct AsmCoreMachine {
     pub memory_ptr: u64,
     pub flags_ptr: u64,
     pub frames_ptr: u64,
+
+    pub cfi: u8,
+    pub elp: u32,
+    pub ssp: u64,
+    pub shadow_stack_ptr: u64,
 }
 
 impl Drop for AsmCoreMachine {
     fn drop(&mut self) {
-        let memory_layout = Layout::array::<u8>(self.memory_size as usize).unwrap();
+        let memory_layout =
+            Layout::array::<u8>(self.memory_size as usize).expect("layout creation failed");
         unsafe { dealloc(self.memory_ptr as *mut u8, memory_layout) };
-        let flags_layout = Layout::array::<u8>(self.flags_size as usize).unwrap();
+        let flags_layout =
+            Layout::array::<u8>(self.flags_size as usize).expect("layout creation failed");
         unsafe { dealloc(self.flags_ptr as *mut u8, flags_layout) };
-        let frames_layout = Layout::array::<u8>(self.frames_size as usize).unwrap();
+        let frames_layout =
+            Layout::array::<u8>(self.frames_size as usize).expect("layout creation failed");
         unsafe { dealloc(self.frames_ptr as *mut u8, frames_layout) };
+        let shadow_stack_layout =
+            Layout::array::<u8>(DEFAULT_SHADOW_STACK_SIZE).expect("layout creation failed");
+        unsafe { dealloc(self.shadow_stack_ptr as *mut u8, shadow_stack_layout) };
     }
 }
 

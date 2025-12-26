@@ -1,7 +1,10 @@
 use crate::instructions::Register;
 use crate::memory::FLAG_DIRTY;
 use crate::memory::Memory;
-use crate::{CoreMachine, Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE};
+use crate::{
+    CoreMachine, DEFAULT_SHADOW_STACK_SIZE, Error, RISCV_GENERAL_REGISTER_NUMBER,
+    RISCV_PAGE_SHIFTS, RISCV_PAGESIZE,
+};
 use serde::{Deserialize, Serialize};
 
 // Snapshot provides a mechanism for suspending and resuming a virtual machine.
@@ -33,13 +36,27 @@ pub struct Snapshot {
     pub page_flags: Vec<u8>,
     pub pages: Vec<Vec<u8>>,
     pub load_reservation_address: u64,
+    pub cfi: u8,
+    pub elp: u32,
+    pub ssp: u64,
+    pub ss: Vec<u8>,
 }
 
 pub fn make_snapshot<T: CoreMachine>(machine: &mut T) -> Result<Snapshot, Error> {
+    let mut snap_ss = machine.ss().to_vec();
+    if let Some(pos) = snap_ss.iter().position(|&x| x != 0) {
+        snap_ss.drain(..pos);
+    } else {
+        snap_ss.clear();
+    }
     let mut snap = Snapshot {
         version: machine.version(),
         pc: machine.pc().to_u64(),
         load_reservation_address: machine.memory().lr().to_u64(),
+        cfi: machine.cfi().into(),
+        elp: machine.elp(),
+        ssp: machine.ssp().to_u64(),
+        ss: snap_ss,
         ..Default::default()
     };
     for (i, v) in machine.registers().iter().enumerate() {
@@ -97,5 +114,9 @@ pub fn resume<T: CoreMachine>(machine: &mut T, snapshot: &Snapshot) -> Result<()
     machine
         .memory_mut()
         .set_lr(&T::REG::from_u64(snapshot.load_reservation_address));
+    machine.set_cfi(snapshot.cfi.into());
+    machine.set_elp(snapshot.elp);
+    machine.set_ssp(&T::REG::from_u64(snapshot.ssp));
+    machine.ss_mut()[DEFAULT_SHADOW_STACK_SIZE - snapshot.ss.len()..].copy_from_slice(&snapshot.ss);
     Ok(())
 }

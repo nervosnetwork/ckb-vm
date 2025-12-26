@@ -1,10 +1,11 @@
 use ckb_vm_definitions::instructions::{self as insts};
-use ckb_vm_definitions::registers::SP;
+use ckb_vm_definitions::registers::{RA, SP, T0, T2};
 
 use super::i::nop;
 use super::register::Register;
-use super::utils::{jalr, ld, lw, rd, x, xs};
+use super::utils::{jalr, jalr_cfi_mark, ld, lw, rd, x, xs};
 use super::{Instruction, Itype, Rtype, Stype, Utype, blank_instruction, set_instruction_length_2};
+use crate::elf::CFI;
 
 // Notice the location of rs2 in RVC encoding is different from full encoding
 #[inline(always)]
@@ -90,7 +91,12 @@ fn b_immediate(instruction_bits: u32) -> i32 {
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instruction> {
+pub fn factory<R: Register>(
+    _: u64,
+    instruction_bits: u32,
+    version: u32,
+    cfi: CFI,
+) -> Option<Instruction> {
     let bit_length = R::BITS;
     if bit_length != 32 && bit_length != 64 {
         return None;
@@ -427,7 +433,13 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                     if rs2 == 0 {
                         if rd != 0 {
                             // C.JR
-                            Some(Itype::new_s(jalr(version), 0, rd, 0).0)
+                            let n = Itype::new_s(jalr(version), 0, rd, 0).0;
+                            let rs1 = rd;
+                            if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                                Some(jalr_cfi_mark(n)) // Mark as a cfi jump for CFI
+                            } else {
+                                Some(n)
+                            }
                         } else {
                             // Reserved
                             None
@@ -451,7 +463,14 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                         // C.EBREAK
                         (0, 0) => Some(blank_instruction(insts::OP_EBREAK)),
                         // C.JALR
-                        (rs1, 0) => Some(Itype::new_s(jalr(version), 1, rs1, 0).0),
+                        (rs1, 0) => {
+                            let n = Itype::new_s(jalr(version), 1, rs1, 0).0;
+                            if cfi.allow_lpad() && rs1 != RA && rs1 != T0 && rs1 != T2 {
+                                Some(jalr_cfi_mark(n)) // Mark as a cfi jump for CFI
+                            } else {
+                                Some(n)
+                            }
+                        }
                         // C.ADD
                         (rd, rs2) => {
                             if rd != 0 {

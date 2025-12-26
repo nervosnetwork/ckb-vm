@@ -8,9 +8,10 @@ use super::{
             handle_invalid_op, instruction_length, is_basic_block_end_instruction,
         },
     },
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
+    CFI, CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
 };
 use bytes::Bytes;
+use ckb_vm_definitions::instructions as insts;
 
 // The number of trace items to keep
 const TRACE_SIZE: usize = 8192;
@@ -94,6 +95,46 @@ impl<Inner: SupportMachine, Decoder> CoreMachine for AbstractTraceMachine<Inner,
     fn version(&self) -> u32 {
         self.machine.version()
     }
+
+    fn cfi(&self) -> CFI {
+        self.machine.cfi()
+    }
+
+    fn set_cfi(&mut self, cfi: CFI) {
+        self.machine.set_cfi(cfi);
+    }
+
+    fn elp(&self) -> u32 {
+        self.machine.elp()
+    }
+
+    fn set_elp(&mut self, elp: u32) {
+        self.machine.set_elp(elp);
+    }
+
+    fn ssp(&self) -> &Self::REG {
+        self.machine.ssp()
+    }
+
+    fn set_ssp(&mut self, ssp: &Self::REG) {
+        self.machine.set_ssp(ssp);
+    }
+
+    fn ss(&self) -> &[u8] {
+        self.machine.ss()
+    }
+
+    fn ss_mut(&mut self) -> &mut [u8] {
+        self.machine.ss_mut()
+    }
+
+    fn ra(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
+        self.machine.ra(addr)
+    }
+
+    fn set_ra(&mut self, addr: &Self::REG, value: &Self::REG) -> Result<(), Error> {
+        self.machine.set_ra(addr, value)
+    }
 }
 
 impl<Inner: SupportMachine, Decoder> Machine for AbstractTraceMachine<Inner, Decoder> {
@@ -171,6 +212,11 @@ impl<Inner: SupportMachine, Decoder: InstDecoder> DefaultMachineRunner
                 self.traces[slot].address = pc;
                 self.traces[slot].length = (current_pc - pc) as usize;
                 self.traces[slot].instruction_count = i as u8;
+            }
+            if self.machine.elp() != 0
+                && extract_opcode(self.traces[slot].instructions[0]) != insts::OP_LPAD
+            {
+                return Err(Error::CFILpadNotFound);
             }
             for i in 0..self.traces[slot].instruction_count {
                 let inst = self.traces[slot].instructions[i as usize];

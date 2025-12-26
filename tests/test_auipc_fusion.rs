@@ -1,4 +1,5 @@
 use ckb_vm::decoder::{DefaultDecoder, InstDecoder};
+use ckb_vm::elf::CFI;
 use ckb_vm::instructions::{
     Instruction, Utype, extract_opcode, instruction_length, set_instruction_length_n,
 };
@@ -18,9 +19,9 @@ pub struct AuxDecoder {
 }
 
 impl InstDecoder for AuxDecoder {
-    fn new<R: Register>(isa: u8, version: u32) -> Self {
+    fn new<R: Register>(isa: u8, version: u32, cfi: CFI) -> Self {
         Self {
-            inner: DefaultDecoder::new::<R>(isa, version),
+            inner: DefaultDecoder::new::<R>(isa, version, cfi),
         }
     }
 
@@ -62,7 +63,7 @@ pub fn test_rust_auipc_fusion() {
         .load_program(&buffer, [Ok("auipc_no_sign_extend".into())].into_iter())
         .unwrap();
 
-    let mut decoder = AuxDecoder::new::<u64>(machine.isa(), machine.version());
+    let mut decoder = AuxDecoder::new::<u64>(machine.isa(), machine.version(), CFI::default());
     let result = machine.run_with_decoder(&mut decoder).unwrap();
     assert_eq!(result, 0);
 }
@@ -86,6 +87,7 @@ pub fn test_asm_auipc_fusion() {
     let mut decoder = SimpleFixedTraceDecoder::<AuxDecoder>::new::<u64>(
         machine.machine.isa(),
         machine.machine.version(),
+        Default::default(),
     );
 
     let result = machine.run_with_decoder(&mut decoder).expect("run");

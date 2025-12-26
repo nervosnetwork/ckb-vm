@@ -51,6 +51,16 @@ pub enum Error {
     Unexpected(String),
     #[display("yield")]
     Yield,
+    #[display("cfi: lpad not 4-byte aligned")]
+    CFILpadNot4ByteAligned,
+    #[display("cfi: lpad not found")]
+    CFILpadNotFound,
+    #[display("cfi: lpad label mismatched")]
+    CFILpadLabelMismatched,
+    #[display("cfi: shadow stack value fault")]
+    CFIShadowStackValueFault,
+    #[display("cfi: shadow stack out of stack")]
+    CFIShadowStackOutOfStack,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Display)]

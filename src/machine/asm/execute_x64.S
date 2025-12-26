@@ -135,6 +135,9 @@
 #define SP_ADDRESS \
   (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_SP * 8)(MACHINE)
 
+#define T2_ADDRESS \
+  (CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS + CKB_VM_ASM_REGISTER_T2 * 8)(MACHINE)
+
 #define REGISTER_ADDRESS(r) \
   CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(MACHINE, r, 8)
 
@@ -385,6 +388,22 @@
   movq $0, ZERO_ADDRESS; \
   NEXT_INST
 
+#define SS_GET(addr_regd, into_regd) \
+  cmp $65528, addr_regd; \
+  ja .exit_cfi_ss_out_of_stack; \
+  cmp $0, addr_regd; \
+  je .exit_cfi_ss_out_of_stack; \
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR(MACHINE), into_regd; \
+  movq (into_regd, addr_regd, 1), into_regd
+
+#define SS_SET(addr_regd, from_regd) \
+  cmp $65528, addr_regd; \
+  ja .exit_cfi_ss_out_of_stack; \
+  cmp $0, addr_regd; \
+  je .exit_cfi_ss_out_of_stack; \
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SHADOW_STACK_PTR(MACHINE), TEMP3; \
+  movq from_regd, (TEMP3, addr_regd, 1)
+
 #define DECODE_R \
   movzbl %cl, RS1d; \
   movzbl %ch, RS2rd
@@ -463,6 +482,16 @@ ckb_vm_x64_execute:
   lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
   mov INST_PC, INST_ARGS
   add $8, INST_ARGS
+  /* Check elp flag */
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE), %eax
+  test %eax, %eax
+  jz .trace_loaded_no_elp_check
+  /* Check elp flag. if elp=1, check the next instruction is lpad */
+  movq (INST_PC), %rax
+  leaq .CKB_VM_ASM_LABEL_OP_LPAD(%rip), %rcx
+  cmp %rcx, %rax
+  jne .exit_cfi_lpad_not_found
+.trace_loaded_no_elp_check:
   NEXT_INST
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_ASM_TRACE_JUMP:
@@ -732,6 +761,13 @@ ckb_vm_x64_execute:
   addq IMMEDIATE, RS2r
   andq $-2, RS2r
   movq RS2r, PC_ADDRESS
+  /* Loading flag of current instruction */
+  movq -16(INST_ARGS), TEMP1
+  sar $28, TEMP1
+  andq $0x1, TEMP1
+  cmp $1, TEMP1
+  jne .prepare_trace
+  movl $1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
   jmp .prepare_trace
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_LB_VERSION0:
@@ -2379,6 +2415,76 @@ ckb_vm_x64_execute:
   WRITE_RS3(TEMP3)
   NEXT_INST_V2
 .p2align 3
+.CKB_VM_ASM_LABEL_OP_LPAD:
+  DECODE_U
+  movzbl CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE), RS1d
+  cmp $0, RS1d
+  je .lpad_branch_success
+  /* Loading flag of current instruction */
+  movq -16(INST_ARGS), TEMP1
+  sar $28, TEMP1
+  andq $0x1, TEMP1
+  cmp $1, TEMP1
+  jne .exit_cfi_lpad_not_4byte_aligned
+  cmp $0, IMMEDIATE
+  je .lpad_branch_success
+  movq T2_ADDRESS, RS1
+  andl $0xFFFFF000, RS1d
+  cmp IMMEDIATE, RS1
+  jne .exit_cfi_lpad_label_mismatched
+.lpad_branch_success:
+  movl $0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ELP(MACHINE)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSPUSH:
+  DECODE_R
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS1
+  movq REGISTER_ADDRESS(RS2r), RS2r
+  sub $8, RS1
+  SS_SET(RS1, RS2r)
+  movq RS1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSPOPCHK:
+  DECODE_I
+  movq REGISTER_ADDRESS(RS1), RS1
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS2r
+  SS_GET(RS2r, TEMP1)
+  cmp RS1, TEMP1
+  jne .exit_cfi_value_fault
+  addq $8, RS2r
+  movq RS2r, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSRDP:
+  DECODE_I
+  movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_SSP(MACHINE), RS1
+  WRITE_RD(RS1)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSAMOSWAP_W:
+  DECODE_R
+  movq REGISTER_ADDRESS(RS1), RS1
+  movq REGISTER_ADDRESS(RS2r), RS2r
+  SS_GET(RS1, TEMP1)
+  movslq TEMP1d, TEMP2
+  sarq $32, TEMP1
+  shlq $32, TEMP1
+  movl RS2rd, RS2rd
+  orq TEMP1, RS2r
+  SS_SET(RS1, RS2r)
+  WRITE_RD(TEMP2)
+  NEXT_INST
+.p2align 3
+.CKB_VM_ASM_LABEL_OP_SSAMOSWAP_D:
+  DECODE_R
+  movq REGISTER_ADDRESS(RS1), RS1
+  movq REGISTER_ADDRESS(RS2r), RS2r
+  SS_GET(RS1, TEMP1)
+  SS_SET(RS1, RS2r)
+  WRITE_RD(TEMP1)
+  NEXT_INST
+.p2align 3
 .exit_out_of_bound:
   mov TEMP3, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_OUT_OF_BOUND, ARG_RETd
@@ -2395,6 +2501,26 @@ ckb_vm_x64_execute:
 .exit_invalid_permission:
   mov TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cfi_lpad_not_4byte_aligned:
+  mov $CKB_VM_ASM_RET_CFI_LPAD_NOT_4BYTE_ALIGNED, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cfi_lpad_not_found:
+  mov $CKB_VM_ASM_RET_CFI_LPAD_NOT_FOUND, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cfi_lpad_label_mismatched:
+  mov $CKB_VM_ASM_RET_CFI_LPAD_LABEL_MISMATCHED, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cfi_value_fault:
+  mov $CKB_VM_ASM_RET_CFI_SS_VALUE_FAULT, ARG_RETd
+  jmp .exit
+.p2align 3
+.exit_cfi_ss_out_of_stack:
+  mov $CKB_VM_ASM_RET_CFI_SS_OUT_OF_STACK, ARG_RETd
   jmp .exit
 /*
  * Some instructions that are difficult to implement will be interpreted and

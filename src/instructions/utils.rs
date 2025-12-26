@@ -159,3 +159,23 @@ pub fn lwu(version: u32) -> InstructionOpcode {
         insts::OP_LWU_VERSION0
     }
 }
+
+#[inline(always)]
+pub fn jalr_cfi_mark(i: u64) -> u64 {
+    i | (1 << 28)
+}
+
+#[inline(always)]
+pub fn jalr_cfi(i: u64) -> bool {
+    (i & (1 << 28)) != 0
+}
+
+#[inline(always)]
+pub fn lpad_4byte_aligned_mark(i: u64) -> u64 {
+    i | (1 << 28)
+}
+
+#[inline(always)]
+pub fn lpad_4byte_aligned(i: u64) -> bool {
+    (i & (1 << 28)) != 0
+}

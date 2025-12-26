@@ -11,9 +11,11 @@ pub const MEMORY_FRAMESIZE: usize = 1 << MEMORY_FRAME_SHIFTS; // 256 KB
 pub const MEMORY_FRAME_PAGE_SHIFTS: usize = MEMORY_FRAME_SHIFTS - RISCV_PAGE_SHIFTS;
 
 pub const DEFAULT_MEMORY_SIZE: usize = 4 << 20; // 4 MB
+pub const DEFAULT_SHADOW_STACK_SIZE: usize = 64 << 10; // 64 KB
 
 pub const ISA_IMC: u8 = 0b0000_0000;
 pub const ISA_B: u8 = 0b0000_0001;
 pub const ISA_MOP: u8 = 0b0000_0010;
 // Extension ISA_A is not enabled in ckb 2nd hardfork(aka, meepo hardfork)
 pub const ISA_A: u8 = 0b0000_0100;
+pub const ISA_CFI: u8 = 0b0000_1000;
