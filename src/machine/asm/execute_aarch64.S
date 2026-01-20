@@ -452,7 +452,7 @@ ckb_vm_x64_execute:
   NEXT_INST
 .i_branch_success:
   ldr RS1, PC_ADDRESS
-  /* Loading instruction flags */
+  /* Loading flag of current instruction */
   ldr TEMP3, [INST_ARGS, -16]
   asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF

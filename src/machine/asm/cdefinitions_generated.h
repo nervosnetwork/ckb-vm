@@ -217,6 +217,10 @@
 #ifdef __APPLE__
 .global _ckb_vm_asm_labels
 _ckb_vm_asm_labels:
+#elif __riscv
+.p2align 3
+.global ckb_vm_asm_labels
+ckb_vm_asm_labels:
 #else
 .global ckb_vm_asm_labels
 ckb_vm_asm_labels:

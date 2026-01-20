@@ -85,13 +85,15 @@ jobs:
                               zlib1g-dev
       - name: Run test suite
         run: |
-          git clone https://github.com/nervosnetwork/ckb-vm-contrib --recursive
+          git clone https://github.com/nervosnetwork/ckb-vm-contrib
           cd ckb-vm-contrib
-          git checkout 51ece04
+          git checkout 2374b2a
+          git submodule update --init --recursive
           cd ..
           ln -snf ../.. ckb-vm-contrib/ckb-vm-test-suite/ckb-vm
           docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
           cd ckb-vm-contrib/ckb-vm-test-suite
+          rustup target add riscv64imac-unknown-none-elf
           RISCV=`pwd`/../../riscv ./test.sh
 
   linux-native-test-spawn:
@@ -136,45 +138,6 @@ jobs:
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu" &&
           cargo test --features=asm --target aarch64-unknown-linux-gnu
 
-  linux-arm-test-suite:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sudo apt update -y
-          sudo apt install -y build-essential \
-                              autoconf \
-                              automake \
-                              autotools-dev \
-                              libmpc-dev \
-                              libmpfr-dev \
-                              libgmp-dev \
-                              gawk \
-                              libtool \
-                              patchutils \
-                              libexpat-dev \
-                              zlib1g-dev
-          rustup target add aarch64-unknown-linux-gnu
-      - name: Build test suite
-        run: |
-          git clone https://github.com/nervosnetwork/ckb-vm-contrib --recursive
-          cd ckb-vm-contrib
-          git checkout 51ece04
-          cd ..
-          ln -snf ../.. ckb-vm-contrib/ckb-vm-test-suite/ckb-vm
-          docker run --rm -v `pwd`:/code nervos/ckb-riscv-gnu-toolchain:bionic-20210804 cp -r /riscv /code/riscv
-          cd ckb-vm-contrib/ckb-vm-test-suite
-          RISCV=`pwd`/../../riscv ./test.sh --build-only
-      - name: Run test suite
-        run: |
-          sudo apt install -y qemu-system binfmt-support qemu-user-static
-          sudo apt install -y gcc-multilib
-          sudo apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu clang
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          cargo build --release --target=aarch64-unknown-linux-gnu --example=ckb_vm_runner --features=asm --config target.aarch64-unknown-linux-gnu.linker=\"aarch64-linux-gnu-gcc\"
-          docker run --rm -v `pwd`:/code -t --platform linux/arm64 arm64v8/rust bash -c "RISCV=/dummy /code/ckb-vm-contrib/ckb-vm-test-suite/test.sh --prebuilt-prefix aarch64-unknown-linux-gnu"
-
   macos-x86-ci-asm:
     runs-on: macos-latest
     steps:
@@ -206,3 +169,20 @@ jobs:
           sudo apt install device-tree-compiler
           cargo install cargo-fuzz
           cargo +nightly fuzz build
+
+  qemu-riscv64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        run: |
+          sudo apt-get update -y
+          sudo apt install -y gcc-riscv64-linux-gnu \
+                              qemu-user-static
+          rustup target add riscv64gc-unknown-linux-gnu
+      - name: Build
+        run: |
+          export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
+          export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/riscv64-linux-gnu/13"
+          export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="qemu-riscv64-static -L /usr/riscv64-linux-gnu"
+          cargo test --features=asm --release --target riscv64gc-unknown-linux-gnu

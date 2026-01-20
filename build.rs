@@ -14,9 +14,11 @@ fn main() {
     let is_unix = target_family == "unix";
     let is_x86_64 = target_arch == "x86_64";
     let is_aarch64 = target_arch == "aarch64";
+    let is_riscv64 = target_arch == "riscv64";
     let x64_asm = is_x86_64 && (is_windows || is_unix);
     let aarch64_asm = is_aarch64 && is_unix;
-    let can_enable_asm = x64_asm || aarch64_asm;
+    let riscv64_asm = is_riscv64 && is_unix;
+    let can_enable_asm = x64_asm || aarch64_asm || riscv64_asm;
 
     if cfg!(feature = "asm") && (!can_enable_asm) {
         panic!(
@@ -28,6 +30,7 @@ fn main() {
     if cfg!(any(feature = "asm", feature = "detect-asm")) && can_enable_asm {
         println!("cargo:rerun-if-changed=src/machine/asm/execute_x64.S");
         println!("cargo:rerun-if-changed=src/machine/asm/execute_aarch64.S");
+        println!("cargo:rerun-if-changed=src/machine/asm/execute_riscv64.S");
         println!("cargo:rerun-if-changed=src/machine/asm/cdefinitions_generated.h");
 
         let mut build = cc::Build::new();
@@ -44,6 +47,8 @@ fn main() {
             }
         } else if aarch64_asm {
             build.file("src/machine/asm/execute_aarch64.S");
+        } else if riscv64_asm {
+            build.file("src/machine/asm/execute_riscv64.S");
         }
 
         build.include("src/machine/asm").compile("asm");

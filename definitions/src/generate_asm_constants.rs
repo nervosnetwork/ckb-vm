@@ -224,6 +224,10 @@ fn main() {
     println!("#ifdef __APPLE__");
     println!(".global _ckb_vm_asm_labels");
     println!("_ckb_vm_asm_labels:");
+    println!("#elif __riscv");
+    println!(".p2align 3");
+    println!(".global ckb_vm_asm_labels");
+    println!("ckb_vm_asm_labels:");
     println!("#else");
     println!(".global ckb_vm_asm_labels");
     println!("ckb_vm_asm_labels:");
