@@ -5,11 +5,10 @@ use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
     CoreMachine, DEFAULT_MEMORY_SIZE, Debugger, DefaultCoreMachine, DefaultMachineRunner, Error,
     FlatMemory, ISA_B, ISA_IMC, Memory, RISCV_PAGESIZE, Register, RustDefaultMachineBuilder,
-    SparseMemory, SupportMachine, Syscalls, WXorXMemory, run,
+    SparseMemory, SupportMachine, Syscalls, WXorXMemory, rng, run,
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
-use rand::{Rng, thread_rng};
 use std::fs;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -230,7 +229,7 @@ fn assert_memory_store_empty_bytes<M: Memory>(memory: &mut M) {
 
 #[test]
 pub fn test_memory_load_bytes() {
-    let mut rng = thread_rng();
+    let mut rng = rng::Rand::new(0x12345678);
 
     assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 1024 * 5, 0);
     assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 1024 * 5, 2);
@@ -238,8 +237,8 @@ pub fn test_memory_load_bytes() {
     assert_memory_load_bytes_all(&mut rng, DEFAULT_MEMORY_SIZE, 0, 0);
 }
 
-fn assert_memory_load_bytes_all<R: Rng>(
-    rng: &mut R,
+fn assert_memory_load_bytes_all(
+    rng: &mut rng::Rand,
     max_memory: usize,
     buf_size: usize,
     addr: u64,
@@ -267,8 +266,8 @@ fn assert_memory_load_bytes_all<R: Rng>(
     );
 }
 
-fn assert_memory_load_bytes<R: Rng, M: Memory>(
-    rng: &mut R,
+fn assert_memory_load_bytes<M: Memory>(
+    rng: &mut rng::Rand,
     memory: &mut M,
     buffer_size: usize,
     addr: u64,

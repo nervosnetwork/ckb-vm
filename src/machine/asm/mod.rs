@@ -31,6 +31,7 @@ use crate::{
         check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
         round_page_up,
     },
+    rng,
 };
 
 pub trait AsmCoreMachineRevealer: AsRef<AsmCoreMachine> + AsMut<AsmCoreMachine> {
@@ -134,14 +135,7 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
         1 << MEMORY_FRAME_SHIFTS,
     );
     if is_chaos_mode {
-        let mut state = chaos_seed;
-        for byte in slice.iter_mut() {
-            state ^= state << 13;
-            state ^= state >> 7;
-            state ^= state << 17;
-            *byte = state as u8;
-        }
-        machine.chaos_seed = state as u32;
+        machine.chaos_seed = rng::fill(chaos_seed, slice) as u32;
     } else {
         memset(slice, 0);
     }

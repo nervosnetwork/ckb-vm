@@ -10,6 +10,7 @@ pub mod error;
 pub mod instructions;
 pub mod machine;
 pub mod memory;
+pub mod rng;
 pub mod snapshot;
 pub mod snapshot2;
 pub mod syscalls;
