@@ -17,7 +17,8 @@ fn main() {
     let is_riscv64 = target_arch == "riscv64";
     let x64_asm = is_x86_64 && (is_windows || is_unix);
     let aarch64_asm = is_aarch64 && is_unix;
-    let riscv64_asm = is_riscv64 && is_unix;
+    // toolchain on sp1 has empty target_family
+    let riscv64_asm = is_riscv64 && (is_unix || target_family.is_empty());
     let can_enable_asm = x64_asm || aarch64_asm || riscv64_asm;
 
     if cfg!(feature = "asm") && (!can_enable_asm) {
