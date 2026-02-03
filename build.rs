@@ -9,6 +9,7 @@ fn main() {
     let target_family = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+    let target = env::var("TARGET").unwrap_or_default();
     let is_windows = target_family == "windows";
     let is_msvc = is_windows && (target_env == "msvc");
     let is_unix = target_family == "unix";
@@ -49,6 +50,9 @@ fn main() {
         } else if aarch64_asm {
             build.file("src/machine/asm/execute_aarch64.S");
         } else if riscv64_asm {
+            if target.contains("zkvm") || target.contains("succinct") {
+                build.compiler("riscv64-linux-gnu-gcc");
+            }
             build.file("src/machine/asm/execute_riscv64.S");
         }
 
