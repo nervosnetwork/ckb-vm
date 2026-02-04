@@ -14,7 +14,7 @@ use crate::{
     },
     machine::{
         CoreMachine, DefaultMachine,
-        asm::{AsmCoreMachineRevealer, ckb_vm_asm_labels},
+        asm::{AsmCoreMachineRevealer, ckb_vm_asm_labels, ckb_vm_x64_execute},
     },
     memory::Memory,
 };
@@ -37,7 +37,7 @@ pub fn label_from_fastpath_opcode(opcode: InstructionOpcode) -> u64 {
     debug_assert!(!is_slowpath_instruction(blank_instruction(opcode)));
     unsafe {
         u64::from(*(ckb_vm_asm_labels as *const u32).offset(opcode as u8 as isize))
-            + (ckb_vm_asm_labels as *const u32 as u64)
+            + (ckb_vm_x64_execute as *const u32 as u64)
     }
 }
 

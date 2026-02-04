@@ -259,6 +259,7 @@
 
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
+.CKB_VM_X64_EXECUTE:
   addi   sp, sp, -88
   sd     ra, 0(sp)
   sd     s0, 8(sp)

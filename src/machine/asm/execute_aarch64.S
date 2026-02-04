@@ -302,6 +302,7 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
+.CKB_VM_X64_EXECUTE:
   stp x19, x20, [sp, -96]!
   stp x21, x22, [sp, 16]
   stp x23, x24, [sp, 32]
