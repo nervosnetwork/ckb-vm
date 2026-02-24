@@ -1782,9 +1782,9 @@ ckb_vm_x64_execute:
   add    t0, t3, t2
   sltu   t1, t0, t3
   or     t2, t4, t1
-  WRITE_RD_V2(t0, t3)
   WRITE_RS1(t2, t3)
   WRITE_RS2(t1, t3)
+  WRITE_RD_V2(t0, t3)
   NEXT_INST_V2
 .CKB_VM_ASM_LABEL_OP_SBB:
   DECODE_R4
@@ -1799,10 +1799,10 @@ ckb_vm_x64_execute:
   sltu   t5, t4, t2
   sub    t0, t4, t2
   or     t1, t3, t5
-  WRITE_RD_V2(t0, t2)
-  WRITE_RS1(t1, t2)
   WRITE_RS2(t5, t2)
   WRITE_RS3(t3, t2)
+  WRITE_RS1(t1, t2)
+  WRITE_RD_V2(t0, t2)
   NEXT_INST_V2
 .CKB_VM_ASM_LABEL_OP_ADCS:
   DECODE_R4
