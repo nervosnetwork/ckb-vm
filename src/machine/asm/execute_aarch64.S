@@ -466,58 +466,46 @@ ckb_vm_x64_execute:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
+  sdiv TEMP1, RS1, RS2
+  mov TEMP2, UINT64_MAX
   cmp RS2, 0
-  bne .div_branch2
-  mov RS1, UINT64_MAX
-  b .div_branch3
-.div_branch2:
-  sdiv RS1, RS1, RS2
-.div_branch3:
+  csel RS1, TEMP2, TEMP1, eq
   WRITE_RD(RS1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVU:
   DECODE_R
+  ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
+  udiv TEMP1, RS1, RS2
+  mov TEMP2, UINT64_MAX
   cmp RS2, 0
-  bne .divu_branch1
-  mov TEMP1, UINT64_MAX
-  WRITE_RD(TEMP1)
-  NEXT_INST
-.divu_branch1:
-  ldr TEMP1, REGISTER_ADDRESS(RS1)
-  udiv TEMP1, TEMP1, RS2
+  csel TEMP1, TEMP2, TEMP1, eq
   WRITE_RD(TEMP1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVUW:
   DECODE_R
+  ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
+  mov RS1w, RS1w
   mov RS2w, RS2w
-  cmp RS2, 0
-  bne .divuw_branch1
-  mov TEMP1, UINT64_MAX
-  WRITE_RD(TEMP1)
-  NEXT_INST
-.divuw_branch1:
-  ldr TEMP1, REGISTER_ADDRESS(RS1)
-  mov TEMP1w, TEMP1w
-  udiv TEMP1, TEMP1, RS2
+  udiv TEMP1, RS1, RS2
   sxtw TEMP1, TEMP1w
+  mov TEMP2, UINT64_MAX
+  cmp RS2, 0
+  csel TEMP1, TEMP2, TEMP1, eq
   WRITE_RD(TEMP1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVW:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
-  sxtw RS1, RS1w
   ldr RS2, REGISTER_ADDRESS(RS2)
-  sxtw RS2, RS2w
-  cmp RS2, 0
-  bne .divw_branch2
-  mov RS1, UINT64_MAX
-  b .divw_branch3
-.divw_branch2:
-  sdiv RS1, RS1, RS2
-.divw_branch3:
   sxtw RS1, RS1w
+  sxtw RS2, RS2w
+  sdiv TEMP1, RS1, RS2
+  sxtw TEMP1, TEMP1w
+  mov TEMP2, UINT64_MAX
+  cmp RS2, 0
+  csel RS1, TEMP2, TEMP1, eq
   WRITE_RD(RS1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_EBREAK:
@@ -753,59 +741,47 @@ ckb_vm_x64_execute:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  cmp RS2, 0
-  bne .rem_branch2
-  b .rem_branch3
-.rem_branch2:
   sdiv TEMP1, RS1, RS2
-  msub RS1, TEMP1, RS2, RS1
-.rem_branch3:
+  msub TEMP2, TEMP1, RS2, RS1
+  cmp RS2, 0
+  csel RS1, RS1, TEMP2, eq
   WRITE_RD(RS1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_REMU:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  cmp RS2, 0
-  bne .remu_branch2
-  WRITE_RD(RS1)
-  NEXT_INST
-.remu_branch2:
   udiv TEMP1, RS1, RS2
   msub TEMP2, TEMP1, RS2, RS1
+  cmp RS2, 0
+  csel TEMP2, RS1, TEMP2, eq
   WRITE_RD(TEMP2)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_REMUW:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  mov RS2w, RS2w
-  cmp RS2, 0
-  bne .remuw_branch2
-  sxtw RS1, RS1w
-  WRITE_RD(RS1)
-  NEXT_INST
-.remuw_branch2:
   mov RS1w, RS1w
+  mov RS2w, RS2w
   udiv TEMP1, RS1, RS2
   msub TEMP2, TEMP1, RS2, RS1
   sxtw TEMP2, TEMP2w
+  sxtw RS1, RS1w
+  cmp RS2, 0
+  csel TEMP2, RS1, TEMP2, eq
   WRITE_RD(TEMP2)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_REMW:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
-  sxtw RS1, RS1w
   ldr RS2, REGISTER_ADDRESS(RS2)
-  sxtw RS2, RS2w
-  cmp RS2, 0
-  bne .remw_branch2
-  b .remw_branch3
-.remw_branch2:
-  sdiv TEMP1, RS1, RS2
-  msub RS1, TEMP1, RS2, RS1
-.remw_branch3:
   sxtw RS1, RS1w
+  sxtw RS2, RS2w
+  sdiv TEMP1, RS1, RS2
+  msub TEMP2, TEMP1, RS2, RS1
+  sxtw TEMP2, TEMP2w
+  cmp RS2, 0
+  csel RS1, RS1, TEMP2, eq
   WRITE_RD(RS1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_SB:
