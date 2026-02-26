@@ -283,7 +283,7 @@ ckb_vm_x64_execute:
   ld     t2, CKB_VM_ASM_TRACE_OFFSET_ADDRESS(TRACE)
   bne    t2, t0, .exit_trace
 .trace_loaded:
-  lw     t3, CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE)
+  lwu    t3, CKB_VM_ASM_TRACE_OFFSET_LENGTH(TRACE)
   beqz   t3, .exit_trace
   ld     t1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   ld     t0, CKB_VM_ASM_TRACE_OFFSET_CYCLES(TRACE)
