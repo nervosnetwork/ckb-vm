@@ -260,7 +260,7 @@
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 .CKB_VM_X64_EXECUTE:
-  addi   sp, sp, -88
+  addi   sp, sp, -64
   sd     ra, 0(sp)
   sd     s0, 8(sp)
   sd     s1, 16(sp)
@@ -269,9 +269,6 @@ ckb_vm_x64_execute:
   sd     s4, 40(sp)
   sd     s5, 48(sp)
   sd     s6, 56(sp)
-  sd     s7, 64(sp)
-  sd     s8, 72(sp)
-  sd     s9, 80(sp)
   ld     MEMORY_ADDR, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_PTR(MACHINE)
   ld     MEMORY_SIZE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE(MACHINE)
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
@@ -1901,8 +1898,5 @@ ckb_vm_x64_execute:
   ld     s4, 40(sp)
   ld     s5, 48(sp)
   ld     s6, 56(sp)
-  ld     s7, 64(sp)
-  ld     s8, 72(sp)
-  ld     s9, 80(sp)
-  addi   sp, sp, 88
+  addi   sp, sp, 64
   ret
