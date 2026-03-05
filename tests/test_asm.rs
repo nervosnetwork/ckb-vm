@@ -200,6 +200,20 @@ pub fn test_misaligned_jump64() {
 }
 
 #[test]
+pub fn test_division64() {
+    let buffer = fs::read("tests/programs/division64").unwrap().into();
+    let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION0, u64::MAX);
+    let core = AsmDefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, [Ok("division64".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
 pub fn test_mulw64() {
     let buffer = fs::read("tests/programs/mulw64").unwrap().into();
     let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION0, u64::MAX);
