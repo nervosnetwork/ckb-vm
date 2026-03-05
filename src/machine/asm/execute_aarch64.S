@@ -486,12 +486,10 @@ ckb_vm_x64_execute:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  mov RS1w, RS1w
-  mov RS2w, RS2w
-  udiv TEMP1, RS1, RS2
+  udiv TEMP1w, RS1w, RS2w
   sxtw TEMP1, TEMP1w
   mov TEMP2, UINT64_MAX
-  cmp RS2, 0
+  cmp RS2w, 0
   csel TEMP1, TEMP2, TEMP1, eq
   WRITE_RD(TEMP1)
   NEXT_INST
@@ -499,12 +497,10 @@ ckb_vm_x64_execute:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  sxtw RS1, RS1w
-  sxtw RS2, RS2w
-  sdiv TEMP1, RS1, RS2
+  sdiv TEMP1w, RS1w, RS2w
   sxtw TEMP1, TEMP1w
   mov TEMP2, UINT64_MAX
-  cmp RS2, 0
+  cmp RS2w, 0
   csel RS1, TEMP2, TEMP1, eq
   WRITE_RD(RS1)
   NEXT_INST
@@ -761,13 +757,11 @@ ckb_vm_x64_execute:
   DECODE_R
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
-  mov RS1w, RS1w
-  mov RS2w, RS2w
-  udiv TEMP1, RS1, RS2
-  msub TEMP2, TEMP1, RS2, RS1
+  udiv TEMP1w, RS1w, RS2w
+  msub TEMP2w, TEMP1w, RS2w, RS1w
   sxtw TEMP2, TEMP2w
   sxtw RS1, RS1w
-  cmp RS2, 0
+  cmp RS2w, 0
   csel TEMP2, RS1, TEMP2, eq
   WRITE_RD(TEMP2)
   NEXT_INST
@@ -776,11 +770,10 @@ ckb_vm_x64_execute:
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
   sxtw RS1, RS1w
-  sxtw RS2, RS2w
-  sdiv TEMP1, RS1, RS2
-  msub TEMP2, TEMP1, RS2, RS1
+  sdiv TEMP1w, RS1w, RS2w
+  msub TEMP2w, TEMP1w, RS2w, RS1w
   sxtw TEMP2, TEMP2w
-  cmp RS2, 0
+  cmp RS2w, 0
   csel RS1, RS1, TEMP2, eq
   WRITE_RD(RS1)
   NEXT_INST
