@@ -14,76 +14,100 @@ RISCV_GCC="${RISCV_PREFIX}-gcc ${RISCV_CFLAGS}"
 RISCV_AS="${RISCV_PREFIX}-as ${RISCV_ASFLAGS}"
 RISCV_LD="${RISCV_PREFIX}-ld ${RISCV_LDFLAGS}"
 
-$RISCV_GCC -o resume2_load_data resume2_load_data.c
-$RISCV_GCC -o alloc_many alloc_many.c
-$RISCV_AS -o amo_check_write.o amo_check_write.S && $RISCV_LD -T amo_check_write.lds -o amo_check_write amo_check_write.o && rm amo_check_write.o
-$RISCV_AS -o amo_compare.o amo_compare.S && $RISCV_LD -T amo_compare.lds -o amo_compare amo_compare.o && rm amo_compare.o
-$RISCV_AS -o amo_write_permission.o amo_write_permission.S && $RISCV_LD -o amo_write_permission amo_write_permission.o && rm amo_write_permission.o
+# Compile a .c file to a binary. SOURCE defaults to OUTPUT.c.
+# Usage: gcc_compile OUTPUT [SOURCE]
+gcc_compile() {
+    $RISCV_GCC -o "$1" "${2:-$1.c}"
+}
+
+# Assemble STEM.S, link to OUTPUT (defaults to STEM), then remove the object file.
+# Usage: asm_link [-march=ARCH] [-T LINKER_SCRIPT] STEM [OUTPUT]
+asm_link() {
+    march="" lds=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -march=*) march="$1"; shift ;;
+            -T) lds="-T $2"; shift 2 ;;
+            *) break ;;
+        esac
+    done
+    stem="$1" output="${2:-$1}"
+    $RISCV_AS $march -o "$stem.o" "$stem.S"
+    $RISCV_LD $lds -o "$output" "$stem.o"
+    rm "$stem.o"
+}
+
+gcc_compile resume2_load_data
+gcc_compile alloc_many
+asm_link -T amo_check_write.lds amo_check_write
+asm_link -T amo_compare.lds amo_compare
+asm_link amo_write_permission
 # SKIP: andi
-$RISCV_GCC -o argv_null_test argv_null_test.c
-$RISCV_GCC -o big_binary big_binary.c
-$RISCV_AS -march=rv64imc -o cadd_hints.o cadd_hints.S && $RISCV_LD -o cadd_hints cadd_hints.o && rm cadd_hints.o
-$RISCV_AS -o ckbforks.o ckbforks.S && $RISCV_LD -o ckbforks ckbforks.o && rm ckbforks.o
+gcc_compile argv_null_test
+gcc_compile big_binary
+asm_link -march=rv64imc cadd_hints
+asm_link ckbforks
 # TODO: clzw_bug
 # SKIP: decoder_instructions_cache_pc_out_of_bound_timeout
-$RISCV_AS -o ebreak.o ebreak.S && $RISCV_LD -o ebreak64 ebreak.o && rm ebreak.o
+asm_link ebreak ebreak64
 # SKIP: flat_crash_64
 # SKIP: goblin_overflow_elf
 # SKIP: invalid_file_offset64*
-$RISCV_AS -o invalid_read.o invalid_read.S && $RISCV_LD -o invalid_read64 invalid_read.o && rm invalid_read.o
-$RISCV_AS -march=rv64imc -o jalr_bug.o jalr_bug.S && $RISCV_LD -o jalr_bug jalr_bug.o && rm jalr_bug.o
-$RISCV_AS -o jalr_bug_noc.o jalr_bug_noc.S && $RISCV_LD -o jalr_bug_noc jalr_bug_noc.o && rm jalr_bug_noc.o
-$RISCV_AS -o jump0.o jump0.S && $RISCV_LD -o jump0_64 jump0.o && rm jump0.o
+asm_link invalid_read invalid_read64
+asm_link -march=rv64imc jalr_bug
+asm_link jalr_bug_noc
+asm_link jump0 jump0_64
 # SKIP: load_elf_crash_64
 # SKIP: load_elf_section_crash_64
 # SKIP: load_malformed_elf_crash_64
 # SKIP: minimal
-$RISCV_AS -o misaligned_jump.o misaligned_jump.S && $RISCV_LD -o misaligned_jump64 misaligned_jump.o && rm misaligned_jump.o
-$RISCV_AS -o mop_adc.o mop_adc.S && $RISCV_LD -o mop_adc mop_adc.o && rm mop_adc.o
-$RISCV_AS -o mop_adcs.o mop_adcs.S && $RISCV_LD -o mop_adcs mop_adcs.o && rm mop_adcs.o
-$RISCV_AS -o mop_sbbs.o mop_sbbs.S && $RISCV_LD -o mop_sbbs mop_sbbs.o && rm mop_sbbs.o
-$RISCV_AS -o mop_add3.o mop_add3.S && $RISCV_LD -o mop_add3 mop_add3.o && rm mop_add3.o
-$RISCV_AS -march=rv64imc -o mop_far_jump.o mop_far_jump.S && $RISCV_LD -o mop_far_jump mop_far_jump.o && rm mop_far_jump.o
-$RISCV_GCC -o mop_ld_signextend_32 mop_ld_signextend_32.c
-$RISCV_AS -o mop_ld_signextend_32_overflow_bug.o mop_ld_signextend_32_overflow_bug.S && $RISCV_LD -o mop_ld_signextend_32_overflow_bug mop_ld_signextend_32_overflow_bug.o && rm mop_ld_signextend_32_overflow_bug.o
-$RISCV_AS -o mop_random_adc_sbb.o mop_random_adc_sbb.S && $RISCV_LD -o mop_random_adc_sbb mop_random_adc_sbb.o && rm mop_random_adc_sbb.o
-$RISCV_AS -o mop_sbb.o mop_sbb.S && $RISCV_LD -o mop_sbb mop_sbb.o && rm mop_sbb.o
-$RISCV_AS -o mop_wide_div_zero.o mop_wide_div_zero.S && $RISCV_LD -o mop_wide_div_zero mop_wide_div_zero.o && rm mop_wide_div_zero.o
-$RISCV_GCC -o mop_wide_divide mop_wide_divide.c
-$RISCV_AS -o mop_wide_mul_zero.o mop_wide_mul_zero.S && $RISCV_LD -o mop_wide_mul_zero mop_wide_mul_zero.o && rm mop_wide_mul_zero.o
-$RISCV_GCC -o mop_wide_multiply mop_wide_multiply.c
-$RISCV_AS -o mulw.o mulw.S && $RISCV_LD -o mulw64 mulw.o && rm mulw.o
-$RISCV_AS -o nop64.o nop.S && $RISCV_LD -o nop64 nop64.o && rm nop64.o
-$RISCV_AS -o nop_loop.o nop_loop.S && $RISCV_LD -o nop_loop nop_loop.o && rm nop_loop.o
+asm_link misaligned_jump misaligned_jump64
+asm_link mop_adc
+asm_link mop_adcs
+asm_link mop_sbbs
+asm_link mop_add3
+asm_link -march=rv64imc mop_far_jump
+gcc_compile mop_ld_signextend_32
+asm_link mop_ld_signextend_32_overflow_bug
+asm_link mop_random_adc_sbb
+asm_link mop_sbb
+asm_link mop_wide_div_zero
+gcc_compile mop_wide_divide
+asm_link mop_wide_mul_zero
+gcc_compile mop_wide_multiply
+asm_link mulw mulw64
+asm_link nop nop64
+asm_link nop_loop
 # SKIP: op_rvc_slli_crash_32
 # SKIP: op_rvc_srai_crash_32
 # SKIP: op_rvc_srli_crash_32
-$RISCV_GCC -o pause_resume pause_resume.c
+gcc_compile pause_resume
 # TODO: pcnt
-$RISCV_AS -o read_at_boundary.o read_at_boundary.S && $RISCV_LD -o read_at_boundary64 read_at_boundary.o && rm read_at_boundary.o
-$RISCV_AS -o read_memory.o read_memory.S && $RISCV_LD -o read_memory read_memory.o && rm read_memory.o
-$RISCV_GCC -o reset_callee reset_callee.c
-$RISCV_GCC -o reset_caller reset_caller.c
-$RISCV_AS -o rorw_in_end_of_aot_block.o rorw_in_end_of_aot_block.S && $RISCV_LD -o rorw_in_end_of_aot_block rorw_in_end_of_aot_block.o && rm rorw_in_end_of_aot_block.o
+asm_link read_at_boundary read_at_boundary64
+asm_link read_memory
+gcc_compile reset_callee
+gcc_compile reset_caller
+asm_link rorw_in_end_of_aot_block
 sh rvc_pageend.sh
 # TODO: sbinvi_aot_load_imm_bug
-$RISCV_AS -o sc_after_sc.o sc_after_sc.S && $RISCV_LD -T sc_after_sc.lds -o sc_after_sc sc_after_sc.o && rm sc_after_sc.o
-$RISCV_AS -o sc_after_snapshot.o sc_after_snapshot.S && $RISCV_LD -T sc_after_snapshot.lds -o sc_after_snapshot sc_after_snapshot.o && rm sc_after_snapshot.o
-$RISCV_AS -o sc_only.o sc_only.S && $RISCV_LD -T sc_only.lds -o sc_only sc_only.o && rm sc_only.o
+asm_link -T sc_after_sc.lds sc_after_sc
+asm_link -T sc_after_snapshot.lds sc_after_snapshot
+asm_link -T sc_only.lds sc_only
 # SKIP: simple
-$RISCV_GCC -o simple64 simple.c
-$RISCV_AS -o sp_alignment_test.o sp_alignment_test.S && $RISCV_LD -o sp_alignment_test sp_alignment_test.o && rm sp_alignment_test.o
-$RISCV_GCC -o spawn spawn.c
-$RISCV_AS -o syscall.o syscall.S && $RISCV_LD -o syscall64 syscall.o && rm syscall.o
-$RISCV_AS -o trace.o trace.S && $RISCV_LD -o trace64 trace.o && rm trace.o
+gcc_compile simple64 simple.c
+asm_link sp_alignment_test
+gcc_compile spawn
+asm_link syscall syscall64
+asm_link trace trace64
 # SKIP: unaligned64
-$RISCV_GCC -o writable_page writable_page.c && ${RISCV_PREFIX}-objdump -h writable_page > writable_page.dump
-$RISCV_AS -o write_at_boundary.o write_at_boundary.S && $RISCV_LD -o write_at_boundary64 write_at_boundary.o && rm write_at_boundary.o
-$RISCV_AS -o write_large_address.o write_large_address.S && $RISCV_LD -o write_large_address64 write_large_address.o && rm write_large_address.o
-# $RISCV_AS -march=rv64i_zba_zbb_zbc clmul_bug.S -o clmul_bug.o && $RISCV_LD clmul_bug.o -o clmul_bug && rm clmul_bug.o
-# $RISCV_AS -march=rv64i_zba_zbb_zbc orc_bug.S -o orc_bug.o && $RISCV_LD orc_bug.o -o orc_bug && rm orc_bug.o
-$RISCV_AS -o zero_address.o zero_address.S && $RISCV_LD -T zero_address.lds -o zero_address zero_address.o && rm zero_address.o
-$RISCV_AS -o mop_jump_rel_version1_bug.o mop_jump_rel_version1_bug.S && $RISCV_LD -o mop_jump_rel_version1_bug mop_jump_rel_version1_bug.o && rm mop_jump_rel_version1_bug.o
-$RISCV_AS -o mop_jump_rel_version1_reg_not_updated_bug.o mop_jump_rel_version1_reg_not_updated_bug.S && $RISCV_LD -o mop_jump_rel_version1_reg_not_updated_bug mop_jump_rel_version1_reg_not_updated_bug.o && rm mop_jump_rel_version1_reg_not_updated_bug.o
-$RISCV_AS -o mop_jump_abs_version1_reg_not_updated_bug.o mop_jump_abs_version1_reg_not_updated_bug.S && $RISCV_LD -o mop_jump_abs_version1_reg_not_updated_bug mop_jump_abs_version1_reg_not_updated_bug.o && rm mop_jump_abs_version1_reg_not_updated_bug.o
+gcc_compile writable_page
+${RISCV_PREFIX}-objdump -h writable_page > writable_page.dump
+asm_link write_at_boundary write_at_boundary64
+asm_link write_large_address write_large_address64
+# asm_link -march=rv64i_zba_zbb_zbc clmul_bug
+# asm_link -march=rv64i_zba_zbb_zbc orc_bug
+asm_link -T zero_address.lds zero_address
+asm_link mop_jump_rel_version1_bug
+asm_link mop_jump_rel_version1_reg_not_updated_bug
+asm_link mop_jump_abs_version1_reg_not_updated_bug
 echo "done"
