@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-spike-sys = "0.1.2"
+spike-sys = "0.1.3"
 ckb-vm = { path = "..", features = ["asm"] }
 ckb-vm-definitions = { path = "../definitions" }
 
