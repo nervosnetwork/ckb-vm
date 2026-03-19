@@ -272,7 +272,7 @@ impl FastMemory<'_> {
         }
         let end = addr.wrapping_add(size);
         if end > 0 {
-            let aligned_end = round_page_down(end);
+            let aligned_end = round_page_down(end - 1);
             // Note that end is exclusive
             let frame_next_start = (((end - 1) >> MEMORY_FRAME_SHIFTS) + 1) << MEMORY_FRAME_SHIFTS;
             // There is some memory space between the ending address of memory to be
