@@ -39,7 +39,8 @@ riscv64-unknown-elf-gcc -o mop_wide_divide mop_wide_divide.c
 riscv64-unknown-elf-as -o mop_wide_mul_zero.o mop_wide_mul_zero.S && riscv64-unknown-elf-ld -o mop_wide_mul_zero mop_wide_mul_zero.o && rm mop_wide_mul_zero.o
 riscv64-unknown-elf-gcc -o mop_wide_multiply mop_wide_multiply.c
 riscv64-unknown-elf-as -o mulw.o mulw.S && riscv64-unknown-elf-ld -o mulw64 mulw.o && rm mulw.o
-# SKIP: nop
+riscv64-unknown-elf-as -o nop64.o nop.S && riscv64-unknown-elf-ld -o nop64 nop64.o && rm nop64.o
+riscv64-unknown-elf-as -o nop_loop.o nop_loop.S && riscv64-unknown-elf-ld -o nop_loop nop_loop.o && rm nop_loop.o
 # SKIP: op_rvc_slli_crash_32
 # SKIP: op_rvc_srai_crash_32
 # SKIP: op_rvc_srli_crash_32

@@ -419,6 +419,7 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
+.CKB_VM_X64_EXECUTE:
 #ifdef IS_WINDOWS
   push %rsi
   push %rdi

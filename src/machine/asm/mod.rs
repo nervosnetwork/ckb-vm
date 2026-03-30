@@ -12,7 +12,6 @@ use ckb_vm_definitions::{
         RET_PAUSE, RET_SLOWPATH,
     },
 };
-use rand::{SeedableRng, prelude::RngCore};
 use std::alloc::{Layout, alloc, alloc_zeroed};
 use std::mem::MaybeUninit;
 use std::os::raw::c_uchar;
@@ -32,6 +31,7 @@ use crate::{
         check_no_overflow, fill_page_data, get_page_indices, memset, round_page_down,
         round_page_up,
     },
+    rng,
 };
 
 pub trait AsmCoreMachineRevealer: AsRef<AsmCoreMachine> + AsMut<AsmCoreMachine> {
@@ -135,9 +135,7 @@ pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) 
         1 << MEMORY_FRAME_SHIFTS,
     );
     if is_chaos_mode {
-        let mut rgen = rand::rngs::StdRng::seed_from_u64(chaos_seed);
-        rgen.fill_bytes(slice);
-        machine.chaos_seed = rgen.next_u32();
+        machine.chaos_seed = rng::fill(chaos_seed, slice) as u32;
     } else {
         memset(slice, 0);
     }
@@ -274,7 +272,7 @@ impl FastMemory<'_> {
         }
         let end = addr.wrapping_add(size);
         if end > 0 {
-            let aligned_end = round_page_down(end);
+            let aligned_end = round_page_down(end - 1);
             // Note that end is exclusive
             let frame_next_start = (((end - 1) >> MEMORY_FRAME_SHIFTS) + 1) << MEMORY_FRAME_SHIFTS;
             // There is some memory space between the ending address of memory to be

@@ -302,6 +302,7 @@ _ckb_vm_x64_execute:
 .globl ckb_vm_x64_execute
 ckb_vm_x64_execute:
 #endif
+.CKB_VM_X64_EXECUTE:
   stp x19, x20, [sp, -96]!
   stp x21, x22, [sp, 16]
   stp x23, x24, [sp, 32]
@@ -452,7 +453,7 @@ ckb_vm_x64_execute:
   NEXT_INST
 .i_branch_success:
   ldr RS1, PC_ADDRESS
-  /* Loading instruction flags */
+  /* Loading flag of current instruction */
   ldr TEMP3, [INST_ARGS, -16]
   asr TEMP3, TEMP3, 24
   and TEMP3, TEMP3, 0xF

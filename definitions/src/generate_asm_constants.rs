@@ -17,7 +17,7 @@ use std::mem::{size_of, zeroed};
 macro_rules! print_inst_label {
     ($name:ident, $real_name:ident, $code:expr) => {
         println!(
-            "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_ASM_LABEL_TABLE",
+            "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_X64_EXECUTE",
             stringify!($real_name)
         );
     };
@@ -222,16 +222,26 @@ fn main() {
 
     println!("#ifdef CKB_VM_ASM_GENERATE_LABEL_TABLES");
     println!("#ifdef __APPLE__");
+    println!(".section __DATA,__const");
+    println!(".p2align 3");
     println!(".global _ckb_vm_asm_labels");
     println!("_ckb_vm_asm_labels:");
+    println!("#elif __riscv");
+    println!(".section .rodata");
+    println!(".p2align 3");
+    println!(".global ckb_vm_asm_labels");
+    println!("ckb_vm_asm_labels:");
     println!("#else");
+    println!(".section .rodata");
+    println!(".p2align 3");
     println!(".global ckb_vm_asm_labels");
     println!("ckb_vm_asm_labels:");
     println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
     for _ in 0..0x10 {
-        println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_LABEL_TABLE");
+        println!("\t.long\t.exit_slowpath - .CKB_VM_X64_EXECUTE");
     }
     for_each_inst!(print_inst_label);
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
+    println!(".text");
 }

@@ -503,3 +503,31 @@ pub fn test_memory_load_crash() {
     let result = machine.load_program(&buffer, [Ok("memory_crash".into())].into_iter());
     assert_eq!(result.unwrap_err(), Error::MemWriteOnExecutablePage(1023));
 }
+
+#[test]
+pub fn test_nop64() {
+    let buffer = fs::read("tests/programs/nop64").unwrap().into();
+    let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION0, u64::MAX);
+    let core = AsmDefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, [Ok("nop64".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_nop_loop() {
+    let buffer = fs::read("tests/programs/nop_loop").unwrap().into();
+    let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION0, u64::MAX);
+    let core = AsmDefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, [Ok("nop_loop".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
