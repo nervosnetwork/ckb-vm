@@ -467,9 +467,8 @@ ckb_vm_x64_execute:
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
   sdiv TEMP1, RS1, RS2
-  mov TEMP2, UINT64_MAX
   cmp RS2, 0
-  csel RS1, TEMP2, TEMP1, eq
+  csinv RS1, TEMP1, xzr, ne
   WRITE_RD(RS1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVU:
@@ -477,9 +476,8 @@ ckb_vm_x64_execute:
   ldr RS1, REGISTER_ADDRESS(RS1)
   ldr RS2, REGISTER_ADDRESS(RS2)
   udiv TEMP1, RS1, RS2
-  mov TEMP2, UINT64_MAX
   cmp RS2, 0
-  csel TEMP1, TEMP2, TEMP1, eq
+  csinv TEMP1, TEMP1, xzr, ne
   WRITE_RD(TEMP1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVUW:
@@ -488,9 +486,8 @@ ckb_vm_x64_execute:
   ldr RS2, REGISTER_ADDRESS(RS2)
   udiv TEMP1w, RS1w, RS2w
   sxtw TEMP1, TEMP1w
-  mov TEMP2, UINT64_MAX
   cmp RS2w, 0
-  csel TEMP1, TEMP2, TEMP1, eq
+  csinv TEMP1, TEMP1, xzr, ne
   WRITE_RD(TEMP1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_DIVW:
@@ -499,9 +496,8 @@ ckb_vm_x64_execute:
   ldr RS2, REGISTER_ADDRESS(RS2)
   sdiv TEMP1w, RS1w, RS2w
   sxtw TEMP1, TEMP1w
-  mov TEMP2, UINT64_MAX
   cmp RS2w, 0
-  csel RS1, TEMP2, TEMP1, eq
+  csinv RS1, TEMP1, xzr, ne
   WRITE_RD(RS1)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_EBREAK:
