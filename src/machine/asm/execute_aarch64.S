@@ -702,22 +702,18 @@ ckb_vm_x64_execute:
 .CKB_VM_ASM_LABEL_OP_MULHSU:
   DECODE_R
   ldr TEMP2, REGISTER_ADDRESS(RS1)
-  tst TEMP2, TEMP2
-  bpl .mulhsu_branch1
-  neg TEMP2, TEMP2
   ldr TEMP3, REGISTER_ADDRESS(RS2)
-  umulh TEMP1, TEMP2, TEMP3
-  mov TEMP4, -1
-  eor TEMP1, TEMP1, TEMP4
-  ldr TEMP2, REGISTER_ADDRESS(RS1)
-  mul TEMP2, TEMP2, TEMP3
   tst TEMP2, TEMP2
-  cset TEMP2, eq
-  add TEMP1, TEMP1, TEMP2
+  bpl .mulhsu_positive_branch
+  neg TEMP4, TEMP2
+  umulh TEMP1, TEMP4, TEMP3
+  mvn TEMP1, TEMP1
+  mul TEMP4, TEMP2, TEMP3
+  cmp TEMP4, 0
+  cinc TEMP1, TEMP1, eq
   WRITE_RD(TEMP1)
   NEXT_INST
-.mulhsu_branch1:
-  ldr TEMP3, REGISTER_ADDRESS(RS2)
+.mulhsu_positive_branch:
   umulh TEMP2, TEMP2, TEMP3
   WRITE_RD(TEMP2)
   NEXT_INST
