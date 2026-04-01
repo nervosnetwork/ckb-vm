@@ -129,6 +129,14 @@ pub fn test_misaligned_jump64() {
 }
 
 #[test]
+pub fn test_division64() {
+    let buffer = fs::read("tests/programs/division64").unwrap().into();
+    let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["division64".into()]);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
 pub fn test_mulw64() {
     let buffer = fs::read("tests/programs/mulw64").unwrap().into();
     let result = run::<u64, SparseMemory<u64>>(&buffer, &vec!["mulw64".into()]);

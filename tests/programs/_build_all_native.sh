@@ -76,6 +76,7 @@ gcc_compile mop_wide_divide
 asm_link mop_wide_mul_zero
 gcc_compile mop_wide_multiply
 asm_link mulw mulw64
+gcc_compile division division64
 asm_link nop nop64
 asm_link nop_loop
 # SKIP: op_rvc_slli_crash_32
