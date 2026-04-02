@@ -257,9 +257,9 @@
   LOAD_REGISTER_ADDRESS(RS3, tmp1); \
   sd     reg1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_REGISTERS(tmp1)
 
-.globl ckb_vm_x64_execute
-ckb_vm_x64_execute:
-.CKB_VM_X64_EXECUTE:
+.globl ckb_vm_asm_execute
+ckb_vm_asm_execute:
+.CKB_VM_ASM_EXECUTE:
   addi   sp, sp, -64
   sd     ra, 0(sp)
   sd     s0, 8(sp)
