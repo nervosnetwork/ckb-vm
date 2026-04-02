@@ -17,7 +17,7 @@ use std::mem::{size_of, zeroed};
 macro_rules! print_inst_label {
     ($name:ident, $real_name:ident, $code:expr) => {
         println!(
-            "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_X64_EXECUTE",
+            "\t.long\t.CKB_VM_ASM_LABEL_OP_{} - .CKB_VM_ASM_EXECUTE",
             stringify!($real_name)
         );
     };
@@ -239,7 +239,7 @@ fn main() {
     println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
     for _ in 0..0x10 {
-        println!("\t.long\t.exit_slowpath - .CKB_VM_X64_EXECUTE");
+        println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_EXECUTE");
     }
     for_each_inst!(print_inst_label);
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");

@@ -413,13 +413,13 @@
   movzbl %ch, RS4_TEMP1d
 
 #ifdef __APPLE__
-.globl _ckb_vm_x64_execute
-_ckb_vm_x64_execute:
+.globl _ckb_vm_asm_execute
+_ckb_vm_asm_execute:
 #else
-.globl ckb_vm_x64_execute
-ckb_vm_x64_execute:
+.globl ckb_vm_asm_execute
+ckb_vm_asm_execute:
 #endif
-.CKB_VM_X64_EXECUTE:
+.CKB_VM_ASM_EXECUTE:
 #ifdef IS_WINDOWS
   push %rsi
   push %rdi

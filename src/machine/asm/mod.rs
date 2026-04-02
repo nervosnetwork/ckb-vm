@@ -722,7 +722,7 @@ where
 }
 
 unsafe extern "C" {
-    pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, d: *const InvokeData) -> c_uchar;
+    pub fn ckb_vm_asm_execute(m: *mut AsmCoreMachine, d: *const InvokeData) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
     pub fn ckb_vm_asm_labels();
@@ -771,7 +771,7 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                     fixed_traces: decoder.fixed_traces(),
                     fixed_trace_mask: decoder.fixed_trace_size().wrapping_sub(1),
                 };
-                ckb_vm_x64_execute(&mut *self.machine.inner_mut().as_mut(), &data as *const _)
+                ckb_vm_asm_execute(&mut *self.machine.inner_mut().as_mut(), &data as *const _)
             };
             match result {
                 RET_DECODE_TRACE => decoder.prepare_traces(&mut self.machine)?,
@@ -840,7 +840,7 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 fixed_traces: &trace as *const FixedTrace,
                 fixed_trace_mask: 0,
             };
-            ckb_vm_x64_execute(&mut *self.machine.inner_mut().as_mut(), &data as *const _)
+            ckb_vm_asm_execute(&mut *self.machine.inner_mut().as_mut(), &data as *const _)
         };
         match result {
             RET_DECODE_TRACE => (),
