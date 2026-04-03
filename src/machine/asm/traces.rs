@@ -129,7 +129,7 @@ impl<D: InstDecoder> InstDecoder for SimpleFixedTraceDecoder<D> {
         let decoder = D::new::<R>(isa, version);
         let traces = unsafe {
             let layout = Layout::array::<FixedTrace>(TRACE_SIZE).unwrap();
-            let raw_allocation = alloc_zeroed(layout) as *mut _;
+            let raw_allocation = alloc(layout) as *mut _;
             Box::from_raw(raw_allocation)
         };
         Self { decoder, traces }
