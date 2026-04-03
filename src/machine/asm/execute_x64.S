@@ -466,10 +466,7 @@ ckb_vm_x64_execute:
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   addq %rdx, PC_ADDRESS
   /* Prefetch trace info for the consecutive block and save pointer in %r15 */
-  movq PC_ADDRESS, %rax
-  shr $2, %eax
-  andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
-  imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
+  movl CKB_VM_ASM_TRACE_OFFSET_NEXT_TRACE_OFFSET(TRACE), %eax
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), %rdx
   leaq (%rdx, %rax), %r15
   prefetcht2 0(%r15)

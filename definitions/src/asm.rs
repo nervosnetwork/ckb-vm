@@ -1,5 +1,5 @@
-use crate::{RISCV_GENERAL_REGISTER_NUMBER, instructions::Instruction};
-use std::alloc::{Layout, dealloc};
+use crate::{instructions::Instruction, RISCV_GENERAL_REGISTER_NUMBER};
+use std::alloc::{dealloc, Layout};
 
 // The number of trace items to keep
 pub const TRACE_SIZE: usize = 8192;
@@ -26,6 +26,9 @@ pub fn calculate_slot(addr: u64) -> usize {
 pub struct FixedTrace {
     pub address: u64,
     pub length: u32,
+    /// Precomputed byte offset into the trace array for the next sequential trace.
+    /// Used by assembly prefetch path to avoid recomputing hash.
+    pub next_trace_offset: u32,
     pub cycles: u64,
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code
@@ -60,6 +63,7 @@ impl Default for FixedTrace {
         FixedTrace {
             address: 0,
             length: 0,
+            next_trace_offset: 0,
             cycles: 0,
             _threads: [0; 2 * (TRACE_ITEM_LENGTH + 1)],
         }

@@ -1,17 +1,17 @@
 use ckb_vm_definitions::{
-    MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMESIZE, RISCV_PAGE_SHIFTS,
-    RISCV_PAGESIZE,
     asm::{
         AsmCoreMachine, FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE,
         RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED,
         RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
-    instructions::{MAXIMUM_OPCODE, MINIMAL_OPCODE, instruction_opcode_name},
+    instructions::{instruction_opcode_name, MAXIMUM_OPCODE, MINIMAL_OPCODE},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
+    MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, RISCV_PAGESIZE,
+    RISCV_PAGE_SHIFTS,
 };
-use std::alloc::{Layout, alloc};
+use std::alloc::{alloc, Layout};
 use std::mem::{size_of, zeroed};
 
 macro_rules! print_inst_label {
@@ -103,6 +103,10 @@ fn main() {
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_LENGTH {}",
         (&t.length as *const u32 as usize) - t_address
+    );
+    println!(
+        "#define CKB_VM_ASM_TRACE_OFFSET_NEXT_TRACE_OFFSET {}",
+        (&t.next_trace_offset as *const u32 as usize) - t_address
     );
     println!(
         "#define CKB_VM_ASM_TRACE_OFFSET_CYCLES {}",

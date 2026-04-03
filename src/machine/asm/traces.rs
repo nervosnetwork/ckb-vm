@@ -1,7 +1,6 @@
 use crate::{
-    Register,
     ckb_vm_definitions::{
-        asm::{FixedTrace, TRACE_ITEM_LENGTH, TRACE_SIZE, calculate_slot},
+        asm::{calculate_slot, FixedTrace, TRACE_ITEM_LENGTH, TRACE_SIZE},
         instructions::{
             Instruction, InstructionOpcode, OP_CUSTOM_ASM_TRACE_JUMP, OP_CUSTOM_TRACE_END,
         },
@@ -13,12 +12,13 @@ use crate::{
         is_slowpath_instruction,
     },
     machine::{
+        asm::{ckb_vm_asm_labels, AsmCoreMachineRevealer},
         CoreMachine, DefaultMachine,
-        asm::{AsmCoreMachineRevealer, ckb_vm_asm_labels},
     },
     memory::Memory,
+    Register,
 };
-use std::alloc::{Layout, alloc, alloc_zeroed};
+use std::alloc::{alloc, alloc_zeroed, Layout};
 use std::collections::HashMap;
 
 pub trait TraceDecoder: InstDecoder {
@@ -78,6 +78,9 @@ pub fn decode_fixed_trace<D: InstDecoder, F: InstDecoder, R: AsmCoreMachineRevea
     i += 1;
     trace.address = pc;
     trace.length = (current_pc - pc) as u32;
+    // Precompute byte offset into trace array for next sequential trace
+    let next_slot = calculate_slot(current_pc);
+    trace.next_trace_offset = (next_slot * std::mem::size_of::<FixedTrace>()) as u32;
     Ok((trace, i))
 }
 
