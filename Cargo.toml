@@ -23,7 +23,6 @@ miri-ci = []
 pprof = []
 
 [dependencies]
-byteorder = "1"
 bytes = "1"
 goblin_v023 = { package = "goblin", version = "=0.2.3" }
 goblin_v040 = { package = "goblin", version = "=0.4.0" }
