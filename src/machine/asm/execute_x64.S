@@ -439,8 +439,7 @@ ckb_vm_x64_execute:
   testq %r15, %r15
   je .trace_slow_path
   LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
-  movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(%r15), %rdx
-  cmp %rcx, %rdx
+  cmpq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(%r15), %rcx
   jne .trace_slow_path_with_pc
   movq %r15, TRACE
   jmp .trace_loaded
