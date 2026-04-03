@@ -428,12 +428,25 @@ ckb_vm_x64_execute:
   push %r12
   push %r13
   push %r14
+  push %r15
   mov ARG2, INVOKE_DATA
   mov ARG1, MACHINE
   movq CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MEMORY_SIZE(MACHINE), MEMORY_SIZE
+  xorq %r15, %r15
 .p2align 3
 .CKB_VM_ASM_LABEL_OP_CUSTOM_TRACE_END:
+  /* Fast path: check if precomputed next trace in %r15 matches current PC */
+  testq %r15, %r15
+  je .trace_slow_path
   LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
+  movq CKB_VM_ASM_TRACE_OFFSET_ADDRESS(%r15), %rdx
+  cmp %rcx, %rdx
+  jne .trace_slow_path_with_pc
+  movq %r15, TRACE
+  jmp .trace_loaded
+.trace_slow_path:
+  LOAD_PC(%rax, %eax, %rcx, %ecx, TEMP3d)
+.trace_slow_path_with_pc:
   shr $2, %eax
   andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
@@ -453,13 +466,14 @@ ckb_vm_x64_execute:
   ja .exit_max_cycles_exceeded
   movq %rax, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
   addq %rdx, PC_ADDRESS
-  /* Prefetch trace info for the consecutive block */
+  /* Prefetch trace info for the consecutive block and save pointer in %r15 */
   movq PC_ADDRESS, %rax
   shr $2, %eax
   andq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACE_MASK(INVOKE_DATA), %rax
   imul $CKB_VM_ASM_FIXED_TRACE_STRUCT_SIZE, %eax
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_FIXED_TRACES(INVOKE_DATA), %rdx
-  prefetcht2 0(%rdx, %rax)
+  leaq (%rdx, %rax), %r15
+  prefetcht2 0(%r15)
   lea CKB_VM_ASM_TRACE_OFFSET_THREADS(TRACE), INST_PC
   mov INST_PC, INST_ARGS
   add $8, INST_ARGS
@@ -471,6 +485,7 @@ ckb_vm_x64_execute:
   jmp .trace_loaded
 .p2align 3
 .prepare_trace:
+  xorq %r15, %r15
   movq CKB_VM_ASM_INVOKE_DATA_OFFSET_PAUSE(INVOKE_DATA), %rax
   movzbl 0(%rax), %eax
   test %rax, %rax
@@ -2415,6 +2430,7 @@ ckb_vm_x64_execute:
   mov $CKB_VM_ASM_RET_DECODE_TRACE, ARG_RETd
   jmp .exit
 .exit:
+  pop %r15
   pop %r14
   pop %r13
   pop %r12
