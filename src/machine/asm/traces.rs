@@ -18,7 +18,7 @@ use crate::{
     memory::Memory,
     Register,
 };
-use std::alloc::{alloc, alloc_zeroed, Layout};
+use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 
 pub trait TraceDecoder: InstDecoder {
