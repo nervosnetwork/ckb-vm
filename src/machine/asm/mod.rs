@@ -834,7 +834,11 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
 
     pub fn step(&mut self, decoder: &mut D) -> Result<(), Error> {
         // Decode only one instruction into a trace
-        let (trace, _) = decode_fixed_trace(decoder, &mut self.machine, Some(1))?;
+        let (mut trace, _) = decode_fixed_trace(decoder, &mut self.machine, Some(1))?;
+        // In step mode we pass a single trace (fixed_trace_mask = 0), so
+        // next_trace_offset must point back to index 0 (the trace itself)
+        // to avoid an out-of-bounds dereference in the asm prefetch path.
+        trace.next_trace_offset = 0;
 
         let result = unsafe {
             let data = InvokeData {
