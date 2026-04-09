@@ -1,9 +1,7 @@
 use super::super::{Error, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE, Register, error::OutOfBoundKind};
 use super::{Memory, check_no_overflow, fill_page_data, get_page_indices, memset, set_dirty};
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
-use std::io::{Cursor, Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -108,39 +106,37 @@ impl<R: Register> Memory for FlatMemory<R> {
     fn load8(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         check_no_overflow(addr, 1, self.memory_size as u64)?;
-        let mut reader = Cursor::new(&self.data);
-        reader.seek(SeekFrom::Start(addr as u64))?;
-        let v = reader.read_u8()?;
+        let v = self.data[addr as usize];
         Ok(Self::REG::from_u8(v))
     }
 
     fn load16(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         check_no_overflow(addr, 2, self.memory_size as u64)?;
-        let mut reader = Cursor::new(&self.data);
-        reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        let v = reader.read_u16::<LittleEndian>()?;
+        let mut bytes = [0u8; 2];
+        bytes.copy_from_slice(&self.data[addr as usize..addr as usize + 2]);
+        let v = u16::from_le_bytes(bytes);
         Ok(Self::REG::from_u16(v))
     }
 
     fn load32(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         check_no_overflow(addr, 4, self.memory_size as u64)?;
-        let mut reader = Cursor::new(&self.data);
-        reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        let v = reader.read_u32::<LittleEndian>()?;
+        let mut bytes = [0u8; 4];
+        bytes.copy_from_slice(&self.data[addr as usize..addr as usize + 4]);
+        let v = u32::from_le_bytes(bytes);
         Ok(Self::REG::from_u32(v))
     }
 
     fn load64(&mut self, addr: &Self::REG) -> Result<Self::REG, Error> {
         let addr = addr.to_u64();
         check_no_overflow(addr, 8, self.memory_size as u64)?;
-        let mut reader = Cursor::new(&self.data);
-        reader.seek(SeekFrom::Start(addr as u64))?;
         // NOTE: Base RISC-V ISA is defined as a little-endian memory system.
-        let v = reader.read_u64::<LittleEndian>()?;
+        let mut bytes = [0u8; 8];
+        bytes.copy_from_slice(&self.data[addr as usize..addr as usize + 8]);
+        let v = u64::from_le_bytes(bytes);
         Ok(Self::REG::from_u64(v))
     }
 
@@ -149,9 +145,7 @@ impl<R: Register> Memory for FlatMemory<R> {
         check_no_overflow(addr, 1, self.memory_size as u64)?;
         let page_indices = get_page_indices(addr, 1);
         set_dirty(self, &page_indices)?;
-        let mut writer = Cursor::new(&mut self.data);
-        writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u8(value.to_u8())?;
+        self.data[addr as usize] = value.to_u8();
         Ok(())
     }
 
@@ -160,9 +154,8 @@ impl<R: Register> Memory for FlatMemory<R> {
         check_no_overflow(addr, 2, self.memory_size as u64)?;
         let page_indices = get_page_indices(addr, 2);
         set_dirty(self, &page_indices)?;
-        let mut writer = Cursor::new(&mut self.data);
-        writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u16::<LittleEndian>(value.to_u16())?;
+        let bytes = value.to_u16().to_le_bytes();
+        self.data[addr as usize..addr as usize + 2].copy_from_slice(&bytes);
         Ok(())
     }
 
@@ -171,9 +164,8 @@ impl<R: Register> Memory for FlatMemory<R> {
         check_no_overflow(addr, 4, self.memory_size as u64)?;
         let page_indices = get_page_indices(addr, 4);
         set_dirty(self, &page_indices)?;
-        let mut writer = Cursor::new(&mut self.data);
-        writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u32::<LittleEndian>(value.to_u32())?;
+        let bytes = value.to_u32().to_le_bytes();
+        self.data[addr as usize..addr as usize + 4].copy_from_slice(&bytes);
         Ok(())
     }
 
@@ -182,9 +174,8 @@ impl<R: Register> Memory for FlatMemory<R> {
         check_no_overflow(addr, 8, self.memory_size as u64)?;
         let page_indices = get_page_indices(addr, 8);
         set_dirty(self, &page_indices)?;
-        let mut writer = Cursor::new(&mut self.data);
-        writer.seek(SeekFrom::Start(addr as u64))?;
-        writer.write_u64::<LittleEndian>(value.to_u64())?;
+        let bytes = value.to_u64().to_le_bytes();
+        self.data[addr as usize..addr as usize + 8].copy_from_slice(&bytes);
         Ok(())
     }
 

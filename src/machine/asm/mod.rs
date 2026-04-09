@@ -1,6 +1,5 @@
 pub mod traces;
 
-use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
@@ -571,13 +570,17 @@ where
     fn execute_load16(&mut self, addr: u64) -> Result<u16, Error> {
         check_memory_executable(self, addr, 2)?;
         let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 2);
-        Ok(LittleEndian::read_u16(slice))
+        let mut bytes = [0u8; 2];
+        bytes.copy_from_slice(slice);
+        Ok(u16::from_le_bytes(bytes))
     }
 
     fn execute_load32(&mut self, addr: u64) -> Result<u32, Error> {
         check_memory_executable(self, addr, 4)?;
         let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 4);
-        Ok(LittleEndian::read_u32(slice))
+        let mut bytes = [0u8; 4];
+        bytes.copy_from_slice(slice);
+        Ok(u32::from_le_bytes(bytes))
     }
 
     fn load8(&mut self, addr: &u64) -> Result<u64, Error> {
@@ -591,21 +594,27 @@ where
         let addr = *addr;
         check_memory_inited(self, addr, 2)?;
         let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 2);
-        Ok(u64::from(LittleEndian::read_u16(slice)))
+        let mut bytes = [0u8; 2];
+        bytes.copy_from_slice(slice);
+        Ok(u64::from(u16::from_le_bytes(bytes)))
     }
 
     fn load32(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 4)?;
         let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 4);
-        Ok(u64::from(LittleEndian::read_u32(slice)))
+        let mut bytes = [0u8; 4];
+        bytes.copy_from_slice(slice);
+        Ok(u64::from(u32::from_le_bytes(bytes)))
     }
 
     fn load64(&mut self, addr: &u64) -> Result<u64, Error> {
         let addr = *addr;
         check_memory_inited(self, addr, 8)?;
         let slice = cast_ptr_to_slice(self, self.as_ref().memory_ptr, addr as usize, 8);
-        Ok(LittleEndian::read_u64(slice))
+        let mut bytes = [0u8; 8];
+        bytes.copy_from_slice(slice);
+        Ok(u64::from_le_bytes(bytes))
     }
 
     fn store8(&mut self, addr: &u64, value: &u64) -> Result<(), Error> {
@@ -620,7 +629,8 @@ where
         let addr = *addr;
         check_memory_writable(self, addr, 2)?;
         let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 2);
-        LittleEndian::write_u16(slice, *value as u16);
+        let bytes = (*value as u16).to_le_bytes();
+        slice.copy_from_slice(&bytes);
         Ok(())
     }
 
@@ -628,7 +638,8 @@ where
         let addr = *addr;
         check_memory_writable(self, addr, 4)?;
         let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 4);
-        LittleEndian::write_u32(slice, *value as u32);
+        let bytes = (*value as u32).to_le_bytes();
+        slice.copy_from_slice(&bytes);
         Ok(())
     }
 
@@ -636,7 +647,8 @@ where
         let addr = *addr;
         check_memory_writable(self, addr, 8)?;
         let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 8);
-        LittleEndian::write_u64(slice, *value as u64);
+        let bytes = (*value as u64).to_le_bytes();
+        slice.copy_from_slice(&bytes);
         Ok(())
     }
 
