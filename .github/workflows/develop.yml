@@ -9,7 +9,7 @@ jobs:
   linux-arm64:
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Build
         run: cargo test --features=asm --release
@@ -17,7 +17,7 @@ jobs:
   linux-x64:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Build
         run: cargo test --features=asm --release
@@ -25,7 +25,7 @@ jobs:
   macos-arm64:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Build
         run: cargo test --features=asm --release
@@ -33,7 +33,7 @@ jobs:
   macos-x64:
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Build
         run: cargo test --features=asm --release
@@ -41,7 +41,7 @@ jobs:
   qemu-arm64:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Setup
         run: |
           sudo apt-get update -y
@@ -58,7 +58,7 @@ jobs:
   qemu-riscv64:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Setup
         run: |
           sudo apt-get update -y
@@ -75,13 +75,13 @@ jobs:
   windows-x64:
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Setup
         shell: pwsh
         # https://github.com/ScoopInstaller/Install#for-admin
         run: |
           iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
-          scoop install mingw
+          scoop install llvm
       - name: Build
         shell: pwsh
         run: cargo test --features=asm --release
@@ -89,7 +89,7 @@ jobs:
   misc:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       # https://github.com/EmbarkStudios/cargo-deny-action
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
