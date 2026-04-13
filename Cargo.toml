@@ -33,7 +33,6 @@ derive_more = { version = "1", features = ["full"] }
 
 [build-dependencies]
 cc = "1.0"
-clang-finder = "0.1"
 
 [dev-dependencies]
 argparse = "0.2"

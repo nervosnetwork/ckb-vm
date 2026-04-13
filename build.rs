@@ -28,21 +28,18 @@ fn main() {
     match target_arch.as_str() {
         "aarch64" => {
             cc::Build::new()
-                .compiler(clang_finder::find())
                 .include("src/machine/asm")
                 .file("src/machine/asm/execute_aarch64.S")
                 .compile("asm");
         }
         "riscv64" => {
             cc::Build::new()
-                .compiler(clang_finder::find())
                 .include("src/machine/asm")
                 .file("src/machine/asm/execute_riscv64.S")
                 .compile("asm");
         }
         "x86_64" => {
             cc::Build::new()
-                .compiler(clang_finder::find())
                 .include("src/machine/asm")
                 .file("src/machine/asm/execute_x64.S")
                 .compile("asm");
