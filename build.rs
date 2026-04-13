@@ -7,7 +7,7 @@ use std::env;
 
 fn main() {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
-    let support_asm = vec!["aarch64", "riscv64", "x86_64"].contains(&target_arch.as_str());
+    let support_asm = ["aarch64", "riscv64", "x86_64"].contains(&target_arch.as_str());
     if !support_asm {
         if cfg!(feature = "asm") {
             panic!("Asm is not available for {}!", target_arch);
