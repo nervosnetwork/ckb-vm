@@ -60,11 +60,11 @@ impl AsmCoreMachineRevealer for AsmCoreMachine {
         machine.last_read_frame = u64::MAX;
         machine.last_write_page = u64::MAX;
 
-        let memory_layout = Layout::array::<u8>(machine.memory_size as usize).unwrap();
+        let memory_layout = Layout::from_size_align(machine.memory_size as usize, 8).unwrap();
         machine.memory_ptr = unsafe { alloc(memory_layout) } as u64;
-        let flags_layout = Layout::array::<u8>(machine.flags_size as usize).unwrap();
+        let flags_layout = Layout::from_size_align(machine.flags_size as usize, 8).unwrap();
         machine.flags_ptr = unsafe { alloc_zeroed(flags_layout) } as u64;
-        let frames_layout = Layout::array::<u8>(machine.frames_size as usize).unwrap();
+        let frames_layout = Layout::from_size_align(machine.frames_size as usize, 8).unwrap();
         machine.frames_ptr = unsafe { alloc_zeroed(frames_layout) } as u64;
 
         machine
