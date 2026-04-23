@@ -104,11 +104,11 @@ pub struct AsmCoreMachine {
 
 impl Drop for AsmCoreMachine {
     fn drop(&mut self) {
-        let memory_layout = Layout::array::<u8>(self.memory_size as usize).unwrap();
+        let memory_layout = Layout::from_size_align(self.memory_size as usize, 8).unwrap();
         unsafe { dealloc(self.memory_ptr as *mut u8, memory_layout) };
-        let flags_layout = Layout::array::<u8>(self.flags_size as usize).unwrap();
+        let flags_layout = Layout::from_size_align(self.flags_size as usize, 8).unwrap();
         unsafe { dealloc(self.flags_ptr as *mut u8, flags_layout) };
-        let frames_layout = Layout::array::<u8>(self.frames_size as usize).unwrap();
+        let frames_layout = Layout::from_size_align(self.frames_size as usize, 8).unwrap();
         unsafe { dealloc(self.frames_ptr as *mut u8, frames_layout) };
     }
 }
