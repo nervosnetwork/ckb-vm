@@ -328,7 +328,7 @@ pub trait DefaultMachineRunner {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct DefaultCoreMachine<R, M> {
     registers: [R; RISCV_GENERAL_REGISTER_NUMBER],
     pc: R,
