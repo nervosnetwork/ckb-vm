@@ -9,6 +9,7 @@ const INVALID_PAGE_INDEX: u16 = 0xFFFF;
 
 /// A sparse flat memory implementation, it allocates pages only when requested,
 /// but besides that, it does not permission checking.
+#[derive(Clone)]
 pub struct SparseMemory<R> {
     // Stores the indices of each page in pages data structure, if a page hasn't
     // been initialized, the corresponding position will be filled with
