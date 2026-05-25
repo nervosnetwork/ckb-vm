@@ -863,16 +863,18 @@ ckb_vm_asm_execute:
   DECODE_R
   LOAD_RS1(t0)
   LOAD_RS2(t0)
-  CHECK_WRITE(RS1, 4, t0, t1, t2, t3)
   ld     t0, LOAD_RESERVATION_ADDRESS
   li     t1, 0xffffffffffffffff
   sd     t1, LOAD_RESERVATION_ADDRESS
-  li     RS3, 1
-  bne    RS1, t0, 1f
+  bne    RS1, t0, .sc_w_fail
+  CHECK_WRITE(RS1, 4, t0, t1, t2, t3)
   add    t1, MEMORY_ADDR, RS1
   sw     RS2, 0(t1)
   li     RS3, 0
-1:
+  WRITE_RD(RS3, t0)
+  NEXT_INST
+.sc_w_fail:
+  li     RS3, 1
   WRITE_RD(RS3, t0)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_AMOSWAP_W:
@@ -1015,16 +1017,18 @@ ckb_vm_asm_execute:
   DECODE_R
   LOAD_RS1(t0)
   LOAD_RS2(t0)
-  CHECK_WRITE(RS1, 8, t0, t1, t2, t3)
   ld     t0, LOAD_RESERVATION_ADDRESS
   li     t1, 0xffffffffffffffff
   sd     t1, LOAD_RESERVATION_ADDRESS
-  li     RS3, 1
-  bne    RS1, t0, 1f
+  bne    RS1, t0, .sc_d_fail
+  CHECK_WRITE(RS1, 8, t0, t1, t2, t3)
   add    t1, MEMORY_ADDR, RS1
   sd     RS2, 0(t1)
   li     RS3, 0
-1:
+  WRITE_RD(RS3, t0)
+  NEXT_INST
+.sc_d_fail:
+  li     RS3, 1
   WRITE_RD(RS3, t0)
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_AMOSWAP_D:

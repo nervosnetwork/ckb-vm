@@ -257,15 +257,18 @@ pub fn handle_lr_w<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
 pub fn handle_sc_w<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     let i = Rtype(inst);
     let address = machine.registers()[i.rs1()].clone();
-    let condition = address.eq(machine.memory().lr());
-    let mem_value = condition.cond(
-        &machine.registers()[i.rs2()].clone(),
-        &machine.memory_mut().load32(&address)?,
-    );
-    let rd_value = condition.cond(&Mac::REG::from_u8(0), &Mac::REG::from_u8(1));
-    machine.memory_mut().store32(&address, &mem_value)?;
-    update_register(machine, i.rd(), rd_value);
+    let success = address.eq(machine.memory().lr()).to_u8() != 0;
+    // Per RISC-V spec (A-extension), a failed SC must not perform the store.
+    // The reservation is always invalidated, regardless of success.
     machine.memory_mut().set_lr(&Mac::REG::from_u64(u64::MAX));
+    let rd_value = if success {
+        let value = machine.registers()[i.rs2()].clone();
+        machine.memory_mut().store32(&address, &value)?;
+        Mac::REG::from_u8(0)
+    } else {
+        Mac::REG::from_u8(1)
+    };
+    update_register(machine, i.rd(), rd_value);
     Ok(())
 }
 
@@ -388,15 +391,18 @@ pub fn handle_lr_d<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result
 pub fn handle_sc_d<Mac: Machine>(machine: &mut Mac, inst: Instruction) -> Result<(), Error> {
     let i = Rtype(inst);
     let address = machine.registers()[i.rs1()].clone();
-    let condition = address.eq(machine.memory().lr());
-    let mem_value = condition.cond(
-        &machine.registers()[i.rs2()].clone(),
-        &machine.memory_mut().load64(&address)?,
-    );
-    let rd_value = condition.cond(&Mac::REG::from_u8(0), &Mac::REG::from_u8(1));
-    machine.memory_mut().store64(&address, &mem_value)?;
-    update_register(machine, i.rd(), rd_value);
+    let success = address.eq(machine.memory().lr()).to_u8() != 0;
+    // Per RISC-V spec (A-extension), a failed SC must not perform the store.
+    // The reservation is always invalidated, regardless of success.
     machine.memory_mut().set_lr(&Mac::REG::from_u64(u64::MAX));
+    let rd_value = if success {
+        let value = machine.registers()[i.rs2()].clone();
+        machine.memory_mut().store64(&address, &value)?;
+        Mac::REG::from_u8(0)
+    } else {
+        Mac::REG::from_u8(1)
+    };
+    update_register(machine, i.rd(), rd_value);
     Ok(())
 }
 
