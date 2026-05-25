@@ -156,33 +156,39 @@ pub fn test_invalid_file_offset64() {
 }
 
 #[test]
-#[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srli_crash_32() {
     let buffer = fs::read("tests/programs/op_rvc_srli_crash_32")
         .unwrap()
         .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srli_crash_32".into()]);
-    assert_eq!(result.err(), Some(Error::MemWriteOnExecutablePage(0)));
+    assert!(matches!(
+        result.err(),
+        Some(Error::InvalidInstruction { .. })
+    ));
 }
 
 #[test]
-#[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_srai_crash_32() {
     let buffer = fs::read("tests/programs/op_rvc_srai_crash_32")
         .unwrap()
         .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_srai_crash_32".into()]);
-    assert!(result.is_ok());
+    assert!(matches!(
+        result.err(),
+        Some(Error::InvalidInstruction { .. })
+    ));
 }
 
 #[test]
-#[cfg_attr(all(miri, feature = "miri-ci"), ignore)]
 pub fn test_op_rvc_slli_crash_32() {
     let buffer = fs::read("tests/programs/op_rvc_slli_crash_32")
         .unwrap()
         .into();
     let result = run::<u32, SparseMemory<u32>>(&buffer, &vec!["op_rvc_slli_crash_32".into()]);
-    assert!(result.is_ok());
+    assert!(matches!(
+        result.err(),
+        Some(Error::InvalidInstruction { .. })
+    ));
 }
 
 #[test]
