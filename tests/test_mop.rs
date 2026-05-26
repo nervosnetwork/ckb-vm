@@ -1,6 +1,6 @@
 pub mod machine_build;
 use ckb_vm::error::OutOfBoundKind;
-use ckb_vm::machine::{VERSION1, VERSION2};
+use ckb_vm::machine::{VERSION1, VERSION2, VERSION3};
 use ckb_vm::{
     CoreMachine, DefaultMachineRunner, Error, ISA_B, ISA_IMC, ISA_MOP, SupportMachine,
     registers::A0,
@@ -759,4 +759,37 @@ pub fn test_mop_jump_abs_version1_reg_not_updated_bug() {
         );
         assert_eq!(machine_asm.machine.registers()[A0], 67108864);
     }
+}
+
+#[test]
+pub fn test_mop_sbb_rule_divergence() {
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbb_bug",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_B,
+    );
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbb_bug",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 1,);
+
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbb_bug",
+        vec![],
+        VERSION3,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
 }
