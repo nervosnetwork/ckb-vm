@@ -5,7 +5,6 @@ use super::{
 };
 use bytes::Bytes;
 use std::cmp::min;
-use std::ptr;
 
 pub mod flat;
 pub mod sparse;
@@ -146,10 +145,7 @@ pub fn set_dirty<M: Memory>(memory: &mut M, page_indices: &(u64, u64)) -> Result
 // Keep this in a central place to allow for future optimization
 #[inline(always)]
 pub(crate) fn memset(slice: &mut [u8], value: u8) {
-    let p = slice.as_mut_ptr();
-    unsafe {
-        ptr::write_bytes(p, value, slice.len());
-    }
+    slice.fill(value);
 }
 
 pub fn load_c_string_byte_by_byte<M: Memory>(
