@@ -1,7 +1,7 @@
-#[cfg(has_asm)]
-use ckb_vm::{CoreMachine, Memory};
-use ckb_vm::{DefaultMachineRunner, Error, ISA_A, ISA_IMC, machine::VERSION2};
+use ckb_vm::{CoreMachine, DefaultMachineRunner, Error, ISA_A, ISA_IMC, Memory, machine::VERSION2};
 pub mod machine_build;
+
+const SC_ONLY_N0_ADDR: u64 = 0x11000;
 
 #[test]
 pub fn test_write_permission_bug() {
@@ -62,6 +62,7 @@ pub fn test_sc_only() {
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
+    assert_eq!(machine.machine.memory_mut().load64(&SC_ONLY_N0_ADDR).unwrap(), 4);
 
     #[cfg(has_asm)]
     {
@@ -70,6 +71,7 @@ pub fn test_sc_only() {
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
+        assert_eq!(machine_asm.machine.memory_mut().load64(&SC_ONLY_N0_ADDR).unwrap(), 4);
     }
 }
 
