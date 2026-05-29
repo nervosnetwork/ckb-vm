@@ -93,6 +93,7 @@ sh rvc_pageend.sh
 # TODO: sbinvi_aot_load_imm_bug
 asm_link -T sc_after_sc.lds sc_after_sc
 asm_link -T sc_after_snapshot.lds sc_after_snapshot
+asm_link -march=rv64ima -T sc_failed_no_write.lds sc_failed_no_write
 asm_link -T sc_only.lds sc_only
 # SKIP: simple
 gcc_compile simple64 simple.c

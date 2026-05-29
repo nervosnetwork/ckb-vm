@@ -123,3 +123,71 @@ pub fn test_amo_check_write() {
         assert_eq!(flag_b, 4);
     }
 }
+
+#[test]
+pub fn test_sc_failed_no_write() {
+    // Regression test: a failed SC.W / SC.D must not modify memory.
+    const SC_FAILED_VAL_W_ADDR: u64 = 0x11000;
+    const SC_FAILED_VAL_D_ADDR: u64 = 0x11004;
+    const SC_FAILED_SENTINEL: u64 = 0x12345678;
+
+    let mut machine = machine_build::int(
+        "tests/programs/sc_failed_no_write",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_A,
+    );
+    let ret = machine.run();
+    assert!(ret.is_ok());
+    assert_eq!(ret.unwrap(), 0);
+    // Belt-and-suspenders: assert the sentinel words were not overwritten.
+    let val_w = machine
+        .machine
+        .memory_mut()
+        .load32(&SC_FAILED_VAL_W_ADDR)
+        .unwrap();
+    assert_eq!(
+        val_w, SC_FAILED_SENTINEL,
+        "failed SC.W must not write memory"
+    );
+    let val_d = machine
+        .machine
+        .memory_mut()
+        .load64(&SC_FAILED_VAL_D_ADDR)
+        .unwrap();
+    assert_eq!(
+        val_d, SC_FAILED_SENTINEL,
+        "failed SC.D must not write memory"
+    );
+
+    #[cfg(has_asm)]
+    {
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/sc_failed_no_write",
+            vec![],
+            VERSION2,
+            ISA_IMC | ISA_A,
+        );
+        let ret_asm = machine_asm.run();
+        assert!(ret_asm.is_ok());
+        assert_eq!(ret_asm.unwrap(), 0);
+        let val_w = machine_asm
+            .machine
+            .memory_mut()
+            .load32(&SC_FAILED_VAL_W_ADDR)
+            .unwrap();
+        assert_eq!(
+            val_w, SC_FAILED_SENTINEL,
+            "failed SC.W must not write memory"
+        );
+        let val_d = machine_asm
+            .machine
+            .memory_mut()
+            .load64(&SC_FAILED_VAL_D_ADDR)
+            .unwrap();
+        assert_eq!(
+            val_d, SC_FAILED_SENTINEL,
+            "failed SC.D must not write memory"
+        );
+    }
+}
