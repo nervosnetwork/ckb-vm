@@ -28,10 +28,14 @@ _test_case_sc_w_after_failure_sc_w:
     la a0, n0         # a0 holds address of memory location n0
     la a1, n1         # a1 holds address of memory location n1
     lr.w a2, (a0)
+    addi a2, a2, 1
     sc.w a3, a2, (a1)
     beqz a3, fail     # sc.d must success
     sc.w a3, a2, (a0)
     beqz a3, fail     # sc.d must fail
+    lw a4, (a0)
+    li a5, 4
+    bne a4, a5, fail
 done:
     li a0, 0
     li a7, 93
