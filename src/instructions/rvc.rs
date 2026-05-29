@@ -338,12 +338,16 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                     match (instruction_bits & 0b_11_000_00000_00, uimm) {
                         // Invalid instruction
                         (0b_00_000_00000_00, 0) => None,
+                        // C.SRLI, RV32C reserved: shamt[5] (bit 12) must be 0 for C.SRLI
+                        (0b_00_000_00000_00, uimm) if rv32 && (uimm & 0x20) != 0 => None,
                         // C.SRLI
                         (0b_00_000_00000_00, uimm) => Some(
                             Itype::new_u(insts::OP_SRLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0,
                         ),
                         // Invalid instruction
                         (0b_01_000_00000_00, 0) => None,
+                        // C.SRAI, RV32C reserved: shamt[5] (bit 12) must be 0 for C.SRAI
+                        (0b_01_000_00000_00, uimm) if rv32 && (uimm & 0x20) != 0 => None,
                         // C.SRAI
                         (0b_01_000_00000_00, uimm) => Some(
                             Itype::new_u(insts::OP_SRAI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0,
@@ -385,7 +389,10 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
         0b_000_00000000000_10 => {
             let uimm = uimmediate(instruction_bits);
             let rd = rd(instruction_bits);
-            if rd != 0 && uimm != 0 {
+            if rv32 && (uimm & 0x20) != 0 {
+                // C.SLLI, RV32C reserved: shamt[5] (bit 12) must be 0 for C.SLLI
+                None
+            } else if rd != 0 && uimm != 0 {
                 // C.SLLI
                 Some(Itype::new_u(insts::OP_SLLI, rd, rd, uimm & u32::from(R::SHIFT_MASK)).0)
             } else if version >= 1 {
