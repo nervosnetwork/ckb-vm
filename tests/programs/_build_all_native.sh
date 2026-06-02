@@ -71,6 +71,7 @@ gcc_compile mop_ld_signextend_32
 asm_link mop_ld_signextend_32_overflow_bug
 asm_link mop_random_adc_sbb
 asm_link mop_sbb
+asm_link mop_sbb_bug
 asm_link mop_wide_div_zero
 gcc_compile mop_wide_divide
 asm_link mop_wide_mul_zero

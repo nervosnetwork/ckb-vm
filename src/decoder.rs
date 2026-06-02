@@ -6,7 +6,7 @@ use crate::instructions::{
     Instruction, InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype, a, b,
     extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n,
 };
-use crate::machine::VERSION2;
+use crate::machine::{VERSION2, VERSION3};
 use crate::memory::Memory;
 use crate::{Error, ISA_A, ISA_B, ISA_MOP, RISCV_PAGESIZE};
 
@@ -443,7 +443,7 @@ impl DefaultDecoder {
                         if next_inst.rd() == head_inst.rs1()
                             || next_inst.rd() == head_inst.rs2()
                             || next_inst.rs1() != head_inst.rs1()
-                            || next_inst.rs2() != next_inst.rs2()
+                            || (decoder.version >= VERSION3 && next_inst.rs2() != head_inst.rs2())
                         {
                             return Ok(None);
                         }
