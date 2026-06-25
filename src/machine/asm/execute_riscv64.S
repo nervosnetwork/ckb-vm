@@ -292,6 +292,7 @@ ckb_vm_asm_execute:
   ld     t0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_MAX_CYCLES(MACHINE)
   bgtu   t1, t0, .exit_max_cycles_exceeded
   sd     t1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES(MACHINE)
+  ld     t2, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   add    t2, t2, t3
   sd     t2, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   addi   INST_PC, TRACE, CKB_VM_ASM_TRACE_OFFSET_THREADS
@@ -347,7 +348,7 @@ ckb_vm_asm_execute:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_AUIPC:
   DECODE_U
-  LOAD_PC(RS1, t0, t1)
+  ld     RS1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   addi   RS1, RS1, -4
   add    RS1, RS1, IMMEDIATE
   WRITE_RD(RS1, t0)
@@ -389,7 +390,7 @@ ckb_vm_asm_execute:
   bne    RS1, RS2, .i_branch_success
   NEXT_INST
 .i_branch_success:
-  LOAD_PC(t0, t1, t2)
+  ld     t0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   /* Loading flag of current instruction */
   ld     t1, -16(INST_ARGS)
   srai   t1, t1, 24
@@ -438,7 +439,7 @@ ckb_vm_asm_execute:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_JAL:
   DECODE_U
-  LOAD_PC(RS1, t0, t1)
+  ld     RS1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE);
   WRITE_RD(RS1, t0)
   /* Loading instruction flags */
   ld     t1, -16(INST_ARGS)
@@ -451,7 +452,7 @@ ckb_vm_asm_execute:
   j      .prepare_trace
 .CKB_VM_ASM_LABEL_OP_JALR_VERSION0:
   DECODE_I
-  LOAD_PC(t1, t0, t2)
+  ld     t1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   WRITE_RD(t1, t0)
   LOAD_RS1(t0)
   add    t1, RS1, IMMEDIATE
@@ -461,7 +462,7 @@ ckb_vm_asm_execute:
 .CKB_VM_ASM_LABEL_OP_JALR_VERSION1:
   DECODE_I
   LOAD_RS1(t0)
-  LOAD_PC(t1, t0, t2)
+  ld     t1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   WRITE_RD(t1, t0)
   add    t2, RS1, IMMEDIATE
   andi   t2, t2, -2
@@ -1697,7 +1698,7 @@ ckb_vm_asm_execute:
   NEXT_INST
 .CKB_VM_ASM_LABEL_OP_FAR_JUMP_ABS:
   DECODE_U
-  LOAD_PC(t0, t1, t2)
+  ld     t0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   li     t1, 1
   slli   t1, t1, 3
   add    t1, t1, MACHINE
@@ -1707,7 +1708,7 @@ ckb_vm_asm_execute:
   j      .prepare_trace
 .CKB_VM_ASM_LABEL_OP_FAR_JUMP_REL:
   DECODE_U
-  LOAD_PC(t0, t1, t2)
+  ld     t0, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC(MACHINE)
   li     t1, 1
   slli   t1, t1, 3
   add    t1, t1, MACHINE
