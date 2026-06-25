@@ -101,6 +101,7 @@ asm_link sp_alignment_test
 gcc_compile spawn
 asm_link syscall syscall64
 asm_link trace trace64
+asm_link trace_high_jump
 # SKIP: unaligned64
 gcc_compile writable_page
 ${RISCV_PREFIX}-objdump -h writable_page > writable_page.dump
