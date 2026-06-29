@@ -112,12 +112,21 @@ pub fn factory<R: Register>(instruction_bits: u32, version: u32) -> Option<Instr
                 0b_111 => Some(insts::OP_ANDI),
                 // I-type special ALU instructions
                 0b_001 | 0b_101 => {
-                    let top6_value = funct7(instruction_bits) >> 1;
-                    let inst_opt = match (funct3_value, top6_value) {
-                        (0b_001, 0b_000000) => Some(insts::OP_SLLI),
-                        (0b_101, 0b_000000) => Some(insts::OP_SRLI),
-                        (0b_101, 0b_010000) => Some(insts::OP_SRAI),
-                        _ => None,
+                    let funct7_value = funct7(instruction_bits);
+                    let inst_opt = if rv64 {
+                        match (funct3_value, funct7_value >> 1) {
+                            (0b_001, 0b_000000) => Some(insts::OP_SLLI),
+                            (0b_101, 0b_000000) => Some(insts::OP_SRLI),
+                            (0b_101, 0b_010000) => Some(insts::OP_SRAI),
+                            _ => None,
+                        }
+                    } else {
+                        match (funct3_value, funct7_value) {
+                            (0b_001, 0b_0000000) => Some(insts::OP_SLLI),
+                            (0b_101, 0b_0000000) => Some(insts::OP_SRLI),
+                            (0b_101, 0b_0100000) => Some(insts::OP_SRAI),
+                            _ => None,
+                        }
                     };
                     return inst_opt.map(|inst| {
                         Itype::new_s(
