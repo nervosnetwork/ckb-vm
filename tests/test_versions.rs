@@ -426,3 +426,72 @@ pub fn test_trace_version2_asm_trace_bug() {
         Err(Error::MemOutOfBound(21474836484, OutOfBoundKind::Memory))
     );
 }
+
+#[test]
+pub fn test_asm_version0_high_pc_trace_match_with_in_program_jump() {
+    let buffer = fs::read("tests/programs/trace_high_jump").unwrap().into();
+
+    let mut machine = {
+        let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION0, 1_000_000);
+        let machine = AsmDefaultMachineBuilder::new(asm_core)
+            .instruction_cycle_func(Box::new(constant_cycles))
+            .build();
+        AsmMachine::new(machine)
+    };
+    machine.load_program(&buffer, [].into_iter()).unwrap();
+
+    let old_pc = *machine.machine.pc();
+    let ret = machine.run();
+    let new_pc = *machine.machine.pc();
+    assert!(matches!(
+        ret,
+        Err(Error::MemOutOfBound(_, OutOfBoundKind::Memory))
+    ));
+    assert!(new_pc > old_pc.wrapping_add(1u64 << 32));
+}
+
+#[test]
+pub fn test_asm_version1_high_pc_trace_match_with_in_program_jump() {
+    let buffer = fs::read("tests/programs/trace_high_jump").unwrap().into();
+
+    let mut machine = {
+        let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION1, 1_000_000);
+        let machine = AsmDefaultMachineBuilder::new(asm_core)
+            .instruction_cycle_func(Box::new(constant_cycles))
+            .build();
+        AsmMachine::new(machine)
+    };
+    machine.load_program(&buffer, [].into_iter()).unwrap();
+
+    let old_pc = *machine.machine.pc();
+    let ret = machine.run();
+    let new_pc = *machine.machine.pc();
+    assert!(matches!(
+        ret,
+        Err(Error::MemOutOfBound(_, OutOfBoundKind::Memory))
+    ));
+    assert!(new_pc > old_pc.wrapping_add(1u64 << 32));
+}
+
+#[test]
+pub fn test_asm_version2_high_pc_trace_match_with_in_program_jump() {
+    let buffer = fs::read("tests/programs/trace_high_jump").unwrap().into();
+
+    let mut machine = {
+        let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION2, 1_000_000);
+        let machine = AsmDefaultMachineBuilder::new(asm_core)
+            .instruction_cycle_func(Box::new(constant_cycles))
+            .build();
+        AsmMachine::new(machine)
+    };
+    machine.load_program(&buffer, [].into_iter()).unwrap();
+
+    let old_pc = *machine.machine.pc();
+    let ret = machine.run();
+    let new_pc = *machine.machine.pc();
+    assert!(matches!(
+        ret,
+        Err(Error::MemOutOfBound(_, OutOfBoundKind::Memory))
+    ));
+    assert!(new_pc == old_pc.wrapping_add(1u64 << 32));
+}

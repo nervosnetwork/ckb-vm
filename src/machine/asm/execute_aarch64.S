@@ -337,6 +337,7 @@ ckb_vm_asm_execute:
   cmp TEMP2, TEMP1
   bhi .exit_max_cycles_exceeded
   str TEMP2, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_CYCLES]
+  ldr TEMP4, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
   add TEMP3, TEMP3, TEMP4
   str TEMP3, [MACHINE, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_PC]
   /* Prefetch trace info for the consecutive block, pc is in TEMP3 now */
