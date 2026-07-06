@@ -8,7 +8,7 @@ use ckb_vm_definitions::{
     asm::{
         FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP,
         RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND,
-        RET_PAUSE, RET_SLOWPATH,
+        RET_PAUSE,
     },
 };
 use std::alloc::{Layout, alloc, alloc_zeroed};
@@ -20,7 +20,6 @@ use crate::{
     RISCV_PAGESIZE, SupportMachine,
     elf::ProgramMetadata,
     error::OutOfBoundKind,
-    instructions::execute_instruction,
     machine::{
         AbstractDefaultMachineBuilder, VERSION0,
         asm::traces::{SimpleFixedTraceDecoder, TraceDecoder, decode_fixed_trace},
@@ -803,11 +802,6 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> DefaultMachineRunner for Abstra
                         self.machine.inner.as_ref().error_arg0,
                     ));
                 }
-                RET_SLOWPATH => {
-                    let pc = *self.machine.pc() - 4;
-                    let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                    execute_instruction(instruction, &mut self.machine)?;
-                }
                 RET_PAUSE => {
                     self.machine.pause.free();
                     return Err(Error::Pause);
@@ -869,11 +863,6 @@ impl<R: AsmCoreMachineRevealer, D: TraceDecoder> AbstractAsmMachine<R, D> {
                 return Err(Error::MemWriteOnExecutablePage(
                     self.machine.inner.as_ref().error_arg0,
                 ));
-            }
-            RET_SLOWPATH => {
-                let pc = *self.machine.pc() - 4;
-                let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                execute_instruction(instruction, &mut self.machine)?;
             }
             _ => return Err(Error::Asm(result)),
         }

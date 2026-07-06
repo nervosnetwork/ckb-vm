@@ -2397,14 +2397,6 @@ ckb_vm_asm_execute:
   mov TEMP1, CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_ERROR_ARG0(MACHINE)
   mov $CKB_VM_ASM_RET_INVALID_PERMISSION, ARG_RETd
   jmp .exit
-/*
- * Some instructions that are difficult to implement will be interpreted and
- * executed by the rust interpreter
- */
-.p2align 3
-.exit_slowpath:
-  mov $CKB_VM_ASM_RET_SLOWPATH, ARG_RETd
-  jmp .exit
 .p2align 3
 .exit_pause:
   mov $CKB_VM_ASM_RET_PAUSE, ARG_RETd
