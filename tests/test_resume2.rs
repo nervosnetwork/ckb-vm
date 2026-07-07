@@ -9,12 +9,12 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine}
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, SupportMachine,
-    VERSION0, VERSION1, VERSION2,
+    VERSION0, VERSION1,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{Error, ISA_A, ISA_IMC, Register, RustDefaultMachineBuilder, Syscalls};
+use ckb_vm::{Error, ISA_IMC, Register, RustDefaultMachineBuilder, Syscalls};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -345,8 +345,7 @@ impl MachineTy {
         match self {
             MachineTy::Asm => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
-                let asm_core1 =
-                    <AsmCoreMachine as SupportMachine>::new(ISA_IMC | ISA_A, version, 0);
+                let asm_core1 = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, version, 0);
                 let core1 = AsmDefaultMachineBuilder::new(asm_core1)
                     .instruction_cycle_func(Box::new(constant_cycles))
                     .syscall(Box::new(InsertDataSyscall(context.clone())))
@@ -356,9 +355,7 @@ impl MachineTy {
             MachineTy::Interpreter => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC | ISA_A,
-                    version,
-                    0,
+                    ISA_IMC, version, 0,
                 );
                 Machine::Interpreter(
                     RustDefaultMachineBuilder::<
@@ -373,9 +370,7 @@ impl MachineTy {
             MachineTy::InterpreterWithTrace => {
                 let context = Arc::new(Mutex::new(Snapshot2Context::new(data_source)));
                 let core_machine1 = DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                    ISA_IMC | ISA_A,
-                    version,
-                    0,
+                    ISA_IMC, version, 0,
                 );
                 Machine::InterpreterWithTrace(
                     TraceMachine::new(
@@ -566,98 +561,4 @@ impl Machine {
         };
         Ok(())
     }
-}
-
-#[test]
-pub fn test_sc_after_snapshot2() {
-    let data_source = load_program("tests/programs/sc_after_snapshot");
-
-    let mut machine1 = MachineTy::Interpreter.build(data_source.clone(), VERSION2);
-    machine1.set_max_cycles(5);
-    machine1
-        .load_program([Ok("main".into())].into_iter())
-        .unwrap();
-    let result1 = machine1.run();
-    assert!(result1.is_err());
-    assert_eq!(result1.unwrap_err(), Error::CyclesExceeded);
-    let snapshot = machine1.snapshot().unwrap();
-
-    let mut machine2 = MachineTy::Interpreter.build(data_source, VERSION2);
-    machine2.resume(snapshot).unwrap();
-    machine2.set_max_cycles(20);
-    let result2 = machine2.run();
-    assert!(result2.is_ok());
-    assert_eq!(result2.unwrap(), 0);
-}
-
-#[cfg(not(feature = "enable-chaos-mode-by-default"))]
-#[test]
-pub fn test_store_bytes_twice() {
-    let data_source = load_program("tests/programs/sc_after_snapshot");
-
-    let mut machine = MachineTy::Asm.build(data_source.clone(), VERSION2);
-    machine.set_max_cycles(u64::MAX);
-    machine
-        .load_program([Ok("main".into())].into_iter())
-        .unwrap();
-
-    match machine {
-        Machine::Asm(ref mut inner, ref ctx) => {
-            ctx.lock()
-                .unwrap()
-                .store_bytes(&mut inner.machine, 0, &DATA_ID, 2, 29186, 0)
-                .unwrap();
-            ctx.lock()
-                .unwrap()
-                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 11008, 0)
-                .unwrap();
-        }
-        _ => unimplemented!(),
-    }
-    let mem1 = machine.full_memory().unwrap();
-
-    let snapshot = machine.snapshot().unwrap();
-    let mut machine2 = MachineTy::Asm.build(data_source.clone(), VERSION2);
-    machine2.resume(snapshot).unwrap();
-    machine2.set_max_cycles(u64::MAX);
-    let mem2 = machine2.full_memory().unwrap();
-
-    assert_eq!(mem1, mem2);
-}
-
-#[cfg(not(feature = "enable-chaos-mode-by-default"))]
-#[test]
-pub fn test_mixing_snapshot2_writes_with_machine_raw_writes() {
-    let data_source = load_program("tests/programs/sc_after_snapshot");
-
-    let mut machine = MachineTy::Asm.build(data_source.clone(), VERSION2);
-    machine.set_max_cycles(u64::MAX);
-    machine
-        .load_program([Ok("main".into())].into_iter())
-        .unwrap();
-
-    match machine {
-        Machine::Asm(ref mut inner, ref ctx) => {
-            ctx.lock()
-                .unwrap()
-                .store_bytes(&mut inner.machine, 0, &DATA_ID, 0, 29186, 0)
-                .unwrap();
-            inner
-                .machine
-                .memory_mut()
-                .store_bytes(0, &vec![0x42; 29186])
-                .unwrap();
-        }
-        _ => unimplemented!(),
-    }
-
-    let mem1 = machine.full_memory().unwrap();
-
-    let snapshot = machine.snapshot().unwrap();
-    let mut machine2 = MachineTy::Asm.build(data_source.clone(), VERSION2);
-    machine2.resume(snapshot).unwrap();
-    machine2.set_max_cycles(u64::MAX);
-    let mem2 = machine2.full_memory().unwrap();
-
-    assert_eq!(mem1, mem2);
 }

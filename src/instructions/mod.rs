@@ -3,7 +3,6 @@ mod execute;
 mod register;
 mod utils;
 
-pub mod a;
 pub mod ast;
 pub mod b;
 pub mod i;

@@ -48,7 +48,6 @@ impl AsmCoreMachineRevealer for AsmCoreMachine {
         if cfg!(feature = "enable-chaos-mode-by-default") {
             machine.chaos_mode = 1;
         }
-        machine.load_reservation_address = u64::MAX;
         machine.version = version;
         machine.isa = isa;
 
@@ -388,14 +387,6 @@ impl Memory for FastMemory<'_> {
     fn store64(&mut self, _addr: &Self::REG, _value: &Self::REG) -> Result<(), Error> {
         unreachable!()
     }
-
-    fn lr(&self) -> &Self::REG {
-        unreachable!()
-    }
-
-    fn set_lr(&mut self, _value: &Self::REG) {
-        unreachable!()
-    }
 }
 
 impl<R> Memory for R
@@ -650,14 +641,6 @@ where
         slice.copy_from_slice(&bytes);
         Ok(())
     }
-
-    fn lr(&self) -> &Self::REG {
-        &self.as_ref().load_reservation_address
-    }
-
-    fn set_lr(&mut self, value: &Self::REG) {
-        self.as_mut().load_reservation_address = *value;
-    }
 }
 
 impl<R> SupportMachine for R
@@ -693,7 +676,6 @@ where
             m.cycles = 0;
             m.max_cycles = max_cycles;
             m.reset_signal = 1;
-            m.load_reservation_address = u64::MAX;
             m.last_read_frame = u64::MAX;
             m.last_write_page = u64::MAX;
         }

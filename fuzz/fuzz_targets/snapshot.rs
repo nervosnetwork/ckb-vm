@@ -3,12 +3,12 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::VERSION2;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
 use ckb_vm::snapshot;
-use ckb_vm::{Bytes, DefaultMachineRunner, Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP, SupportMachine};
+use ckb_vm::{Bytes, DefaultMachineRunner, Error, ISA_B, ISA_IMC, ISA_MOP, SupportMachine};
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     let mut machine1 = {
-        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, 200_000);
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, 200_000);
         let machine = AsmDefaultMachineBuilder::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();
@@ -25,8 +25,7 @@ fuzz_target!(|data: &[u8]| {
 
     let half_cycles = machine1.machine.cycles() / 2;
     let mut machine2 = {
-        let asm_core =
-            AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, half_cycles);
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, half_cycles);
         let machine = AsmDefaultMachineBuilder::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();
@@ -38,8 +37,7 @@ fuzz_target!(|data: &[u8]| {
     let snap = snapshot::make_snapshot(&mut machine2.machine).unwrap();
 
     let mut machine3 = {
-        let asm_core =
-            AsmCoreMachine::new(ISA_IMC | ISA_A | ISA_B | ISA_MOP, VERSION2, half_cycles);
+        let asm_core = AsmCoreMachine::new(ISA_IMC | ISA_B | ISA_MOP, VERSION2, half_cycles);
         let machine = AsmDefaultMachineBuilder::new(asm_core)
             .instruction_cycle_func(Box::new(constant_cycles))
             .build();

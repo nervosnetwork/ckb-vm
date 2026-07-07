@@ -39,9 +39,6 @@ asm_link() {
 
 gcc_compile resume2_load_data
 gcc_compile alloc_many
-asm_link -T amo_check_write.lds amo_check_write
-asm_link -T amo_compare.lds amo_compare
-asm_link amo_write_permission
 # SKIP: andi
 gcc_compile argv_null_test
 gcc_compile big_binary
@@ -92,9 +89,6 @@ gcc_compile reset_caller
 asm_link rorw_in_end_of_aot_block
 sh rvc_pageend.sh
 # TODO: sbinvi_aot_load_imm_bug
-asm_link -T sc_after_sc.lds sc_after_sc
-asm_link -T sc_after_snapshot.lds sc_after_snapshot
-asm_link -T sc_only.lds sc_only
 # SKIP: simple
 gcc_compile simple64 simple.c
 asm_link sp_alignment_test
