@@ -6,11 +6,10 @@ use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine}
 use ckb_vm::machine::trace::TraceMachine;
 use ckb_vm::machine::{
     DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, SupportMachine, VERSION0, VERSION1,
-    VERSION2,
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::snapshot::{Snapshot, make_snapshot, resume};
-use ckb_vm::{Error, ISA_A, ISA_IMC, RustDefaultMachineBuilder};
+use ckb_vm::{Error, ISA_IMC, RustDefaultMachineBuilder};
 use std::fs::File;
 use std::io::Read;
 
@@ -299,36 +298,4 @@ impl Machine {
             InterpreterWithTrace(inner) => resume(&mut inner.machine, snap),
         }
     }
-}
-
-#[test]
-pub fn test_sc_after_snapshot() {
-    let mut machine = machine_build::int(
-        "tests/programs/sc_after_snapshot",
-        vec![],
-        VERSION2,
-        ISA_IMC | ISA_A,
-    );
-    machine.machine.set_max_cycles(5);
-    let ret = machine.run();
-    assert!(ret.is_err());
-    assert_eq!(ret.unwrap_err(), Error::CyclesExceeded);
-
-    let snap = make_snapshot(&mut machine).unwrap();
-    let mut machine_new = TraceMachine::new(
-        RustDefaultMachineBuilder::new(
-            DefaultCoreMachine::<u64, WXorXMemory<SparseMemory<u64>>>::new(
-                ISA_IMC | ISA_A,
-                VERSION2,
-                u64::MAX,
-            ),
-        )
-        .instruction_cycle_func(Box::new(constant_cycles))
-        .build(),
-    );
-    resume(&mut machine_new, &snap).unwrap();
-    machine_new.machine.set_max_cycles(20);
-    let ret = machine_new.run();
-    assert!(ret.is_ok());
-    assert_eq!(ret.unwrap(), 0);
 }

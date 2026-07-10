@@ -31,12 +31,6 @@ test = false
 doc = false
 
 [[bin]]
-name = "isa_a"
-path = "fuzz_targets/isa_a.rs"
-test = false
-doc = false
-
-[[bin]]
 name = "isa_b"
 path = "fuzz_targets/isa_b.rs"
 test = false

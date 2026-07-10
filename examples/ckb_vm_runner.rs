@@ -42,7 +42,7 @@ impl<Mac: SupportMachine> Syscalls<Mac> for DebugSyscall {
 #[cfg(has_asm)]
 fn main_asm64(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
     let asm_core = <ckb_vm::machine::asm::AsmCoreMachine as SupportMachine>::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_A | ckb_vm::ISA_MOP,
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
         ckb_vm::machine::VERSION2,
         u64::MAX,
     );
@@ -70,7 +70,7 @@ fn main_asm64(_: Bytes, _: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>>
 
 fn main_interpreter32(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
     let core_machine = ckb_vm::DefaultCoreMachine::<u32, ckb_vm::SparseMemory<u32>>::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_A | ckb_vm::ISA_MOP,
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
         ckb_vm::machine::VERSION2,
         u64::MAX,
     );
@@ -91,7 +91,7 @@ fn main_interpreter32(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::
 
 fn main_interpreter64(code: Bytes, args: Vec<Bytes>) -> Result<(), Box<dyn std::error::Error>> {
     let core_machine = ckb_vm::DefaultCoreMachine::<u64, ckb_vm::SparseMemory<u64>>::new(
-        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_A | ckb_vm::ISA_MOP,
+        ckb_vm::ISA_IMC | ckb_vm::ISA_B | ckb_vm::ISA_MOP,
         ckb_vm::machine::VERSION2,
         u64::MAX,
     );

@@ -37,7 +37,11 @@ clippy:
 
 fuzz:
 	cargo +nightly fuzz run asm -- -max_total_time=180
-	cargo +nightly fuzz run isa_a -- -max_total_time=180
+	cargo +nightly fuzz run interpreter -- -max_total_time=180
+	cargo +nightly fuzz run isa_b -- -max_total_time=180
+	cargo +nightly fuzz run isa_m -- -max_total_time=180
+	cargo +nightly fuzz run snapshot -- -max_total_time=180
+	cargo +nightly fuzz run snapshot2 -- -max_total_time=180
 
 ci: fmt check clippy test
 	git diff --exit-code Cargo.lock

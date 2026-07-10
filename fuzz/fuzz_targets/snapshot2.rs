@@ -1,6 +1,6 @@
 #![no_main]
 use ckb_vm::{
-    Bytes, CoreMachine, DEFAULT_MEMORY_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, Memory,
+    Bytes, CoreMachine, DEFAULT_MEMORY_SIZE, ISA_B, ISA_IMC, ISA_MOP, Memory,
     RISCV_PAGESIZE, SupportMachine,
     elf::{LoadingAction, ProgramMetadata},
     machine::VERSION2,
@@ -65,7 +65,7 @@ impl DataSource<u32> for DummyData {
 }
 
 fn build_machine() -> AsmDefaultMachine {
-    let isa = ISA_IMC | ISA_A | ISA_B | ISA_MOP;
+    let isa = ISA_IMC | ISA_B | ISA_MOP;
     let core_machine = <AsmCoreMachine as SupportMachine>::new(isa.into(), VERSION2, u64::MAX);
     AsmDefaultMachineBuilder::new(core_machine).build()
 }

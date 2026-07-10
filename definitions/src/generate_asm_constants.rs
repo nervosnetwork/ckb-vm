@@ -164,10 +164,6 @@ fn main() {
         (&m.chaos_seed as *const u32 as usize) - m_address
     );
     println!(
-        "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_LOAD_RESERVATION_ADDRESS {}",
-        (&m.load_reservation_address as *const u64 as usize) - m_address
-    );
-    println!(
         "#define CKB_VM_ASM_ASM_CORE_MACHINE_OFFSET_VERSION {}",
         (&m.version as *const u32 as usize) - m_address
     );
