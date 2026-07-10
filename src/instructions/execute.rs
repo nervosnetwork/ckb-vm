@@ -1595,8 +1595,6 @@ pub fn execute_with_thread<Mac: Machine>(
 pub type Thread<Mac> = fn(&mut Mac, Instruction) -> Result<(), Error>;
 
 pub struct ThreadFactory<Mac: Machine> {
-    // Right now we are only dealing with fastpath opcodes, later we might
-    // (or might not?) expand this with some opcodes in the slowpath category.
     threads: Vec<Thread<Mac>>,
 }
 

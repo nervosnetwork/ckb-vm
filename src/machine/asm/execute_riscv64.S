@@ -1880,9 +1880,6 @@ ckb_vm_asm_execute:
 .exit_pause:
   li     a0, CKB_VM_ASM_RET_PAUSE
   j      .exit
-.exit_slowpath:
-  li     a0, CKB_VM_ASM_RET_SLOWPATH
-  j      .exit
 .exit_trace:
   li     a0, CKB_VM_ASM_RET_DECODE_TRACE
   j      .exit

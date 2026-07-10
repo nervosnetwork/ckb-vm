@@ -1869,10 +1869,6 @@ ckb_vm_asm_execute:
   DECODE_U
   mov x0, CKB_VM_ASM_RET_DECODE_TRACE
   b .exit
-.exit_slowpath:
-  DECODE_U
-  mov x0, CKB_VM_ASM_RET_SLOWPATH
-  b .exit
 .exit:
   ldp x29, x30, [sp, 80]
   ldp x27, x28, [sp, 64]

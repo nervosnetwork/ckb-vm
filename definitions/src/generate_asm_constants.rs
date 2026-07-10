@@ -4,7 +4,7 @@ use ckb_vm_definitions::{
     asm::{
         AsmCoreMachine, FixedTrace, InvokeData, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE,
         RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED,
-        RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH, TRACE_ITEM_LENGTH,
+        RET_OUT_OF_BOUND, RET_PAUSE, TRACE_ITEM_LENGTH,
     },
     for_each_inst,
     instructions::{MAXIMUM_OPCODE, MINIMAL_OPCODE, instruction_opcode_name},
@@ -68,7 +68,6 @@ fn main() {
         "#define CKB_VM_ASM_RET_INVALID_PERMISSION {}",
         RET_INVALID_PERMISSION
     );
-    println!("#define CKB_VM_ASM_RET_SLOWPATH {}", RET_SLOWPATH);
     println!("#define CKB_VM_ASM_RET_PAUSE {}", RET_PAUSE);
     println!();
 
@@ -238,9 +237,6 @@ fn main() {
     println!("ckb_vm_asm_labels:");
     println!("#endif");
     println!(".CKB_VM_ASM_LABEL_TABLE:");
-    for _ in 0..0x10 {
-        println!("\t.long\t.exit_slowpath - .CKB_VM_ASM_EXECUTE");
-    }
     for_each_inst!(print_inst_label);
     println!("#endif /* CKB_VM_ASM_GENERATE_LABEL_TABLES */");
     println!(".text");
