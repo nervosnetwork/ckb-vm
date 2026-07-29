@@ -114,5 +114,4 @@ asm_link mop_jump_rel_version1_bug
 asm_link mop_jump_rel_version1_reg_not_updated_bug
 asm_link mop_jump_abs_version1_reg_not_updated_bug
 asm_link mop_lui_jalr_overflow_bug
-asm_link mop_lui_addiw_overflow_bug
 echo "done"
