@@ -165,10 +165,11 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             }
             let address = i * PAGE_SIZE;
             let mut data: Vec<u8> = machine.memory_mut().load_bytes(address, PAGE_SIZE)?.into();
-            if let Some(last) = dirty_pages.last_mut() {
-                if last.0 + last.2.len() as u64 == address && last.1 == flag {
-                    last.2.append(&mut data);
-                }
+            if let Some(last) = dirty_pages.last_mut()
+                && last.0 + last.2.len() as u64 == address
+                && last.1 == flag
+            {
+                last.2.append(&mut data);
             }
             if !data.is_empty() {
                 dirty_pages.push((address, flag, data));
@@ -189,15 +190,13 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             let mut appended_to_last = false;
             if let Some((last_address, last_flag, last_id, last_offset, last_length)) =
                 pages_from_source.last_mut()
+                && *last_address + *last_length == address
+                && *last_flag == *flag
+                && *last_id == *id
+                && *last_offset + *last_length == *offset
             {
-                if *last_address + *last_length == address
-                    && *last_flag == *flag
-                    && *last_id == *id
-                    && *last_offset + *last_length == *offset
-                {
-                    *last_length += PAGE_SIZE;
-                    appended_to_last = true;
-                }
+                *last_length += PAGE_SIZE;
+                appended_to_last = true;
             }
             if !appended_to_last {
                 pages_from_source.push((address, *flag, id.clone(), *offset, PAGE_SIZE));

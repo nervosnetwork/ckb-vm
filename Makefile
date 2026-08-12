@@ -20,7 +20,6 @@ fmt:
 	cd definitions && cargo fmt ${VERBOSE} --all -- --check
 
 clippy_rule = -D warnings \
-	-A clippy::collapsible_if \
 	-A clippy::unusual_byte_groupings
 clippy:
 	cargo clippy --all --features=asm -- $(clippy_rule)
