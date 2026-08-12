@@ -334,11 +334,11 @@ impl Register for u32 {
     }
 
     fn rol(&self, rhs: &u32) -> u32 {
-        (*self as u32).rotate_left(*rhs) as u32
+        (*self).rotate_left(*rhs)
     }
 
     fn ror(&self, rhs: &u32) -> u32 {
-        (*self as u32).rotate_right(*rhs) as u32
+        (*self).rotate_right(*rhs)
     }
 
     fn to_i8(&self) -> i8 {
@@ -635,11 +635,11 @@ impl Register for u64 {
     }
 
     fn rol(&self, rhs: &u64) -> u64 {
-        (*self as u64).rotate_left((*rhs) as u32) as u64
+        (*self).rotate_left((*rhs) as u32)
     }
 
     fn ror(&self, rhs: &u64) -> u64 {
-        (*self as u64).rotate_right((*rhs) as u32) as u64
+        (*self).rotate_right((*rhs) as u32)
     }
 
     fn to_i8(&self) -> i8 {
