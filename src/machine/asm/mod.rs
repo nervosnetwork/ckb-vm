@@ -637,7 +637,7 @@ where
         let addr = *addr;
         check_memory_writable(self, addr, 8)?;
         let slice = cast_ptr_to_slice_mut(self, self.as_ref().memory_ptr, addr as usize, 8);
-        let bytes = (*value as u64).to_le_bytes();
+        let bytes = (*value).to_le_bytes();
         slice.copy_from_slice(&bytes);
         Ok(())
     }
