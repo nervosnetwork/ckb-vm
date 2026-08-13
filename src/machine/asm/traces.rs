@@ -337,20 +337,20 @@ impl<D: InstDecoder> TraceDecoder for MemoizedDynamicTraceDecoder<D> {
             None => {
                 let (mut trace, count) =
                     decode_fixed_trace(&mut self.inner.decoder, machine, None)?;
-                if let Some((inst, _)) = trace.thread(count.wrapping_sub(2)) {
-                    if !is_basic_block_end_instruction(inst) {
-                        // Decoded trace is not yet a full basic block, there
-                        // are still sequential code left. We can build a dynamic
-                        // trace here covering the remaining of the sequential code
-                        // to speed up processing
-                        let dynamic_trace =
-                            self.find_or_build_dynamic_trace(pc + trace.length as u64, machine)?;
-                        trace.set_thread(
-                            count.wrapping_sub(1),
-                            dynamic_trace as u64,
-                            label_from_fastpath_opcode(OP_CUSTOM_ASM_TRACE_JUMP),
-                        );
-                    }
+                if let Some((inst, _)) = trace.thread(count.wrapping_sub(2))
+                    && !is_basic_block_end_instruction(inst)
+                {
+                    // Decoded trace is not yet a full basic block, there
+                    // are still sequential code left. We can build a dynamic
+                    // trace here covering the remaining of the sequential code
+                    // to speed up processing
+                    let dynamic_trace =
+                        self.find_or_build_dynamic_trace(pc + trace.length as u64, machine)?;
+                    trace.set_thread(
+                        count.wrapping_sub(1),
+                        dynamic_trace as u64,
+                        label_from_fastpath_opcode(OP_CUSTOM_ASM_TRACE_JUMP),
+                    );
                 }
                 self.fixed_cache.insert(pc, trace.clone());
                 trace
