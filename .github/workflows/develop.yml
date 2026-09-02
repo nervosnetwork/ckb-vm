@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       # https://github.com/EmbarkStudios/cargo-deny-action
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           arguments: --all-features
           command: check advisories licenses sources bans
