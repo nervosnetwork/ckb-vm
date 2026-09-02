@@ -2,21 +2,23 @@ use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 pub use ckb_vm_definitions::asm::AsmCoreMachine;
 use ckb_vm_definitions::{
+    ISA_MOP, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAMES, MEMORY_FRAMESIZE,
+    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
     asm::{
-        calculate_slot, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
-        RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
-        RET_SLOWPATH, TRACE_ITEM_LENGTH, TRACE_SIZE,
+        RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH,
+        TRACE_ITEM_LENGTH, TRACE_SIZE, Trace, calculate_slot,
     },
     instructions::OP_CUSTOM_TRACE_END,
-    ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS,
-    RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
 };
-use rand::{prelude::RngCore, SeedableRng};
-use std::alloc::{alloc, Layout};
+use rand::{SeedableRng, prelude::RngCore};
+use std::alloc::{Layout, alloc};
 use std::os::raw::c_uchar;
 
 use crate::{
-    decoder::{build_decoder, Decoder},
+    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, MEMORY_FRAME_SHIFTS, Machine, Memory,
+    RISCV_PAGES, RISCV_PAGESIZE, SupportMachine,
+    decoder::{Decoder, build_decoder},
     elf::ProgramMetadata,
     instructions::{
         blank_instruction, execute_instruction, extract_opcode, instruction_length,
@@ -24,11 +26,9 @@ use crate::{
     },
     machine::VERSION0,
     memory::{
-        fill_page_data, get_page_indices, memset, round_page_down, round_page_up, FLAG_DIRTY,
-        FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT,
+        FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT, fill_page_data,
+        get_page_indices, memset, round_page_down, round_page_up,
     },
-    CoreMachine, DefaultMachine, DefaultMachineRunner, Error, Machine, Memory, SupportMachine,
-    MEMORY_FRAME_SHIFTS, RISCV_PAGES, RISCV_PAGESIZE,
 };
 
 pub trait AsmCoreMachineRevealer: AsRef<Box<AsmCoreMachine>> + AsMut<Box<AsmCoreMachine>> {
@@ -132,14 +132,14 @@ where
 // but consider that in the asm machine, `frame_index` is stored in `rdi` and `machine`
 // is stored in `rsi`, there is no need to exchange the values in the two registers
 // in this way.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn inited_memory(frame_index: u64, machine: &mut AsmCoreMachine) {
     let addr_from = (frame_index << MEMORY_FRAME_SHIFTS) as usize;
     let addr_to = ((frame_index + 1) << MEMORY_FRAME_SHIFTS) as usize;
     if machine.chaos_mode != 0 {
-        let mut gen = rand::rngs::StdRng::seed_from_u64(machine.chaos_seed.into());
-        gen.fill_bytes(&mut machine.memory[addr_from..addr_to]);
-        machine.chaos_seed = gen.next_u32();
+        let mut chaos_gen = rand::rngs::StdRng::seed_from_u64(machine.chaos_seed.into());
+        chaos_gen.fill_bytes(&mut machine.memory[addr_from..addr_to]);
+        machine.chaos_seed = chaos_gen.next_u32();
     } else {
         memset(&mut machine.memory[addr_from..addr_to], 0);
     }
@@ -532,7 +532,7 @@ where
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn ckb_vm_x64_execute(m: *mut AsmCoreMachine, s: *mut u8) -> c_uchar;
     // We are keeping this as a function here, but at the bottom level this really
     // just points to an array of assembly label offsets for each opcode.
@@ -611,6 +611,9 @@ where
                     };
                     trace.address = pc;
                     trace.length = (current_pc - pc) as u8;
+                    if trace.length == 0 {
+                        return Err(Error::TraceLengthError);
+                    }
                     self.machine.inner_mut().as_mut().traces[slot] = trace;
                 }
                 RET_ECALL => self.machine.ecall()?,

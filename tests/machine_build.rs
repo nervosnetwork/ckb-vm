@@ -2,11 +2,11 @@ use bytes::Bytes;
 use ckb_vm::cost_model::constant_cycles;
 #[cfg(has_asm)]
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
-use ckb_vm::machine::{trace::TraceMachine, DefaultCoreMachine, VERSION1, VERSION2};
+use ckb_vm::machine::{DefaultCoreMachine, VERSION1, VERSION2, trace::TraceMachine};
 use ckb_vm::registers::{A0, A7};
 use ckb_vm::{
-    DefaultMachineBuilder, DefaultMachineRunner, Error, Register, SparseMemory, SupportMachine,
-    Syscalls, WXorXMemory, ISA_A, ISA_B, ISA_IMC, ISA_MOP,
+    DefaultMachineBuilder, DefaultMachineRunner, Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP, Register,
+    SparseMemory, SupportMachine, Syscalls, WXorXMemory,
 };
 
 pub struct SleepSyscall {}

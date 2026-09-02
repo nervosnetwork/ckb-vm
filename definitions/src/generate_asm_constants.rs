@@ -1,17 +1,17 @@
 use ckb_vm_definitions::{
+    MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS, MEMORY_FRAMES, MEMORY_FRAMESIZE,
+    RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS, RISCV_PAGES, RISCV_PAGESIZE,
     asm::{
-        AsmCoreMachine, Trace, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
+        AsmCoreMachine, RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK,
         RET_ECALL, RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
-        RET_SLOWPATH, TRACE_ITEM_LENGTH,
+        RET_SLOWPATH, TRACE_ITEM_LENGTH, Trace,
     },
     for_each_inst,
-    instructions::{instruction_opcode_name, Instruction, MAXIMUM_OPCODE, MINIMAL_OPCODE},
+    instructions::{Instruction, MAXIMUM_OPCODE, MINIMAL_OPCODE, instruction_opcode_name},
     memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     registers::{RA, SP},
-    MEMORY_FRAMES, MEMORY_FRAMESIZE, MEMORY_FRAME_PAGE_SHIFTS, MEMORY_FRAME_SHIFTS,
-    RISCV_MAX_MEMORY, RISCV_PAGES, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
 };
-use std::alloc::{alloc, Layout};
+use std::alloc::{Layout, alloc};
 use std::mem::{size_of, zeroed};
 
 macro_rules! print_inst_label {

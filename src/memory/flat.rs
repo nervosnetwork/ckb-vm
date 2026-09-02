@@ -1,5 +1,5 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE};
-use super::{fill_page_data, get_page_indices, memset, set_dirty, Memory};
+use super::super::{Error, RISCV_MAX_MEMORY, RISCV_PAGESIZE, Register};
+use super::{Memory, fill_page_data, get_page_indices, memset, set_dirty};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
@@ -41,7 +41,7 @@ impl<R: Register> Memory for FlatMemory<R> {
 
     fn new_with_memory(memory_size: usize) -> Self {
         assert!(memory_size <= RISCV_MAX_MEMORY);
-        assert!(memory_size % RISCV_PAGESIZE == 0);
+        assert!(memory_size.is_multiple_of(RISCV_PAGESIZE));
         Self {
             data: vec![0; memory_size as usize],
             flags: vec![0; memory_size / RISCV_PAGESIZE],

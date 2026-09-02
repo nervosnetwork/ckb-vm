@@ -1,6 +1,6 @@
 use super::{
+    Error, RISCV_PAGESIZE, Register,
     bits::{rounddown, roundup},
-    Error, Register, RISCV_PAGESIZE,
 };
 use bytes::Bytes;
 use std::cmp::min;
@@ -11,8 +11,8 @@ pub mod sparse;
 pub mod wxorx;
 
 pub use ckb_vm_definitions::{
-    memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
     MEMORY_FRAME_PAGE_SHIFTS, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
+    memory::{FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE, FLAG_WXORX_BIT},
 };
 
 #[inline(always)]

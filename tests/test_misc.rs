@@ -2,16 +2,16 @@ use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::machine::VERSION0;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
-    run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory,
-    Memory, Register, SparseMemory, SupportMachine, Syscalls, WXorXMemory, ISA_IMC,
-    RISCV_MAX_MEMORY, RISCV_PAGESIZE,
+    CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineBuilder, Error, FlatMemory, ISA_IMC,
+    Memory, RISCV_MAX_MEMORY, RISCV_PAGESIZE, Register, SparseMemory, SupportMachine, Syscalls,
+    WXorXMemory, run,
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use std::fs;
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 
 #[test]
 pub fn test_andi() {

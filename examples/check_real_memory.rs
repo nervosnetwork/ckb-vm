@@ -1,17 +1,17 @@
 // This example is mainly to test whether there is memory overflow.
 // Under linux, we choose to use smem, which can monitor memory changes more accurately
 
-use ckb_vm::{run, Bytes, FlatMemory, SparseMemory};
+use ckb_vm::{Bytes, FlatMemory, SparseMemory, run};
 use lazy_static::lazy_static;
-use std::process::{id, Command};
+use std::process::{Command, id};
 
 #[cfg(has_asm)]
 use ckb_vm::{
-    machine::{
-        asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0,
-    },
     ISA_IMC,
+    machine::{
+        DefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0,
+        asm::{AsmCoreMachine, AsmMachine},
+    },
 };
 
 #[cfg(has_asm)]

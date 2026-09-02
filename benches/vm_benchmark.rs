@@ -4,13 +4,13 @@ extern crate criterion;
 use bytes::Bytes;
 #[cfg(has_asm)]
 use ckb_vm::{
-    machine::{
-        asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0, VERSION2,
-    },
     ISA_B, ISA_IMC, ISA_MOP,
+    machine::{
+        DefaultMachineBuilder, DefaultMachineRunner, SupportMachine, VERSION0, VERSION2,
+        asm::{AsmCoreMachine, AsmMachine},
+    },
 };
-use ckb_vm::{run, SparseMemory, RISCV_MAX_MEMORY};
+use ckb_vm::{RISCV_MAX_MEMORY, SparseMemory, run};
 use criterion::Criterion;
 use std::fs;
 

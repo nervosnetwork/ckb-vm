@@ -1,9 +1,9 @@
 use crate::{
+    Error, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE, Register,
     bits::roundup,
     elf::{LoadingAction, ProgramMetadata},
     machine::SupportMachine,
-    memory::{get_page_indices, Memory, FLAG_DIRTY},
-    Error, Register, RISCV_GENERAL_REGISTER_NUMBER, RISCV_PAGESIZE,
+    memory::{FLAG_DIRTY, Memory, get_page_indices},
 };
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
@@ -71,7 +71,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
                 return Err(Error::MemPageUnalignedAccess);
             }
             let (data, _) = self.load_data(id, *offset, *length)?;
-            if data.len() as u64 % PAGE_SIZE != 0 {
+            if !(data.len() as u64).is_multiple_of(PAGE_SIZE) {
                 return Err(Error::MemPageUnalignedAccess);
             }
             machine.memory_mut().store_bytes(*address, &data)?;
@@ -85,7 +85,7 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             if address % PAGE_SIZE != 0 {
                 return Err(Error::MemPageUnalignedAccess);
             }
-            if content.len() as u64 % PAGE_SIZE != 0 {
+            if !(content.len() as u64).is_multiple_of(PAGE_SIZE) {
                 return Err(Error::MemPageUnalignedAccess);
             }
             machine.memory_mut().store_bytes(*address, content)?;
@@ -164,10 +164,11 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             }
             let address = i * PAGE_SIZE;
             let mut data: Vec<u8> = machine.memory_mut().load_bytes(address, PAGE_SIZE)?.into();
-            if let Some(last) = dirty_pages.last_mut() {
-                if last.0 + last.2.len() as u64 == address && last.1 == flag {
-                    last.2.append(&mut data);
-                }
+            if let Some(last) = dirty_pages.last_mut()
+                && last.0 + last.2.len() as u64 == address
+                && last.1 == flag
+            {
+                last.2.append(&mut data);
             }
             if !data.is_empty() {
                 dirty_pages.push((address, flag, data));
@@ -188,15 +189,13 @@ impl<I: Clone + PartialEq, D: DataSource<I>> Snapshot2Context<I, D> {
             let mut appended_to_last = false;
             if let Some((last_address, last_flag, last_id, last_offset, last_length)) =
                 pages_from_source.last_mut()
+                && *last_address + *last_length == address
+                && *last_flag == *flag
+                && *last_id == *id
+                && *last_offset + *last_length == *offset
             {
-                if *last_address + *last_length == address
-                    && *last_flag == *flag
-                    && *last_id == *id
-                    && *last_offset + *last_length == *offset
-                {
-                    *last_length += PAGE_SIZE;
-                    appended_to_last = true;
-                }
+                *last_length += PAGE_SIZE;
+                appended_to_last = true;
             }
             if !appended_to_last {
                 pages_from_source.push((address, *flag, id.clone(), *offset, PAGE_SIZE));

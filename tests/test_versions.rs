@@ -5,8 +5,8 @@ use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::{FLAG_DIRTY, FLAG_FREEZED};
 use ckb_vm::{
     CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder, DefaultMachineRunner,
-    Error, Memory, SparseMemory, SupportMachine, TraceMachine, WXorXMemory, ISA_A, ISA_B, ISA_IMC,
-    ISA_MOP, RISCV_PAGESIZE,
+    Error, ISA_A, ISA_B, ISA_IMC, ISA_MOP, Memory, RISCV_PAGESIZE, SparseMemory, SupportMachine,
+    TraceMachine, WXorXMemory,
 };
 use std::fs;
 

@@ -4,7 +4,7 @@ use ckb_vm_definitions::registers::SP;
 use super::i::nop;
 use super::register::Register;
 use super::utils::{jalr, ld, lw, rd, x, xs};
-use super::{blank_instruction, set_instruction_length_2, Instruction, Itype, Rtype, Stype, Utype};
+use super::{Instruction, Itype, Rtype, Stype, Utype, blank_instruction, set_instruction_length_2};
 
 // Notice the location of rs2 in RVC encoding is different from full encoding
 #[inline(always)]

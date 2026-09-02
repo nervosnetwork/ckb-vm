@@ -1,6 +1,8 @@
 #![cfg(has_asm)]
 pub mod machine_build;
 use bytes::Bytes;
+#[allow(unused_imports)]
+use ckb_vm::Memory;
 use ckb_vm::cost_model::constant_cycles;
 use ckb_vm::elf::parse_elf;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmMachine};
@@ -12,9 +14,7 @@ use ckb_vm::machine::{
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::registers::{A0, A1, A7};
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-#[allow(unused_imports)]
-use ckb_vm::Memory;
-use ckb_vm::{DefaultMachineBuilder, Error, Register, Syscalls, ISA_A, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, ISA_A, ISA_IMC, Register, Syscalls};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -542,8 +542,8 @@ impl Machine {
 
     #[cfg(not(feature = "enable-chaos-mode-by-default"))]
     fn full_memory(&mut self) -> Result<Bytes, Error> {
-        use ckb_vm::RISCV_MAX_MEMORY;
         use Machine::*;
+        use ckb_vm::RISCV_MAX_MEMORY;
         match self {
             Asm(inner, _) => inner
                 .machine

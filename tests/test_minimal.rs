@@ -1,4 +1,4 @@
-use ckb_vm::{run, SparseMemory, RISCV_MAX_MEMORY};
+use ckb_vm::{RISCV_MAX_MEMORY, SparseMemory, run};
 use std::fs;
 
 #[test]
