@@ -3,20 +3,20 @@ pub mod asm;
 pub mod trace;
 
 use std::fmt::{self, Display};
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 
 use bytes::Bytes;
 
 use super::debugger::Debugger;
-use super::decoder::{build_decoder, Decoder};
-use super::elf::{parse_elf, LoadingAction, ProgramMetadata};
-use super::instructions::{execute, Instruction, Register};
-use super::memory::{load_c_string_byte_by_byte, Memory};
+use super::decoder::{Decoder, build_decoder};
+use super::elf::{LoadingAction, ProgramMetadata, parse_elf};
+use super::instructions::{Instruction, Register, execute};
+use super::memory::{Memory, load_c_string_byte_by_byte};
 use super::syscalls::Syscalls;
 use super::{
-    registers::{A0, A7, REGISTER_ABI_NAMES, SP},
     Error, ISA_MOP, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY,
+    registers::{A0, A7, REGISTER_ABI_NAMES, SP},
 };
 
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
@@ -700,7 +700,7 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
             self.initialize_stack(args, (memory_size - stack_size) as u64, stack_size as u64)?;
         // Make sure SP is 16 byte aligned
         if self.inner.version() >= VERSION1 {
-            debug_assert!(self.registers()[SP].to_u64() % 16 == 0);
+            debug_assert!(self.registers()[SP].to_u64().is_multiple_of(16));
         }
         Ok(stack_bytes)
     }

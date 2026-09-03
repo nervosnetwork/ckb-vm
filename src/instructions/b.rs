@@ -4,7 +4,7 @@
 use ckb_vm_definitions::instructions as insts;
 
 use super::utils::{self, funct3, funct7, opcode, rd, rs1, rs2};
-use super::{set_instruction_length_4, Instruction, Itype, Register, Rtype};
+use super::{Instruction, Itype, Register, Rtype, set_instruction_length_4};
 
 pub fn factory<R: Register>(instruction_bits: u32, _: u32) -> Option<Instruction> {
     let bit_length = R::BITS;

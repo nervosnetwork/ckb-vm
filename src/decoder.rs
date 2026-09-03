@@ -2,8 +2,8 @@ use ckb_vm_definitions::instructions::{self as insts};
 use ckb_vm_definitions::registers::{RA, ZERO};
 
 use crate::instructions::{
-    a, b, extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n, Instruction,
-    InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype,
+    Instruction, InstructionFactory, Itype, R4type, R5type, Register, Rtype, Utype, a, b,
+    extract_opcode, i, instruction_length, m, rvc, set_instruction_length_n,
 };
 use crate::machine::VERSION2;
 use crate::memory::Memory;
@@ -628,16 +628,13 @@ impl Decoder {
                             if next_inst.rs1() == head_inst.rd()
                                 && next_inst.rd() == RA
                                 && next_inst.rs1() == RA
-                            {
-                                if let Some(fuze_imm) =
+                                && let Some(fuze_imm) =
                                     head_inst.immediate_s().checked_add(next_inst.immediate_s())
-                                {
-                                    let fuze_inst =
-                                        Utype::new_s(insts::OP_FAR_JUMP_REL, RA, fuze_imm);
-                                    let next_size = instruction_length(next_instruction);
-                                    let fuze_size = head_size + next_size;
-                                    result = set_instruction_length_n(fuze_inst.0, fuze_size);
-                                }
+                            {
+                                let fuze_inst = Utype::new_s(insts::OP_FAR_JUMP_REL, RA, fuze_imm);
+                                let next_size = instruction_length(next_instruction);
+                                let fuze_size = head_size + next_size;
+                                result = set_instruction_length_n(fuze_inst.0, fuze_size);
                             }
                         } else {
                             if next_inst.rs1() == head_inst.rd() && next_inst.rd() == RA {
@@ -656,23 +653,19 @@ impl Decoder {
                         let next_inst = Itype(next_instruction);
                         let mut result = head_instruction;
 
-                        if next_inst.rs1() == next_inst.rd() && next_inst.rd() == head_inst.rd() {
-                            if let Ok(pc) = i32::try_from(pc) {
-                                if let Some(fuze_imm) = head_inst
-                                    .immediate_s()
-                                    .checked_add(next_inst.immediate_s())
-                                    .and_then(|s| s.checked_add(pc))
-                                {
-                                    let fuze_inst = Utype::new_s(
-                                        insts::OP_CUSTOM_LOAD_IMM,
-                                        head_inst.rd(),
-                                        fuze_imm,
-                                    );
-                                    let next_size = instruction_length(next_instruction);
-                                    let fuze_size = head_size + next_size;
-                                    result = set_instruction_length_n(fuze_inst.0, fuze_size);
-                                }
-                            }
+                        if next_inst.rs1() == next_inst.rd()
+                            && next_inst.rd() == head_inst.rd()
+                            && let Ok(pc) = i32::try_from(pc)
+                            && let Some(fuze_imm) = head_inst
+                                .immediate_s()
+                                .checked_add(next_inst.immediate_s())
+                                .and_then(|s| s.checked_add(pc))
+                        {
+                            let fuze_inst =
+                                Utype::new_s(insts::OP_CUSTOM_LOAD_IMM, head_inst.rd(), fuze_imm);
+                            let next_size = instruction_length(next_instruction);
+                            let fuze_size = head_size + next_size;
+                            result = set_instruction_length_n(fuze_inst.0, fuze_size);
                         }
                         Ok(result)
                     }

@@ -1,12 +1,12 @@
 #[cfg(has_asm)]
 use ckb_vm::{
-    machine::{
-        asm::{AsmCoreMachine, AsmMachine},
-        DefaultMachineBuilder, SupportMachine, VERSION0,
-    },
     DefaultMachineRunner, ISA_IMC,
+    machine::{
+        DefaultMachineBuilder, SupportMachine, VERSION0,
+        asm::{AsmCoreMachine, AsmMachine},
+    },
 };
-use ckb_vm::{run, FlatMemory, SparseMemory};
+use ckb_vm::{FlatMemory, SparseMemory, run};
 use std::fs;
 
 fn run_memory_suc(memory_size: usize, bin_path: String, bin_name: String) {

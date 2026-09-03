@@ -51,6 +51,8 @@ pub enum Error {
     Pause,
     #[display(fmt = "snapshot data load error")]
     SnapshotDataLoadError,
+    #[display(fmt = "trace length error")]
+    TraceLengthError,
     #[display(fmt = "unexpected error")]
     Unexpected(String),
     #[display(fmt = "unimplemented")]

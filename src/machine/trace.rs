@@ -1,12 +1,12 @@
 use super::{
     super::{
+        Error,
         decoder::build_decoder,
         elf::ProgramMetadata,
         instructions::{
-            execute_with_thread, extract_opcode, handle_invalid_op, instruction_length,
-            is_basic_block_end_instruction, Instruction, Register, Thread, ThreadFactory,
+            Instruction, Register, Thread, ThreadFactory, execute_with_thread, extract_opcode,
+            handle_invalid_op, instruction_length, is_basic_block_end_instruction,
         },
-        Error,
     },
     CoreMachine, DefaultMachine, DefaultMachineRunner, Machine, SupportMachine, VERSION2,
 };

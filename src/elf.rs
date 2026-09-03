@@ -1,7 +1,7 @@
 // This module maps the data structure of different versions of goblin to the
 // same internal structure.
 use crate::machine::VERSION1;
-use crate::memory::{round_page_down, round_page_up, FLAG_EXECUTABLE, FLAG_FREEZED};
+use crate::memory::{FLAG_EXECUTABLE, FLAG_FREEZED, round_page_down, round_page_up};
 use crate::{Error, Register};
 use bytes::Bytes;
 use scroll::Pread;
@@ -137,7 +137,7 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
     // * https://github.com/nervosnetwork/ckb-vm/issues/143
     let (entry, program_headers): (u64, Vec<ProgramHeader>) = if version < VERSION1 {
         use goblin_v023::container::Ctx;
-        use goblin_v023::elf::{program_header::ProgramHeader as GoblinProgramHeader, Header};
+        use goblin_v023::elf::{Header, program_header::ProgramHeader as GoblinProgramHeader};
         let header = program.pread::<Header>(0)?;
         let container = header.container().map_err(|_e| Error::ElfBits)?;
         let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;
@@ -157,7 +157,7 @@ pub fn parse_elf<R: Register>(program: &Bytes, version: u32) -> Result<ProgramMe
         (header.e_entry, program_headers)
     } else {
         use goblin_v040::container::Ctx;
-        use goblin_v040::elf::{program_header::ProgramHeader as GoblinProgramHeader, Header};
+        use goblin_v040::elf::{Header, program_header::ProgramHeader as GoblinProgramHeader};
         let header = program.pread::<Header>(0)?;
         let container = header.container().map_err(|_e| Error::ElfBits)?;
         let endianness = header.endianness().map_err(|_e| Error::ElfBits)?;

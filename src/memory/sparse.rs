@@ -1,5 +1,5 @@
-use super::super::{Error, Register, RISCV_MAX_MEMORY, RISCV_PAGESIZE, RISCV_PAGE_SHIFTS};
-use super::{fill_page_data, memset, round_page_down, Memory, Page, FLAG_DIRTY};
+use super::super::{Error, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS, RISCV_PAGESIZE, Register};
+use super::{FLAG_DIRTY, Memory, Page, fill_page_data, memset, round_page_down};
 
 use bytes::Bytes;
 use std::cmp::min;
@@ -76,7 +76,7 @@ impl<R: Register> Memory for SparseMemory<R> {
 
     fn new_with_memory(memory_size: usize) -> Self {
         assert!(memory_size <= RISCV_MAX_MEMORY);
-        assert!(memory_size % RISCV_PAGESIZE == 0);
+        assert!(memory_size.is_multiple_of(RISCV_PAGESIZE));
         Self {
             indices: vec![INVALID_PAGE_INDEX; memory_size / RISCV_PAGESIZE],
             pages: Vec::new(),

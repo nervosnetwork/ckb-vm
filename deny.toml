@@ -73,6 +73,8 @@ ignore = [
     #"RUSTSEC-0000-0000",
     #{ id = "RUSTSEC-0000-0000", reason = "you can specify a reason the advisory is ignored" },
     #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish
+    { id = "RUSTSEC-2026-0097", reason = "ckb-vm uses rand 0.7.3 only with deterministic StdRng; it does not use the affected thread_rng and custom logger combination" },
+    { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained and remains a transitive dependency of jemalloc-ctl 0.5.4, the latest available release" },
     #{ crate = "a-crate-that-is-yanked@0.1.1", reason = "you can specify why you are ignoring the yanked crate" },
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
@@ -90,11 +92,7 @@ ignore = [
 # [possible values: any SPDX 3.11 short identifier (+ optional exception)].
 allow = [
     "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "ISC",
     "MIT",
-    "Unicode-DFS-2016",
     "Unicode-3.0",
 ]
 # The confidence threshold for detecting a license from license text.
@@ -204,6 +202,8 @@ deny = [
 skip = [
     #"ansi_term@0.11.0",
     #{ crate = "ansi_term@0.11.0", reason = "you can specify a reason why it can't be updated/removed" },
+    { crate = "goblin", reason = "the VM intentionally supports both goblin 0.2 and 0.4 APIs" },
+    { crate = "syn", reason = "different transitive dependencies require syn 1 and syn 2" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive

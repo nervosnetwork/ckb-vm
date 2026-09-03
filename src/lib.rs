@@ -21,19 +21,19 @@ pub use crate::{
     debugger::Debugger,
     instructions::{Instruction, Register},
     machine::{
-        trace::TraceMachine, CoreMachine, DefaultCoreMachine, DefaultMachine,
-        DefaultMachineBuilder, DefaultMachineRunner, FlattenedArgsReader, InstructionCycleFunc,
-        Machine, SupportMachine,
+        CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder,
+        DefaultMachineRunner, FlattenedArgsReader, InstructionCycleFunc, Machine, SupportMachine,
+        trace::TraceMachine,
     },
-    memory::{flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory, Memory},
+    memory::{Memory, flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory},
     syscalls::Syscalls,
 };
 pub use bytes::Bytes;
 
 pub use ckb_vm_definitions::{
-    registers, DEFAULT_STACK_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAMES, MEMORY_FRAMESIZE,
-    MEMORY_FRAME_SHIFTS, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGES,
-    RISCV_PAGESIZE, RISCV_PAGE_SHIFTS,
+    DEFAULT_STACK_SIZE, ISA_A, ISA_B, ISA_IMC, ISA_MOP, MEMORY_FRAME_SHIFTS, MEMORY_FRAMES,
+    MEMORY_FRAMESIZE, RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
+    RISCV_PAGES, RISCV_PAGESIZE, registers,
 };
 
 pub use error::Error;

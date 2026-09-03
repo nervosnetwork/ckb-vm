@@ -1,20 +1,20 @@
-use ckb_vm::decoder::{build_decoder, Decoder};
+use ckb_vm::decoder::{Decoder, build_decoder};
 use ckb_vm::instructions::{
-    execute, extract_opcode, instruction_length, set_instruction_length_n, Instruction, Utype,
+    Instruction, Utype, execute, extract_opcode, instruction_length, set_instruction_length_n,
 };
 use ckb_vm::machine::VERSION1;
+use ckb_vm::{
+    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, ISA_IMC, Memory, SparseMemory,
+    SupportMachine,
+};
 #[cfg(has_asm)]
 use ckb_vm::{
+    DefaultMachineRunner,
     instructions::{blank_instruction, is_basic_block_end_instruction},
     machine::asm::{AsmCoreMachine, AsmMachine},
-    DefaultMachineRunner,
-};
-use ckb_vm::{
-    CoreMachine, DefaultCoreMachine, DefaultMachineBuilder, Error, Memory, SparseMemory,
-    SupportMachine, ISA_IMC,
 };
 #[cfg(has_asm)]
-use ckb_vm_definitions::asm::{calculate_slot, Trace, TRACE_ITEM_LENGTH};
+use ckb_vm_definitions::asm::{TRACE_ITEM_LENGTH, Trace, calculate_slot};
 use ckb_vm_definitions::instructions as insts;
 use std::fs;
 
@@ -78,7 +78,7 @@ pub fn test_rust_auipc_fusion() {
 #[cfg(has_asm)]
 #[test]
 pub fn test_asm_auipc_fusion() {
-    extern "C" {
+    unsafe extern "C" {
         fn ckb_vm_asm_labels();
     }
 

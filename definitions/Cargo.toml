@@ -1,11 +1,11 @@
 [package]
 name = "ckb-vm-definitions"
 description = "Common definition files for CKB VM"
-version = "0.24.14"
+version = "0.24.15"
 license = "MIT"
 authors = ["Nervos Core Dev <dev@nervos.org>"]
-edition = "2021"
-rust-version = "1.81.0"
+edition = "2024"
+rust-version = "1.95.0"
 autobins = false
 homepage = "https://github.com/nervosnetwork/ckb-vm"
 repository = "https://github.com/nervosnetwork/ckb-vm"

@@ -1,8 +1,8 @@
 use super::{
-    super::{machine::Machine, Error},
-    common, extract_opcode, instruction_length,
+    super::{Error, machine::Machine},
+    Instruction, InstructionOpcode, Itype, R4type, R5type, Register, Rtype, Stype, Utype, common,
+    extract_opcode, instruction_length,
     utils::update_register,
-    Instruction, InstructionOpcode, Itype, R4type, R5type, Register, Rtype, Stype, Utype,
 };
 use crate::memory::Memory;
 use ckb_vm_definitions::{

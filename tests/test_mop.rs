@@ -1,6 +1,6 @@
 pub mod machine_build;
 use bytes::Bytes;
-use ckb_vm::{registers::A0, CoreMachine, DefaultMachineRunner, Error, SupportMachine};
+use ckb_vm::{CoreMachine, DefaultMachineRunner, Error, SupportMachine, registers::A0};
 
 #[test]
 #[cfg_attr(miri, ignore)]
@@ -101,7 +101,9 @@ pub fn test_mop_ld_32_constants() {
 pub fn test_mop_secp256k1() {
     let args = vec![
         Bytes::from("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f"),
-        Bytes::from("304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3"),
+        Bytes::from(
+            "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
+        ),
         Bytes::from("foo"),
         Bytes::from("bar"),
     ];

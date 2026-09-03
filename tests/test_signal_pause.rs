@@ -1,6 +1,6 @@
 use ckb_vm::{DefaultMachineRunner, Error, SupportMachine};
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 pub mod machine_build;
 
 #[cfg(has_asm)]
@@ -17,16 +17,18 @@ pub fn test_asm_pause() {
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
 
     let signal = machine.machine.pause();
-    let jh = std::thread::spawn(move || loop {
-        let result = machine.run();
-        if result == Err(Error::Pause) {
-            branch_pause_cnt_jh.fetch_add(1, Ordering::SeqCst);
-            continue;
-        } else {
-            assert!(result.is_ok());
-            assert_eq!(result.unwrap(), 0);
-            assert_eq!(machine.machine.cycles(), expect_cycles);
-            break;
+    let jh = std::thread::spawn(move || {
+        loop {
+            let result = machine.run();
+            if result == Err(Error::Pause) {
+                branch_pause_cnt_jh.fetch_add(1, Ordering::SeqCst);
+                continue;
+            } else {
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap(), 0);
+                assert_eq!(machine.machine.cycles(), expect_cycles);
+                break;
+            }
         }
     });
     for _ in 0..10 {
@@ -49,16 +51,18 @@ pub fn test_int_pause() {
     let branch_pause_cnt = Arc::new(AtomicU32::new(0));
     let branch_pause_cnt_jh = branch_pause_cnt.clone();
     let signal = machine.machine.pause();
-    let jh = std::thread::spawn(move || loop {
-        let result = machine.run();
-        if result == Err(Error::Pause) {
-            branch_pause_cnt_jh.fetch_add(1, Ordering::SeqCst);
-            continue;
-        } else {
-            assert!(result.is_ok());
-            assert_eq!(result.unwrap(), 0);
-            assert_eq!(machine.machine.cycles(), expect_cycles);
-            break;
+    let jh = std::thread::spawn(move || {
+        loop {
+            let result = machine.run();
+            if result == Err(Error::Pause) {
+                branch_pause_cnt_jh.fetch_add(1, Ordering::SeqCst);
+                continue;
+            } else {
+                assert!(result.is_ok());
+                assert_eq!(result.unwrap(), 0);
+                assert_eq!(machine.machine.cycles(), expect_cycles);
+                break;
+            }
         }
     });
     for _ in 0..10 {

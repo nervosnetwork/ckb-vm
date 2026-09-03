@@ -216,11 +216,7 @@ impl Register for u32 {
             *self
         } else {
             let (v, o) = (*self as i32).overflowing_rem(*rhs as i32);
-            if o {
-                0
-            } else {
-                v as u32
-            }
+            if o { 0 } else { v as u32 }
         }
     }
 
@@ -501,11 +497,7 @@ impl Register for u64 {
             *self
         } else {
             let (v, o) = (*self as i64).overflowing_rem(*rhs as i64);
-            if o {
-                0
-            } else {
-                v as u64
-            }
+            if o { 0 } else { v as u64 }
         }
     }
 
