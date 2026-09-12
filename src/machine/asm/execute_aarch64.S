@@ -174,6 +174,7 @@
   ldrb TEMP2w, [MACHINE, TEMP5] SEP \
   cmp TEMP2, 0 SEP \
   bne 2f SEP \
+  mov TEMP3, 1 SEP \
   strb TEMP3w, [MACHINE, TEMP5] SEP \
   PREPCALL SEP \
   mov x1, MACHINE SEP \
