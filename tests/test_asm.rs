@@ -4,7 +4,7 @@ use ckb_vm::decoder::InstDecoder;
 use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::asm::traces::SimpleFixedTraceDecoder;
 use ckb_vm::machine::asm::{AsmCoreMachine, AsmDefaultMachineBuilder, AsmMachine};
-use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1, VERSION2};
+use ckb_vm::machine::{CoreMachine, VERSION0, VERSION1, VERSION2, VERSION3};
 use ckb_vm::memory::Memory;
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{Debugger, DefaultMachineRunner, Error, ISA_IMC, Register, SupportMachine, Syscalls};
@@ -544,4 +544,22 @@ pub fn test_nop_loop() {
     let result = machine.run();
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+pub fn test_aarch64_frame_marker() {
+    let buffer = fs::read("tests/programs/aarch64_frame_marker")
+        .unwrap()
+        .into();
+    let asm_core = <AsmCoreMachine as SupportMachine>::new(ISA_IMC, VERSION3, u64::MAX);
+    let core = AsmDefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, [Ok("aarch64_frame_marker".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+    let frame_1 = unsafe { *((machine.machine.inner_mut().frames_ptr as *const u8).add(1)) };
+    assert_eq!(frame_1, 1);
 }
