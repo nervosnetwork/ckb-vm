@@ -37,8 +37,8 @@ pub fn test_artifact() {
             VERSION2,
             ISA_IMC | ISA_B | ISA_MOP,
         );
-        let result_int = machine.run();
-        assert!(result_int.is_ok());
-        assert_eq!(result_int.unwrap(), 0);
+        let result_asm = machine.run();
+        assert!(result_asm.is_ok());
+        assert_eq!(result_asm.unwrap(), 0);
     }
 }

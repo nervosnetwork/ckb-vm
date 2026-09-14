@@ -20,6 +20,13 @@ use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
 };
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ValidationMode {
+    #[default]
+    Consensus,
+    Strict,
+}
+
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
 pub const VERSION0: u32 = 0;
 // Version 1 fixes known bugs discovered in version 0:
@@ -494,6 +501,7 @@ pub struct DefaultMachine<Inner, Decoder = DefaultDecoder> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     exit_code: i8,
+    validation_mode: ValidationMode,
     phantom: PhantomData<Decoder>,
 }
 
@@ -698,6 +706,10 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
         Ok(bytes)
     }
 
+    pub fn validation_mode(&self) -> ValidationMode {
+        self.validation_mode
+    }
+
     pub fn load_program_with_metadata(
         &mut self,
         program: &Bytes,
@@ -780,6 +792,7 @@ pub struct AbstractDefaultMachineBuilder<Inner, Decoder> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     pause: Pause,
+    validation_mode: ValidationMode,
     phantom: PhantomData<Decoder>,
 }
 
@@ -791,6 +804,7 @@ impl<Inner, Decoder> AbstractDefaultMachineBuilder<Inner, Decoder> {
             debugger: None,
             syscalls: vec![],
             pause: Pause::new(),
+            validation_mode: ValidationMode::Consensus,
             phantom: PhantomData,
         }
     }
@@ -818,6 +832,11 @@ impl<Inner, Decoder> AbstractDefaultMachineBuilder<Inner, Decoder> {
         self
     }
 
+    pub fn validation_mode(mut self, validation_mode: ValidationMode) -> Self {
+        self.validation_mode = validation_mode;
+        self
+    }
+
     pub fn build(self) -> DefaultMachine<Inner, Decoder> {
         DefaultMachine {
             inner: self.inner,
@@ -826,6 +845,7 @@ impl<Inner, Decoder> AbstractDefaultMachineBuilder<Inner, Decoder> {
             debugger: self.debugger,
             syscalls: self.syscalls,
             exit_code: 0,
+            validation_mode: self.validation_mode,
             phantom: PhantomData,
         }
     }
