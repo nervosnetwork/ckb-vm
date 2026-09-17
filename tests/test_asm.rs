@@ -455,3 +455,21 @@ pub fn test_big_binary() {
     let result = machine.load_program(&buffer, [Ok("simple".into())].into_iter());
     assert_eq!(result, Err(Error::MemOutOfBound));
 }
+
+#[test]
+pub fn test_aarch64_frame_marker() {
+    let buffer = fs::read("tests/programs/aarch64_frame_marker")
+        .unwrap()
+        .into();
+    let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, VERSION2, u64::MAX);
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(&buffer, [Ok("aarch64_frame_marker".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0);
+    let frame_1 = machine.machine.inner_mut().frames[1];
+    assert_eq!(frame_1, 1);
+}
