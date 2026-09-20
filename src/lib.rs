@@ -23,7 +23,7 @@ pub use crate::{
     machine::{
         CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineBuilder,
         DefaultMachineRunner, FlattenedArgsReader, InstructionCycleFunc, Machine, SupportMachine,
-        trace::TraceMachine,
+        ValidationMode, trace::TraceMachine,
     },
     memory::{Memory, flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory},
     syscalls::Syscalls,
