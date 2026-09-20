@@ -1,16 +1,30 @@
 pub mod machine_build;
 use bytes::Bytes;
-use ckb_vm::{CoreMachine, DefaultMachineRunner, Error, SupportMachine, registers::A0};
+use ckb_vm::{
+    CoreMachine, DefaultMachineRunner, Error, ISA_B, ISA_IMC, ISA_MOP, SupportMachine,
+    machine::{VERSION1, VERSION2},
+    registers::A0,
+};
 
 #[test]
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_wide_multiply() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_wide_multiply");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_wide_multiply",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_multiply", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_wide_multiply",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -18,7 +32,12 @@ pub fn test_mop_wide_multiply() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_wide_multiply", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_wide_multiply",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -29,12 +48,22 @@ pub fn test_mop_wide_multiply() {
 #[test]
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_wide_divide() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_wide_divide");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_wide_divide",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_divide", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_wide_divide",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -42,7 +71,12 @@ pub fn test_mop_wide_divide() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_wide_divide", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_wide_divide",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -52,12 +86,22 @@ pub fn test_mop_wide_divide() {
 
 #[test]
 pub fn test_mop_far_jump() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_far_jump");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_far_jump",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_far_jump", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_far_jump",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -65,7 +109,12 @@ pub fn test_mop_far_jump() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_far_jump", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_far_jump",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -76,20 +125,34 @@ pub fn test_mop_far_jump() {
 #[test]
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_ld_32_constants() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_ld_signextend_32");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_ld_signextend_32",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_ld_signextend_32", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_ld_signextend_32",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm =
-            machine_build::asm_v1_mop("tests/programs/mop_ld_signextend_32", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_ld_signextend_32",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -100,6 +163,7 @@ pub fn test_mop_ld_32_constants() {
 #[cfg_attr(miri, ignore)]
 pub fn test_mop_secp256k1() {
     let args = vec![
+        Bytes::from("main"),
         Bytes::from("033f8cf9c4d51a33206a6c1c6b27d2cc5129daa19dbd1fc148d395284f6b26411f"),
         Bytes::from(
             "304402203679d909f43f073c7c1dcf8468a485090589079ee834e6eed92fea9b09b06a2402201e46f1075afa18f306715e7db87493e7b7e779569aa13c64ab3d09980b3560a3",
@@ -108,13 +172,23 @@ pub fn test_mop_secp256k1() {
         Bytes::from("bar"),
     ];
 
-    let mut machine = machine_build::int_v1_mop("benches/data/secp256k1_bench", args.clone());
+    let mut machine = machine_build::int(
+        "benches/data/secp256k1_bench",
+        args.clone(),
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 611871);
 
-    let mut machine = machine_build::int_mop("benches/data/secp256k1_bench", args.clone(), 2);
+    let mut machine = machine_build::int(
+        "benches/data/secp256k1_bench",
+        args.clone(),
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -122,15 +196,23 @@ pub fn test_mop_secp256k1() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm =
-            machine_build::asm_v1_mop("benches/data/secp256k1_bench", args.clone());
+        let mut machine_asm = machine_build::asm(
+            "benches/data/secp256k1_bench",
+            args.clone(),
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
         assert_eq!(machine_asm.machine.cycles(), 611871);
 
-        let mut machine_asm =
-            machine_build::asm_mop("benches/data/secp256k1_bench", args.clone(), 2);
+        let mut machine_asm = machine_build::asm(
+            "benches/data/secp256k1_bench",
+            args.clone(),
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -140,13 +222,23 @@ pub fn test_mop_secp256k1() {
 
 #[test]
 pub fn test_mop_adc() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_adc");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_adc",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 73);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_adc", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_adc",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -154,7 +246,12 @@ pub fn test_mop_adc() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_adc", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_adc",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -164,19 +261,34 @@ pub fn test_mop_adc() {
 
 #[test]
 pub fn test_mop_adcs() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_adcs");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_adcs",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 53);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_adcs", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_adcs",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 53);
 
-    let mut machine = machine_build::int_mop("tests/programs/mop_adcs", vec![], 2);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_adcs",
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -184,13 +296,23 @@ pub fn test_mop_adcs() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_adcs", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_adcs",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
         assert_eq!(machine_asm.machine.cycles(), 53);
 
-        let mut machine_asm = machine_build::asm_mop("tests/programs/mop_adcs", vec![], 2);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_adcs",
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -200,19 +322,34 @@ pub fn test_mop_adcs() {
 
 #[test]
 pub fn test_mop_add3() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_add3");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_add3",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0, "Machine state: {}", machine.machine);
     assert_eq!(machine.machine.cycles(), 1047);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_add3", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_add3",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 939);
 
-    let mut machine = machine_build::int_mop("tests/programs/mop_add3", vec![], 2);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_add3",
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -220,13 +357,23 @@ pub fn test_mop_add3() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_add3", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_add3",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
         assert_eq!(machine_asm.machine.cycles(), 939);
 
-        let mut machine_asm = machine_build::asm_mop("tests/programs/mop_add3", vec![], 2);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_add3",
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -236,13 +383,23 @@ pub fn test_mop_add3() {
 
 #[test]
 pub fn test_mop_sbb() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_sbb");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbb",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 35);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_sbb", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbb",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -250,7 +407,12 @@ pub fn test_mop_sbb() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_sbb", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_sbb",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -260,19 +422,34 @@ pub fn test_mop_sbb() {
 
 #[test]
 pub fn test_mop_sbbs() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_sbbs");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbbs",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0, "Machine state: {}", machine.machine);
     assert_eq!(machine.machine.cycles(), 87);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_sbbs", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbbs",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 81);
 
-    let mut machine = machine_build::int_mop("tests/programs/mop_sbbs", vec![], 2);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_sbbs",
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -280,13 +457,23 @@ pub fn test_mop_sbbs() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_sbbs", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_sbbs",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
         assert_eq!(machine_asm.machine.cycles(), 81);
 
-        let mut machine_asm = machine_build::asm_mop("tests/programs/mop_sbbs", vec![], 2);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_sbbs",
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -296,19 +483,34 @@ pub fn test_mop_sbbs() {
 
 #[test]
 pub fn test_mop_random_adc_sbb() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_random_adc_sbb");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_random_adc_sbb",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 9458);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_random_adc_sbb", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_random_adc_sbb",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
     assert_eq!(machine.machine.cycles(), 6755);
 
-    let mut machine = machine_build::int_mop("tests/programs/mop_random_adc_sbb", vec![], 2);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_random_adc_sbb",
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
@@ -316,15 +518,23 @@ pub fn test_mop_random_adc_sbb() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm =
-            machine_build::asm_v1_mop("tests/programs/mop_random_adc_sbb", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_random_adc_sbb",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
         assert_eq!(machine_asm.machine.cycles(), 6755);
 
-        let mut machine_asm =
-            machine_build::asm_mop("tests/programs/mop_random_adc_sbb", vec![], 2);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_random_adc_sbb",
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -334,16 +544,24 @@ pub fn test_mop_random_adc_sbb() {
 
 #[test]
 pub fn test_mop_ld_signextend_32_overflow_bug() {
-    let mut machine =
-        machine_build::int_v1_mop("tests/programs/mop_ld_signextend_32_overflow_bug", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_ld_signextend_32_overflow_bug",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm =
-            machine_build::asm_v1_mop("tests/programs/mop_ld_signextend_32_overflow_bug", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_ld_signextend_32_overflow_bug",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -352,14 +570,24 @@ pub fn test_mop_ld_signextend_32_overflow_bug() {
 
 #[test]
 pub fn test_mop_wide_mul_zero() {
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_mul_zero", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_wide_mul_zero",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_wide_mul_zero", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_wide_mul_zero",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -368,14 +596,24 @@ pub fn test_mop_wide_mul_zero() {
 
 #[test]
 pub fn test_mop_wide_div_zero() {
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_wide_div_zero", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_wide_div_zero",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop("tests/programs/mop_wide_div_zero", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_wide_div_zero",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert!(ret_asm.is_ok());
         assert_eq!(ret_asm.unwrap(), 0);
@@ -384,31 +622,54 @@ pub fn test_mop_wide_div_zero() {
 
 #[test]
 pub fn test_mop_jump_rel_version1_bug() {
-    let mut machine = machine_build::int_v1_imcb("tests/programs/mop_jump_rel_version1_bug");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_jump_rel_version1_bug",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(*machine.pc(), 0xffffffff8000f878);
 
-    let mut machine = machine_build::int_v1_mop("tests/programs/mop_jump_rel_version1_bug", vec![]);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_jump_rel_version1_bug",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(*machine.pc(), 0x8000f878);
 
-    let mut machine = machine_build::int_mop("tests/programs/mop_jump_rel_version1_bug", vec![], 2);
+    let mut machine = machine_build::int(
+        "tests/programs/mop_jump_rel_version1_bug",
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(*machine.pc(), 0xffffffff8000f878);
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm =
-            machine_build::asm_v1_mop("tests/programs/mop_jump_rel_version1_bug", vec![]);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_jump_rel_version1_bug",
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert_eq!(ret_asm, Err(Error::MemOutOfBound));
         assert_eq!(*machine_asm.machine.pc(), 0x8000f878);
 
-        let mut machine_asm =
-            machine_build::asm_mop("tests/programs/mop_jump_rel_version1_bug", vec![], 2);
+        let mut machine_asm = machine_build::asm(
+            "tests/programs/mop_jump_rel_version1_bug",
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
+        );
         let ret_asm = machine_asm.run();
         assert_eq!(ret_asm, Err(Error::MemOutOfBound));
         assert_eq!(*machine_asm.machine.pc(), 0xffffffff8000f878);
@@ -417,24 +678,31 @@ pub fn test_mop_jump_rel_version1_bug() {
 
 #[test]
 pub fn test_mop_jump_rel_version1_reg_not_updated_bug() {
-    let mut machine =
-        machine_build::int_v1_imcb("tests/programs/mop_jump_rel_version1_reg_not_updated_bug");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(machine.registers()[A0], 67174520);
 
-    let mut machine = machine_build::int_v1_mop(
+    let mut machine = machine_build::int(
         "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
-        vec![],
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
     );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(machine.registers()[A0], 0);
 
-    let mut machine = machine_build::int_mop(
+    let mut machine = machine_build::int(
         "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
-        vec![],
-        2,
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
     );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
@@ -442,18 +710,21 @@ pub fn test_mop_jump_rel_version1_reg_not_updated_bug() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop(
+        let mut machine_asm = machine_build::asm(
             "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
-            vec![],
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
         );
         let ret_asm = machine_asm.run();
         assert_eq!(ret_asm, Err(Error::MemOutOfBound));
         assert_eq!(machine_asm.machine.registers()[A0], 0);
 
-        let mut machine_asm = machine_build::asm_mop(
+        let mut machine_asm = machine_build::asm(
             "tests/programs/mop_jump_rel_version1_reg_not_updated_bug",
-            vec![],
-            2,
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
         );
         let ret_asm = machine_asm.run();
         assert_eq!(ret_asm, Err(Error::MemOutOfBound));
@@ -463,24 +734,31 @@ pub fn test_mop_jump_rel_version1_reg_not_updated_bug() {
 
 #[test]
 pub fn test_mop_jump_abs_version1_reg_not_updated_bug() {
-    let mut machine =
-        machine_build::int_v1_imcb("tests/programs/mop_jump_abs_version1_reg_not_updated_bug");
+    let mut machine = machine_build::int(
+        "tests/programs/mop_jump_abs_version1_reg_not_updated_bug",
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B,
+    );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(machine.registers()[A0], 67108864);
 
-    let mut machine = machine_build::int_v1_mop(
+    let mut machine = machine_build::int(
         "tests/programs/mop_jump_abs_version1_reg_not_updated_bug",
-        vec![],
+        vec![Bytes::from("main")],
+        VERSION1,
+        ISA_IMC | ISA_B | ISA_MOP,
     );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
     assert_eq!(machine.registers()[A0], 0);
 
-    let mut machine = machine_build::int_mop(
+    let mut machine = machine_build::int(
         "tests/programs/mop_jump_abs_version1_reg_not_updated_bug",
-        vec![],
-        2,
+        vec![Bytes::from("main")],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
     );
     let ret = machine.run();
     assert_eq!(ret, Err(Error::MemOutOfBound));
@@ -488,18 +766,21 @@ pub fn test_mop_jump_abs_version1_reg_not_updated_bug() {
 
     #[cfg(has_asm)]
     {
-        let mut machine_asm = machine_build::asm_v1_mop(
+        let mut machine_asm = machine_build::asm(
             "tests/programs/mop_jump_abs_version1_reg_not_updated_bug",
-            vec![],
+            vec![Bytes::from("main")],
+            VERSION1,
+            ISA_IMC | ISA_B | ISA_MOP,
         );
         let ret_asm = machine_asm.run();
         assert_eq!(ret_asm, Err(Error::MemOutOfBound));
         assert_eq!(machine_asm.machine.registers()[A0], 0);
 
-        let mut machine_asm = machine_build::asm_mop(
+        let mut machine_asm = machine_build::asm(
             "tests/programs/mop_jump_abs_version1_reg_not_updated_bug",
-            vec![],
-            2,
+            vec![Bytes::from("main")],
+            VERSION2,
+            ISA_IMC | ISA_B | ISA_MOP,
         );
         let ret_asm = machine_asm.run();
         assert_eq!(ret_asm, Err(Error::MemOutOfBound));

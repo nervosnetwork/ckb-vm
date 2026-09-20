@@ -10,7 +10,7 @@ use ckb_vm::machine::{
 };
 use ckb_vm::memory::{sparse::SparseMemory, wxorx::WXorXMemory};
 use ckb_vm::snapshot::{Snapshot, make_snapshot, resume};
-use ckb_vm::{DefaultMachineBuilder, Error, ISA_A, ISA_IMC};
+use ckb_vm::{DefaultMachineBuilder, Error, ISA_A, ISA_B, ISA_IMC};
 use std::fs::File;
 use std::io::Read;
 
@@ -305,7 +305,12 @@ impl Machine {
 
 #[test]
 pub fn test_sc_after_snapshot() {
-    let mut machine = machine_build::int_v2_imacb("tests/programs/sc_after_snapshot");
+    let mut machine = machine_build::int(
+        "tests/programs/sc_after_snapshot",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_A | ISA_B,
+    );
     machine.machine.inner_mut().set_max_cycles(5);
     let ret = machine.run();
     assert!(ret.is_err());
