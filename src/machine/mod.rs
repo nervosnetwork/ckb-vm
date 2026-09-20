@@ -19,6 +19,13 @@ use super::{
     registers::{A0, A7, REGISTER_ABI_NAMES, SP},
 };
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ValidationMode {
+    #[default]
+    Consensus,
+    Strict,
+}
+
 // Version 0 is the initial launched CKB VM, it is used in CKB Lina mainnet
 pub const VERSION0: u32 = 0;
 // Version 1 fixes known bugs discovered in version 0:
@@ -482,6 +489,7 @@ pub struct DefaultMachine<Inner> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     exit_code: i8,
+    validation_mode: ValidationMode,
 }
 
 impl<Inner: CoreMachine> CoreMachine for DefaultMachine<Inner> {
@@ -668,6 +676,10 @@ impl<Inner: SupportMachine> DefaultMachine<Inner> {
         Ok(bytes)
     }
 
+    pub fn validation_mode(&self) -> ValidationMode {
+        self.validation_mode
+    }
+
     pub fn load_program_with_metadata(
         &mut self,
         program: &Bytes,
@@ -770,6 +782,7 @@ pub struct DefaultMachineBuilder<Inner> {
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
     pause: Pause,
+    validation_mode: ValidationMode,
 }
 
 impl<Inner> DefaultMachineBuilder<Inner> {
@@ -780,6 +793,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             debugger: None,
             syscalls: vec![],
             pause: Pause::new(),
+            validation_mode: ValidationMode::Consensus,
         }
     }
 
@@ -806,6 +820,11 @@ impl<Inner> DefaultMachineBuilder<Inner> {
         self
     }
 
+    pub fn validation_mode(mut self, validation_mode: ValidationMode) -> Self {
+        self.validation_mode = validation_mode;
+        self
+    }
+
     pub fn build(self) -> DefaultMachine<Inner> {
         DefaultMachine {
             inner: self.inner,
@@ -814,6 +833,7 @@ impl<Inner> DefaultMachineBuilder<Inner> {
             debugger: self.debugger,
             syscalls: self.syscalls,
             exit_code: 0,
+            validation_mode: self.validation_mode,
         }
     }
 }
