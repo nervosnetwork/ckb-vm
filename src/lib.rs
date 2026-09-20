@@ -23,7 +23,7 @@ pub use crate::{
     instructions::{Instruction, Register},
     machine::{
         CoreMachine, DefaultCoreMachine, DefaultMachine, DefaultMachineRunner, FlattenedArgsReader,
-        InstructionCycleFunc, Machine, RustDefaultMachineBuilder, SupportMachine,
+        InstructionCycleFunc, Machine, RustDefaultMachineBuilder, SupportMachine, ValidationMode,
         trace::TraceMachine,
     },
     memory::{Memory, flat::FlatMemory, sparse::SparseMemory, wxorx::WXorXMemory},

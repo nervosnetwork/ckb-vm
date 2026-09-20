@@ -81,3 +81,9 @@ impl From<goblin_v040::error::Error> for Error {
         Error::ElfParseError(error.to_string())
     }
 }
+
+impl Error {
+    pub fn is_raised_by_strict(&self) -> bool {
+        false
+    }
+}
