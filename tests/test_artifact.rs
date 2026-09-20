@@ -1,4 +1,4 @@
-use ckb_vm::{DefaultMachineRunner, ISA_B, ISA_IMC, ISA_MOP, machine::VERSION2};
+use ckb_vm::{DefaultMachineRunner, ISA_B, ISA_IMC, ISA_MOP, SupportMachine, machine::VERSION2};
 use std::fs;
 use std::path::Path;
 pub mod machine_build;
@@ -40,5 +40,30 @@ pub fn test_artifact() {
         let result_asm = machine.run();
         assert!(result_asm.is_ok());
         assert_eq!(result_asm.unwrap(), 0);
+    }
+}
+
+#[test]
+pub fn test_artifact_cycles_sample() {
+    let cases = [
+        ("tests/artifact/arch/add-01.elf", 12352),
+        ("tests/artifact/arch/cadd-01.elf", 12313),
+        ("tests/artifact/arch/div-01.elf", 12145),
+        ("tests/artifact/spec/rv64ui-u-add", 420),
+        ("tests/artifact/spec/rv64ui-u-lw", 192),
+        ("tests/artifact/spec/rv64um-u-mul", 412),
+    ];
+
+    for (path, cycles) in cases {
+        let mut machine = machine_build::int(path, vec![], VERSION2, ISA_IMC | ISA_B | ISA_MOP);
+        assert_eq!(machine.run().unwrap(), 0);
+        assert_eq!(machine.machine.cycles(), cycles, "{path}");
+
+        #[cfg(has_asm)]
+        {
+            let mut machine = machine_build::asm(path, vec![], VERSION2, ISA_IMC | ISA_B | ISA_MOP);
+            assert_eq!(machine.run().unwrap(), 0);
+            assert_eq!(machine.machine.cycles(), cycles, "{path}");
+        }
     }
 }
