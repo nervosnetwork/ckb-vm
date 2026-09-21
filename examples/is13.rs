@@ -5,13 +5,18 @@
 //
 // To build the "is13.c" to riscv output, you will need to install "riscv-gnu-toolchain" in your system.
 //
+// Option 1: Using Nix (Recommended - quick and easy)
+// If you have Nix installed, you can use the provided flake.nix:
+//
+//   $ nix develop
+//
+// Option 2: Building from source (takes ~1 hour)
+//
 //   $ git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
 //   $ cd riscv-gnu-toolchain
 //   $ mkdir build && cd build
 //   $ ../configure --prefix=/opt/riscv --with-arch=rv64imac
 //   $ make
-//
-// On my ubuntu machine, it takes 1 hours. Sad.
 //
 // Then, you can build "is13.c" by "riscv64-unknown-elf-gcc"
 //

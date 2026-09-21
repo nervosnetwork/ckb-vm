@@ -6,3 +6,4 @@ Cargo.lock
 /examples/is13
 *.DS_Store
 tests/programs/deps
+flake.lock
