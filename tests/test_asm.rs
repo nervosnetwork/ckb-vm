@@ -473,3 +473,22 @@ pub fn test_aarch64_frame_marker() {
     let frame_1 = machine.machine.inner_mut().frames[1];
     assert_eq!(frame_1, 1);
 }
+
+#[test]
+pub fn test_aarch64_frame_marker_temp4() {
+    let buffer = fs::read("tests/programs/aarch64_frame_marker_temp4")
+        .unwrap()
+        .into();
+    let asm_core = <Box<AsmCoreMachine> as SupportMachine>::new(ISA_IMC, VERSION2, u64::MAX);
+    let core = DefaultMachineBuilder::new(asm_core).build();
+    let mut machine = AsmMachine::new(core);
+    machine
+        .load_program(
+            &buffer,
+            [Ok("aarch64_frame_marker_temp4".into())].into_iter(),
+        )
+        .unwrap();
+    let result = machine.run();
+    assert_eq!(result, Ok(0));
+    assert_eq!(machine.machine.inner_mut().frames[1], 1);
+}
