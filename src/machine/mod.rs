@@ -492,7 +492,13 @@ pub type InstructionCycleFunc = dyn Fn(Instruction) -> u64 + Send + Sync;
 pub struct DefaultMachine<Inner, Decoder = DefaultDecoder> {
     inner: Inner,
     pause: Pause,
+    runtime: MachineRuntime<Inner>,
+    exit_code: i8,
+    validation_mode: ValidationMode,
+    phantom: PhantomData<Decoder>,
+}
 
+struct MachineRuntime<Inner> {
     // We have run benchmarks on secp256k1 verification, the performance
     // cost of the Box wrapper here is neglectable, hence we are sticking
     // with Box solution for simplicity now. Later if this becomes an issue,
@@ -500,9 +506,6 @@ pub struct DefaultMachine<Inner, Decoder = DefaultDecoder> {
     instruction_cycle_func: Box<InstructionCycleFunc>,
     debugger: Option<Box<dyn Debugger<Inner>>>,
     syscalls: Vec<Box<dyn Syscalls<Inner>>>,
-    exit_code: i8,
-    validation_mode: ValidationMode,
-    phantom: PhantomData<Decoder>,
 }
 
 impl<Inner: CoreMachine, Decoder> CoreMachine for DefaultMachine<Inner, Decoder> {
@@ -613,7 +616,7 @@ impl<Inner: SupportMachine, Decoder> Machine for DefaultMachine<Inner, Decoder> 
                 Ok(())
             }
             _ => {
-                for syscall in &mut self.syscalls {
+                for syscall in &mut self.runtime.syscalls {
                     let processed = syscall.ecall(&mut self.inner)?;
                     if processed {
                         if self.cycles() > self.max_cycles() {
@@ -628,7 +631,7 @@ impl<Inner: SupportMachine, Decoder> Machine for DefaultMachine<Inner, Decoder> 
     }
 
     fn ebreak(&mut self) -> Result<(), Error> {
-        if let Some(debugger) = &mut self.debugger {
+        if let Some(debugger) = &mut self.runtime.debugger {
             debugger.ebreak(&mut self.inner)
         } else {
             // Unlike ecall, the default behavior of an EBREAK operation is
@@ -730,10 +733,10 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
         &mut self,
         args: impl ExactSizeIterator<Item = Result<Bytes, Error>>,
     ) -> Result<u64, Error> {
-        for syscall in &mut self.syscalls {
+        for syscall in &mut self.runtime.syscalls {
             syscall.initialize(&mut self.inner)?;
         }
-        if let Some(debugger) = &mut self.debugger {
+        if let Some(debugger) = &mut self.runtime.debugger {
             debugger.initialize(&mut self.inner)?;
         }
         let memory_size = self.memory().memory_size();
@@ -764,7 +767,7 @@ impl<Inner: SupportMachine, Decoder> DefaultMachine<Inner, Decoder> {
     }
 
     pub fn instruction_cycle_func(&self) -> &InstructionCycleFunc {
-        &self.instruction_cycle_func
+        &self.runtime.instruction_cycle_func
     }
 
     pub fn inner_mut(&mut self) -> &mut Inner {
@@ -841,9 +844,11 @@ impl<Inner, Decoder> AbstractDefaultMachineBuilder<Inner, Decoder> {
         DefaultMachine {
             inner: self.inner,
             pause: self.pause,
-            instruction_cycle_func: self.instruction_cycle_func,
-            debugger: self.debugger,
-            syscalls: self.syscalls,
+            runtime: MachineRuntime {
+                instruction_cycle_func: self.instruction_cycle_func,
+                debugger: self.debugger,
+                syscalls: self.syscalls,
+            },
             exit_code: 0,
             validation_mode: self.validation_mode,
             phantom: PhantomData,
