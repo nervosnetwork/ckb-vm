@@ -23,7 +23,7 @@ pub fn calculate_slot(addr: u64) -> usize {
     (addr as usize >> 2) & (TRACE_SIZE - 1)
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct Trace {
     pub address: u64,
@@ -33,6 +33,25 @@ pub struct Trace {
     // We are using direct threaded code here:
     // https://en.wikipedia.org/wiki/Threaded_code
     pub thread: [u64; TRACE_ITEM_LENGTH + 1],
+}
+
+impl Trace {
+    /// Creates an empty trace cache entry.
+    pub const fn empty() -> Self {
+        Self {
+            address: 0,
+            length: 0,
+            cycles: 0,
+            instructions: [0; TRACE_ITEM_LENGTH + 1],
+            thread: [0; TRACE_ITEM_LENGTH + 1],
+        }
+    }
+}
+
+impl Default for Trace {
+    fn default() -> Self {
+        Self::empty()
+    }
 }
 
 // Although the memory here is an array, but when it is created,
