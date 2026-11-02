@@ -35,6 +35,13 @@ pub trait AsmCoreMachineRevealer: AsRef<Box<AsmCoreMachine>> + AsMut<Box<AsmCore
     fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self;
 }
 
+fn clear_traces(traces: &mut [Trace; TRACE_SIZE]) {
+    // Keep the empty table static so it needs no stack allocation and the
+    // copy can lower to a single bulk clear.
+    static EMPTY: [Trace; TRACE_SIZE] = [Trace::empty(); TRACE_SIZE];
+    traces.copy_from_slice(&EMPTY);
+}
+
 impl AsmCoreMachineRevealer for Box<AsmCoreMachine> {
     fn new(isa: u8, version: u32, max_cycles: u64, memory_size: usize) -> Self {
         assert_ne!(memory_size, 0);
@@ -66,9 +73,7 @@ impl AsmCoreMachineRevealer for Box<AsmCoreMachine> {
         machine.version = version;
         machine.isa = isa;
         machine.flags = [0; RISCV_PAGES];
-        for i in 0..TRACE_SIZE {
-            machine.traces[i] = Trace::default();
-        }
+        clear_traces(&mut machine.traces);
         machine.frames = [0; MEMORY_FRAMES];
 
         machine.memory_size = memory_size as u64;
@@ -502,9 +507,7 @@ where
         m.registers = [0; RISCV_GENERAL_REGISTER_NUMBER];
         m.pc = 0;
         m.flags = [0; RISCV_PAGES];
-        for i in 0..TRACE_SIZE {
-            m.traces[i] = Trace::default();
-        }
+        clear_traces(&mut m.traces);
         m.frames = [0; MEMORY_FRAMES];
         m.cycles = 0;
         m.max_cycles = max_cycles;
