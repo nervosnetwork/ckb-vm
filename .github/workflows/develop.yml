@@ -46,13 +46,13 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt install -y gcc-aarch64-linux-gnu \
-                              qemu-user-static
+                              qemu-user
           rustup target add aarch64-unknown-linux-gnu
       - name: Build
         run: |
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-args=-L -C link-args=/usr/lib/gcc-cross/aarch64-linux-gnu/13"
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64-static -L /usr/aarch64-linux-gnu"
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
           cargo test --features=asm --release --target aarch64-unknown-linux-gnu
 
   windows-x64:
