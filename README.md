@@ -1,3 +1,4 @@
+
 # [Nervos CKB](https://nervos.org) VM
 
 [![Build Status](https://dev.azure.com/nervosnetwork/ckb-vm/_apis/build/status/nervosnetwork.ckb-vm?branchName=develop)](https://dev.azure.com/nervosnetwork/ckb-vm/_build/latest?definitionId=10&branchName=develop)
@@ -50,3 +51,24 @@ Right now CKB VM has 2 different modes:
 * Assembly based interpreter mode(ASM mode)
 
 For consistent behavior, you should only use ASM mode. The Rust mode is developed more to assist development, and never used in production by us. In case of bugs, there might be inconsistent behaviors between Rust mode and ASM mode.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Check out our [good first issues](https://github.com/nervosnetwork/ckb-vm/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+- Report bugs via [GitHub Issues](https://github.com/nervosnetwork/ckb-vm/issues)
+- Suggest features or improvements
+- Improve documentation
+- Submit pull requests
+
+## 📚 Resources
+
+- [Documentation](https://docs.rs/ckb-vm)
+- [Nervos CKB Docs](https://docs.nervos.org)
+- [Nervos Discord](https://discord.gg/nervos)
+
+## ⭐ Support
+
+If you find CKB VM useful, please consider giving it a star on GitHub!
