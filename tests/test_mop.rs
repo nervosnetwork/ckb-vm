@@ -793,3 +793,40 @@ pub fn test_mop_sbb_rule_divergence() {
     assert!(ret.is_ok());
     assert_eq!(ret.unwrap(), 0);
 }
+
+#[test]
+pub fn test_mop_lui_jalr_overflow_bug() {
+    let mut machine1 = machine_build::int(
+        "tests/programs/mop_lui_jalr_overflow_bug",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_B,
+    );
+    let ret1 = machine1.run();
+    let pc1 = *machine1.pc();
+
+    let mut machine2 = machine_build::int(
+        "tests/programs/mop_lui_jalr_overflow_bug",
+        vec![],
+        VERSION2,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
+    let ret2 = machine2.run();
+    let pc2 = *machine2.pc();
+
+    let mut machine3 = machine_build::int(
+        "tests/programs/mop_lui_jalr_overflow_bug",
+        vec![],
+        VERSION3,
+        ISA_IMC | ISA_B | ISA_MOP,
+    );
+    let ret3 = machine3.run();
+    let pc3 = *machine3.pc();
+
+    assert_eq!(ret1, Err(Error::MemOutOfBound(pc1, OutOfBoundKind::Memory)));
+    assert_eq!(ret2, Err(Error::MemOutOfBound(pc2, OutOfBoundKind::Memory)));
+    assert_eq!(ret3, Err(Error::MemOutOfBound(pc3, OutOfBoundKind::Memory)));
+
+    assert_ne!(pc1, pc2);
+    assert_eq!(pc1, pc3);
+}
