@@ -6,7 +6,7 @@ use ckb_vm_definitions::{
     RISCV_GENERAL_REGISTER_NUMBER, RISCV_MAX_MEMORY, RISCV_PAGE_SHIFTS,
     asm::{
         RET_CYCLES_OVERFLOW, RET_DECODE_TRACE, RET_DYNAMIC_JUMP, RET_EBREAK, RET_ECALL,
-        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE, RET_SLOWPATH,
+        RET_INVALID_PERMISSION, RET_MAX_CYCLES_EXCEEDED, RET_OUT_OF_BOUND, RET_PAUSE,
         TRACE_ITEM_LENGTH, TRACE_SIZE, Trace, calculate_slot,
     },
     instructions::OP_CUSTOM_TRACE_END,
@@ -21,8 +21,7 @@ use crate::{
     decoder::{Decoder, build_decoder},
     elf::ProgramMetadata,
     instructions::{
-        blank_instruction, execute_instruction, extract_opcode, instruction_length,
-        is_basic_block_end_instruction,
+        blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
     },
     machine::VERSION0,
     memory::{
@@ -623,11 +622,6 @@ where
                 RET_CYCLES_OVERFLOW => return Err(Error::CyclesOverflow),
                 RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
                 RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
-                RET_SLOWPATH => {
-                    let pc = *self.machine.pc() - 4;
-                    let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                    execute_instruction(instruction, &mut self.machine)?;
-                }
                 RET_PAUSE => {
                     self.machine.pause.free();
                     return Err(Error::Pause);
@@ -701,11 +695,6 @@ where
             RET_MAX_CYCLES_EXCEEDED => return Err(Error::CyclesExceeded),
             RET_OUT_OF_BOUND => return Err(Error::MemOutOfBound),
             RET_INVALID_PERMISSION => return Err(Error::MemWriteOnExecutablePage),
-            RET_SLOWPATH => {
-                let pc = *self.machine.pc() - 4;
-                let instruction = decoder.decode(self.machine.memory_mut(), pc)?;
-                execute_instruction(instruction, &mut self.machine)?;
-            }
             _ => return Err(Error::Asm(result)),
         }
         self.machine.inner_mut().as_mut().traces[slot] = Trace::default();

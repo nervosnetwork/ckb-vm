@@ -408,14 +408,9 @@ impl fmt::Display for R5type {
     }
 }
 
-pub fn is_slowpath_instruction(i: Instruction) -> bool {
-    (i as u8 as u16) < MINIMAL_OPCODE
-}
-
 pub fn is_basic_block_end_instruction(i: Instruction) -> bool {
     let opcode = extract_opcode(i);
     (MINIMAL_BASIC_BLOCK_END_OPCODE..=MAXIMUM_BASIC_BLOCK_END_OPCODE).contains(&opcode)
-        || is_slowpath_instruction(i)
 }
 
 #[inline(always)]
@@ -519,7 +514,7 @@ mod tests {
     macro_rules! test_opcode_with_last {
         ($name:ident, $real_name:ident, $code:expr, $last:ident) => {
             assert_eq!(
-                $last + 1,
+                $last.wrapping_add(1),
                 $code,
                 "Opcode {} ({}) does not follow last opcode!",
                 stringify!($real_name),
@@ -531,7 +526,7 @@ mod tests {
 
     #[test]
     fn test_opcodes_are_defined_seqentially() {
-        let mut last = MINIMAL_OPCODE - 1;
+        let mut last = MINIMAL_OPCODE.wrapping_sub(1);
         for_each_inst1!(test_opcode_with_last, last);
         assert_eq!(last, MAXIMUM_OPCODE);
     }

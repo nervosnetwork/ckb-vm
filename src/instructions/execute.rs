@@ -1590,8 +1590,6 @@ pub type Thread<Mac> = fn(&mut Mac, Instruction) -> Result<(), Error>;
 const FASTPATH_THREADS: usize = insts::MAXIMUM_OPCODE as usize + 1 - insts::MINIMAL_OPCODE as usize;
 
 pub struct ThreadFactory<Mac: Machine> {
-    // Right now we are only dealing with fastpath opcodes, later we might
-    // (or might not?) expand this with some opcodes in the slowpath category.
     threads: [Thread<Mac>; FASTPATH_THREADS],
 }
 
